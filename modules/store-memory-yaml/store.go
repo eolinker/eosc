@@ -3,20 +3,19 @@ package store_memory_yaml
 import (
 	"context"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/internal"
 	"sync"
 )
 
 type Store struct {
-	data internal.IUntyped
+	data       eosc.IUntyped
 	dispatcher *eosc.StoreEventDispatcher
-	locker sync.RWMutex
+	locker     sync.RWMutex
 }
 
 func NewStore(yamlstore eosc.IStore) (eosc.IStore ,error){
 
 	s:=&Store{
-		data:       internal.NewUntyped(),
+		data:       eosc.NewUntyped(),
 		dispatcher: eosc.NewStoreDispatcher(),
 	}
 	if yamlstore != nil{

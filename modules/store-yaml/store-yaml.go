@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/internal"
 	"github.com/ghodss/yaml"
 	"io/ioutil"
 	"time"
@@ -13,7 +12,7 @@ import (
 type Store struct {
 	dispatcher *eosc.StoreEventDispatcher
 
-	data internal.IUntyped
+	data eosc.IUntyped
 }
 
 func (s *Store) AddListen(h eosc.IStoreEventHandler) error {
@@ -37,7 +36,7 @@ func NewStore(file string) (eosc.IStore, error) {
 	}
 
 	s := &Store{
-		data:       internal.NewUntyped(),
+		data:       eosc.NewUntyped(),
 		dispatcher: eosc.NewStoreDispatcher(),
 	}
 	now := time.Now().Format("2006-01-02 15:04:05")

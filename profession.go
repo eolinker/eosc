@@ -1,7 +1,6 @@
 package eosc
 
 import (
-	"github.com/eolinker/eosc/internal"
 	"strings"
 )
 
@@ -31,7 +30,7 @@ type Profession struct {
 	appendLabels []string
 	drivers      IProfessionDrivers
 
-	data internal.IUntyped
+	data IUntyped
 }
 
 func (p *Profession) Name() string {
