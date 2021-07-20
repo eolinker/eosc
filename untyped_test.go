@@ -1,4 +1,4 @@
-package internal
+package eosc
 
 import (
 	"reflect"

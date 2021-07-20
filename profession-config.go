@@ -2,7 +2,6 @@ package eosc
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/internal"
 )
 
 type DriverConfig struct {
@@ -69,7 +68,7 @@ func (pc *ProfessionConfig) create(driverRegister IDriverRegister) (IProfession,
 		dependencies: pc.Dependencies,
 		appendLabels: pc.AppendLabel,
 		drivers:      NewDrivers(ds),
-		data:         internal.NewUntyped(),
+		data:         NewUntyped(),
 	}
 	return p, nil
 }

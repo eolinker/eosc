@@ -1,9 +1,5 @@
 package eosc
 
-import (
-	"github.com/eolinker/eosc/internal"
-)
-
 type IRegister interface {
 	Register(name string, obj interface{}, force bool) error
 	Get(name string) (interface{}, bool)
@@ -20,7 +16,7 @@ type Register struct {
 
 func NewRegister() IRegister {
 	return &Register{
-		data: internal.NewUntyped(),
+		data: NewUntyped(),
 	}
 }
 

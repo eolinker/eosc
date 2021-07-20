@@ -1,10 +1,5 @@
 package eosc
 
-import (
-	"github.com/eolinker/eosc/internal"
-
-)
-
 type IProfessionDrivers interface {
 	Get(name string)(driver IProfessionDriverInfo,has bool)
 	List()[]IProfessionDriverInfo
@@ -30,7 +25,7 @@ func (p *_TProfessionDriver) DriverInfo() DriverInfo {
 }
 
 type ProfessionDrivers struct {
-	data internal.IUntyped
+	data IUntyped
 }
 
 func (d *ProfessionDrivers) Get(name string) (  IProfessionDriverInfo,   bool) {
@@ -56,7 +51,7 @@ func (d *ProfessionDrivers) Keys() []string {
 }
 
 func NewDrivers(drivers []*_TProfessionDriver)IProfessionDrivers {
-	data := internal.NewUntyped()
+	data := NewUntyped()
 	for _,d:=range drivers{
 		data.Set(d.driverInfo.Name,d)
 	}

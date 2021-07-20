@@ -2,7 +2,6 @@ package eosc
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/internal"
 )
 
 var _ IWorkers = (*WorkManager)(nil)
@@ -128,7 +127,7 @@ func NewWorkers(professions IProfessions, store IStore) (*WorkManager, error) {
 	ws := &WorkManager{
 		store:       store,
 		professions: professions,
-		data:        Workers{data: internal.NewUntyped()},
+		data:        Workers{data: NewUntyped()},
 	}
 	err := ws.init()
 	if err != nil {
@@ -144,7 +143,7 @@ func (wm *WorkManager) init() error {
 }
 
 type Workers struct {
-	data internal.IUntyped
+	data IUntyped
 }
 
 func (ws *Workers) Set(id string, w *tWorker) {

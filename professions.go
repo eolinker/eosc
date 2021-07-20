@@ -1,9 +1,5 @@
 package eosc
 
-import (
-	"github.com/eolinker/eosc/internal"
-)
-
 var (
 	_ iProfessionsData = (*tProfessionUntyped)(nil)
 	_ IProfessions     = (*Professions)(nil)
@@ -64,12 +60,12 @@ func checkProfessions(infos []ProfessionInfo) ([]ProfessionInfo, error) {
 }
 
 type tProfessionUntyped struct {
-	data internal.IUntyped
+	data IUntyped
 }
 
 func newTProfessionUntyped() *tProfessionUntyped {
 	return &tProfessionUntyped{
-		data: internal.NewUntyped(),
+		data: NewUntyped(),
 	}
 }
 
