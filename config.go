@@ -65,7 +65,7 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 		}
 		return requires, nil
 	case reflect.Slice:
-		n := v.NumField()
+		n := v.Len()
 		requires := make(map[RequireId]interface{})
 		for i := 0; i < n; i++ {
 			if ws, err := checkConfig(v.Index(i), workers); err != nil {
