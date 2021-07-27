@@ -1,61 +1,82 @@
 package store
 
 import (
-	"encoding/json"
+	"errors"
+	"fmt"
+
 	"github.com/eolinker/eosc"
 )
 
-var _ eosc.IData = (*Router)(nil)
+//Item 配置项
+type Item map[string]interface{}
 
-type Cert struct {
-	Key string `json:"key" yaml:"key"`
-	Crt string `json:"crt" yaml:"crt"`
-}
-
-
-type Rule struct {
-	Target string `json:"target" yaml:"target"`
-	RemoteIp string `json:"ip" yaml:"ip"`
-	Host string `json:"host" yaml:"host"`
-	Location string `json:"location" yaml:"location"`
-	Header map[string]string `json:"header" yaml:"header"`
-	Query map[string]string `json:"query" yaml:"query"`
-	Cookie map[string]string `json:"cookie" yaml:"cookie"`
-}
-
-
-type Router struct {
-	Name string `json:"name" yaml:"name"`
-	Driver string `json:"driver" yaml:"driver"`
-	Listen int `json:"listen" yaml:"listen"`
-	Host []string `json:"host" yaml:"host"`
-	Cert []Cert `json:"cert" yaml:"cert"`
-	Rules []Rule `json:"rules" yaml:"rule"`
-}
-
-func (r *Router) Marshal() ([]byte, error) {
-	d,err:=json.Marshal(r)
-	return d,err
-}
-
-func (r *Router) UnMarshal(v interface{}) error {
-
-	d,err:=json.Marshal(r)
-	if err!= nil{
-		return err
+//Id 获取ID
+func (i Item) Id() (string, bool) {
+	v, has := i["id"]
+	if !has {
+		return "", false
 	}
-	return json.Unmarshal(d,v)
+	id, ok := v.(string)
+	return id, ok
 }
 
-type Service struct {
-	Name string `json:"name" yaml:"name"`
-	Driver string `json:"driver" yaml:"driver"`
+//Name 获取name
+func (i Item) Name() (string, bool) {
+	v, has := i["name"]
+	if !has {
+		return "", false
+	}
+	name, ok := v.(string)
+	return name, ok
 }
 
+//Driver 获取driver
+func (i Item) Driver() (string, bool) {
+	v, has := i["driver"]
+	if !has {
+		return "", false
+	}
+	driver, ok := v.(string)
+	return driver, ok
+}
+
+//newStoreValue 新建storeValue实例
+func (i Item) newStoreValue(profession string, now string) (*eosc.StoreValue, error) {
+	name := ""
+	id, ok := i.Id()
+	if !ok {
+		name, ok = i.Name()
+		if !ok {
+			return nil, errors.New(fmt.Sprintf("id,name not found in %s", profession))
+		}
+		id = fmt.Sprintf("%s@%s", name, profession)
+	}
+
+	data, err := eosc.MarshalBytes(i)
+	if err != nil {
+		return nil, err
+	}
+	driver, ok := i.Driver()
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("driver not found in %s", profession))
+	}
+	return &eosc.StoreValue{
+		Id:         id,
+		Profession: profession,
+		Name:       name,
+		Driver:     driver,
+		CreateTime: now,
+		UpdateTime: now,
+		IData:      data,
+	}, nil
+}
+
+//Config yaml文件配置项
 type Config struct {
-	Include []string `json:"include" yaml:"router"`
-	Router []Router `json:"router" yaml:"router"`
-	Service []Service `json:"service" yaml:"service"`
+	Include   []string `json:":include" yaml:":include"`
+	Router    []Item   `json:"router" yaml:"router"`
+	Service   []Item   `json:"service" yaml:"service"`
+	Upstream  []Item   `json:"upstream" yaml:"upstream"`
+	Discovery []Item   `json:"discovery" yaml:"discovery"`
+	Auth      []Item   `json:"auth" yaml:"auth"`
 }
-
-

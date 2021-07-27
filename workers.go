@@ -2,6 +2,8 @@ package eosc
 
 import (
 	"fmt"
+
+	"github.com/eolinker/eosc/log"
 )
 
 var _ IWorkers = (*WorkManager)(nil)
@@ -41,6 +43,7 @@ func (wm *WorkManager) Get(id string) (IWorker, bool) {
 }
 
 func (wm *WorkManager) SetWorker(v *StoreValue) error {
+	log.Debugf("set worker:%s", v.Id)
 	p, has := wm.professions.get(v.Profession)
 	if !has {
 		return fmt.Errorf("%s:%w", v.Profession, ErrorProfessionNotExist)
@@ -103,7 +106,8 @@ func (wm *WorkManager) OnInit(vs []StoreValue) error {
 
 	wdata := make(map[string][]*StoreValue)
 	for _, v := range vs {
-		wdata[v.Profession] = append(wdata[v.Profession], &v)
+		vt := v
+		wdata[v.Profession] = append(wdata[v.Profession], &vt)
 	}
 	for _, pi := range wm.professions.Infos() {
 

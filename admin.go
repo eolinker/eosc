@@ -5,12 +5,12 @@ import (
 )
 
 type ProfessionInfo struct {
-	Name         string   `json:"name"`
-	LocalName    string   `json:"local_name"`
-	Desc         string   `json:"desc"`
-	Dependencies []string `json:"dependencies"`
-	AppendLabels []string `json:"labels"`
-	Drivers      []DriverInfo
+	Name         string       `json:"name"`
+	LocalName    string       `json:"local_name"`
+	Desc         string       `json:"desc"`
+	Dependencies []string     `json:"dependencies"`
+	AppendLabels []string     `json:"labels"`
+	Drivers      []DriverInfo `json:"drivers"`
 }
 type ProfessionItem struct {
 }
