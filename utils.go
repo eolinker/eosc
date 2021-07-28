@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 func writeResponse(w http.ResponseWriter,data interface{})  {
@@ -25,4 +26,8 @@ func writeResponse(w http.ResponseWriter,data interface{})  {
 func writeError(w http.ResponseWriter, statusCode int, message string)  {
 	w.WriteHeader(statusCode)
 	fmt.Fprint(w,message)
+}
+
+func Now()string  {
+	return time.Now().Format("2006-01-02 15:04:05")
 }
