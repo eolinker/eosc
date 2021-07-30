@@ -225,6 +225,10 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 			Sing:       "",
 		}
 	}else{
+		if v.Profession != profession{
+			return nil,ErrorWorkerNotExits
+		}
+		name = v.Name
 		if  driver == ""{
 			driver = v.Driver
 		}else {
