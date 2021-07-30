@@ -8,8 +8,8 @@ var _ IProfession = (*Profession)(nil)
 
 type IProfession interface {
 	getId(name string) (string, bool)
-	setId(name, id string) error
-	del(name string) error
+	setId(name, id string)
+	delId(name string) (string, bool)
 	ids() []string
 	getDriver(name string) (IProfessionDriverInfo, bool)
 	getDrivers() []IProfessionDriverInfo
@@ -20,6 +20,9 @@ type IProfession interface {
 	Desc() string
 	Dependencies() []string
 	AppendLabels() []string
+
+	CheckerConfig(driver string,cdata IData,workers IWorkers) error
+	ChangeWorker(driver,id,name string, cdata IData, workers IWorkers) error
 }
 
 type Profession struct {
@@ -84,10 +87,10 @@ func (p *Profession) genInfo(v *StoreValue) interface{} {
 	}
 	return r
 }
-func (p *Profession) setId(name, id string) error {
+func (p *Profession) setId(name, id string)  {
 
 	p.data.Set(strings.ToLower(name), id)
-	return nil
+
 }
 func (p *Profession) ids() []string {
 	list := p.data.List()
@@ -97,9 +100,9 @@ func (p *Profession) ids() []string {
 	}
 	return res
 }
-func (p *Profession) del(name string) error {
-	p.data.Del(name)
-	return nil
+func (p *Profession) delId(name string) (string, bool) {
+	id,has:=p.data.Del(name)
+	return id.(string),has
 }
 
 func (p *Profession) getDriver(name string) (IProfessionDriverInfo, bool) {

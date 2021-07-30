@@ -97,6 +97,7 @@ func (u *tUntyped) All() map[string]interface{} {
 	u.mutex.RUnlock()
 	return res
 }
+
 func (u *tUntyped) Keys() []string {
 	u.mutex.RLock()
 	res := make([]string, len(u.data))

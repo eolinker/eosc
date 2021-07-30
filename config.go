@@ -51,7 +51,7 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 	switch kind {
 	case reflect.Ptr:
 		if v.IsNil() {
-			return nil, ErrorConfigIsNil
+			return nil, nil
 		}
 		return checkConfig(v.Elem(), workers)
 	case reflect.Struct:
@@ -62,7 +62,7 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 			if ws, err := checkField(t.Field(i), v.Field(i), workers); err != nil {
 				return nil, err
 			} else {
-				requires = together(requires, ws)
+				requires = merge(requires, ws)
 			}
 		}
 		return requires, nil
@@ -73,7 +73,7 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 			if ws, err := checkConfig(v.Index(i), workers); err != nil {
 				return nil, err
 			} else {
-				requires = together(requires, ws)
+				requires = merge(requires, ws)
 			}
 		}
 		return requires, nil
@@ -85,7 +85,7 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 			if ws, err := checkConfig(it.Value(), workers); err != nil {
 				return nil, err
 			} else {
-				requires = together(requires, ws)
+				requires = merge(requires, ws)
 			}
 		}
 		return requires, nil
@@ -112,6 +112,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 				if !has || strings.ToLower(require) != "false" {
 					return nil, fmt.Errorf("require %s:%w", id, ErrorWorkerNotExits)
 				}
+				return nil, nil
 			}
 
 			skill, has := f.Tag.Lookup("skill")
@@ -158,7 +159,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 	}
 }
 
-func together(dist map[RequireId]interface{}, source map[RequireId]interface{}) map[RequireId]interface{} {
+func merge(dist map[RequireId]interface{}, source map[RequireId]interface{}) map[RequireId]interface{} {
 	if dist == nil && source == nil {
 		return nil
 	}

@@ -18,8 +18,8 @@ type WorkerInfo struct {
 	Id     string `json:"id"`
 	Name   string `json:"name"`
 	Driver string `json:"driver"`
-	Create string `json:"create"`
-	Update string `json:"update"`
+	Create string `json:"create_time"`
+	Update string `json:"update_time"`
 }
 
 type Item struct {
@@ -31,8 +31,8 @@ type IAdmin interface {
 	ListProfessions() []ProfessionInfo
 	ListEmployees(profession string) ([]interface{}, error)
 	Update(profession, name, driver string, data IData) (*WorkerInfo, error)
-	Delete(profession, name string) error
-	Get(profession, name string) (interface{}, error)
+	Delete(profession, name string) (*WorkerInfo,error)
+	GetEmployee(profession, name string) (interface{}, error)
 	Render(profession, driver string) (*Render, error)
 	Renders(profession string) (map[string]*Render, error)
 	Drivers(profession string) ([]DriverInfo, error)
