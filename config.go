@@ -112,6 +112,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 				if !has || strings.ToLower(require) != "false" {
 					return nil, fmt.Errorf("require %s:%w", id, ErrorWorkerNotExits)
 				}
+				return nil, nil
 			}
 
 			skill, has := f.Tag.Lookup("skill")
