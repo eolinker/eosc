@@ -1,9 +1,7 @@
 package eosc
 
-import "github.com/eolinker/eosc/internal"
-
 var(
-	_storeDriverData = internal.NewUntyped()
+	_storeDriverData = NewUntyped()
 )
 func RegisterStoreDriver(name string, factory IStoreFactory)  {
 	_storeDriverData.Set(name,factory)

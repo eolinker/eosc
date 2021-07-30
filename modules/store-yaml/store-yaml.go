@@ -2,18 +2,15 @@ package store
 
 import (
 	"context"
-	"fmt"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/internal"
 	"github.com/ghodss/yaml"
 	"io/ioutil"
-	"time"
 )
 
 type Store struct {
 	dispatcher *eosc.StoreEventDispatcher
 
-	data internal.IUntyped
+	data eosc.IUntyped
 }
 
 func (s *Store) AddListen(h eosc.IStoreEventHandler) error {
@@ -37,24 +34,45 @@ func NewStore(file string) (eosc.IStore, error) {
 	}
 
 	s := &Store{
-		data:       internal.NewUntyped(),
+		data:       eosc.NewUntyped(),
 		dispatcher: eosc.NewStoreDispatcher(),
 	}
-	now := time.Now().Format("2006-01-02 15:04:05")
-	for _, r := range c.Router {
-		id := fmt.Sprintf("%s@router", r.Name)
+	now := eosc.Now()
+	err = s.setData(c.Router, "router", now)
+	if err != nil {
+		return nil, err
+	}
 
-		s.data.Set(id, &eosc.StoreValue{
-			Id:         id,
-			Profession: "router",
-			Name:       r.Name,
-			Driver:     r.Driver,
-			CreateTime: now,
-			UpdateTime: now,
-			IData:      &r,
-		})
+	err = s.setData(c.Service, "service", now)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.setData(c.Upstream, "upstream", now)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.setData(c.Discovery, "discovery", now)
+	if err != nil {
+		return nil, err
+	}
+	err = s.setData(c.Auth, "auth", now)
+	if err != nil {
+		return nil, err
 	}
 	return s, nil
+}
+
+func (s *Store) setData(items []Item, profession string, now string) error {
+	for _, r := range items {
+		v, err := r.newStoreValue(profession, now)
+		if err != nil {
+			return err
+		}
+		s.data.Set(v.Id, v)
+	}
+	return nil
 }
 
 func (s *Store) ReadLock(ctx context.Context) (bool, error) {

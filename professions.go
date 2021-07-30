@@ -1,9 +1,5 @@
 package eosc
 
-import (
-	"github.com/eolinker/eosc/internal"
-)
-
 var (
 	_ iProfessionsData = (*tProfessionUntyped)(nil)
 	_ IProfessions     = (*Professions)(nil)
@@ -16,60 +12,30 @@ type iProfessionsData interface {
 }
 
 type IProfessions interface {
-	iProfessionsData
+
 	Infos() []ProfessionInfo
 }
 
 type Professions struct {
-	iProfessionsData
-	store IStore
-	infos []ProfessionInfo
+
+	data    iProfessionsData
+	store   IStore
+	infos   []ProfessionInfo
+	workers IWorkers
 }
 
 func (ps *Professions) Infos() []ProfessionInfo {
 	return ps.infos
 }
 
-func checkProfessions(infos []ProfessionInfo) ([]ProfessionInfo, error) {
-
-	less := make([]ProfessionInfo, len(infos))
-	copy(less, infos)
-	plist := make([]ProfessionInfo, 0, len(less))
-	exist := make(map[string]int)
-	do := 1
-	for do > 0 && len(less) > 0 {
-		do = 0
-		ls := less
-		less = make([]ProfessionInfo, 0, len(ls))
-	FIND:
-		for _, v := range ls {
-
-			for _, d := range v.Dependencies {
-				if _, has := exist[d]; !has {
-					less = append(less, v)
-					continue FIND
-				}
-			}
-			plist = append(plist, v)
-			exist[v.Name] = 1
-			do++
-
-		}
-	}
-	if len(less) > 0 {
-		return nil, ErrorProfessionDependencies
-	}
-	return plist, nil
-
-}
 
 type tProfessionUntyped struct {
-	data internal.IUntyped
+	data IUntyped
 }
 
-func newTProfessionUntyped() *tProfessionUntyped {
+func newTProfessionUntyped() iProfessionsData {
 	return &tProfessionUntyped{
-		data: internal.NewUntyped(),
+		data: NewUntyped(),
 	}
 }
 
