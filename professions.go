@@ -17,6 +17,7 @@ type IProfessions interface {
 }
 
 type Professions struct {
+
 	data    iProfessionsData
 	store   IStore
 	infos   []ProfessionInfo

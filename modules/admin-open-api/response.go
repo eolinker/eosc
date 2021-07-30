@@ -9,7 +9,7 @@ import (
 
 func writeResultError(w http.ResponseWriter,status int, err error)  {
 	msg:=err.Error()
-	w.WriteHeader(500)
+	w.WriteHeader(status)
 	fmt.Fprintf(w,"%s",msg)
 
 	log.Infof("write error to client:%s",msg)

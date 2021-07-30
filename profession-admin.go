@@ -205,16 +205,44 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 	}
 	v, has := ps.store.Get(id)
 	if !has {
-		return nil, ErrorWorkerNotExits
+		if driver == ""{
+			return nil, fmt.Errorf("driver:%w",ErrorRequire)
+		}
+
+		if _,dhas:=p.getDriver(driver);!dhas{
+			return nil, fmt.Errorf("%s:%w",driver,ErrorDriverNotExist)
+		}
+
+		id =  fmt.Sprintf("%s@%s", name, profession)
+		v = StoreValue{
+			Id:        id,
+			Profession: profession,
+			Name:       name,
+			Driver:     driver,
+			CreateTime: Now(),
+			UpdateTime: Now(),
+			IData:      data,
+			Sing:       "",
+		}
+	}else{
+		if  driver == ""{
+			driver = v.Driver
+		}else {
+			v.Driver = driver
+		}
 	}
 	v.IData = data
 	v.UpdateTime = Now()
-
-	err:=p.ChangeWorker(driver,v.Id,v.Name,v.IData,ps.workers)
+	err:=p.CheckerConfig(driver,v.IData,ps.workers)
 	if err!= nil{
 		return nil,err
 	}
-	ps.store.Set(v)
+
+	if err:=ps.store.Set(v);err!= nil{
+		return nil,err
+	}
+	p.setId(name,id)
+
 	return &WorkerInfo{
 		Id:     v.Id,
 		Name:   v.Name,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
 	"github.com/ghodss/yaml"
+	"mime"
 	"net/http"
 )
 
@@ -31,14 +32,10 @@ func (y YamlData) Marshal() ([]byte, error) {
 }
 
 
-type MarshalFactory interface {
-	GetData(req *http.Request)eosc.IData
-}
 
-type openApiMarshal struct {
+func  GetData(req *http.Request) (eosc.IData,error) {
+	mediaType, _, err := mime.ParseMediaType(req.Header.Get("content-type"))
+	if err!= nil{
 
-}
-
-func (o *openApiMarshal) GetData(req *http.Request) eosc.IData {
-	panic("implement me")
+	}
 }

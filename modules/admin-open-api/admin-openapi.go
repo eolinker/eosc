@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/julienschmidt/httprouter"
-	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -119,30 +118,35 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 
 	profession:= params.ByName("profession")
 	name:= params.ByName("name")
-	data,err:=ioutil.ReadAll(r.Body)
+	//data,err:=ioutil.ReadAll(r.Body)
+	//
+	//if err!= nil{
+	//
+	//	writeResultError(w,500,err)
+	//	return
+	//}
 
+	idata,err:=GetData(r)
 	if err!= nil{
-
 		writeResultError(w,500,err)
 		return
 	}
-
-	idata:=JsonData(data)
 	cb:=new(baseConfig)
 	errUnmarshal:= idata.UnMarshal(cb)
 	if errUnmarshal!= nil{
-		writeResultError(w,500,err)
+		writeResultError(w,500,errUnmarshal)
 		return
 	}
 	if name == ""{
 		name = cb.Name
 	}
+
 	if name == ""{
 		writeResultError(w,500,errors.New("require name"))
 		return
 	}
 
-	winfo,err:=o.admin.Update(profession,name,cb.Driver,JsonData(data))
+	winfo,err:=o.admin.Update(profession,name,cb.Driver,idata)
 	if err!= nil{
 		writeResultError(w,500,err)
 

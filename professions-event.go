@@ -41,7 +41,7 @@ func (ps *Professions)Save(v StoreValue)error  {
 		if err:= p.ChangeWorker(v.Driver,v.Id,v.Name,v.IData,ps.workers);err !=nil{
 			return err
 		}
-
+		return nil
 	}
 	return fmt.Errorf("%s:%w", v.Profession, ErrorProfessionNotExist)
 }
