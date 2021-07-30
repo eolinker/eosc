@@ -1,6 +1,7 @@
 package admin_open_api
 
 import (
+	"errors"
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/julienschmidt/httprouter"
@@ -15,7 +16,15 @@ type OpenAdmin struct {
 }
 
 func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	panic("implement me")
+	profession:=params.ByName("profession")
+	name:=params.ByName("name")
+
+	info,err:=o.admin.Delete(profession,name)
+	if err!= nil{
+		writeResultError(w,500,err)
+		return
+	}
+	writeResult(w,info)
 }
 
 func (o *OpenAdmin) genUrl(url string) string{
@@ -53,7 +62,7 @@ func (o *OpenAdmin) getEmployeesByProfession(w http.ResponseWriter, r *http.Requ
 func (o *OpenAdmin) getEmployeeByName(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	profession:=params.ByName("profession")
 	name:= params.ByName("name")
-	eo,err:= o.admin.Get(profession,name)
+	eo,err:= o.admin.GetEmployee(profession,name)
 	if err!= nil{
 		writeResult(w,err)
 		return
@@ -106,13 +115,38 @@ func (o *OpenAdmin) getRender(w http.ResponseWriter, r *http.Request, params htt
 }
 
 func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	//
-	//profession:= params.ByName("profession")
-	//name:= params.ByName("name")
-	//data,err:=ioutil.ReadAll(r.Body)
-	//
-	//
-	//o.admin.Update(profession,name,v)
+
+	profession:= params.ByName("profession")
+	name:= params.ByName("name")
+
+	idata,err:=GetData(r)
+	if err!= nil{
+		writeResultError(w,500,err)
+		return
+	}
+	cb:=new(baseConfig)
+	errUnmarshal:= idata.UnMarshal(cb)
+	if errUnmarshal!= nil{
+		writeResultError(w,500,errUnmarshal)
+		return
+	}
+	if name == ""{
+		name = cb.Name
+	}
+
+	if name == ""{
+		writeResultError(w,500,errors.New("require name"))
+		return
+	}
+
+	winfo,err:=o.admin.Update(profession,name,cb.Driver,idata)
+	if err!= nil{
+		writeResultError(w,500,err)
+
+		return
+	}
+
+	writeResult(w,winfo)
 }
 
 func (o *OpenAdmin) getProfessions(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

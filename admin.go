@@ -31,8 +31,8 @@ type IAdmin interface {
 	ListProfessions() []ProfessionInfo
 	ListEmployees(profession string) ([]interface{}, error)
 	Update(profession, name, driver string, data IData) (*WorkerInfo, error)
-	Delete(profession, name string) error
-	Get(profession, name string) (interface{}, error)
+	Delete(profession, name string) (*WorkerInfo,error)
+	GetEmployee(profession, name string) (interface{}, error)
 	Render(profession, driver string) (*Render, error)
 	Renders(profession string) (map[string]*Render, error)
 	Drivers(profession string) ([]DriverInfo, error)

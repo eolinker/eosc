@@ -16,4 +16,5 @@ var (
 	ErrorProfessionDependencies  = errors.New("profession dependencies not complete")
 	ErrorConfigIsNil             = errors.New("config is nil")
 	ErrorConfigFieldUnknown      = errors.New("unknown type")
+
 )

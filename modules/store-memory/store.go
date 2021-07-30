@@ -1,4 +1,4 @@
-package store_memory_yaml
+package store_memory
 
 import (
 	"context"
@@ -12,18 +12,11 @@ type Store struct {
 	locker     sync.RWMutex
 }
 
-func NewStore(yamlstore eosc.IStore) (eosc.IStore ,error){
+func NewStore() (eosc.IStore ,error){
 
 	s:=&Store{
 		data:       eosc.NewUntyped(),
 		dispatcher: eosc.NewStoreDispatcher(),
-	}
-	if yamlstore != nil{
-		data:=yamlstore.All()
-		for i:=range data{
-			d:=&data[i]
-			s.data.Set(d.Id,d)
-		}
 	}
 
 	return s,nil
@@ -49,10 +42,17 @@ func (s *Store) Get(id string) (eosc.StoreValue, bool) {
 }
 
 func (s *Store) Set(v eosc.StoreValue) error {
-	s.data.Set(v.Id,&v)
 
-	return s.dispatcher.DispatchChange(v)
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	 err:= s.dispatcher.DispatchChange(v)
+	 if err!= nil{
+	 	return err
+	 }
+	s.data.Set(v.Id,&v)
+	 return nil
 }
+
 
 func (s *Store) Del(id string) error {
 	v,has:=s.data.Del(id)

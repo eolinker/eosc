@@ -5,8 +5,12 @@ import "fmt"
 var _ IStoreEventHandler = (*Professions)(nil)
 
 func (ps *Professions) OnDel(v StoreValue) error {
-	if p, has := ps.get(v.Profession); has {
-		return p.del(v.Name)
+	if p, has := ps.data.get(v.Profession); has {
+		if id,y:= p.delId(v.Name);y{
+			if w,ok:= ps.workers.Del(id);ok{
+				return w.Stop()
+			}
+		}
 	}
 	return fmt.Errorf("%s:%w", v.Profession, ErrorProfessionNotExist)
 }
@@ -14,10 +18,8 @@ func (ps *Professions) OnDel(v StoreValue) error {
 func (ps *Professions) OnInit(vs []StoreValue) error {
 
 	for i := range vs {
-		if p, has := ps.get(vs[i].Profession); has {
-			p.setId(vs[i].Name, vs[i].Id)
-		} else {
-			return fmt.Errorf("%s:%w", vs[i].Profession, ErrorProfessionNotExist)
+		if e:=ps.Save(vs[i]);e!=nil{
+			return e
 		}
 	}
 	return nil
@@ -25,8 +27,21 @@ func (ps *Professions) OnInit(vs []StoreValue) error {
 }
 
 func (ps *Professions) OnChange(v StoreValue) error {
-	if p, has := ps.get(v.Profession); has {
-		return p.del(v.Name)
+	return ps.Save(v)
+}
+
+func (ps *Professions)Save(v StoreValue)error  {
+	if p, has := ps.data.get(v.Profession); has {
+		if oid,has:= p.getId(v.Name);has && oid != v.Id{
+			if w,has:=ps.workers.Del(oid);has{
+				w.Stop()
+			}
+		}
+
+		if err:= p.ChangeWorker(v.Driver,v.Id,v.Name,v.IData,ps.workers);err !=nil{
+			return err
+		}
+		return nil
 	}
 	return fmt.Errorf("%s:%w", v.Profession, ErrorProfessionNotExist)
 }

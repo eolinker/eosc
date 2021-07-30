@@ -95,20 +95,53 @@ func (pcs ProfessionConfigs) Gen(driverRegister IDriverRegister, store IStore) (
 		return nil, err
 	}
 	ps := &Professions{
-		infos:            infos,
-		store:            store,
-		iProfessionsData: newTProfessionUntyped(),
+		infos:   infos,
+		store:   store,
+		data:    newTProfessionUntyped(),
+		workers: NewWorkers(),
 	}
 	for _, p := range pcs {
 		profession, err := p.create(driverRegister)
 		if err != nil {
 			return nil, err
 		}
-
-		ps.add(p.Name, profession)
-
+		ps.data.add(p.Name, profession)
 	}
 
 	store.GetListener().AddListen(ps)
 	return ps, nil
+}
+
+
+func checkProfessions(infos []ProfessionInfo) ([]ProfessionInfo, error) {
+
+	less := make([]ProfessionInfo, len(infos))
+	copy(less, infos)
+	plist := make([]ProfessionInfo, 0, len(less))
+	exist := make(map[string]int)
+	do := 1
+	for do > 0 && len(less) > 0 {
+		do = 0
+		ls := less
+		less = make([]ProfessionInfo, 0, len(ls))
+	FIND:
+		for _, v := range ls {
+
+			for _, d := range v.Dependencies {
+				if _, has := exist[d]; !has {
+					less = append(less, v)
+					continue FIND
+				}
+			}
+			plist = append(plist, v)
+			exist[v.Name] = 1
+			do++
+
+		}
+	}
+	if len(less) > 0 {
+		return nil, ErrorProfessionDependencies
+	}
+	return plist, nil
+
 }

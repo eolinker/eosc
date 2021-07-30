@@ -21,15 +21,15 @@ type DriverDetail struct {
 	DriverInfo
 	Extends ExtendInfo `json:"extends"`
 }
+
+
 type IProfessionDriverFactory interface {
 	ExtendInfo() ExtendInfo
 	Create(profession string, name string, label string, desc string, params map[string]string) (IProfessionDriver, error)
 }
-
-type IProfessionDriverConfigCheck interface {
-	Check(id, name string, v interface{}, workers map[RequireId]interface{}) error
+type IProfessionDriverCheckConfig interface {
+	Check(v interface{},workers map[RequireId]interface{} )error
 }
-
 type IProfessionDriver interface {
 	ConfigType() reflect.Type
 	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (IWorker, error)

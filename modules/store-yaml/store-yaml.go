@@ -2,11 +2,9 @@ package store
 
 import (
 	"context"
-	"io/ioutil"
-	"time"
-
 	"github.com/eolinker/eosc"
 	"github.com/ghodss/yaml"
+	"io/ioutil"
 )
 
 type Store struct {
@@ -39,7 +37,7 @@ func NewStore(file string) (eosc.IStore, error) {
 		data:       eosc.NewUntyped(),
 		dispatcher: eosc.NewStoreDispatcher(),
 	}
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := eosc.Now()
 	err = s.setData(c.Router, "router", now)
 	if err != nil {
 		return nil, err
