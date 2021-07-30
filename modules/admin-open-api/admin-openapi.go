@@ -118,13 +118,6 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 
 	profession:= params.ByName("profession")
 	name:= params.ByName("name")
-	//data,err:=ioutil.ReadAll(r.Body)
-	//
-	//if err!= nil{
-	//
-	//	writeResultError(w,500,err)
-	//	return
-	//}
 
 	idata,err:=GetData(r)
 	if err!= nil{
