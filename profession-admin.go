@@ -246,7 +246,7 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 	return &WorkerInfo{
 		Id:     v.Id,
 		Name:   v.Name,
-		Driver: v.Profession,
+		Driver: v.Driver,
 		Create: v.CreateTime,
 		Update: v.UpdateTime,
 	}, nil

@@ -18,8 +18,8 @@ type WorkerInfo struct {
 	Id     string `json:"id"`
 	Name   string `json:"name"`
 	Driver string `json:"driver"`
-	Create string `json:"create"`
-	Update string `json:"update"`
+	Create string `json:"create_time"`
+	Update string `json:"update_time"`
 }
 
 type Item struct {

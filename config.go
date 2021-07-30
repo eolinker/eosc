@@ -51,7 +51,7 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 	switch kind {
 	case reflect.Ptr:
 		if v.IsNil() {
-			return nil, ErrorConfigIsNil
+			return nil, nil
 		}
 		return checkConfig(v.Elem(), workers)
 	case reflect.Struct:
