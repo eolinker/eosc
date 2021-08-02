@@ -10,34 +10,33 @@ package eosc
 
 import "fmt"
 
-func (p *Profession) checkConfig(driver string, cdata IData, workers IWorkers) (IProfessionDriver,interface{},map[RequireId]interface{}, error) {
-	d,has:=p.getDriver(driver)
-	if !has{
-		return nil,nil,nil, fmt.Errorf("%s:%w",driver,ErrorDriverNotExist)
+func (p *Profession) checkConfig(driver string, cdata IData, workers IWorkers) (IProfessionDriver, interface{}, map[RequireId]interface{}, error) {
+	d, has := p.getDriver(driver)
+	if !has {
+		return nil, nil, nil, fmt.Errorf("%s:%w", driver, ErrorDriverNotExist)
 	}
-
 
 	config := newConfig(d.ConfigType())
 
 	err := cdata.UnMarshal(&config)
 	if err != nil {
-		return nil, nil, nil,err
+		return nil, nil, nil, err
 	}
 
 	requires, err := CheckConfig(config, workers)
 	if err != nil {
-		return nil,nil, nil,err
+		return nil, nil, nil, err
 	}
-	if dc,ok:= d.(IProfessionDriverCheckConfig);ok{
-		if e:=dc.Check(config,requires);e!= nil{
-			return nil,nil,nil,e
+	if dc, ok := d.(IProfessionDriverCheckConfig); ok {
+		if e := dc.Check(config, requires); e != nil {
+			return nil, nil, nil, e
 		}
 	}
-	return d,config, requires,nil
+	return d, config, requires, nil
 }
-func (p *Profession)CheckerConfig(driver string,cdata IData,workers IWorkers) error {
+func (p *Profession) CheckerConfig(driver string, cdata IData, workers IWorkers) error {
 
-	_,_,_,err:=p.checkConfig(driver,cdata,workers)
+	_, _, _, err := p.checkConfig(driver, cdata, workers)
 	return err
 	//
 	//worker, err := d.Create(v.Id, v.Name, config, requires)
@@ -47,33 +46,32 @@ func (p *Profession)CheckerConfig(driver string,cdata IData,workers IWorkers) er
 	//}
 	//
 
-
-
 }
 
-func (p *Profession) ChangeWorker(driver,id,name string, cdata IData, workers IWorkers) error {
-	d,cf,requires, err := p.checkConfig(driver, cdata, workers)
-	if err!= nil{
+func (p *Profession) ChangeWorker(driver, id, name string, cdata IData, workers IWorkers) error {
+	d, cf, requires, err := p.checkConfig(driver, cdata, workers)
+	if err != nil {
 		return err
 	}
 
-	if w, has := workers.Get(id);has {
+	if w, has := workers.Get(id); has {
 		err := w.Reset(cf, requires)
 		if err != nil {
 			return err
 		}
 
 	} else {
-		w ,err:=d.Create(id,name,cf,requires)
+		w, err := d.Create(id, name, cf, requires)
 		if err != nil {
 			return err
 		}
-		err =w.Start()
+		err = w.Start()
 		if err != nil {
 			return err
 		}
-		workers.Set(id,w)
+		workers.Set(id, w)
 
 	}
-	return  nil
+	p.setId(name, id)
+	return nil
 }
