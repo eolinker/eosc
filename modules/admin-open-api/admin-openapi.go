@@ -3,8 +3,13 @@ package admin_open_api
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/go-basic/uuid"
+
+	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc"
 	"github.com/julienschmidt/httprouter"
@@ -15,6 +20,49 @@ var _ iOpenAdmin = (*OpenAdmin)(nil)
 type OpenAdmin struct {
 	prefix string
 	admin  eosc.IAdmin
+}
+
+func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	professions := o.admin.ListProfessions()
+	data := make(map[string][]interface{})
+	for _, p := range professions {
+		names, err := o.admin.ListEmployeeNames(p.Name)
+		if err != nil {
+			log.Errorf("read data error	%s	%s", p.Name, err.Error())
+			continue
+		}
+		if _, ok := data[p.Name]; !ok {
+			data[p.Name] = make([]interface{}, 0, len(names))
+		}
+		for _, name := range names {
+			v, err := o.admin.GetEmployee(p.Name, name)
+			if err != nil {
+				log.Errorf("get employee error	%s	%s", p.Name, err.Error())
+				continue
+			}
+			data[p.Name] = append(data[p.Name], v)
+		}
+	}
+	id := uuid.New()
+	dir, err := export(data, "export", id)
+	if err != nil {
+		writeResultError(w, 500, err)
+		return
+	}
+	zipName := fmt.Sprintf("%s/%s.zip", dir, id)
+	err = CompressFile(dir, zipName)
+	if err != nil {
+		writeResultError(w, 500, err)
+		return
+	}
+	content, err := ioutil.ReadFile(zipName)
+	if err != nil {
+		writeResultError(w, 500, err)
+		return
+	}
+	w.Header().Add("Content-Type", "application/octet-stream")
+	w.Header().Add("Content-Disposition", "attachment; filename=\""+zipName+"\"")
+	w.Write(content)
 }
 
 func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -191,6 +239,9 @@ type iOpenAdmin interface {
 	delete(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 
 	genUrl(url string) string
+
+	//GET /_export
+	export(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 }
 
 func NewOpenAdmin(prefix string, admin eosc.IAdmin) *OpenAdmin {
@@ -212,7 +263,14 @@ func (o *OpenAdmin) GenHandler() (http.Handler, error) {
 	var admin iOpenAdmin = o
 	router := httprouter.New()
 	router.GET(admin.genUrl("/"), admin.getProfessions)
-	router.GET(admin.genUrl("/:profession"), admin.getEmployeesByProfession)
+	router.GET(admin.genUrl("/:profession"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		switch params.ByName("profession") {
+		case "_export":
+			admin.export(w, r, params)
+		default:
+			admin.getEmployeesByProfession(w, r, params)
+		}
+	})
 	router.GET(admin.genUrl("/:profession/:action"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		action := params.ByName("action")
 		switch action {

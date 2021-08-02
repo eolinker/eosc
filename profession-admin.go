@@ -8,6 +8,15 @@ var (
 	_ IAdmin = (*Professions)(nil)
 )
 
+func (ps *Professions) ListEmployeeNames(profession string) ([]string, error) {
+	p, has := ps.data.get(profession)
+	if !has {
+		return nil, ErrorProfessionNotExist
+	}
+
+	return p.ids(), nil
+}
+
 //ListProfessions
 func (ps *Professions) ListProfessions() []ProfessionInfo {
 	return ps.infos
