@@ -67,11 +67,11 @@ func compress(file *os.File, prefix string, zw *zip.Writer) error {
 		return err
 	}
 	if info.IsDir() {
-		if prefix == "" {
-			prefix = info.Name()
-		} else {
-			prefix = prefix + "/" + info.Name()
-		}
+		//if prefix == "" {
+		//	prefix = info.Name()
+		//} else {
+		//	prefix = prefix + "/" + info.Name()
+		//}
 		fileInfos, err := file.Readdir(-1)
 		if err != nil {
 			return err
@@ -88,7 +88,7 @@ func compress(file *os.File, prefix string, zw *zip.Writer) error {
 		}
 	} else {
 		header, err := zip.FileInfoHeader(info)
-		header.Name = prefix + "/" + header.Name
+		//header.Name = prefix + "/" + header.Name
 		if err != nil {
 			return err
 		}

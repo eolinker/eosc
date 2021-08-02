@@ -6,8 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	"github.com/go-basic/uuid"
+	"time"
 
 	"github.com/eolinker/eosc/log"
 
@@ -43,13 +42,14 @@ func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httpro
 			data[p.Name] = append(data[p.Name], v)
 		}
 	}
-	id := uuid.New()
+	id := time.Now().Format("2006-01-02 150405")
 	dir, err := export(data, "export", id)
 	if err != nil {
 		writeResultError(w, 500, err)
 		return
 	}
 	zipName := fmt.Sprintf("%s/%s.zip", dir, id)
+	fileName := fmt.Sprintf("export_%s.zip", id)
 	err = CompressFile(dir, zipName)
 	if err != nil {
 		writeResultError(w, 500, err)
@@ -61,7 +61,7 @@ func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httpro
 		return
 	}
 	w.Header().Add("Content-Type", "application/octet-stream")
-	w.Header().Add("Content-Disposition", "attachment; filename=\""+zipName+"\"")
+	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 	w.Write(content)
 }
 
