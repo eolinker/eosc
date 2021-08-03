@@ -8,6 +8,15 @@ var (
 	_ IAdmin = (*Professions)(nil)
 )
 
+func (ps *Professions) ListEmployeeNames(profession string) ([]string, error) {
+	p, has := ps.data.get(profession)
+	if !has {
+		return nil, ErrorProfessionNotExist
+	}
+
+	return p.ids(), nil
+}
+
 //ListProfessions
 func (ps *Professions) ListProfessions() []ProfessionInfo {
 	return ps.infos
@@ -16,7 +25,7 @@ func (ps *Professions) ListProfessions() []ProfessionInfo {
 //ListEmployees
 func (ps *Professions) ListEmployees(profession string) ([]interface{}, error) {
 
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
@@ -25,7 +34,7 @@ func (ps *Professions) ListEmployees(profession string) ([]interface{}, error) {
 	for _, id := range ids {
 		value, has := ps.store.Get(id)
 		if has {
-			p, has :=ps.data.get(value.Profession)
+			p, has := ps.data.get(value.Profession)
 			if has {
 				res = append(res, p.genInfo(&value))
 			}
@@ -34,11 +43,11 @@ func (ps *Professions) ListEmployees(profession string) ([]interface{}, error) {
 	return res, nil
 }
 
-func (ps *Professions) Delete(profession, name string)(*WorkerInfo, error ){
+func (ps *Professions) Delete(profession, name string) (*WorkerInfo, error) {
 	if ps.store.ReadOnly() {
 		return nil, ErrorStoreReadOnly
 	}
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
@@ -48,18 +57,18 @@ func (ps *Professions) Delete(profession, name string)(*WorkerInfo, error ){
 	}
 	v, has := ps.store.Get(id)
 	if !has {
-		return nil,ErrorWorkerNotExits
+		return nil, ErrorWorkerNotExits
 	}
 	if v.Profession != profession {
-		return nil,ErrorWorkerNotExits
+		return nil, ErrorWorkerNotExits
 	}
 	if hasId && v.Name != name {
-		return nil,ErrorWorkerNotExits
+		return nil, ErrorWorkerNotExits
 	}
 
-	err:=ps.store.Del(id)
-	if err!= nil{
-		return nil,err
+	err := ps.store.Del(id)
+	if err != nil {
+		return nil, err
 	}
 	return &WorkerInfo{
 		Id:     v.Id,
@@ -67,12 +76,12 @@ func (ps *Professions) Delete(profession, name string)(*WorkerInfo, error ){
 		Driver: v.Driver,
 		Create: v.CreateTime,
 		Update: v.UpdateTime,
-	},nil
+	}, nil
 
 }
 
 func (ps *Professions) GetEmployee(profession, name string) (interface{}, error) {
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
@@ -99,7 +108,7 @@ func (ps *Professions) GetEmployee(profession, name string) (interface{}, error)
 }
 
 func (ps *Professions) Render(profession, driver string) (*Render, error) {
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
@@ -114,7 +123,7 @@ func (ps *Professions) Render(profession, driver string) (*Render, error) {
 
 func (ps *Professions) DriverInfo(profession, driver string) (DriverDetail, error) {
 
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return DriverDetail{}, ErrorProfessionNotExist
 	}
@@ -130,7 +139,7 @@ func (ps *Professions) DriverInfo(profession, driver string) (DriverDetail, erro
 }
 func (ps *Professions) DriversItem(profession string) ([]Item, error) {
 
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
@@ -147,7 +156,7 @@ func (ps *Professions) DriversItem(profession string) ([]Item, error) {
 }
 func (ps *Professions) Drivers(profession string) ([]DriverInfo, error) {
 
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
@@ -161,21 +170,21 @@ func (ps *Professions) Drivers(profession string) ([]DriverInfo, error) {
 }
 
 func (ps *Professions) SearchBySkill(profession string, skill []string) ([]WorkerInfo, error) {
-	p,has:=ps.data.get(profession)
-	if !has{
-		return nil,fmt.Errorf("%s:%w",profession,ErrorProfessionNotExist)
+	p, has := ps.data.get(profession)
+	if !has {
+		return nil, fmt.Errorf("%s:%w", profession, ErrorProfessionNotExist)
 	}
 
-	ids:=p.ids()
-	res:=make([]WorkerInfo,0,len(ids))
-	for _,id:=range ids{
+	ids := p.ids()
+	res := make([]WorkerInfo, 0, len(ids))
+	for _, id := range ids {
 
-		w,has:=ps.workers.Get(id)
-		if has{
-			for _,s:=range skill{
-				if w.CheckSkill(s){
-					v,has:=ps.store.Get(id)
-					if has{
+		w, has := ps.workers.Get(id)
+		if has {
+			for _, s := range skill {
+				if w.CheckSkill(s) {
+					v, has := ps.store.Get(id)
+					if has {
 						res = append(res, WorkerInfo{
 							Id:     id,
 							Name:   v.Name,
@@ -188,7 +197,7 @@ func (ps *Professions) SearchBySkill(profession string, skill []string) ([]Worke
 			}
 		}
 	}
-	return res,nil
+	return res, nil
 }
 
 func (ps *Professions) Update(profession, name, driver string, data IData) (*WorkerInfo, error) {
@@ -205,17 +214,17 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 	}
 	v, has := ps.store.Get(id)
 	if !has {
-		if driver == ""{
-			return nil, fmt.Errorf("driver:%w",ErrorRequire)
+		if driver == "" {
+			return nil, fmt.Errorf("driver:%w", ErrorRequire)
 		}
 
-		if _,dhas:=p.getDriver(driver);!dhas{
-			return nil, fmt.Errorf("%s:%w",driver,ErrorDriverNotExist)
+		if _, dhas := p.getDriver(driver); !dhas {
+			return nil, fmt.Errorf("%s:%w", driver, ErrorDriverNotExist)
 		}
 
-		id =  fmt.Sprintf("%s@%s", name, profession)
+		id = fmt.Sprintf("%s@%s", name, profession)
 		v = StoreValue{
-			Id:        id,
+			Id:         id,
 			Profession: profession,
 			Name:       name,
 			Driver:     driver,
@@ -224,28 +233,27 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 			IData:      data,
 			Sing:       "",
 		}
-	}else{
-		if v.Profession != profession{
-			return nil,ErrorWorkerNotExits
+	} else {
+		if v.Profession != profession {
+			return nil, ErrorWorkerNotExits
 		}
 		name = v.Name
-		if  driver == ""{
+		if driver == "" {
 			driver = v.Driver
-		}else {
+		} else {
 			v.Driver = driver
 		}
 	}
 	v.IData = data
 	v.UpdateTime = Now()
-	err:=p.CheckerConfig(driver,v.IData,ps.workers)
-	if err!= nil{
-		return nil,err
+	err := p.CheckerConfig(driver, v.IData, ps.workers)
+	if err != nil {
+		return nil, err
 	}
 
-	if err:=ps.store.Set(v);err!= nil{
-		return nil,err
+	if err := ps.store.Set(v); err != nil {
+		return nil, err
 	}
-	p.setId(name,id)
 
 	return &WorkerInfo{
 		Id:     v.Id,
@@ -257,7 +265,7 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 }
 
 func (ps *Professions) Renders(profession string) (map[string]*Render, error) {
-	p, has :=ps.data.get(profession)
+	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
 	}
