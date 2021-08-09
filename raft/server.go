@@ -4,7 +4,7 @@ package main
 
 type IService interface {
 	// CommitHandler 节点commit信息前的处理
-	CommitHandler(cmd string, data []byte)  (err error)
+	CommitHandler(cmd string, data []byte) (err error)
 
 	// ProcessHandler 节点propose信息前的处理
 	ProcessHandler(command string, propose []byte) (cmd string, data []byte, err error)
@@ -18,4 +18,3 @@ type IService interface {
 	// GetSnapshot 生成快照，用于快照文件的生成
 	GetSnapshot() (data []byte, err error)
 }
-

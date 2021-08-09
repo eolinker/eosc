@@ -11,13 +11,15 @@ import (
 // Demo Service
 type service struct {
 	store map[string]string
-	mutex       sync.RWMutex
+	mutex sync.RWMutex
 }
+
 // KV 用于传输的结构
 type KV struct {
-	Key string
+	Key   string
 	Value string
 }
+
 func Create() *service {
 	return &service{
 		store: make(map[string]string),
@@ -59,7 +61,7 @@ func (s *service) GetInit() (cmd string, data []byte, err error) {
 	return cmd, data, err
 }
 
-func (s *service) ResetSnap(data []byte) error  {
+func (s *service) ResetSnap(data []byte) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	store := make(map[string]string)

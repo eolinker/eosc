@@ -143,8 +143,8 @@ func joinAndCreateRaft(id int, host string, service IService, peerList map[types
 		httpdonec: make(chan struct{}),
 		logger:    zap.NewExample(),
 		waiter:    wait.New(),
-		lead: uint64(0),
-		active: true,
+		lead:      uint64(0),
+		active:    true,
 	}
 	// 创建并启动 transport 实例，该负责节点之间的网络通信，
 	// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
@@ -186,7 +186,7 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 	if wal.Exist(waldir) {
 		isCluster = true
 	}
-	log.Printf("current mode is cluster %v.",isCluster)
+	log.Printf("current mode is cluster %v.", isCluster)
 
 	peerList, err := Adjust(id, host, peers, keys, isCluster)
 	if err != nil {
@@ -208,8 +208,8 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 		httpdonec: make(chan struct{}),
 		logger:    zap.NewExample(),
 		waiter:    wait.New(),
-		lead: uint64(0),
-		active: true,
+		lead:      uint64(0),
+		active:    true,
 	}
 	// 创建并启动 transport 实例，该负责节点之间的网络通信，
 	// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
@@ -337,7 +337,6 @@ func (rc *raftNode) serveChannels() {
 			//islead = rd.RaftState == raft.StateLeader
 			rc.saveToStorage(rd)
 
-
 			// 将信息发给其他节点
 			rc.transport.Send(rd.Messages)
 
@@ -385,13 +384,13 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 				continue
 			}
 			err = rc.Service.CommitHandler(m.Cmd, m.Data)
-			if m.Type == INIT && m.From == rc.nodeID{
+			if m.Type == INIT && m.From == rc.nodeID {
 				// 释放InitSend方法的等待，仅针对切换集群的对应节点
 				if err != nil {
 					log.Println(err)
 					rc.waiter.Trigger(uint64(m.From), err.Error())
 					continue
-				}else {
+				} else {
 					rc.waiter.Trigger(uint64(m.From), "")
 				}
 			}
@@ -405,7 +404,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
 					// transport不需要加自己
-					if cc.NodeID != uint64(rc.nodeID){
+					if cc.NodeID != uint64(rc.nodeID) {
 						rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
 					}
 					_, ok := rc.peers.GetPeerByID(types.ID(cc.NodeID))
@@ -695,7 +694,7 @@ func (rc *raftNode) Send(command string, send []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("send:leader is node(%d)",rc.lead)
+	log.Printf("send:leader is node(%d)", rc.lead)
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// Service.ProcessHandler要么leader执行，要么非集群模式下自己执行
@@ -704,7 +703,7 @@ func (rc *raftNode) Send(command string, send []byte) error {
 			return err
 		}
 		m := &Message{
-			From:   rc.nodeID,
+			From: rc.nodeID,
 			Type: PROPOSE,
 			Cmd:  cmd,
 			Data: data,
@@ -784,7 +783,7 @@ func (rc *raftNode) InitSend() error {
 		return err
 	}
 	m := &Message{
-		From:   rc.nodeID,
+		From: rc.nodeID,
 		Type: INIT,
 		Cmd:  cmd,
 		Data: data,
@@ -936,7 +935,7 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeResult(w, res)
 		return
 	}
-	log.Printf("host(%s) apply join the cluster",joinMsg.Host)
+	log.Printf("host(%s) apply join the cluster", joinMsg.Host)
 	// 先判断是不是集群模式
 	// 是的话返回要加入的相关信息
 	// 不是的话先切换集群模式，再初始化startRaft()，再返回加入的相关信息
@@ -958,7 +957,7 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 		b, err = json.Marshal(joinMsg)
 		if err != nil {
 			res.Msg = err.Error()
-		}else {
+		} else {
 			res.Code = "000000"
 			res.Msg = "success"
 			res.Data = b
@@ -977,7 +976,7 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 		b, err = json.Marshal(joinMsg)
 		if err != nil {
 			res.Msg = err.Error()
-		}else {
+		} else {
 			res.Code = "000000"
 			res.Msg = "success"
 			res.Data = b
@@ -1020,7 +1019,7 @@ func (rc *raftNode) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		writeResult(w, res)
 		return
 	}
-	log.Printf("receive propose request from node(%d)",msg.From)
+	log.Printf("receive propose request from node(%d)", msg.From)
 	err = rc.Send(msg.Cmd, msg.Data)
 	if err != nil {
 		res.Msg = err.Error()
@@ -1038,7 +1037,7 @@ func (rc *raftNode) postMessage(addr string, command string, data []byte) error 
 	m := &ProposeMsg{
 		From: rc.nodeID,
 		To:   int(rc.lead),
-		Cmd: command,
+		Cmd:  command,
 		Data: data,
 	}
 	b, err := json.Marshal(m)

@@ -21,23 +21,22 @@ type Response struct {
 }
 
 type ProposeMsg struct {
-	From int `json:"from"`
-	To int `json:"to"`
+	From int    `json:"from"`
+	To   int    `json:"to"`
 	Cmd  string `json:"cmd"`
-	Data []byte  `json:"data"`
+	Data []byte `json:"data"`
 }
 
 type JoinMsg struct {
-	Id int `json:"id"`
-	Host string `json:"host"`
+	Id    int                 `json:"id"`
+	Host  string              `json:"host"`
 	Peers map[types.ID]string `json:"peers"`
 }
 
-
 // Message 发送Propose和Init消息结构
 type Message struct {
-	Type	commandType
-	From   int
+	Type commandType
+	From int
 	Cmd  string
 	Data []byte
 }
@@ -46,12 +45,11 @@ type Message struct {
 
 // SnapStore 用于快照处理的结构
 type SnapStore struct {
-	Data        []byte
-	Peer        map[types.ID]string
+	Data              []byte
+	Peer              map[types.ID]string
 	ConfigChangeCount int
-	Id          int
+	Id                int
 }
-
 
 func (m *Message) Encode() ([]byte, error) {
 	var buf bytes.Buffer

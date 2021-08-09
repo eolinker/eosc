@@ -16,7 +16,7 @@ func main() {
 	if !join {
 		// 新建raft节点,以集群模式启动或非集群单点模式
 		raft, err = CreateRaftNode(nodeID, host, s, peers, keys, join, isCluster)
-	}else {
+	} else {
 		// 新建raft节点,加入一个集群
 		raft, err = JoinCluster(host, target, s)
 	}

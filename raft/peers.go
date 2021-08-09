@@ -7,7 +7,7 @@ import (
 
 type Peers struct {
 	currentPeers map[types.ID]string
-	configCount int
+	configCount  int
 	mu           sync.RWMutex
 }
 
@@ -31,7 +31,7 @@ func (p *Peers) GetConfigCount() int {
 }
 
 // CheckExist 判断host对应的ID是否存在
-func (p *Peers) CheckExist(host string) (types.ID,bool) {
+func (p *Peers) CheckExist(host string) (types.ID, bool) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	for k, v := range p.currentPeers {

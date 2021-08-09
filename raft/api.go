@@ -10,26 +10,26 @@ import (
 
 // 客户端请求处理
 type RaftClient struct {
-	raft  *raftNode
+	raft *raftNode
 }
 
 type jsonResponse struct {
-	Code   string         `json:"code"`
-	Msg    string         `json:"msg"`
+	Code   string      `json:"code"`
+	Msg    string      `json:"msg"`
 	Result interface{} `json:"result"`
 }
 
 func (c *RaftClient) Handler() http.Handler {
 	router := httprouter.New()
 	router.HandlerFunc("POST", "/raft/api/set", c.setHandler)
-	router.HandlerFunc("POST", "/raft/api/deleteNode",  c.deleteNodeHandler)
+	router.HandlerFunc("POST", "/raft/api/deleteNode", c.deleteNodeHandler)
 	router.HandlerFunc("POST", "/raft/api/addNode", c.addNodeHandler)
-	router.HandlerFunc("GET", "/raft/api/get", c.getHandler)
 	router.HandlerFunc("GET", "/raft/api/getPeerList", c.getPeersHandler)
+	router.HandlerFunc("GET", "/raft/api/get", c.getHandler)
 	return router
 }
 
-func (c *RaftClient) getPeersHandler(w http.ResponseWriter, r *http.Request)  {
+func (c *RaftClient) getPeersHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -38,13 +38,13 @@ func (c *RaftClient) getPeersHandler(w http.ResponseWriter, r *http.Request)  {
 	if err != nil {
 		res.Code = "000001"
 		res.Msg = err.Error()
-	}else {
+	} else {
 		res.Result = list
 		res.Msg = strconv.Itoa(count)
 	}
 	c.writeResult(w, res)
 }
-func (c *RaftClient) getHandler(w http.ResponseWriter, r *http.Request)  {
+func (c *RaftClient) getHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -59,18 +59,17 @@ func (c *RaftClient) getHandler(w http.ResponseWriter, r *http.Request)  {
 			val, ok := v.store[key]
 			if ok {
 				res.Msg = val
-			}else {
+			} else {
 				res.Msg = ""
 			}
-		}else {
+		} else {
 			res.Msg = ""
 		}
 	}
 	c.writeResult(w, res)
 }
 
-
-func (c *RaftClient) setHandler(w http.ResponseWriter, r *http.Request)  {
+func (c *RaftClient) setHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -82,16 +81,16 @@ func (c *RaftClient) setHandler(w http.ResponseWriter, r *http.Request)  {
 		res.Code = "111111"
 	} else {
 		kv := &KV{
-			Key: key,
+			Key:   key,
 			Value: value,
 		}
 		data, err := kv.Encode()
-		if err!=nil {
+		if err != nil {
 			res.Msg = err.Error()
 			res.Code = "000001"
 		}
 		err = c.raft.Send("set", data)
-		if err!=nil {
+		if err != nil {
 			res.Msg = err.Error()
 			res.Code = "000001"
 		}
@@ -100,7 +99,7 @@ func (c *RaftClient) setHandler(w http.ResponseWriter, r *http.Request)  {
 }
 
 // deleteNodeHandler 删除节点
-func (c *RaftClient) deleteNodeHandler(w http.ResponseWriter, r *http.Request)  {
+func (c *RaftClient) deleteNodeHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -116,7 +115,7 @@ func (c *RaftClient) deleteNodeHandler(w http.ResponseWriter, r *http.Request)  
 			res.Code = "000002"
 		} else {
 			err = c.raft.DeleteConfigChange(Id)
-			if err!=nil {
+			if err != nil {
 				res.Code = "000003"
 				res.Msg = err.Error()
 			}
@@ -126,7 +125,7 @@ func (c *RaftClient) deleteNodeHandler(w http.ResponseWriter, r *http.Request)  
 }
 
 // deleteNodeHandler 删除节点
-func (c *RaftClient) addNodeHandler(w http.ResponseWriter, r *http.Request)  {
+func (c *RaftClient) addNodeHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -144,7 +143,7 @@ func (c *RaftClient) addNodeHandler(w http.ResponseWriter, r *http.Request)  {
 			res.Code = "000002"
 		} else {
 			err = c.raft.AddConfigChange(Id, addr)
-			if err!=nil {
+			if err != nil {
 				res.Code = "000003"
 				res.Msg = err.Error()
 			}
@@ -153,9 +152,9 @@ func (c *RaftClient) addNodeHandler(w http.ResponseWriter, r *http.Request)  {
 	c.writeResult(w, res)
 }
 
-func (c *RaftClient) writeResult(w http.ResponseWriter,v interface{})  {
-	data,err:=json.Marshal(v)
-	if err!= nil{
+func (c *RaftClient) writeResult(w http.ResponseWriter, v interface{}) {
+	data, err := json.Marshal(v)
+	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return
