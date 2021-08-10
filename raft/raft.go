@@ -62,7 +62,7 @@ type raftNode struct {
 	snapdir       string // path to snapshot directory
 
 	// 日志与内存
-	raftStorage  *raft.MemoryStorage
+	raftStorage  *MemoryStorage
 	wal          *wal.WAL
 	waldir       string // path to WAL directory
 	appliedIndex uint64
@@ -399,13 +399,19 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 			cc.Unmarshal(ents[i].Data)
 
 			rc.confState = *rc.node.ApplyConfChange(cc)
+			// eosc: 修改快照里的confState
+			rc.raftStorage.UpdateConState(&rc.confState)
 			switch cc.Type {
 			// 新增节点
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
 					// transport不需要加自己
 					if cc.NodeID != uint64(rc.nodeID) {
-						rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
+						p := rc.transport.Get(types.ID(cc.NodeID))
+						// 不存在才加进去
+						if p == nil {
+							rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
+						}
 					}
 					_, ok := rc.peers.GetPeerByID(types.ID(cc.NodeID))
 					if !ok {
@@ -418,7 +424,11 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 					log.Println("current node has been removed from the cluster!")
 					return false
 				}
-				rc.transport.RemovePeer(types.ID(cc.NodeID))
+				p := rc.transport.Get(types.ID(cc.NodeID))
+				if p != nil{
+					// 存在才移除
+					rc.transport.RemovePeer(types.ID(cc.NodeID))
+				}
 				_, ok := rc.peers.GetPeerByID(types.ID(nodeID))
 				if ok {
 					// 存在，减去
@@ -563,14 +573,15 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	}
 	// 暂时先不做日志的压缩处理，有bug如下：
 	// 已有集群中的节点生成快照后，后续新节点加入集群时无法成功同步
-	//compactIndex := uint64(1)
-	//if rc.appliedIndex > snapshotCatchUpEntriesN {
-	//	compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
-	//}
-	//if err = rc.raftStorage.Compact(compactIndex); err != nil {
-	//	log.Panic(err)
-	//}
-	//log.Printf("compacted log at index %d", compactIndex)
+	// 修复处理：集群节点配置更新的时候也更新raftStorage中已有快照的confState
+	compactIndex := uint64(1)
+	if rc.appliedIndex > snapshotCatchUpEntriesN {
+		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
+	}
+	if err = rc.raftStorage.Compact(compactIndex); err != nil {
+		log.Panic(err)
+	}
+	log.Printf("compacted log at index %d", compactIndex)
 	rc.snapshotIndex = rc.appliedIndex
 }
 
@@ -586,7 +597,7 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 	}
 
 	// 节点日志缓存初始化
-	rc.raftStorage = raft.NewMemoryStorage()
+	rc.raftStorage = NewMemoryStorage()
 	if snapshot != nil {
 
 		err = rc.raftStorage.ApplySnapshot(*snapshot)
