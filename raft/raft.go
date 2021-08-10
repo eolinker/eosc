@@ -561,14 +561,16 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	if err = rc.saveSnap(snapContent); err != nil {
 		log.Panic(err)
 	}
-	compactIndex := uint64(1)
-	if rc.appliedIndex > snapshotCatchUpEntriesN {
-		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
-	}
-	if err = rc.raftStorage.Compact(compactIndex); err != nil {
-		log.Panic(err)
-	}
-	log.Printf("compacted log at index %d", compactIndex)
+	// 暂时先不做日志的压缩处理，有bug如下：
+	// 已有集群中的节点生成快照后，后续新节点加入集群时无法成功同步
+	//compactIndex := uint64(1)
+	//if rc.appliedIndex > snapshotCatchUpEntriesN {
+	//	compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
+	//}
+	//if err = rc.raftStorage.Compact(compactIndex); err != nil {
+	//	log.Panic(err)
+	//}
+	//log.Printf("compacted log at index %d", compactIndex)
 	rc.snapshotIndex = rc.appliedIndex
 }
 
@@ -744,7 +746,7 @@ func (rc *raftNode) AddConfigChange(nodeID uint64, host string) error {
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  nodeID,
 		Context: []byte(host),
-		ID:      uint64(rc.peers.GetConfigCount()),
+		ID:      uint64(rc.peers.GetConfigCount() + 1),
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -764,7 +766,7 @@ func (rc *raftNode) DeleteConfigChange(nodeID uint64) error {
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: nodeID,
-		ID:     uint64(rc.peers.GetConfigCount()),
+		ID:     uint64(rc.peers.GetConfigCount() + 1),
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
