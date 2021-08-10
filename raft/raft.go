@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io/ioutil"
-	"log"
+	"github.com/eolinker/eosc/log"
 	"net/http"
 	"net/url"
 	"os"
@@ -112,7 +112,7 @@ func JoinCluster(local string, target string, service IService) (*raftNode, erro
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("receive join message id(%d), peers number(%d)", msg.Id, len(msg.Peers))
+		log.Infof("receive join message id(%d), peers number(%d)", msg.Id, len(msg.Peers))
 		return joinAndCreateRaft(msg.Id, local, service, msg.Peers, true, true), nil
 	} else {
 		return nil, fmt.Errorf(res.Msg)
@@ -186,11 +186,11 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 	if wal.Exist(waldir) {
 		isCluster = true
 	}
-	log.Printf("current mode is cluster %v.", isCluster)
+	log.Infof("current mode is cluster %v.", isCluster)
 
 	peerList, err := Adjust(id, host, peers, keys, isCluster)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Infof(err.Error())
 		return nil, err
 	}
 	rc := &raftNode{
@@ -240,7 +240,7 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
 func (rc *raftNode) startRaft() {
-	log.Println("start raft Service")
+	log.Info("start raft Service")
 
 	// 一旦start就证明是集群模式了
 	rc.isCluster = true
@@ -263,7 +263,7 @@ func (rc *raftNode) startRaft() {
 	// TODO 非集群想要切换成集群的时候，要么这里做进一步校验，要么切换前先存好快照和日志
 	err := rc.ReadSnap(rc.snapshotter)
 	if err != nil {
-		log.Println("reload snap to Service error:", err)
+		log.Info("reload snap to Service error:", err)
 	}
 
 	// 节点配置
@@ -296,7 +296,7 @@ func (rc *raftNode) startRaft() {
 	// 通信实例开始运行
 	err = rc.transport.Start()
 	if err != nil {
-		log.Println("transport start error:", err)
+		log.Info("transport start error:", err)
 	}
 	// 与集群中的其他节点建立通信
 
@@ -353,7 +353,7 @@ func (rc *raftNode) serveChannels() {
 			rc.node.Advance()
 		// transport出错
 		case err = <-rc.transport.ErrorC:
-			log.Println(err.Error())
+			log.Info(err.Error())
 			rc.stop()
 			return
 		case <-rc.stopc:
@@ -380,14 +380,14 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 			var err error
 			err = m.Decode(ents[i].Data)
 			if err != nil {
-				log.Println(err)
+				log.Info(err)
 				continue
 			}
 			err = rc.Service.CommitHandler(m.Cmd, m.Data)
 			if m.Type == INIT && m.From == rc.nodeID {
 				// 释放InitSend方法的等待，仅针对切换集群的对应节点
 				if err != nil {
-					log.Println(err)
+					log.Info(err)
 					rc.waiter.Trigger(uint64(m.From), err.Error())
 					continue
 				} else {
@@ -421,7 +421,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 				}
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == uint64(rc.nodeID) {
-					log.Println("current node has been removed from the cluster!")
+					log.Info("current node has been removed from the cluster!")
 					return false
 				}
 				p := rc.transport.Get(types.ID(cc.NodeID))
@@ -473,7 +473,7 @@ func (rc *raftNode) ReadSnap(snapshotter *snap.Snapshotter) error {
 	// 快照不为空的话写进service
 	if snapshot != nil {
 		// 将快照内容缓存到service中
-		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+		log.Infof("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
 		err = rc.Service.ResetSnap(snapshot.Data)
 		if err != nil {
 			return err
@@ -491,7 +491,7 @@ func (rc *raftNode) saveToStorage(rd raft.Ready) {
 	}
 	// 安装快照信息
 	if !raft.IsEmptySnap(rd.Snapshot) {
-		log.Println("begin save snap")
+		log.Info("begin save snap")
 		err = rc.saveSnap(rd.Snapshot)
 		if err != nil {
 			log.Fatal("save snap error: ", err)
@@ -535,15 +535,15 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	if raft.IsEmptySnap(snapshotToSave) {
 		return
 	}
-	log.Printf("publishing snapshot at index %d", rc.snapshotIndex)
-	defer log.Printf("finished publishing snapshot at index %d", rc.snapshotIndex)
+	log.Infof("publishing snapshot at index %d", rc.snapshotIndex)
+	defer log.Infof("finished publishing snapshot at index %d", rc.snapshotIndex)
 
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
 		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
 	}
 	err := rc.ReadSnap(rc.snapshotter)
 	if err != nil {
-		log.Println("read snap from snap shotter error:", err)
+		log.Info("read snap from snap shotter error:", err)
 	}
 	rc.confState = snapshotToSave.Metadata.ConfState
 	rc.snapshotIndex = snapshotToSave.Metadata.Index
@@ -556,7 +556,7 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
 		return
 	}
-	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
+	log.Infof("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
 
 	// 获取service中的信息
 	data, err := rc.Service.GetSnapshot()
@@ -581,7 +581,7 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	if err = rc.raftStorage.Compact(compactIndex); err != nil {
 		log.Panic(err)
 	}
-	log.Printf("compacted log at index %d", compactIndex)
+	log.Infof("compacted log at index %d", compactIndex)
 	rc.snapshotIndex = rc.appliedIndex
 }
 
@@ -602,17 +602,17 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 
 		err = rc.raftStorage.ApplySnapshot(*snapshot)
 		if err != nil {
-			log.Printf("eosc: failed to apply snapshot for raftStorage (%v)", err)
+			log.Infof("eosc: failed to apply snapshot for raftStorage (%v)", err)
 		}
 	}
 	err = rc.raftStorage.SetHardState(st)
 	if err != nil {
-		log.Printf("eosc: failed to set hardState for raftStorage (%v)", err)
+		log.Infof("eosc: failed to set hardState for raftStorage (%v)", err)
 	}
 	// append to storage so raft starts at the right place in log
 	err = rc.raftStorage.Append(ents)
 	if err != nil {
-		log.Printf("eosc: failed to append ents for raftStorage (%v)", err)
+		log.Infof("eosc: failed to append ents for raftStorage (%v)", err)
 	}
 	return w
 }
@@ -654,7 +654,7 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
-	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
+	log.Infof("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
 	// 开启日志
 	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
 	if err != nil {
@@ -707,7 +707,7 @@ func (rc *raftNode) Send(command string, send []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("send:leader is node(%d)", rc.lead)
+	log.Infof("send:leader is node(%d)", rc.lead)
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// Service.ProcessHandler要么leader执行，要么非集群模式下自己执行
@@ -826,7 +826,7 @@ func (rc *raftNode) InitSend() error {
 // 开始运行集群节点,新建日志文件，启动transport和node，
 // 并开始监听node.ready,将现有缓存加入日志中rc.InitSend
 func (rc *raftNode) changeCluster() error {
-	log.Println("change cluster mode")
+	log.Info("change cluster mode")
 	rc.isCluster = true
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
@@ -878,7 +878,7 @@ func (rc *raftNode) changeCluster() error {
 	}
 	// 读ready
 	go rc.serveChannels()
-	log.Println("change cluster mode successfully")
+	log.Info("change cluster mode successfully")
 	// 开始打包处理初始化信息
 	err = rc.InitSend()
 	if err != nil {
@@ -891,7 +891,7 @@ func (rc *raftNode) changeCluster() error {
 
 // serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
 func (rc *raftNode) serveRaft() {
-	log.Println("eosc: start raft serve listener")
+	log.Info("eosc: start raft serve listener")
 	v, ok := rc.peers.GetPeerByID(types.ID(rc.nodeID))
 	if !ok {
 		log.Fatalf("eosc: Failed read current node(%d) url ", rc.nodeID)
@@ -948,7 +948,7 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeResult(w, res)
 		return
 	}
-	log.Printf("host(%s) apply join the cluster", joinMsg.Host)
+	log.Infof("host(%s) apply join the cluster", joinMsg.Host)
 	// 先判断是不是集群模式
 	// 是的话返回要加入的相关信息
 	// 不是的话先切换集群模式，再初始化startRaft()，再返回加入的相关信息
@@ -1032,7 +1032,7 @@ func (rc *raftNode) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		writeResult(w, res)
 		return
 	}
-	log.Printf("receive propose request from node(%d)", msg.From)
+	log.Infof("receive propose request from node(%d)", msg.From)
 	err = rc.Send(msg.Cmd, msg.Data)
 	if err != nil {
 		res.Msg = err.Error()

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/prometheus/common/log"
+	"github.com/eolinker/eosc/log"
 	"net/http"
 )
 
