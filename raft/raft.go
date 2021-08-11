@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
@@ -18,7 +19,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io/ioutil"
-	"github.com/eolinker/eosc/log"
 	"net/http"
 	"net/url"
 	"os"
@@ -113,14 +113,14 @@ func JoinCluster(local string, target string, service IService) (*raftNode, erro
 			return nil, err
 		}
 		log.Infof("receive join message id(%d), peers number(%d)", msg.Id, len(msg.Peers))
-		return joinAndCreateRaft(msg.Id, local, service, msg.Peers, true, true), nil
+		return joinAndCreateRaft(msg.Id, local, service, msg.Peers), nil
 	} else {
 		return nil, fmt.Errorf(res.Msg)
 	}
 }
 
 // joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
-func joinAndCreateRaft(id int, host string, service IService, peerList map[types.ID]string, join bool, isCluster bool) *raftNode {
+func joinAndCreateRaft(id int, host string, service IService, peerList map[types.ID]string) *raftNode {
 	// 确保peer一定有节点本身
 	peerList[types.ID(id)] = host
 
@@ -132,8 +132,8 @@ func joinAndCreateRaft(id int, host string, service IService, peerList map[types
 		nodeID:    id,
 		peers:     NewPeers(peerList, len(peerList)),
 		Service:   service,
-		join:      join,
-		isCluster: isCluster,
+		join:      true,
+		isCluster: true,
 		// 日志文件目前直接以id命名初始化
 		waldir:    waldir,
 		snapdir:   snapdir,

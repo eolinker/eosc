@@ -2,7 +2,7 @@
 
 ## 参数说明
 
-- **httpPort**：对外提供的客户端API接口的节点端口
+- **httpPort**：节点对外向客户端提供API的端口
 - **nodeID**：节点id，集群中唯一，第一个节点id默认为1
 - **host**：节点地址`ip:port`，节点运行地址，也是节点间进行信息通信的地址
 - **isCluster**：是否开启集群模式，非集群模式下的节点在其他节点选择加入的情况下会自动切换到集群模式
@@ -38,7 +38,7 @@
   GetSnapshot() (data []byte, err error)
   ```
 
-### Demo实现
+#### Demo实现
 
 ```go
 // Service Demo 
@@ -164,7 +164,7 @@ log.Info(fmt.Sprintf("Listen http port %d successfully", httpPort))
 log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), httpServer))
 ```
 
-###  CreateRaftNode函数说明
+####  CreateRaftNode函数说明
 
 ```go
 // CreateRaftNode 初始化节点
@@ -205,11 +205,11 @@ log.Info(fmt.Sprintf("Listen http port %d successfully", httpPort))
 log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), httpServer))
 ```
 
-### JoinCluster函数说明
+#### JoinCluster函数说明
 
 ```go
-// JoinCluster 新建一个加入已知集群的请求
-// 1、应用于新建一个想要加入已知集群的节点，会向已知节点发送请求获取id等新建节点信息
+// JoinCluster 新建一个加入已知集群的节点
+// 1、应用于新建一个想要加入已知集群的节点，会向已知节点发送请求以获取节点id等新建节点信息
 // 已知节点如果还处于非集群模式，会先切换成集群模式
 // 2、也可以用于节点crash后的重启处理
 func JoinCluster(local string, target string, service IService) (*raftNode, error) 
@@ -234,3 +234,17 @@ func JoinCluster(local string, target string, service IService) (*raftNode, erro
 - **/raft/api/getPeerList**
   - 请求方法：GET
   - 接口描述：获取集群中已有的节点列表
+
+## 相关流程图说明
+
+#### 往节点中新增信息(即调用/raft/api/set)
+
+- **节点处于非集群模式**
+
+  ![fig1](./images/image1.png)
+
+- **节点处于集群模式**
+
+  ![fig2](./images/image2.png)
+
+- 
