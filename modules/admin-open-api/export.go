@@ -14,7 +14,9 @@ func export(value map[string][]interface{}, dir string, id string) (string, erro
 	if dir == "" {
 		dir = "export"
 	}
-	dir = fmt.Sprintf("%s/%s", strings.TrimSuffix(dir, "/"), id)
+	if id != "" {
+		dir = fmt.Sprintf("%s/%s", strings.TrimSuffix(dir, "/"), id)
+	}
 	_, err := os.Stat(dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
