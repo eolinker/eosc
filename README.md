@@ -1,7 +1,8 @@
 
 # 架构
 
-![点击图片，进入可视化编辑](/tdl/tfl/pictures/202107/tapd_45952020_1625640410_88.png){data-control=tapd-graph data-origin-xml=id:1153176618001000016 data-graph-token=a79793523210fd5a6d5dd0e4017dcfd1}
+![image](https://user-images.githubusercontent.com/25589530/129505228-121923df-e4d0-4fa6-b216-4e815a5b8dbb.png)
+
 
 # 抽象概念
 
