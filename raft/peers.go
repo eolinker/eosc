@@ -1,8 +1,9 @@
-package main
+package raft
 
 import (
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	"sync"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 type Peers struct {

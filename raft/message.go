@@ -1,10 +1,11 @@
-package main
+package raft
 
 import (
 	"bytes"
 	"encoding/gob"
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	"log"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 type commandType int32

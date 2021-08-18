@@ -14,13 +14,14 @@
 
 // 对storage新增更新conf的方法
 
-package main
+package raft
 
 import (
 	"errors"
-	pb "go.etcd.io/etcd/raft/v3/raftpb"
 	"log"
 	"sync"
+
+	pb "go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 // ErrCompacted is returned by Storage.Entries/Compact when a requested
@@ -70,6 +71,7 @@ func (ms *MemoryStorage) UpdateConState(cs *pb.ConfState) error {
 	}
 	return nil
 }
+
 // InitialState implements the Storage interface.
 func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState, error) {
 	return ms.hardState, ms.snapshot.Metadata.ConfState, nil
@@ -263,4 +265,3 @@ func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
 	}
 	return ents[:limit]
 }
-

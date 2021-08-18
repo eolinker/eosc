@@ -1,15 +1,16 @@
-package main
+package raft
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 // 客户端请求处理
-type RaftClient struct {
+type Client struct {
 	raft *raftNode
 }
 
@@ -19,7 +20,7 @@ type jsonResponse struct {
 	Result interface{} `json:"result"`
 }
 
-func (c *RaftClient) Handler() http.Handler {
+func (c *Client) Handler() http.Handler {
 	router := httprouter.New()
 	router.HandlerFunc("POST", "/raft/api/set", c.setHandler)
 	router.HandlerFunc("POST", "/raft/api/deleteNode", c.deleteNodeHandler)
@@ -29,7 +30,7 @@ func (c *RaftClient) Handler() http.Handler {
 	return router
 }
 
-func (c *RaftClient) getPeersHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Client) getPeersHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -44,7 +45,7 @@ func (c *RaftClient) getPeersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	c.writeResult(w, res)
 }
-func (c *RaftClient) getHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Client) getHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -69,7 +70,7 @@ func (c *RaftClient) getHandler(w http.ResponseWriter, r *http.Request) {
 	c.writeResult(w, res)
 }
 
-func (c *RaftClient) setHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Client) setHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -99,7 +100,7 @@ func (c *RaftClient) setHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteNodeHandler 删除节点
-func (c *RaftClient) deleteNodeHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Client) deleteNodeHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -124,8 +125,8 @@ func (c *RaftClient) deleteNodeHandler(w http.ResponseWriter, r *http.Request) {
 	c.writeResult(w, res)
 }
 
-// deleteNodeHandler 删除节点
-func (c *RaftClient) addNodeHandler(w http.ResponseWriter, r *http.Request) {
+// addNodeHandler 将节点加入集群
+func (c *Client) addNodeHandler(w http.ResponseWriter, r *http.Request) {
 	res := &jsonResponse{
 		Code: "000000",
 		Msg:  "success",
@@ -152,7 +153,7 @@ func (c *RaftClient) addNodeHandler(w http.ResponseWriter, r *http.Request) {
 	c.writeResult(w, res)
 }
 
-func (c *RaftClient) writeResult(w http.ResponseWriter, v interface{}) {
+func (c *Client) writeResult(w http.ResponseWriter, v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
 		w.WriteHeader(500)

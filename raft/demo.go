@@ -1,9 +1,10 @@
-package main
+package raft
 
 import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -47,7 +48,7 @@ func (s *service) ProcessHandler(command string, propose []byte) (cmd string, da
 	// TODO: process the command before sending the message
 	kv := &KV{}
 	kv.Decode(propose)
-	kv.Value = kv.Value + string(time.Now().UnixNano())
+	kv.Value = kv.Value + strconv.FormatInt(time.Now().UnixNano(), 10)
 	data, err = json.Marshal(kv)
 	command = "set"
 	return command, data, err

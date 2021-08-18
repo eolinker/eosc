@@ -1,12 +1,14 @@
-package main
+package raft
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	"net/http"
+	"testing"
+
+	"github.com/eolinker/eosc/log"
 )
 
-func main() {
+func TestRaft(t *testing.T) {
 	initFlag()
 
 	// 初始化服务
@@ -23,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client := &RaftClient{
+	client := &Client{
 		raft: raft,
 	}
 	httpServer := http.NewServeMux()

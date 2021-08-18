@@ -1,15 +1,24 @@
-package main
+package raft
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
 	"go.etcd.io/etcd/raft/v3"
+
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -18,13 +27,6 @@ import (
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var defaultSnapshotCount uint64 = 10000
@@ -174,34 +176,12 @@ func joinAndCreateRaft(id int, host string, service IService, peerList map[types
 // 推荐使用JoinCluster来新建多节点集群节点
 // 3、创建加入已知集群的节点，join为true，isCluster为true，此时peers需包括其他节点地址，推荐使用JoinCluster来新建非单点集群节点
 func CreateRaftNode(id int, host string, service IService, peers string, keys string, join bool, isCluster bool) (*raftNode, error) {
-	if join {
-		// join情况下一定是集群模式
-		isCluster = true
-	}
-	// 日志文件路径
-	waldir := fmt.Sprintf("eosc-%d", id)
-	snapdir := fmt.Sprintf("eosc-%d-snap", id)
-
-	// 建过集群的节点不能再换回去（暂时采用该方案）
-	if wal.Exist(waldir) {
-		isCluster = true
-	}
-	log.Infof("current mode is cluster %v.", isCluster)
-
-	peerList, err := Adjust(id, host, peers, keys, isCluster)
-	if err != nil {
-		log.Infof(err.Error())
-		return nil, err
-	}
 	rc := &raftNode{
 		nodeID:    id,
-		peers:     NewPeers(peerList, len(peerList)),
 		Service:   service,
 		join:      join,
-		isCluster: isCluster,
-		// 日志文件目前直接以id命名初始化
-		waldir:    waldir,
-		snapdir:   snapdir,
+		waldir:    fmt.Sprintf("eosc-%d", id), // 日志文件路径
+		snapdir:   fmt.Sprintf("eosc-%d-snap", id),
 		snapCount: defaultSnapshotCount,
 		stopc:     make(chan struct{}),
 		httpstopc: make(chan struct{}),
@@ -211,19 +191,32 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 		lead:      uint64(0),
 		active:    true,
 	}
-	// 创建并启动 transport 实例，该负责节点之间的网络通信，
+	// 建过集群的节点不能再换回去（暂时采用该方案）
+	if rc.join || wal.Exist(rc.waldir) {
+		rc.isCluster = true
+	}
+
+	log.Infof("current mode is cluster %v.", rc.isCluster)
+
+	peerList, err := Adjust(rc.nodeID, host, peers, keys, rc.isCluster)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
+	}
+	rc.peers = NewPeers(peerList, len(peerList))
+
+	// 创建并启动 transport 实例，负责节点之间的网络通信，
 	// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
 	rc.transport = &rafthttp.Transport{
-		Logger:      rc.logger,
-		ID:          types.ID(rc.nodeID),
-		ClusterID:   0x1000,
-		Raft:        rc,
-		ServerStats: stats.NewServerStats("", ""),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.nodeID)),
-		ErrorC:      make(chan error),
+		Logger:             rc.logger,
+		ID:                 types.ID(rc.nodeID),
+		ClusterID:          0x1000,
+		Raft:               rc,
+		ServerStats:        stats.NewServerStats("", ""),
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.nodeID)),
+		ErrorC:             make(chan error),
+		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
 	}
-	// 设置一下节点间的重试频率
-	rc.transport.DialRetryFrequency = rate.Every(2000 * time.Millisecond)
 
 	// 监听节点端口，用transport处理节点通信，此时这种情况下只是监听join
 	go rc.serveRaft()
@@ -235,15 +228,11 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 	return rc, nil
 }
 
-// node服务相关
-
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
 func (rc *raftNode) startRaft() {
 	log.Info("start raft Service")
 
-	// 一旦start就证明是集群模式了
-	rc.isCluster = true
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
@@ -254,7 +243,7 @@ func (rc *raftNode) startRaft() {
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 
 	// 判断是否有日志文件目录
-	oldwal := wal.Exist(rc.waldir)
+	oldWal := wal.Exist(rc.waldir)
 
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage
 	rc.wal = rc.replayWAL()
@@ -278,7 +267,7 @@ func (rc *raftNode) startRaft() {
 	}
 	peersList := rc.peers.GetAllPeers()
 	// 启动node节点
-	if rc.join || oldwal {
+	if rc.join || oldWal {
 		// 选择加入集群或已有日志消息（曾经切换过集群模式）
 		rc.node = raft.RestartNode(c)
 	} else {
@@ -425,7 +414,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 					return false
 				}
 				p := rc.transport.Get(types.ID(cc.NodeID))
-				if p != nil{
+				if p != nil {
 					// 存在才移除
 					rc.transport.RemovePeer(types.ID(cc.NodeID))
 				}
@@ -888,7 +877,6 @@ func (rc *raftNode) changeCluster() error {
 }
 
 // 通信相关
-
 // serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
 func (rc *raftNode) serveRaft() {
 	log.Info("eosc: start raft serve listener")
@@ -932,20 +920,14 @@ func (rc *raftNode) Handler() http.Handler {
 func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 
 	joinMsg := &JoinMsg{}
-	res := &Response{
-		Code: "111111",
-	}
-	b, err := ioutil.ReadAll(r.Body)
+	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
+	err := json.Unmarshal(body, joinMsg)
 	if err != nil {
-		res.Msg = err.Error()
-		writeResult(w, res)
-		return
-	}
-	err = json.Unmarshal(b, joinMsg)
-	if err != nil {
-		res.Msg = err.Error()
-		writeResult(w, res)
+		writeResult(w, &Response{
+			Code: "111111",
+			Msg:  err.Error(),
+		})
 		return
 	}
 	log.Infof("host(%s) apply join the cluster", joinMsg.Host)
@@ -957,8 +939,10 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 		err = rc.changeCluster()
 		if err != nil {
 			// 切换错误
-			res.Msg = err.Error()
-			writeResult(w, res)
+			writeResult(w, &Response{
+				Code: "111111",
+				Msg:  err.Error(),
+			})
 			return
 		}
 	}
@@ -967,35 +951,32 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 	if id, exist := rc.peers.CheckExist(joinMsg.Host); exist {
 		// 已经在集群中的了，直接返回信息
 		joinMsg.Id = int(id)
-		b, err = json.Marshal(joinMsg)
-		if err != nil {
-			res.Msg = err.Error()
-		} else {
-			res.Code = "000000"
-			res.Msg = "success"
-			res.Data = b
-		}
-		writeResult(w, res)
+		b, _ := json.Marshal(joinMsg)
+
+		writeResult(w, &Response{
+			Code: "000000",
+			Msg:  "success",
+			Data: b,
+		})
 		return
-	} else {
-		// 现有的变更id+1
-		joinMsg.Id = rc.peers.GetConfigCount() + 1
 	}
+	// 现有的变更id+1
+	joinMsg.Id = rc.peers.GetConfigCount() + 1
 	// 已经是集群了，发送新增节点的消息后返回
 	err = rc.AddConfigChange(uint64(joinMsg.Id), joinMsg.Host)
 	if err != nil {
-		res.Msg = err.Error()
-	} else {
-		b, err = json.Marshal(joinMsg)
-		if err != nil {
-			res.Msg = err.Error()
-		} else {
-			res.Code = "000000"
-			res.Msg = "success"
-			res.Data = b
-		}
+		writeResult(w, &Response{
+			Code: "111111",
+			Msg:  err.Error(),
+		})
+		return
 	}
-	writeResult(w, res)
+	b, _ := json.Marshal(joinMsg)
+	writeResult(w, &Response{
+		Code: "000000",
+		Msg:  "success",
+		Data: b,
+	})
 	return
 }
 
