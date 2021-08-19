@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	logResetHandler = log.Reset
-	//accessLogResetHandler = access_log.Reset
-
-	logTransporterManager = newTransporterManager(logResetHandler)
-	//accessLogTransporterManager = newTransporterManager(accessLogResetHandler)
+	defaultNameSpaceManager *nameSpaceManager
 )
+
+func init() {
+	defaultNameSpaceManager = newNameSpaceManager()
+}
 
 type ResetHandler func(transports ...log.EntryTransporter)
 
@@ -23,9 +23,54 @@ type transporterManager struct {
 	resetHandler ResetHandler
 }
 
+type nameSpaceManager struct {
+	locker  sync.RWMutex
+	manager map[string]*transporterManager
+}
+
 type ITransporterManager interface {
 	Set(workerID string, transporter log.EntryTransporter) error
 	Del(workerID string) error
+}
+
+func newNameSpaceManager() *nameSpaceManager {
+	return &nameSpaceManager{
+		locker:  sync.RWMutex{},
+		manager: make(map[string]*transporterManager),
+	}
+}
+
+func GetTransporterManager(nameSpace string) (ITransporterManager, error) {
+	tm, has := getTransporterManager(nameSpace)
+	if has {
+		return tm, nil
+	}
+
+	nsManager.locker.Lock()
+	defer nsManager.locker.Unlock()
+
+	var rh ResetHandler
+	switch nameSpace {
+	case "access-log":
+		//rh = access_log.Reset
+	case "":
+		rh = log.Reset
+	default:
+		return nil, fmt.Errorf("nameSpace: %s is illegal", nameSpace)
+	}
+
+	ntm := newTransporterManager(rh)
+	nsManager.manager[nameSpace] = ntm
+
+	return ntm, nil
+}
+
+func getTransporterManager(nameSpace string) (ITransporterManager, bool) {
+	nsManager.locker.RLock()
+	defer nsManager.locker.RUnlock()
+	tm, has := nsManager.manager[nameSpace]
+
+	return tm, has
 }
 
 func newTransporterManager(rh ResetHandler) *transporterManager {
@@ -35,14 +80,6 @@ func newTransporterManager(rh ResetHandler) *transporterManager {
 		resetHandler: rh,
 	}
 }
-
-func GetLogTransporterManager() ITransporterManager {
-	return logTransporterManager
-}
-
-//func GetAccessLogTransporterManager() ItransporterManager {
-//	return accessLogTransporterManager
-//}
 
 func (t *transporterManager) Set(workerID string, transporter log.EntryTransporter) error {
 	t.locker.Lock()
