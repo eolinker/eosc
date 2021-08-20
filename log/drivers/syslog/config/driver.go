@@ -3,9 +3,8 @@ package config
 import (
 	"encoding/json"
 	"errors"
-
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/log/dlog"
+	"github.com/eolinker/goku-standard/common/log"
+	"github.com/eolinker/goku-standard/common/log/dlog"
 )
 
 const driverName = "syslog"
@@ -65,9 +64,10 @@ func (c *SysLogConfigDriver) Decode(v string) (interface{}, error) {
 	}
 
 	config := Config{
-		RAddr:   configConfig.URL,
-		Network: configConfig.Network,
-		Level:   level,
+		RAddr:         configConfig.URL,
+		Network:       configConfig.Network,
+		Level:         level,
+
 	}
 
 	return config, nil

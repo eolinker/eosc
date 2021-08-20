@@ -1,6 +1,6 @@
 package config
 
-import "github.com/eolinker/eosc/log/dlog"
+import "github.com/eolinker/goku-standard/common/log/dlog"
 
 var (
 	fields = []dlog.Field{

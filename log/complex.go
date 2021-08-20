@@ -25,21 +25,20 @@ func NewComplex(transports ...EntryTransporter) *Complex {
 
 func (c *Complex) Reset(transporters ...EntryTransporter) error {
 
-	transports := make([]EntryTransporter, 0, len(transporters))
+	ts := make([]EntryTransporter, 0, len(transporters))
 	maxLevel := PanicLevel
 	for _, transporter := range transporters {
 
 		if transporter.Level() > maxLevel {
 			maxLevel = transporter.Level()
 		}
-		transports = append(transports, transporter)
-
+		ts = append(ts, transporter)
 	}
 
 	c.setLevel(maxLevel)
 
 	c.locker.Lock()
-	c.transports = transporters
+	c.transports = ts
 	c.locker.Unlock()
 	return nil
 }
@@ -71,7 +70,7 @@ func (c *Complex) Close() error {
 	c.locker.Lock()
 	ts := c.transports
 	c.transports = nil
-	c.locker.RUnlock()
+	c.locker.Unlock()
 
 	for _, t := range ts {
 		t.Close()
