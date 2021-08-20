@@ -53,7 +53,7 @@ func (w *FileWriterByPeriod) getExpire() time.Duration {
 	return expire
 }
 
-//AddDriver 设置
+//Set 设置
 func (w *FileWriterByPeriod) Set(dir, file string, period LogPeriod, expire time.Duration) {
 	fileName := strings.TrimSuffix(file, ".log")
 

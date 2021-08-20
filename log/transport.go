@@ -27,14 +27,14 @@ func (t *Transporter) SetFormatter(formatter Formatter) {
 //	t.close = close
 //}
 
-func (t *Transporter) Transport(entry *Entry) error {
+func (t *Transporter) Transport(entry *Entry) error{
 	output := t.output
-	if output == nil {
+	if output == nil{
 		return nil
 	}
-	if t.Level() >= entry.Level {
+	if t.Level() >= entry.Level{
 		data, err := t.formatter.Format(entry)
-		if err != nil {
+		if err!= nil{
 			return err
 		}
 		_, err = output.Write(data)
@@ -46,12 +46,12 @@ func (t *Transporter) Transport(entry *Entry) error {
 func (t *Transporter) Level() Level {
 	return Level(atomic.LoadUint32((*uint32)(&t.level)))
 }
-
 // SetLevel sets the logger level.
 func (t *Transporter) SetLevel(level Level) {
 	atomic.StoreUint32((*uint32)(&t.level), uint32(level))
 }
-func (t *Transporter) Close() error {
+func (t *Transporter) Close() error{
 	t.output = nil
 	return nil
 }
+

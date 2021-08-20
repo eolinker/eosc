@@ -3,9 +3,9 @@
 package syslog
 
 import (
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/log/drivers"
-	"github.com/eolinker/eosc/log/drivers/syslog/config"
+	"github.com/eolinker/goku-standard/common/log"
+	"github.com/eolinker/goku-standard/common/log/drivers"
+	"github.com/eolinker/goku-standard/common/log/drivers/syslog/config"
 )
 
 type Transporter struct {
@@ -13,7 +13,8 @@ type Transporter struct {
 	writer *_SysWriter
 }
 
-func (t *Transporter) Reset(c interface{}, formatter log.Formatter) error {
+
+func (t *Transporter) Reset(c interface{},formatter log.Formatter) error {
 	conf, err := config.ToConfig(c)
 	if err != nil {
 		return err
@@ -41,13 +42,13 @@ var createHandler drivers.CreateHandler = func(c interface{}, f log.Formatter) (
 
 	transport := &Transporter{
 		Transporter: log.NewTransport(sysWriter, conf.Level, f),
-		writer:      sysWriter,
+		writer:       sysWriter,
 	}
-	e := transport.Reset(conf, f)
-	if e != nil {
-		return nil, e
+	e:=transport.Reset(conf,f)
+	if e!= nil{
+		return nil,e
 	}
-	return transport, nil
+	return transport,nil
 	return transport, nil
 }
 

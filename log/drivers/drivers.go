@@ -1,14 +1,12 @@
 package drivers
 
 import (
+	"github.com/eolinker/goku-standard/common/log"
 	"sync"
-
-	"github.com/eolinker/eosc/log"
 )
-
 type TFactory interface {
 	Get(name string, config string, f log.Formatter) (log.EntryTransporter, error)
-	Driver() string
+	Driver()string
 	Destroy(name string)
 }
 type TransportEx interface {
@@ -29,9 +27,9 @@ func (i *iTransportEx) Driver() string {
 }
 
 type Drivers struct {
-	lock    sync.Mutex
+	lock sync.Mutex
 	drivers map[string]TFactory
-	caches  map[string]TransportEx
+	caches map[string]TransportEx
 }
 
 func NewDrivers(drivers map[string]TFactory) *Drivers {
@@ -41,27 +39,27 @@ func NewDrivers(drivers map[string]TFactory) *Drivers {
 		caches:  nil,
 	}
 }
-func (d *Drivers) GetDriver(name string) (TFactory, bool) {
+func (d *Drivers) GetDriver(name string) (TFactory ,bool){
 	d.lock.Lock()
-	f, has := d.drivers[name]
+	f,has:=d.drivers[name]
 	d.lock.Unlock()
-	return f, has
+	return f,has
 }
-func (d *Drivers) Cache(caches map[string]TransportEx) {
-	if caches == nil {
+func (d *Drivers) Cache(caches map[string]TransportEx)  {
+	if caches == nil{
 		caches = make(map[string]TransportEx)
 	}
 	// 释放已关闭的内容
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	if d.caches != nil {
-		for name, told := range d.caches {
-			if tnew, has := caches[name]; !has || tnew.Driver() != told.Driver() {
-				driver, has := d.drivers[told.Driver()]
-				if has {
+	if d.caches != nil{
+		for name,told:=range d.caches{
+			if tnew,has:=caches[name];!has ||  tnew.Driver() != told.Driver(){
+				driver,has:= d.drivers[told.Driver()]
+				if has{
 					driver.Destroy(name)
-				} else {
+				}else{
 					told.Close()
 				}
 			}

@@ -1,22 +1,21 @@
 package config
 
 import (
+	"github.com/eolinker/goku-standard/common/log/dlog"
 	"net/http"
-
-	"github.com/eolinker/eosc/log/dlog"
 )
 
-var (
+var(
 	fields = []dlog.Field{
 		{
 			Name:    "method",
-			Value:   "POST",
+			Value :  "POST",
 			Title:   "请求方法",
 			Desc:    "http的请求方法",
 			Type:    dlog.String,
 			Input:   dlog.SelectInput,
 			Pattern: "",
-			Option: []dlog.Option{
+			Option:  []dlog.Option{
 				{
 					Value: http.MethodPost,
 					Title: http.MethodPost,
@@ -29,7 +28,7 @@ var (
 		},
 		{
 			Name:    "url",
-			Value:   "http",
+			Value :  "http",
 			Title:   "http请求路径",
 			Desc:    "",
 			Type:    dlog.String,
