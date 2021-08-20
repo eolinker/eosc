@@ -8,14 +8,14 @@ type DriverInfo struct {
 
 type DriverManager struct {
 	drivers map[string]ConfigDriver
-	infos   []DriverInfo
+	infos []DriverInfo
 }
 
-func NewDriverManager(drivers []ConfigDriver, ignoreField ...string) *DriverManager {
+func NewDriverManager(drivers []ConfigDriver,ignoreField...string) *DriverManager {
 
-	driverMap := make(map[string]ConfigDriver)
-	infos := make([]DriverInfo, 0, len(drivers))
-	for _, d := range drivers {
+	driverMap:=make(map[string]ConfigDriver)
+	infos :=make([]DriverInfo,0,len(drivers))
+	for _,d:=range drivers{
 		driverMap[d.Name()] = d
 
 		infos = append(infos, DriverInfo{
@@ -31,17 +31,17 @@ func NewDriverManager(drivers []ConfigDriver, ignoreField ...string) *DriverMana
 	}
 }
 
-func (m *DriverManager) Get(driver string) (ConfigDriver, bool) {
-	d, has := m.drivers[driver]
-	return d, has
+func (m *DriverManager)Get(driver string)(ConfigDriver,bool ){
+	d,has:= m.drivers[driver]
+	return d,has
 }
-func (m *DriverManager) Infos() []DriverInfo {
+func (m *DriverManager) Infos() []DriverInfo  {
 	return m.infos
 }
-func (m *DriverManager) Title(name string) string {
-	d, has := m.drivers[name]
-	if has {
-		return d.Title()
+func (m *DriverManager) Title(name string) string  {
+	d,has := m.drivers[name]
+	if has{
+		return  d.Title()
 	}
 	return name
 }

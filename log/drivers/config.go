@@ -1,7 +1,7 @@
 package drivers
 
 type Config struct {
-	Name   string
+	Name string
 	Driver string
 	Config string
 }

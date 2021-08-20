@@ -1,12 +1,12 @@
 // +build !windows,!plan9
 
+
 package syslog
 
 import (
+	"github.com/eolinker/goku-standard/common/log"
 	"log/syslog"
 	"strings"
-
-	"github.com/eolinker/eosc/log"
 )
 
 const defaultTag = "goku-ee"
