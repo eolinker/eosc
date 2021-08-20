@@ -2,17 +2,15 @@ package raft
 
 import (
 	"sync"
-
-	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 type Peers struct {
-	currentPeers map[types.ID]string
+	currentPeers map[uint64]string
 	configCount  int
 	mu           sync.RWMutex
 }
 
-func NewPeers(peers map[types.ID]string, count int) *Peers {
+func NewPeers(peers map[uint64]string, count int) *Peers {
 	return &Peers{
 		currentPeers: peers,
 		configCount:  count,
@@ -25,14 +23,11 @@ func (p *Peers) GetPeerNum() int {
 }
 
 func (p *Peers) GetConfigCount() int {
-	p.mu.RLock()
-	count := p.configCount
-	p.mu.RUnlock()
-	return count
+	return p.configCount
 }
 
 // CheckExist 判断host对应的ID是否存在
-func (p *Peers) CheckExist(host string) (types.ID, bool) {
+func (p *Peers) CheckExist(host string) (uint64, bool) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	for k, v := range p.currentPeers {
@@ -43,21 +38,24 @@ func (p *Peers) CheckExist(host string) (types.ID, bool) {
 	return 0, false
 }
 
-func (p *Peers) GetPeerByID(id types.ID) (string, bool) {
+func (p *Peers) GetPeerByID(id uint64) (string, bool) {
 	p.mu.RLock()
 	v, ok := p.currentPeers[id]
 	p.mu.RUnlock()
 	return v, ok
 }
-func (p *Peers) SetPeer(id types.ID, value string) {
+
+func (p *Peers) SetPeer(id uint64, value string) {
 	p.mu.Lock()
 	p.currentPeers[id] = value
-	p.configCount++
 	p.mu.Unlock()
+	p.configCount++
 }
-func (p *Peers) GetAllPeers() map[types.ID]string {
+
+//GetAllPeers 获取所有节点列表
+func (p *Peers) GetAllPeers() map[uint64]string {
+	res := make(map[uint64]string)
 	p.mu.RLock()
-	res := make(map[types.ID]string, len(p.currentPeers))
 	for k, v := range p.currentPeers {
 		res[k] = v
 	}
@@ -65,14 +63,17 @@ func (p *Peers) GetAllPeers() map[types.ID]string {
 	return res
 }
 
-func (p *Peers) UpdatePeerByID(id types.ID, value string) {
+//UpdatePeerByID 通过ID更新节点信息
+func (p *Peers) UpdatePeerByID(id uint64, value string) {
 	p.mu.Lock()
 	p.currentPeers[id] = value
 	p.mu.Unlock()
 }
-func (p *Peers) DeletePeerByID(id types.ID) {
+
+//DeletePeerByID 通过ID删除节点
+func (p *Peers) DeletePeerByID(id uint64) {
 	p.mu.Lock()
 	delete(p.currentPeers, id)
-	p.configCount++
 	p.mu.Unlock()
+	p.configCount++
 }
