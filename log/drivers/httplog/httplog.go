@@ -1,9 +1,9 @@
 package httplog
 
 import (
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/log/drivers"
-	"github.com/eolinker/eosc/log/drivers/httplog/config"
+	"github.com/eolinker/goku-standard/common/log"
+	"github.com/eolinker/goku-standard/common/log/drivers"
+	"github.com/eolinker/goku-standard/common/log/drivers/httplog/config"
 )
 
 type Transporter struct {
@@ -11,9 +11,10 @@ type Transporter struct {
 	writer *_HttpWriter
 }
 
-func (t *Transporter) Reset(c interface{}, formatter log.Formatter) error {
+
+func (t *Transporter) Reset(c interface{},formatter log.Formatter) error {
 	conf, err := config.ToConfig(c)
-	if err != nil {
+	if err!=nil{
 		return err
 	}
 	t.Transporter.SetFormatter(formatter)
@@ -31,27 +32,27 @@ func (t *Transporter) reset(c *config.Config) error {
 	t.Transporter.SetOutput(t.writer)
 	return nil
 }
-
-var createHandler drivers.CreateHandler = func(c interface{}, f log.Formatter) (reset drivers.TransporterReset, err error) {
+var createHandler drivers.CreateHandler = func(c interface{},f log.Formatter) (reset drivers.TransporterReset, err error) {
 	conf, err := config.ToConfig(c)
-	if err != nil {
-		return nil, err
+	if err!=nil{
+		return  nil,err
 	}
 
 	httpWriter := newHttpWriter()
 
 	transport := &Transporter{
-		Transporter: log.NewTransport(httpWriter, conf.Level, f),
-		writer:      httpWriter,
+		Transporter: log.NewTransport(httpWriter,conf.Level,f),
+		writer:       httpWriter,
 	}
-	e := transport.Reset(conf, f)
-	if e != nil {
-		return nil, e
+	e:=transport.Reset(conf,f)
+	if e!= nil{
+		return nil,e
 	}
-	return transport, nil
+	return transport,nil
 }
-
 func NewFactory() drivers.TFactory {
 	fileConfigDriver := config.NewHttpLogConfigDriver()
-	return drivers.NewCacheFactory(createHandler, fileConfigDriver)
+	return drivers.NewCacheFactory(createHandler,fileConfigDriver)
 }
+
+

@@ -2,8 +2,7 @@ package config
 
 import (
 	"encoding/json"
-
-	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/goku-standard/common/log"
 )
 
 type ConfigEncode struct {
@@ -22,7 +21,7 @@ func (c *ConfigEncode) encode() (string, error) {
 }
 
 type Config struct {
-	Network string
-	RAddr   string
-	Level   log.Level
+	Network       string
+	RAddr         string
+	Level         log.Level
 }
