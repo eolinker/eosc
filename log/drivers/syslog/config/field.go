@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/eolinker/eosc/log/dlog"
+	"github.com/eolinker/goku-standard/common/log/dlog"
 )
 
 var (

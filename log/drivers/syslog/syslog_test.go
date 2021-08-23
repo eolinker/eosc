@@ -4,9 +4,8 @@ package syslog
 
 import (
 	"fmt"
+	"github.com/eolinker/goku-standard/common/log"
 	"testing"
-
-	"github.com/eolinker/eosc/log"
 )
 
 func TestSyslog(t *testing.T) {
