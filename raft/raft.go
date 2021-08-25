@@ -797,7 +797,7 @@ func (rc *raftNode) InitSend() error {
 		return err
 	}
 	// 等待处理完
-	c := rc.waiter.Register(uint64(rc.nodeID))
+	c := rc.waiter.Register(rc.nodeID)
 	res := <-c
 	str, ok := res.(string)
 	if !ok {

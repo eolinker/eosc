@@ -15,12 +15,6 @@ type service struct {
 	mutex sync.RWMutex
 }
 
-// KV 用于传输的结构
-type KV struct {
-	Key   string
-	Value string
-}
-
 func Create() *service {
 	return &service{
 		store: make(map[string]string),
@@ -75,6 +69,12 @@ func (s *service) GetSnapshot() ([]byte, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return json.Marshal(s.store)
+}
+
+// KV 用于传输的结构
+type KV struct {
+	Key   string
+	Value string
 }
 
 func (kv *KV) Encode() ([]byte, error) {
