@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+
+option go_package = "github.com/eolinker/eosc/service";
+
+package service;
+
+message ListenerRequest{
+  int32  Port = 1;
+}
+message ListenerResponse{
+  int64 File=1;
+}
+service Master {
+  rpc GetListen(ListenerRequest)returns(ListenerResponse){}
+}
+
+service Worker {
+  rpc
+}
