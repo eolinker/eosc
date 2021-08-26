@@ -36,7 +36,7 @@ var ErrorKey = "error"
 
 // An entry is the final or intermediate Logrus logging entry. It contains all
 // the fields passed with WithField{,s}. It's finally logged when Trace, Debug,
-// DriverInfo, Warn, Error, Fatal or Panic is called on it. These objects can be
+// Info, Warn, Error, Fatal or Panic is called on it. These objects can be
 // reused and passed around as much as you wish to avoid field duplication.
 type Entry struct {
 
@@ -46,18 +46,17 @@ type Entry struct {
 	// Time at which the log entry was created
 	Time time.Time
 
-	// Level the log entry was logged at: Trace, Debug, DriverInfo, Warn, Error, Fatal or Panic
+	// Level the log entry was logged at: Trace, Debug, Info, Warn, Error, Fatal or Panic
 	// This field will be set on entry firing and the value will be equal to the one in _Logger struct field.
 	Level Level
 
 	// Calling method, with package name
 	Caller *runtime.Frame
 
-	// Message passed to Trace, Debug, DriverInfo, Warn, Error, Fatal or Panic
+	// Message passed to Trace, Debug, Info, Warn, Error, Fatal or Panic
 	Message string
 	Err     string
 }
-
 func (entry *Entry) HasCaller() (has bool) {
 	return entry.Caller != nil
 }
@@ -87,21 +86,19 @@ func (builder *EntryBuilder) Log(level Level, args ...interface{}) {
 
 func (builder *EntryBuilder) Logf(level Level, format string, args ...interface{}) {
 	if builder.logger.IsLevelEnabled(level) {
-		builder.log(level, fmt.Sprintf(format, args...))
+		builder.log(level, fmt.Sprintf(format,args...))
 	}
 }
 
-// AddDriver an error as single field (using the key defined in ErrorKey) to the Entry.
+// Add an error as single field (using the key defined in ErrorKey) to the Entry.
 func (builder *EntryBuilder) WithError(err error) Builder {
 	return builder.WithField(ErrorKey, err)
 }
-
-// AddDriver a single field to the Entry.
+// Add a single field to the Entry.
 func (builder *EntryBuilder) WithField(key string, value interface{}) Builder {
 	return builder.WithFields(Fields{key: value})
 }
-
-// AddDriver a map of fields to the Entry.
+// Add a map of fields to the Entry.
 func (builder *EntryBuilder) WithFields(fields Fields) Builder {
 	data := make(Fields, len(builder.Data)+len(fields))
 	for k, v := range builder.Data {
@@ -122,8 +119,10 @@ func (builder *EntryBuilder) WithFields(fields Fields) Builder {
 			data[k] = v
 		}
 	}
-	return &EntryBuilder{logger: builder.logger, Time: builder.Time, Data: data}
+	return &EntryBuilder{logger: builder.logger, Time: builder.Time,Data:data}
 }
+
+
 
 // getCaller retrieves the name of the first non-logrus calling function
 func getCaller(packageName string) *runtime.Frame {
@@ -141,14 +140,14 @@ func getCaller(packageName string) *runtime.Frame {
 
 	// Restrict the lookback frames to avoid runaway lookups
 	pcs := make([]uintptr, maximumCallerDepth)
-	depth := runtime.Callers(minimumCallerDepth, pcs)
+ 	depth := runtime.Callers(minimumCallerDepth, pcs)
 	frames := runtime.CallersFrames(pcs[:depth])
 
 	for f, again := frames.Next(); again; f, again = frames.Next() {
 		pkg := getPackageName(f.Function)
 
 		// If the caller isn't part of this package, we're done
-		if pkg != thisPackageName && pkg != packageName {
+		if pkg != thisPackageName && pkg!= packageName {
 			return &f
 		}
 	}
@@ -159,7 +158,7 @@ func getCaller(packageName string) *runtime.Frame {
 
 // This function is not declared with a pointer value because otherwise
 // race conditions will occur when using multiple goroutines
-func (builder *EntryBuilder) log(level Level, msg string) error {
+func (builder *EntryBuilder) log(level Level, msg string) error{
 
 	entry := &Entry{
 		Data:    builder.Data,
@@ -176,11 +175,13 @@ func (builder *EntryBuilder) log(level Level, msg string) error {
 	return builder.logger.Transport(entry)
 }
 
+
+
 // Sprintlnn => Sprint no newline. This is to get the behavior of how
 // fmt.Sprintln where spaces are always added between operands, regardless of
 // their type. Instead of vendoring the Sprintln implementation to spare a
 // string allocation, we do the simplest thing.
-func sprintlnn(args ...interface{}) string {
+func  sprintlnn(args ...interface{}) string {
 	msg := fmt.Sprintln(args...)
 	return msg[:len(msg)-1]
 }
