@@ -6,8 +6,8 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package helper
 
-func Master() {
+func Helper() {
 
 }

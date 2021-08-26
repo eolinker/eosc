@@ -6,5 +6,8 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package main
+package worker
 
+func Work() {
+
+}
