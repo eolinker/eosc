@@ -22,26 +22,7 @@ type OpenAdmin struct {
 }
 
 func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	professions := o.admin.ListProfessions()
-	data := make(map[string][]interface{})
-	for _, p := range professions {
-		names, err := o.admin.ListEmployeeNames(p.Name)
-		if err != nil {
-			log.Errorf("read data error	%s	%s", p.Name, err.Error())
-			continue
-		}
-		if _, ok := data[p.Name]; !ok {
-			data[p.Name] = make([]interface{}, 0, len(names))
-		}
-		for _, name := range names {
-			v, err := o.admin.GetEmployee(p.Name, name)
-			if err != nil {
-				log.Errorf("get employee error	%s	%s", p.Name, err.Error())
-				continue
-			}
-			data[p.Name] = append(data[p.Name], v)
-		}
-	}
+	data := o.all()
 	id := time.Now().Format("2006-01-02 150405")
 	dir, err := export(data, "export", id)
 	if err != nil {
@@ -63,6 +44,30 @@ func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httpro
 	w.Header().Add("Content-Type", "application/octet-stream")
 	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 	w.Write(content)
+}
+
+func (o *OpenAdmin) all() map[string][]interface{} {
+	professions := o.admin.ListProfessions()
+	data := make(map[string][]interface{})
+	for _, p := range professions {
+		names, err := o.admin.ListEmployeeNames(p.Name)
+		if err != nil {
+			log.Errorf("read data error	%s	%s", p.Name, err.Error())
+			continue
+		}
+		if _, ok := data[p.Name]; !ok {
+			data[p.Name] = make([]interface{}, 0, len(names))
+		}
+		for _, name := range names {
+			v, err := o.admin.GetEmployee(p.Name, name)
+			if err != nil {
+				log.Errorf("get employee error	%s	%s", p.Name, err.Error())
+				continue
+			}
+			data[p.Name] = append(data[p.Name], v)
+		}
+	}
+	return data
 }
 
 func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -195,7 +200,12 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 
 		return
 	}
-
+	// 将数据写到文件中
+	_, err = export(o.all(), "runtime_config", "")
+	if err != nil {
+		writeResultError(w, 500, err)
+		return
+	}
 	writeResult(w, winfo)
 }
 

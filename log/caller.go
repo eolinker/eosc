@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-func packageName() string {
+func packageName()  string{
 	pcs := make([]uintptr, 2)
 	_ = runtime.Callers(0, pcs)
-	return getPackageName(runtime.FuncForPC(pcs[1]).Name())
+	return  getPackageName(runtime.FuncForPC(pcs[1]).Name())
 }
 
 // getPackageName reduces a fully qualified function name to the package name

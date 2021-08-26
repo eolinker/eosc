@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+
+
 //LineFormatter 格式化
 type LineFormatter struct {
 	TimestampFormat  string
@@ -21,8 +23,8 @@ func (f *LineFormatter) Format(entry *Entry) ([]byte, error) {
 		data[k] = v
 	}
 
-	b := &bytes.Buffer{}
-	b.Reset()
+	 b := &bytes.Buffer{}
+	 b.Reset()
 
 	timestampFormat := f.TimestampFormat
 	if timestampFormat == "" {
