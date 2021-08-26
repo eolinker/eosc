@@ -32,7 +32,7 @@ func (ps *Professions) ListEmployees(profession string) ([]interface{}, error) {
 	ids := p.ids()
 	res := make([]interface{}, 0, len(ids))
 	for _, id := range ids {
-		value, has := ps.store.Get(SpaceWorker, id)
+		value, has := ps.store.Get(id)
 		if has {
 			p, has := ps.data.get(value.Profession)
 			if has {
@@ -55,7 +55,7 @@ func (ps *Professions) Delete(profession, name string) (*WorkerInfo, error) {
 	if !hasId {
 		id = name
 	}
-	v, has := ps.store.Get(SpaceWorker, id)
+	v, has := ps.store.Get(id)
 	if !has {
 		return nil, ErrorWorkerNotExits
 	}
@@ -66,7 +66,7 @@ func (ps *Professions) Delete(profession, name string) (*WorkerInfo, error) {
 		return nil, ErrorWorkerNotExits
 	}
 
-	err := ps.store.Del(SpaceWorker, id)
+	err := ps.store.Del(id)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (ps *Professions) GetEmployee(profession, name string) (interface{}, error)
 		id = name
 	}
 
-	value, has := ps.store.Get(SpaceWorker, id)
+	value, has := ps.store.Get(id)
 	if !has {
 		return nil, ErrorWorkerNotExits
 	}
@@ -183,7 +183,7 @@ func (ps *Professions) SearchBySkill(profession string, skill []string) ([]Worke
 		if has {
 			for _, s := range skill {
 				if w.CheckSkill(s) {
-					v, has := ps.store.Get(SpaceWorker, id)
+					v, has := ps.store.Get(id)
 					if has {
 						res = append(res, WorkerInfo{
 							Id:     id,
@@ -212,7 +212,7 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 	if !hasId {
 		id = name
 	}
-	v, has := ps.store.Get(SpaceWorker, id)
+	v, has := ps.store.Get(id)
 	if !has {
 		if driver == "" {
 			return nil, fmt.Errorf("driver:%w", ErrorRequire)
@@ -251,7 +251,7 @@ func (ps *Professions) Update(profession, name, driver string, data IData) (*Wor
 		return nil, err
 	}
 
-	if err := ps.store.Set(SpaceWorker, v); err != nil {
+	if err := ps.store.Set(v); err != nil {
 		return nil, err
 	}
 
