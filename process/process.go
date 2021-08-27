@@ -59,7 +59,7 @@ func Register(name string,processHandler func())error  {
 	processHandlers[name] = processHandler
 	return nil
 }
-func Start(name string,args []string)  {
+func Start(name string,args []string,extra[]*os.File)  {
 	log.Println("start:",name,":",args)
 	argsChild:=make([]string,len(args)+1)
 	argsChild[0] = name
@@ -77,7 +77,7 @@ func Start(name string,args []string)  {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-
+	cmd.ExtraFiles = extra
 	e:=cmd.Start()
 	if e!=nil{
 		log.Panic(e)

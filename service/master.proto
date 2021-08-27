@@ -1,20 +1,36 @@
 syntax = "proto3";
-
-
 option go_package = "github.com/eolinker/eosc/service";
-
 package service;
 
 message ListenerRequest{
-  int32  Port = 1;
-}
-message ListenerResponse{
-  int64 File=1;
-}
-service Master {
-  rpc GetListen(ListenerRequest)returns(ListenerResponse){}
+  string Scheme=1;
+  int32  Port = 2;
 }
 
-service Worker {
-  rpc
+message AcceptResponse  {
+  int32 status=1;
+  uint64 FD=2;
+  string Scheme=3;
+  int32  port=4;
+  string Message=5;
 }
+
+message FileHandler{
+  int32  Code=1;
+  uint64 FD=2;
+  string Name=3;
+  string Path=4;
+  string Error=5;
+}
+
+message FileOpen{
+  string filePath=1;
+  int32 flag=2;
+  uint32 FileMode=3;
+}
+
+service Master {
+  rpc Accept(ListenerRequest)returns(stream AcceptResponse){}
+  rpc Open(FileOpen)returns( FileHandler){}
+}
+

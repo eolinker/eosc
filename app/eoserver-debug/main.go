@@ -6,9 +6,13 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package main
 
-func Master() {
+import (
+	"github.com/eolinker/eosc/master"
+)
 
+func main() {
+	master.Master()
 
 }
