@@ -1,14 +1,14 @@
 package eoscli
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
-func Start() *cli.Command {
+var CmdStart = "start"
+
+func Start(start cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:  "start",
+		Name:  CmdStart,
 		Usage: "start eosc server",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -41,12 +41,17 @@ func Start() *cli.Command {
 				Aliases: []string{"addr"},
 				Usage:   "port for the node broadcast",
 			},
+			&cli.StringFlag{
+				Name:    "user",
+				Aliases: []string{"u"},
+				Usage:   "eosc",
+			},
+			&cli.StringFlag{
+				Name:    "group",
+				Aliases: []string{"g"},
+				Usage:   "eosc",
+			},
 		},
 		Action: start,
 	}
-}
-
-func start(c *cli.Context) error {
-	fmt.Println("eosc start")
-	return nil
 }

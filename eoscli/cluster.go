@@ -2,9 +2,11 @@ package eoscli
 
 import "github.com/urfave/cli/v2"
 
+var CmdCluster = "clusters"
+
 func Cluster() *cli.Command {
 	return &cli.Command{
-		Name:   "clusters",
+		Name:   CmdCluster,
 		Usage:  "list the clusters",
 		Action: cluster,
 	}
