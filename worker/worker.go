@@ -8,6 +8,46 @@
 
 package worker
 
+import (
+	"log"
+	"net/http"
+	"time"
+)
+
 func Work() {
+	log.Println("start work")
+
+
+
+
+
+
+	//
+	//conn, err := grpc_unixsocket.Connect("/tmp/eoserver.master.sock")
+	//if err!= nil{
+	//	log.Println(err)
+	//	return
+	//}
+	//defer conn.Close()
+	//masterClient:=service.NewMasterClient(conn)
+	//listener, err := process_listener.NewListener(masterClient, 1900)
+	//if err!= nil{
+	//	log.Println(err)
+	//	return
+	//}
+	//err=http.Serve(listener,new(httpTest))
+	//if err!= nil{
+	//	log.Println(err)
+	//}
+}
+type httpTest struct {
 
 }
+
+func (h *httpTest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	n:=time.Now()
+	w.Write([]byte(n.Format(time.RFC3339Nano)))
+
+}
+

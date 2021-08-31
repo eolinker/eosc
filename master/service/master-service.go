@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+ * Copyright (c) 2021-2021. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
  * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
  * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
  * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
@@ -12,11 +12,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/eolinker/eosc/listener"
-	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -42,17 +43,22 @@ func (m *MasterServer) Accept(request *service.ListenerRequest, server service.M
 		
 		f,e:=c.(*net.TCPConn).File()
 		if e!= nil{
-			log.Info("tcp connect to file :%s",e)
+			log.Println("tcp connect to file :",e.Error())
 			continue
 		}
+
+		fd:=f.Fd()
+
+		log.Println("master send:fd=",fd)
 		er:=server.Send(&service.AcceptResponse{
 			Status:  0,
-			FD:      uint64(f.Fd()),
+			FD:      syscall.UnixRights(int(fd)),
 			Scheme:  request.Scheme,
 			Port:    request.Port,
 			Message: "",
 		})
 		if er!= nil{
+			log.Println(err)
 			return er
 		}
 	}
