@@ -40,7 +40,7 @@ func (m *MasterServer) Accept(request *service.ListenerRequest, server service.M
 		if e!=nil{
 			return e
 		}
-		
+
 		f,e:=c.(*net.TCPConn).File()
 		if e!= nil{
 			log.Println("tcp connect to file :",e.Error())
