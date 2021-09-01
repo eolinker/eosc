@@ -1,0 +1,16 @@
+
+syntax = "proto3";
+
+
+option go_package = "github.com/eolinker/eosc/service";
+package service;
+
+message Error{
+  int64 Code = 1;
+  string Error = 2;
+}
+
+message CMD {
+  string cmd =1;
+  bytes  data =2;
+}

@@ -6,26 +6,11 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package main
-
-import (
-	"github.com/eolinker/eosc/helper"
-	"github.com/eolinker/eosc/master"
-	"github.com/eolinker/eosc/process"
-	"github.com/eolinker/eosc/worker"
-	"os"
+package traffic
+var(
+	controller = NewController()
 )
-
-func init() {
-	process.Register("worker", worker.Work)
-	process.Register("master", master.Master)
-	process.Register("helper",helper.Helper)
+func Export() []*Traffic {
+	return controller.export()
 }
-func main() {
-	if process.Run(){
-		return
-	}
 
-	process.Start("master",os.Args[1:],nil)
-
-}

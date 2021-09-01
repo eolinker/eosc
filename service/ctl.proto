@@ -1,0 +1,28 @@
+syntax = "proto3";
+option go_package = "github.com/eolinker/eosc/service";
+package service;
+
+//cli service : 提供管理接口给 cli
+
+message JoinRequest {
+
+}
+message JoinResponse{
+
+}
+message LeaveRequest{
+
+}
+message LeaveResponse{
+
+}
+message InfoRequest{}
+message InfoResponse{}
+
+message ClusterRequest{}
+message ClusterResponse{}
+
+service CtiService {
+  rpc Join(JoinRequest)returns(JoinResponse){}
+  rpc Leave(LeaveRequest)returns(LeaveResponse){}
+}

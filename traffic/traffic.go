@@ -4,28 +4,25 @@
  * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
  * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
  * Vestibulum commodo. Ut rhoncus gravida arcu.
+ *
  */
+/*
 
-package main
+io 通信控制模块
+管理所有的需要热重启的监听管理（端口监听）， 只允许master执行新增， 序列化成描述信息+文件描述符列表，在fork worker时传递给worker，
+worker只允许使用传入进来的端口
+
+ */
+package traffic
 
 import (
-	"github.com/eolinker/eosc/helper"
-	"github.com/eolinker/eosc/master"
-	"github.com/eolinker/eosc/process"
-	"github.com/eolinker/eosc/worker"
+	"net"
 	"os"
 )
 
-func init() {
-	process.Register("worker", worker.Work)
-	process.Register("master", master.Master)
-	process.Register("helper",helper.Helper)
+type Traffic struct {
+	Addr net.Addr
+	File *os.File
 }
-func main() {
-	if process.Run(){
-		return
-	}
 
-	process.Start("master",os.Args[1:],nil)
-
-}
+type Traffics []*Traffic

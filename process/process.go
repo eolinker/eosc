@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 )
@@ -28,6 +29,7 @@ var (
 	ErrorProcessHandlerConflict = errors.New("process handler name conflict")
 	runIdx = 0
 	path = ""
+	appName = ""
 )
 
 func init() {
@@ -38,8 +40,8 @@ func init() {
 	}else{
 		path =  p
 	}
-
-
+	appName = filepath.Base(path)
+	log.Printf("app = %s\n",appName)
 	log.Println(EnvDaemonName,"=",os.Getenv(EnvDaemonName))
 	idx,err:=strconv.Atoi( os.Getenv(EnvDaemonName))
 	if err!= nil{
@@ -50,38 +52,45 @@ func init() {
 		runIdx = idx
 	}
 }
-func Register(name string,processHandler func())error  {
 
-	_,has:=processHandlers[name]
+func Register(name string,processHandler func())error  {
+	key:= toKey(name)
+	_,has:=processHandlers[key]
 	if has{
 		return fmt.Errorf("%w by %s",ErrorProcessHandlerConflict,name)
 	}
-	processHandlers[name] = processHandler
+	log.Printf("register %s = %s\n",name,key)
+	processHandlers[key] = processHandler
 	return nil
 }
-func Start(name string,args []string)  {
-	log.Println("start:",name,":",args)
+func Start(name string,args []string,extra[]*os.File)(*exec.Cmd ,error){
+
 	argsChild:=make([]string,len(args)+1)
-	argsChild[0] = name
+
+	argsChild[0] = toKey(name)
 	if len(args) > 0{
 		copy(argsChild[1:],args)
 	}
 
 	cmd:=reexec.Command(argsChild...)
 	if cmd == nil{
-		log.Panicf("no support os:%s\n",runtime.GOOS)
-		return
+		log.Printf("no support os:%s\n",runtime.GOOS)
+		return nil,errors.New("not supper os:"+runtime.GOOS)
 	}
-	cmd.Path = path
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
 
+
+	cmd.Path = path
+	//cmd.Stdin = os.Stdin
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.ExtraFiles = extra
 	e:=cmd.Start()
 	if e!=nil{
-		log.Panic(e)
+		log.Println(e)
+		return nil,e
 	}
+	return cmd,nil
 }
 
 // run process
@@ -92,14 +101,13 @@ func Run() bool{
 		daemon(runIdx+1)
 		return true
 	}
-
+	log.Printf("run try %s",os.Args[0])
 
 	ph, exists := processHandlers[os.Args[0]]
 	if exists {
 		ph()
 		return true
 	}
-
 	return false
 }
 
@@ -120,4 +128,8 @@ func daemon(idx int)  {
 		panic(err)
 	}
 	return
+}
+
+func toKey(name string)string  {
+	return fmt.Sprintf("%s: %s",appName, name)
 }

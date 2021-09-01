@@ -6,26 +6,19 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package main
+package worker_handler
 
 import (
-	"github.com/eolinker/eosc/helper"
-	"github.com/eolinker/eosc/master"
+	"context"
 	"github.com/eolinker/eosc/process"
-	"github.com/eolinker/eosc/worker"
 	"os"
 )
 
-func init() {
-	process.Register("worker", worker.Work)
-	process.Register("master", master.Master)
-	process.Register("helper",helper.Helper)
+type WorkerHandler struct {
+
 }
-func main() {
-	if process.Run(){
-		return
-	}
 
-	process.Start("master",os.Args[1:],nil)
-
+func (w *WorkerHandler) Start(ctx context.Context,extra []*os.File)error  {
+	 process.Start("worker",nil,nil)
+	 return nil
 }

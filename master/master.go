@@ -8,6 +8,42 @@
 
 package master
 
-func Main() {
+import (
+	"github.com/eolinker/eosc/process"
+	"google.golang.org/grpc"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+)
+var(
+	masterSrv *grpc.Server
+)
+func Master() {
+	log.Println("start master")
+	//srv, err := service.StartMaster("/tmp/eoserver.master.sock")
+ 	//if err!= nil{
+ 	//	log.Println(err)
+	//	return
+	//}
+	//masterSrv = srv
+
+
+	work,err:=process.Start("worker",nil,nil)
+	if err != nil{
+		log.Println(err)
+		return
+	}
+	os.Pipe()
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	// Wait for a SIGINT or SIGKILL:
+	sig := <- sigc
+	log.Printf("Caught signal %s: shutting down.", sig)
+	// Stop listening (and unlink the socket if unix type):
+	masterSrv.Stop()
+	// And we're done:
+	os.Exit(0)
 
 }
