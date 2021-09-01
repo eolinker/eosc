@@ -10,7 +10,18 @@ package traffic
 var(
 	controller = NewController()
 )
-func Export() []*Traffic {
-	return controller.export()
+
+
+
+func  Listener(network string, addr string) error {
+	return controller.Listener(network,addr)
+}
+
+func  All() Traffics {
+	return controller.All()
+}
+
+func  Close() {
+	controller.Close()
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/eolinker/eosc/master"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/worker"
+	"log"
 	"os"
 )
 
@@ -22,6 +23,7 @@ func init() {
 	process.Register("helper",helper.Helper)
 }
 func main() {
+	log.SetPrefix("cli")
 	if process.Run(){
 		return
 	}
