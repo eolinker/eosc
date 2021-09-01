@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Start() *cli.Command {
+func Start(start cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "start",
 		Usage: "start eosc server",

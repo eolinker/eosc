@@ -4,7 +4,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Leave() *cli.Command {
+func Leave(leave cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "leave",
 		Usage: "leave the cluster",
@@ -17,10 +17,4 @@ func Leave() *cli.Command {
 		},
 		Action: leave,
 	}
-}
-
-func leave(c *cli.Context) error {
-
-	// TODO 移除节点操作
-	return nil
 }

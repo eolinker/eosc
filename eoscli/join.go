@@ -1,12 +1,10 @@
 package eoscli
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
-func Join() *cli.Command {
+func Join(join cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "join",
 		Usage: "join the cluster",
@@ -31,14 +29,4 @@ func Join() *cli.Command {
 		},
 		Action: join,
 	}
-}
-
-func join(c *cli.Context) error {
-	ip := c.String("broadcast_ip")
-	port := c.Int("broadcast_port")
-	fmt.Printf("broadcast ip is %s, broadcast port is %d\n", ip, port)
-	fmt.Printf("eosc is joining, please wait...\n")
-
-	// TODO 集群加入操作
-	return nil
 }
