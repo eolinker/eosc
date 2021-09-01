@@ -2,15 +2,12 @@ package eoscli
 
 import "github.com/urfave/cli/v2"
 
-func Cluster() *cli.Command {
+var CmdCluster = "clusters"
+
+func Cluster(cluster cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:   "clusters",
+		Name:   CmdCluster,
 		Usage:  "list the clusters",
 		Action: cluster,
 	}
-}
-
-func cluster(c *cli.Context) error {
-	// TODO: 列出集群列表信息
-	return nil
 }

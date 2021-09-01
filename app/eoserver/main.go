@@ -9,30 +9,23 @@
 package main
 
 import (
-	"github.com/eolinker/eosc/process"
-	"log"
 	"os"
-	"time"
+
+	"github.com/eolinker/eosc/helper"
+	"github.com/eolinker/eosc/master"
+	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/worker"
 )
 
 func init() {
-	process.Register("worker:eoServer", func() {
-		log.Print("run worker:eoServer")
-		time.Sleep(time.Minute)
-	})
-	process.Register("master:eoServer", func() {
-		log.Print("run master:eoServer")
-		log.Print("call worker:eoServer")
-		process.Start("worker:eoServer",nil)
-
-		time.Sleep(time.Minute)
-
-
-	})
+	process.Register("eoserver: worker", worker.Work)
+	process.Register("eoserver: master", master.Master)
+	process.Register("eoserver: helper", helper.Helper)
 }
 func main() {
-	if process.Run(){
+	if process.Run() {
 		return
 	}
-	process.Start("master:eoServer",os.Args[1:])
+
+	process.Start("eoserver: master", os.Args[1:], nil)
 }
