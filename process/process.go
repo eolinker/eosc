@@ -59,12 +59,31 @@ func Register(name string,processHandler func())error  {
 	if has{
 		return fmt.Errorf("%w by %s",ErrorProcessHandlerConflict,name)
 	}
-	log.Printf("register %s = %s\n",name,key)
+	//log.Printf("register %s = %s\n",name,key)
 	processHandlers[key] = processHandler
 	return nil
 }
 func Start(name string,args []string,extra[]*os.File)(*exec.Cmd ,error){
 
+	cmd,err:=Cmd(name,args)
+	if err!= nil{
+		log.Println(err)
+		return nil,err
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin  = os.Stdin
+	cmd.Env = os.Environ()
+	cmd.ExtraFiles = extra
+	e:=cmd.Start()
+	if e!=nil{
+		log.Println(e)
+		return nil,e
+	}
+
+	return cmd,nil
+}
+func Cmd(name string,args []string) (*exec.Cmd ,error) {
 	argsChild:=make([]string,len(args)+1)
 
 	argsChild[0] = toKey(name)
@@ -74,25 +93,11 @@ func Start(name string,args []string,extra[]*os.File)(*exec.Cmd ,error){
 
 	cmd:=reexec.Command(argsChild...)
 	if cmd == nil{
-		log.Printf("no support os:%s\n",runtime.GOOS)
 		return nil,errors.New("not supper os:"+runtime.GOOS)
 	}
-
-
 	cmd.Path = path
-	//cmd.Stdin = os.Stdin
-	//cmd.Stdout = os.Stdout
-	//cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.ExtraFiles = extra
-	e:=cmd.Start()
-	if e!=nil{
-		log.Println(e)
-		return nil,e
-	}
 	return cmd,nil
 }
-
 // run process
 func Run() bool{
 
@@ -101,6 +106,7 @@ func Run() bool{
 		daemon(runIdx+1)
 		return true
 	}
+
 	log.Printf("run try %s",os.Args[0])
 
 	ph, exists := processHandlers[os.Args[0]]

@@ -9,8 +9,15 @@ message Error{
   int64 Code = 1;
   string Error = 2;
 }
+message Traffic {
+  uint64 FD =1;
+  string Addr=2;
+  string Network=3;
+}
 
-message CMD {
-  string cmd =1;
-  bytes  data =2;
+message WorkerConfig {
+
+  Traffic traffic = 1;
+  bytes store = 2;
+
 }

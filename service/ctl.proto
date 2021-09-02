@@ -5,17 +5,30 @@ package service;
 //cli service : 提供管理接口给 cli
 
 message JoinRequest {
+  string broadcastIP = 1;
+  int32 broadcastPort = 2;
 
 }
 message JoinResponse{
-
+  string msg  = 1;
+  string code = 2;
+  NodeInfo info = 3;
 }
+
+message NodeInfo {
+  string nodeKey = 1;
+  int32 nodeID = 2;
+}
+
 message LeaveRequest{
-
+  NodeInfo info = 1;
 }
+
 message LeaveResponse{
-
+  string msg  = 1;
+  string code = 2;
 }
+
 message InfoRequest{}
 message InfoResponse{}
 
