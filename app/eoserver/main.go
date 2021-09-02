@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	process.Register("worker", worker.Work)
+	process.Register("worker", worker.Worker)
 	process.Register("master", master.Master)
 	process.Register("helper",helper.Helper)
 }
