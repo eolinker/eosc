@@ -11,7 +11,6 @@ package process
 import (
 	"errors"
 	"fmt"
-	"github.com/docker/docker/pkg/reexec"
 	"log"
 	"os"
 	"os/exec"
@@ -75,6 +74,7 @@ func Start(name string,args []string,extra[]*os.File)(*exec.Cmd ,error){
 	cmd.Stdin  = os.Stdin
 	cmd.Env = os.Environ()
 	cmd.ExtraFiles = extra
+
 	e:=cmd.Start()
 	if e!=nil{
 		log.Println(e)
@@ -91,11 +91,12 @@ func Cmd(name string,args []string) (*exec.Cmd ,error) {
 		copy(argsChild[1:],args)
 	}
 
-	cmd:=reexec.Command(argsChild...)
+	cmd:=exec.Command(path,argsChild...)
 	if cmd == nil{
 		return nil,errors.New("not supper os:"+runtime.GOOS)
 	}
 	cmd.Path = path
+	cmd.Args = argsChild
 	return cmd,nil
 }
 // run process

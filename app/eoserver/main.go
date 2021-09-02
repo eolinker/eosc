@@ -18,9 +18,9 @@ import (
 )
 
 func init() {
-	process.Register("worker", worker.Worker)
-	process.Register("master", master.Master)
-	process.Register("helper",helper.Helper)
+	process.Register("worker", worker.Process)
+	process.Register("master", master.Process)
+	process.Register("helper",helper.Process)
 }
 func main() {
 	log.SetPrefix("cli")

@@ -30,7 +30,7 @@ func (t TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("handler:")
 }
 
-func Worker() {
+func Process() {
 	log.SetPrefix("[worker]")
 	log.Println("start work")
 
