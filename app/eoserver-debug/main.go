@@ -9,25 +9,10 @@
 package main
 
 import (
-	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/master"
-	"github.com/eolinker/eosc/process"
-	"github.com/eolinker/eosc/worker"
-	"log"
-	"os"
 )
 
-func init() {
-	process.Register("worker", worker.Worker)
-	process.Register("master", master.Master)
-	process.Register("helper",helper.Helper)
-}
 func main() {
-	log.SetPrefix("cli")
-	if process.Run(){
-		return
-	}
-
-	process.Start("master",os.Args[1:],nil)
+	master.Master()
 
 }
