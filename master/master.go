@@ -9,9 +9,9 @@
 package master
 
 import (
-	"errors"
-	"strings"
 	"time"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
@@ -36,8 +36,7 @@ func Process() {
 }
 
 type Master struct {
-	srv  *grpc.Server
-	args map[string]string
+	srv *grpc.Server
 }
 
 func (m *Master) InitLogTransport() {
@@ -54,14 +53,7 @@ func (m *Master) InitLogTransport() {
 
 func (m *Master) Start() {
 	m.InitLogTransport()
-	// 新增unix文件
-	//args, err := m.parseArgs()
-	//if err != nil {
-	//	log.Error(err)
-	//	os.Exit(1)
-	//	return
-	//}
-	//fmt.Println(args)
+
 	log.Info("start master")
 	srv, err := service.StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 	if err != nil {
@@ -73,6 +65,16 @@ func (m *Master) Start() {
 	m.srv = srv
 	trafficController := traffic.NewController()
 	defer trafficController.Close()
+	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
+	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
+	log.Info(fmt.Sprintf("%s:%s", ip, port))
+	// 监听master监听地址，用于接口处理
+	err = trafficController.Listener("tcp", fmt.Sprintf("%s:%s", ip, port))
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+		return
+	}
 
 	//TODO 若该进程是master的子进程，则给父进程一个退出信号
 	pEnv := fmt.Sprintf("%s_%s",process.AppName(),"IS_MASTER_CHILD")
@@ -108,22 +110,6 @@ func (m *Master) Wait() error {
 func (m *Master) close() {
 	syscall.Unlink(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 
-}
-
-func (m *Master) parseArgs() (map[string]string, error) {
-	if len(os.Args) < 2 {
-		return nil, errors.New("missing runtime args")
-	}
-	args := make(map[string]string)
-	for _, value := range os.Args[2:] {
-
-		value := strings.TrimPrefix(value, "--")
-		index := strings.Index(value, "=")
-		if index != -1 {
-			args[value[:index]] = value[index+1:]
-		}
-	}
-	return args, nil
 }
 
 func NewMasterHandle() *Master {
