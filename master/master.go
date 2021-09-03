@@ -11,10 +11,10 @@ package master
 import (
 	"errors"
 	"strings"
-
-	"github.com/eolinker/eosc/log/filelog"
+	"time"
 
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/log/filelog"
 	"github.com/eolinker/eosc/traffic"
 	"google.golang.org/grpc"
 
@@ -42,26 +42,25 @@ type Master struct {
 
 func (m *Master) InitLogTransport() {
 	writer := filelog.NewFileWriteByPeriod()
-	dir := "work/logs"
-	os.Getenv("")
-	periodTransport := log.NewTransport(writer, log.InfoLevel)
-	periodTransport.SetFormatter(&log.LineFormatter{
+	writer.Set(fmt.Sprintf("/var/log/%s", process.AppName()), "error.log", filelog.PeriodDay, 7*24*time.Hour)
+	transport := log.NewTransport(writer, log.InfoLevel)
+	transport.SetFormatter(&log.LineFormatter{
 		TimestampFormat:  "[2006-01-02 15:04:05]",
 		CallerPrettyfier: nil,
 	})
-
+	log.Reset(transport)
 }
 
 func (m *Master) Start() {
-
+	m.InitLogTransport()
 	// 新增unix文件
-	args, err := m.parseArgs()
-	if err != nil {
-		log.Error(err)
-		os.Exit(1)
-		return
-	}
-	fmt.Println(args)
+	//args, err := m.parseArgs()
+	//if err != nil {
+	//	log.Error(err)
+	//	os.Exit(1)
+	//	return
+	//}
+	//fmt.Println(args)
 	log.Info("start master")
 	srv, err := service.StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 	if err != nil {
