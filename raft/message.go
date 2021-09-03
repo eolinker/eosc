@@ -22,22 +22,22 @@ type Response struct {
 }
 
 type ProposeMsg struct {
-	From int    `json:"from"`
+	From uint64 `json:"from"`
 	To   int    `json:"to"`
 	Cmd  string `json:"cmd"`
 	Data []byte `json:"data"`
 }
 
 type JoinMsg struct {
-	Id    int                 `json:"id"`
-	Host  string              `json:"host"`
-	Peers map[types.ID]string `json:"peers"`
+	Id    int               `json:"id"`
+	Host  string            `json:"host"`
+	Peers map[uint64]string `json:"peers"`
 }
 
 // Message 发送Propose和Init消息结构
 type Message struct {
 	Type commandType
-	From int
+	From uint64
 	Cmd  string
 	Data []byte
 }
