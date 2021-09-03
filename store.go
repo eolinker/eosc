@@ -26,6 +26,7 @@ type IStoreEventHandler interface {
 	OnDel(v StoreValue) error
 	OnChange(v StoreValue) error
 }
+
 type IStoreRW interface {
 	Initialization() error
 	All() []StoreValue
@@ -33,6 +34,7 @@ type IStoreRW interface {
 	Set(v StoreValue) error
 	Del(id string) error
 	ReadOnly() bool
+	Reset([]StoreValue) error
 }
 
 type IStoreListener interface {

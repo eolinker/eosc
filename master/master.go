@@ -1,3 +1,5 @@
+//+build !windows
+
 /*
  * Copyright (c) 2021. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
  * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
@@ -9,11 +11,20 @@
 package master
 
 import (
+
 	"github.com/eolinker/eosc/log"
+
+
+	"fmt"
+
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/eolinker/eosc/process"
+
 )
+
 func Process() {
 	master:=NewMasterHandle()
 	master.Start()
@@ -25,15 +36,19 @@ type Master struct {
 
 }
 
+
+
 func (m *Master) Start() {
 
 }
 
-func (m *Master) Wait() error {
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGTERM)
 
-	// Wait for a SIGINT or SIGKILL:
+func (m *Master) Wait() error {
+
+
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGKILL)
+
 	sig := <- sigc
 	log.Info("Caught signal %s: shutting down.", sig)
 
@@ -41,7 +56,7 @@ func (m *Master) Wait() error {
 	return nil
 }
 func (m *Master) close()  {
-
+	syscall.Unlink(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 
 }
 

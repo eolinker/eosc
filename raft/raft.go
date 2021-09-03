@@ -32,10 +32,12 @@ import (
 var defaultSnapshotCount uint64 = 10000
 var snapshotCatchUpEntriesN uint64 = 10000
 
+var retryFrequency time.Duration = 2000
+
 // raft节点结构
 type raftNode struct {
 	// 节点ID
-	nodeID int
+	nodeID uint64
 
 	// eosc 服务相关
 	Service IService
@@ -122,46 +124,42 @@ func JoinCluster(local string, target string, service IService) (*raftNode, erro
 }
 
 // joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
-func joinAndCreateRaft(id int, host string, service IService, peerList map[types.ID]string) *raftNode {
-	// 确保peer一定有节点本身
-	peerList[types.ID(id)] = host
-
-	// 日志文件路径
-	waldir := fmt.Sprintf("eosc-%d", id)
-	snapdir := fmt.Sprintf("eosc-%d-snap", id)
-
+func joinAndCreateRaft(id int, host string, service IService, peerList map[uint64]string) *raftNode {
 	rc := &raftNode{
-		nodeID:    id,
-		peers:     NewPeers(peerList, len(peerList)),
+		nodeID:    uint64(id),
 		Service:   service,
 		join:      true,
 		isCluster: true,
 		// 日志文件目前直接以id命名初始化
-		waldir:    waldir,
-		snapdir:   snapdir,
+		waldir:    fmt.Sprintf("eosc-%d", id),
+		snapdir:   fmt.Sprintf("eosc-%d-snap", id),
 		snapCount: defaultSnapshotCount,
 		stopc:     make(chan struct{}),
 		httpstopc: make(chan struct{}),
 		httpdonec: make(chan struct{}),
 		logger:    zap.NewExample(),
 		waiter:    wait.New(),
-		lead:      uint64(0),
+		lead:      0,
 		active:    true,
 	}
+
+	// 确保peer一定有节点本身
+	peerList[rc.nodeID] = host
+	rc.peers = NewPeers(peerList, len(peerList))
 	// 创建并启动 transport 实例，该负责节点之间的网络通信，
 	// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
 	rc.transport = &rafthttp.Transport{
-		Logger:      rc.logger,
-		ID:          types.ID(rc.nodeID),
-		ClusterID:   0x1000,
-		Raft:        rc,
-		ServerStats: stats.NewServerStats("", ""),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.nodeID)),
-		ErrorC:      make(chan error),
+		Logger:             rc.logger,
+		ID:                 types.ID(rc.nodeID),
+		ClusterID:          0x1000,
+		Raft:               rc,
+		ServerStats:        stats.NewServerStats("", ""),
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
+		ErrorC:             make(chan error),
+		DialRetryFrequency: rate.Every(retryFrequency * time.Millisecond),
 	}
-	// 设置一下节点间的重试频率
-	rc.transport.DialRetryFrequency = rate.Every(2000 * time.Millisecond)
-	// 因为是join，直接启动
+
+	// raft启动
 	go rc.serveRaft()
 	go rc.startRaft()
 	return rc
@@ -177,7 +175,7 @@ func joinAndCreateRaft(id int, host string, service IService, peerList map[types
 // 3、创建加入已知集群的节点，join为true，isCluster为true，此时peers需包括其他节点地址，推荐使用JoinCluster来新建非单点集群节点
 func CreateRaftNode(id int, host string, service IService, peers string, keys string, join bool, isCluster bool) (*raftNode, error) {
 	rc := &raftNode{
-		nodeID:    id,
+		nodeID:    uint64(id),
 		Service:   service,
 		join:      join,
 		waldir:    fmt.Sprintf("eosc-%d", id), // 日志文件路径
@@ -188,7 +186,7 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 		httpdonec: make(chan struct{}),
 		logger:    zap.NewExample(),
 		waiter:    wait.New(),
-		lead:      uint64(0),
+		lead:      0,
 		active:    true,
 	}
 	// 建过集群的节点不能再换回去（暂时采用该方案）
@@ -213,7 +211,7 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 		ClusterID:          0x1000,
 		Raft:               rc,
 		ServerStats:        stats.NewServerStats("", ""),
-		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.nodeID)),
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
 		ErrorC:             make(chan error),
 		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
 	}
@@ -257,7 +255,7 @@ func (rc *raftNode) startRaft() {
 
 	// 节点配置
 	c := &raft.Config{
-		ID:                        uint64(rc.nodeID),
+		ID:                        rc.nodeID,
 		ElectionTick:              10,
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
@@ -291,8 +289,8 @@ func (rc *raftNode) startRaft() {
 
 	for k, v := range peersList {
 		// transport加入peer列表，节点本身不添加
-		if k != types.ID(rc.nodeID) {
-			rc.transport.AddPeer(k, []string{v})
+		if k != rc.nodeID {
+			rc.transport.AddPeer(types.ID(k), []string{v})
 		}
 	}
 
@@ -402,10 +400,10 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 							rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
 						}
 					}
-					_, ok := rc.peers.GetPeerByID(types.ID(cc.NodeID))
+					_, ok := rc.peers.GetPeerByID(cc.NodeID)
 					if !ok {
 						// 已存在，不再新增
-						rc.peers.SetPeer(types.ID(cc.NodeID), string(cc.Context))
+						rc.peers.SetPeer(cc.NodeID, string(cc.Context))
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
@@ -418,10 +416,10 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 					// 存在才移除
 					rc.transport.RemovePeer(types.ID(cc.NodeID))
 				}
-				_, ok := rc.peers.GetPeerByID(types.ID(nodeID))
+				_, ok := rc.peers.GetPeerByID(uint64(nodeID))
 				if ok {
 					// 存在，减去
-					rc.peers.DeletePeerByID(types.ID(cc.NodeID))
+					rc.peers.DeletePeerByID(cc.NodeID)
 				}
 			}
 		}
@@ -721,7 +719,7 @@ func (rc *raftNode) Send(command string, send []byte) error {
 }
 
 // GetPeers 获取集群的peer列表，供API调用
-func (rc *raftNode) GetPeers() (map[types.ID]string, int, error) {
+func (rc *raftNode) GetPeers() (map[uint64]string, int, error) {
 	if !rc.active {
 		return nil, 0, fmt.Errorf("current node is stop")
 	}
@@ -799,7 +797,7 @@ func (rc *raftNode) InitSend() error {
 		return err
 	}
 	// 等待处理完
-	c := rc.waiter.Register(uint64(rc.nodeID))
+	c := rc.waiter.Register(rc.nodeID)
 	res := <-c
 	str, ok := res.(string)
 	if !ok {
@@ -861,8 +859,8 @@ func (rc *raftNode) changeCluster() error {
 	// 与集群中的其他节点建立通信
 	for k, v := range peerList {
 		// transport加入peer列表，节点本身不添加
-		if k != types.ID(rc.nodeID) {
-			rc.transport.AddPeer(k, []string{v})
+		if k != rc.nodeID {
+			rc.transport.AddPeer(types.ID(k), []string{v})
 		}
 	}
 	// 读ready
@@ -880,7 +878,7 @@ func (rc *raftNode) changeCluster() error {
 // serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
 func (rc *raftNode) serveRaft() {
 	log.Info("eosc: start raft serve listener")
-	v, ok := rc.peers.GetPeerByID(types.ID(rc.nodeID))
+	v, ok := rc.peers.GetPeerByID(rc.nodeID)
 	if !ok {
 		log.Fatalf("eosc: Failed read current node(%d) url ", rc.nodeID)
 	}
@@ -1070,10 +1068,10 @@ func (rc *raftNode) getLeader() (string, bool, error) {
 		}
 	}
 	flag := false
-	if uint64(rc.nodeID) == rc.lead {
+	if rc.nodeID == rc.lead {
 		flag = true
 	}
-	v, ok := rc.peers.GetPeerByID(types.ID(rc.lead))
+	v, ok := rc.peers.GetPeerByID(rc.lead)
 	if !ok {
 		return "", flag, fmt.Errorf("current node has no leader(%d) host", rc.lead)
 	}
@@ -1081,9 +1079,9 @@ func (rc *raftNode) getLeader() (string, bool, error) {
 }
 
 // Adjust 参数校验与调整
-func Adjust(id int, host string, peers string, keys string, isCluster bool) (map[types.ID]string, error) {
-	peerList := make(map[types.ID]string)
-	peerList[types.ID(id)] = host
+func Adjust(id uint64, host string, peers string, keys string, isCluster bool) (map[uint64]string, error) {
+	peerList := make(map[uint64]string)
+	peerList[id] = host
 	// 非集群模式不需要peer列表，此时peer列表仅有节点本身
 	if !isCluster {
 		return peerList, nil
@@ -1098,8 +1096,8 @@ func Adjust(id int, host string, peers string, keys string, isCluster bool) (map
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := peerList[types.ID(k)]; !ok {
-				peerList[types.ID(k)] = clusterList[i]
+			if _, ok := peerList[uint64(k)]; !ok {
+				peerList[uint64(k)] = clusterList[i]
 			}
 		}
 	}
