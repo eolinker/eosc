@@ -72,6 +72,12 @@ func (m *Master) Start() {
 	m.srv = srv
 	trafficController := traffic.NewController()
 	defer trafficController.Close()
+
+	//TODO 若该进程是master的子进程，则给父进程一个退出信号
+	pEnv := fmt.Sprintf("%s_%s",process.AppName(),"IS_MASTER_CHILD")
+	if  os.Getenv(pEnv) != "" {
+		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
+	}
 }
 
 func (m *Master) Wait() error {
@@ -90,6 +96,7 @@ func (m *Master) Wait() error {
 		case syscall.SIGUSR1:
 			{
 				// TODO: 平滑重启操作
+				process.Fork()  //传子进程需要的内容
 			}
 		default:
 			continue
