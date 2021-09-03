@@ -4,15 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process"
 	"github.com/urfave/cli/v2"
 )
 
 //start 开启节点
 func start(c *cli.Context) error {
+	args := make([]string, 0, 20)
+
 	ip := c.String("ip")
 	port := c.Int("port")
 
@@ -20,8 +22,7 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	args := make([]string, 0, 20)
-	args = append(args, fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
+	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	join := c.Bool("join")
 	if join {
 		args = append(args, fmt.Sprintf("--join=%v", join))
@@ -47,7 +48,12 @@ func start(c *cli.Context) error {
 			return errors.New("no valid cluster address")
 		}
 	}
-	process.Start("master", args, nil)
+	_, err = Start("master", args, nil)
+	if err != nil {
+		log.Errorf("start master error: %w", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -74,4 +80,17 @@ func info(c *cli.Context) error {
 //clusters 获取集群列表
 func clusters(c *cli.Context) error {
 	return nil
+}
+
+func writeConfig(params map[string]string) {
+
+}
+
+func setEnvs(params map[string]string) {
+	for key, value := range params {
+		err := os.Setenv(key, value)
+		if err != nil {
+			log.Errorf("set env error:%w", err)
+		}
+	}
 }

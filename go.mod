@@ -7,7 +7,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-basic/uuid v1.0.0 // indirect
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/urfave/cli v1.22.5
+	github.com/urfave/cli v1.22.5 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	go.etcd.io/etcd v2.3.8+incompatible
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0

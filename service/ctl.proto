@@ -35,6 +35,17 @@ message InfoResponse{}
 message ClusterRequest{}
 message ClusterResponse{}
 
+message StartConfig {
+  repeated EnvConfig config = 1;
+}
+
+
+
+message EnvConfig {
+  string key = 1;
+  string value = 2;
+}
+
 service CtiService {
   rpc Join(JoinRequest)returns(JoinResponse){}
   rpc Leave(LeaveRequest)returns(LeaveResponse){}
