@@ -43,6 +43,7 @@ type Master struct {
 func (m *Master) InitLogTransport() {
 	writer := filelog.NewFileWriteByPeriod()
 	writer.Set(fmt.Sprintf("/var/log/%s", process.AppName()), "error.log", filelog.PeriodDay, 7*24*time.Hour)
+	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
 	transport.SetFormatter(&log.LineFormatter{
 		TimestampFormat:  "[2006-01-02 15:04:05]",

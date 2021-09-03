@@ -22,6 +22,7 @@ func init() {
 		TimestampFormat: "2006-01-02 15:04:05",
 	}
 	stdoutTransport = NewTransport(os.Stdout, InfoLevel)
+	stdoutTransport.SetFormatter(lineFormatter)
 	transport = NewComplex()
 	logger = NewLogger(transport, false, "")
 	Reset()
