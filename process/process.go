@@ -17,8 +17,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-
-	"github.com/docker/docker/pkg/reexec"
 )
 
 const (
@@ -70,26 +68,27 @@ func Register(name string, processHandler func()) error {
 func Cmd(name string, args []string) (*exec.Cmd, error) {
 	argsChild := make([]string, len(args)+1)
 
+
 	argsChild[0] = toKey(name)
 	if len(args) > 0 {
 		copy(argsChild[1:], args)
 	}
-	fmt.Println("cmd name", name)
-	cmd := reexec.Command(argsChild...)
-	if cmd == nil {
-		return nil, errors.New("not supper os:" + runtime.GOOS)
+
+
+	cmd:=exec.Command(path,argsChild...)
+	if cmd == nil{
+		return nil,errors.New("not supper os:"+runtime.GOOS)
 	}
 	cmd.Path = path
-	return cmd, nil
+	cmd.Args = argsChild
+	return cmd,nil
 }
 
 // run process
 func Run() bool {
 
 	if runIdx == 0 {
-		log.Printf("daemon:%d\n", runIdx)
-		daemon(runIdx + 1)
-		return true
+ 		return true
 	}
 	//appName := strings.TrimPrefix(os.Args[0], "./")
 	log.Printf("run try %s", os.Args[0])

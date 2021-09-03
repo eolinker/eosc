@@ -11,8 +11,6 @@ var(
 	controller = NewController()
 )
 
-
-
 func  Listener(network string, addr string) error {
 	return controller.Listener(network,addr)
 }
