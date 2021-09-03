@@ -11,22 +11,25 @@ package traffic
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"os"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/utils"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
 	ErrorInvalidFiles = errors.New("invalid files")
 )
+
 type Traffics []*TrafficOut
 
+//IController 端口管理器接口
 type IController interface {
-	Listener(network string,addr string)error
- 	All()Traffics
+	Listener(network string, addr string) error
+	All() Traffics
 	Close()
 }
 
@@ -36,10 +39,10 @@ type Controller struct {
 
 func (c *Controller) All() Traffics {
 	list := c.data.List()
-	ts:=make(Traffics,0,len(list))
-	for _,it:=range list{
-		tf,ok:= it.(*TrafficOut)
-		if !ok{
+	ts := make(Traffics, 0, len(list))
+	for _, it := range list {
+		tf, ok := it.(*TrafficOut)
+		if !ok {
 			continue
 		}
 		ts = append(ts, tf)
@@ -47,21 +50,22 @@ func (c *Controller) All() Traffics {
 	return ts
 }
 
+//NewController 新建端口管理器（流量入口）
 func NewController() *Controller {
 	return &Controller{
 		data: eosc.NewUntyped(),
 	}
 }
 
-func (ts Traffics) WriteTo(w io.Writer) ([]*os.File,error){
+func (ts Traffics) WriteTo(w io.Writer) ([]*os.File, error) {
 
-	pts:=new(PbTraffics)
-	files:=make([]*os.File,0,len(ts))
-	pts.Traffic = make([]*PbTraffic,0,len(ts))
-	for i,it:=range ts{
+	pts := new(PbTraffics)
+	files := make([]*os.File, 0, len(ts))
+	pts.Traffic = make([]*PbTraffic, 0, len(ts))
+	for i, it := range ts {
 
-		pt:=&PbTraffic{
-			FD: uint64(i),
+		pt := &PbTraffic{
+			FD:      uint64(i),
 			Addr:    it.Addr.String(),
 			Network: it.Addr.Network(),
 		}
@@ -70,7 +74,7 @@ func (ts Traffics) WriteTo(w io.Writer) ([]*os.File,error){
 	}
 
 	data, err := proto.Marshal(pts)
-	if err!= nil{
+	if err != nil {
 		return nil, err
 	}
 	fmt.Println(data)
@@ -78,43 +82,44 @@ func (ts Traffics) WriteTo(w io.Writer) ([]*os.File,error){
 	if err != nil {
 		return nil, err
 	}
-	return files,nil
+	return files, nil
 }
+
+//Listener 设置端口监听器，如果地址已经被监听，则报错
 func (c *Controller) Listener(network string, addr string) error {
 	tcpAddr, err := net.ResolveTCPAddr(network, addr)
 	if err != nil {
 		return err
 	}
 
-	l,err:=net.ListenTCP(network,tcpAddr)
-	if err!= nil{
+	l, err := net.ListenTCP(network, tcpAddr)
+	if err != nil {
 		return err
 	}
 	file, err := l.File()
 	if err != nil {
 		return err
 	}
-	tf:=&TrafficOut{
-
+	tf := &TrafficOut{
 		Addr: tcpAddr,
 		File: file,
 	}
-	name:=fmt.Sprintf("%s://%s",tcpAddr.Network(),tcpAddr.String())
-	c.data.Set(name,tf)
+
+	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
+	c.data.Set(name, tf)
 	return nil
 }
 
-
+//Close 关闭文件监听
 func (c *Controller) Close() {
 	list := c.data.List()
 	c.data = eosc.NewUntyped()
 
-	for _,it:=range list{
-		tf,ok:=it.(*TrafficOut)
-		if !ok{
+	for _, it := range list {
+		tf, ok := it.(*TrafficOut)
+		if !ok {
 			continue
 		}
 		tf.File.Close()
 	}
 }
-

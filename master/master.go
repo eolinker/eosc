@@ -1,5 +1,3 @@
-//+build !windows
-
 /*
  * Copyright (c) 2021. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
  * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
@@ -11,9 +9,16 @@
 package master
 
 import (
+	"errors"
+	"strings"
+
+	"github.com/eolinker/eosc/log/filelog"
 
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/traffic"
+	"google.golang.org/grpc"
 
+	"github.com/eolinker/eosc/master/service"
 
 	"fmt"
 
@@ -22,42 +27,96 @@ import (
 	"syscall"
 
 	"github.com/eolinker/eosc/process"
-
 )
 
 func Process() {
-	master:=NewMasterHandle()
+	master := NewMasterHandle()
 	master.Start()
 	master.Wait()
-
 }
 
 type Master struct {
-
+	srv  *grpc.Server
+	args map[string]string
 }
 
+func (m *Master) InitLogTransport() {
+	writer := filelog.NewFileWriteByPeriod()
+	dir := "work/logs"
+	os.Getenv("")
+	periodTransport := log.NewTransport(writer, log.InfoLevel)
+	periodTransport.SetFormatter(&log.LineFormatter{
+		TimestampFormat:  "[2006-01-02 15:04:05]",
+		CallerPrettyfier: nil,
+	})
 
+}
 
 func (m *Master) Start() {
 
-}
+	// 新增unix文件
+	args, err := m.parseArgs()
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+		return
+	}
+	fmt.Println(args)
+	log.Info("start master")
+	srv, err := service.StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+		return
+	}
 
+	m.srv = srv
+	trafficController := traffic.NewController()
+	defer trafficController.Close()
+}
 
 func (m *Master) Wait() error {
-
-
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGKILL)
-
-	sig := <- sigc
-	log.Info("Caught signal %s: shutting down.", sig)
-
-	m.close()
-	return nil
+	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
+	for {
+		sig := <-sigc
+		switch sig {
+		case os.Interrupt, os.Kill, syscall.SIGQUIT:
+			{
+				log.Infof("Caught signal %s: shutting down.\n", sig.String())
+				m.srv.GracefulStop()
+				m.close()
+				return nil
+			}
+		case syscall.SIGUSR1:
+			{
+				// TODO: 平滑重启操作
+			}
+		default:
+			continue
+		}
+	}
 }
-func (m *Master) close()  {
+
+func (m *Master) close() {
 	syscall.Unlink(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 
+}
+
+func (m *Master) parseArgs() (map[string]string, error) {
+	if len(os.Args) < 2 {
+		return nil, errors.New("missing runtime args")
+	}
+	args := make(map[string]string)
+	for _, value := range os.Args[2:] {
+
+		value := strings.TrimPrefix(value, "--")
+		index := strings.Index(value, "=")
+		if index != -1 {
+			args[value[:index]] = value[index+1:]
+		}
+	}
+	return args, nil
 }
 
 func NewMasterHandle() *Master {

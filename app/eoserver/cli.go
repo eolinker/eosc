@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/eolinker/eosc/process"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/urfave/cli/v2"
 )
@@ -14,7 +16,6 @@ import (
 //start 开启节点
 func start(c *cli.Context) error {
 	args := make([]string, 0, 20)
-
 	ip := c.String("ip")
 	port := c.Int("port")
 
@@ -48,6 +49,7 @@ func start(c *cli.Context) error {
 			return errors.New("no valid cluster address")
 		}
 	}
+
 	_, err = Start("master", args, nil)
 	if err != nil {
 		log.Errorf("start master error: %w", err)
@@ -59,7 +61,7 @@ func start(c *cli.Context) error {
 
 //stop 停止节点
 func stop(c *cli.Context) error {
-	return nil
+	return process.Stop("master")
 }
 
 //join 加入集群

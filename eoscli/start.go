@@ -9,7 +9,7 @@ import (
 func Start(start cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "start",
-		Usage: "start eosc server",
+		Usage: "start goku server",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "admin-ip",
