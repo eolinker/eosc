@@ -28,8 +28,9 @@ func TestRaft(t *testing.T) {
 	client := &Client{
 		raft: raft,
 	}
-	httpServer := http.NewServeMux()
-	httpServer.Handle("/raft/api/", client.Handler())
+
+	//httpServer := http.NewServeMux()
+	//httpServer.Handle("/raft/api/", client.Handler())
 	log.Info(fmt.Sprintf("Listen http port %d successfully", httpPort))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), httpServer))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), client.Handler()))
 }
