@@ -103,7 +103,7 @@ func writeConfig(params map[string]string) error {
 		builder.WriteString(value)
 		builder.WriteString("\n")
 	}
-	return ioutil.WriteFile(fmt.Sprintf("work/%s.args"), []byte(builder.String()))
+	return ioutil.WriteFile(fmt.Sprintf("work/%s.args", process.AppName()), []byte(builder.String()), os.ModeAppend)
 }
 
 func readConfig() (map[string]string, error) {
