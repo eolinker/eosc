@@ -8,3 +8,11 @@
 
 package main
 
+import (
+	"github.com/eolinker/eosc/master"
+)
+
+func main() {
+	master.Master()
+
+}

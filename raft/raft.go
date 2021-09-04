@@ -58,12 +58,12 @@ type raftNode struct {
 	peers *Peers
 
 	// 快照相关
-	snapshotter *snap.Snapshotter
+	snapShotter *snap.Snapshotter
 	// 达到snapCount时本地保存快照
 	snapCount uint64
 	// 快照记录的索引
 	snapshotIndex uint64
-	snapdir       string // path to snapshot directory
+	snapDir       string // path to snapshot directory
 
 	// 日志与内存
 	raftStorage  *MemoryStorage
@@ -73,9 +73,9 @@ type raftNode struct {
 
 	// 与其他节点通信
 	transport *rafthttp.Transport
-	stopc     chan struct{} // signals proposal channel closed
-	httpstopc chan struct{} // signals http server to shutdown
-	httpdonec chan struct{} // signals http server shutdown complete
+	stopC     chan struct{} // signals proposal channel closed
+	httpStopC chan struct{} // signals http server to shutdown
+	httpDoneC chan struct{} // signals http server shutdown complete
 
 	// 日志相关，后续改为eosc_log
 	logger *zap.Logger
@@ -132,11 +132,11 @@ func joinAndCreateRaft(id int, host string, service IService, peerList map[uint6
 		isCluster: true,
 		// 日志文件目前直接以id命名初始化
 		waldir:    fmt.Sprintf("eosc-%d", id),
-		snapdir:   fmt.Sprintf("eosc-%d-snap", id),
+		snapDir:   fmt.Sprintf("eosc-%d-snap", id),
 		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
-		httpstopc: make(chan struct{}),
-		httpdonec: make(chan struct{}),
+		stopC:     make(chan struct{}),
+		httpStopC: make(chan struct{}),
+		httpDoneC: make(chan struct{}),
 		logger:    zap.NewExample(),
 		waiter:    wait.New(),
 		lead:      0,
@@ -179,11 +179,11 @@ func CreateRaftNode(id int, host string, service IService, peers string, keys st
 		Service:   service,
 		join:      join,
 		waldir:    fmt.Sprintf("eosc-%d", id), // 日志文件路径
-		snapdir:   fmt.Sprintf("eosc-%d-snap", id),
+		snapDir:   fmt.Sprintf("eosc-%d-snap", id),
 		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
-		httpstopc: make(chan struct{}),
-		httpdonec: make(chan struct{}),
+		stopC:     make(chan struct{}),
+		httpStopC: make(chan struct{}),
+		httpDoneC: make(chan struct{}),
 		logger:    zap.NewExample(),
 		waiter:    wait.New(),
 		lead:      0,
@@ -232,13 +232,13 @@ func (rc *raftNode) startRaft() {
 	log.Info("start raft Service")
 
 	// 判断快照文件夹是否存在，不存在则创建
-	if !fileutil.Exist(rc.snapdir) {
-		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
+	if !fileutil.Exist(rc.snapDir) {
+		if err := os.Mkdir(rc.snapDir, 0750); err != nil {
 			log.Fatalf("eosc: cannot create dir for snapshot (%v)", err)
 		}
 	}
 	// 新建快照管理
-	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
+	rc.snapShotter = snap.New(zap.NewExample(), rc.snapDir)
 
 	// 判断是否有日志文件目录
 	oldWal := wal.Exist(rc.waldir)
@@ -248,7 +248,7 @@ func (rc *raftNode) startRaft() {
 
 	// 集群模式下启动节点的时候，重新reload快照到service中
 	// TODO 非集群想要切换成集群的时候，要么这里做进一步校验，要么切换前先存好快照和日志
-	err := rc.ReadSnap(rc.snapshotter)
+	err := rc.ReadSnap(rc.snapShotter)
 	if err != nil {
 		log.Info("reload snap to Service error:", err)
 	}
@@ -343,7 +343,7 @@ func (rc *raftNode) serveChannels() {
 			log.Info(err.Error())
 			rc.stop()
 			return
-		case <-rc.stopc:
+		case <-rc.stopC:
 			return
 		}
 	}
@@ -393,7 +393,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
 					// transport不需要加自己
-					if cc.NodeID != uint64(rc.nodeID) {
+					if cc.NodeID != rc.nodeID {
 						p := rc.transport.Get(types.ID(cc.NodeID))
 						// 不存在才加进去
 						if p == nil {
@@ -407,7 +407,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
-				if cc.NodeID == uint64(rc.nodeID) {
+				if cc.NodeID == rc.nodeID {
 					log.Info("current node has been removed from the cluster!")
 					return false
 				}
@@ -416,7 +416,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 					// 存在才移除
 					rc.transport.RemovePeer(types.ID(cc.NodeID))
 				}
-				_, ok := rc.peers.GetPeerByID(uint64(nodeID))
+				_, ok := rc.peers.GetPeerByID(cc.NodeID)
 				if ok {
 					// 存在，减去
 					rc.peers.DeletePeerByID(cc.NodeID)
@@ -507,7 +507,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 	// save the snapshot file before writing the snapshot to the wal.
 	// This makes it possible for the snapshot file to become orphaned, but prevents
 	// a WAL snapshot entry from having no corresponding snapshot file.
-	if err := rc.snapshotter.SaveSnap(snap); err != nil {
+	if err := rc.snapShotter.SaveSnap(snap); err != nil {
 		return err
 	}
 	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
@@ -528,7 +528,7 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
 		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
 	}
-	err := rc.ReadSnap(rc.snapshotter)
+	err := rc.ReadSnap(rc.snapShotter)
 	if err != nil {
 		log.Info("read snap from snap shotter error:", err)
 	}
@@ -612,7 +612,7 @@ func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
 			log.Fatalf("eosc: error listing snapshots (%v)", err)
 		}
 		// 获取最新的快照
-		snapshot, err := rc.snapshotter.LoadNewestAvailable(walSnaps)
+		snapshot, err := rc.snapShotter.LoadNewestAvailable(walSnaps)
 		if err != nil && err != snap.ErrNoSnapshot {
 			log.Fatalf("eosc: error loading snapshot (%v)", err)
 		}
@@ -636,14 +636,14 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 		w.Close()
 	}
 	// 该结构用于日志对象定位快照索引，方便日志读取
-	walsnap := walpb.Snapshot{}
+	walSnap := walpb.Snapshot{}
 	// 获取目前快照的最新记录
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		walSnap.Index, walSnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
-	log.Infof("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
+	log.Infof("loading WAL at term %d and index %d", walSnap.Term, walSnap.Index)
 	// 开启日志
-	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
+	w, err := wal.Open(zap.NewExample(), rc.waldir, walSnap)
 	if err != nil {
 		log.Fatalf("eosc: error loading wal (%v)", err)
 	}
@@ -654,7 +654,7 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 // stop closes http and stops raft.
 func (rc *raftNode) stop() {
 	rc.stopHTTP()
-	close(rc.stopc)
+	close(rc.stopC)
 	rc.node.Stop()
 	rc.active = false
 	//os.Exit(0)
@@ -663,8 +663,8 @@ func (rc *raftNode) stop() {
 // 停止http服务
 func (rc *raftNode) stopHTTP() {
 	rc.transport.Stop()
-	close(rc.httpstopc)
-	<-rc.httpdonec
+	close(rc.httpStopC)
+	<-rc.httpDoneC
 }
 
 // Send 客户端发送propose请求的处理
@@ -816,13 +816,13 @@ func (rc *raftNode) changeCluster() error {
 	log.Info("change cluster mode")
 	rc.isCluster = true
 	// 判断快照文件夹是否存在，不存在则创建
-	if !fileutil.Exist(rc.snapdir) {
-		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
+	if !fileutil.Exist(rc.snapDir) {
+		if err := os.Mkdir(rc.snapDir, 0750); err != nil {
 			return fmt.Errorf("eosc: node(%d) cannot create dir for snapshot (%v)", rc.nodeID, err)
 		}
 	}
 	// 新建快照管理
-	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
+	rc.snapShotter = snap.New(zap.NewExample(), rc.snapDir)
 
 	// 判断是否有日志文件目录，此时应该是没有的
 	oldwal := wal.Exist(rc.waldir)
@@ -886,18 +886,18 @@ func (rc *raftNode) serveRaft() {
 	if err != nil {
 		log.Fatalf("eosc: Failed parsing URL (%v)", err)
 	}
-	ln, err := newStoppableListener(addr.Host, rc.httpstopc)
+	ln, err := newStoppableListener(addr.Host, rc.httpStopC)
 	if err != nil {
 		log.Fatalf("eosc: Failed to listen rafthttp (%v)", err)
 	}
 	// 调用rc.transport.Handler()对连接进行处理
 	err = (&http.Server{Handler: rc.Handler()}).Serve(ln)
 	select {
-	case <-rc.httpstopc:
+	case <-rc.httpStopC:
 	default:
 		log.Fatalf("eosc: Failed to serve rafthttp (%v)", err)
 	}
-	close(rc.httpdonec)
+	close(rc.httpDoneC)
 }
 
 // Handler http请求处理
