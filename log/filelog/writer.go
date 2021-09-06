@@ -110,6 +110,7 @@ func (w *FileWriterByPeriod) Write(p []byte) (n int, err error) {
 	if !w.enable {
 		return l, nil
 	}
+
 	buffer := bufferPool.Get().(*bytes.Buffer)
 	buffer.Reset()
 	buffer.Write(p)
