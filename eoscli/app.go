@@ -8,8 +8,8 @@ type App struct {
 
 func NewApp() *App {
 	return &App{app: &cli.App{
-		Name:     "eosctl",
-		Usage:    "eosc controller",
+		Name:     "goku",
+		Usage:    "goku controller",
 		Commands: make([]*cli.Command, 0, 6),
 	}}
 }

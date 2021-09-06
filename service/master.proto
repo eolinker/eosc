@@ -29,6 +29,7 @@ message FileOpen{
   uint32 FileMode=3;
 }
 
+
 service Master {
   rpc Accept(ListenerRequest)returns(stream AcceptResponse){}
   rpc Open(FileOpen)returns( FileHandler){}

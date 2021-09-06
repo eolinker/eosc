@@ -3,9 +3,15 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+
+	"github.com/eolinker/eosc/process"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/urfave/cli/v2"
@@ -14,7 +20,6 @@ import (
 //start 开启节点
 func start(c *cli.Context) error {
 	args := make([]string, 0, 20)
-
 	ip := c.String("ip")
 	port := c.Int("port")
 
@@ -22,6 +27,8 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP), ip)
+	os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port), strconv.Itoa(port))
 	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	join := c.Bool("join")
 	if join {
@@ -44,10 +51,12 @@ func start(c *cli.Context) error {
 			validAddr = true
 			args = append(args, fmt.Sprintf("--cluster-addr=%s", a))
 		}
+		os.ExpandEnv()
 		if !validAddr {
 			return errors.New("no valid cluster address")
 		}
 	}
+
 	_, err = Start("master", args, nil)
 	if err != nil {
 		log.Errorf("start master error: %w", err)
@@ -59,7 +68,7 @@ func start(c *cli.Context) error {
 
 //stop 停止节点
 func stop(c *cli.Context) error {
-	return nil
+	return process.Stop("master")
 }
 
 //join 加入集群
@@ -82,7 +91,22 @@ func clusters(c *cli.Context) error {
 	return nil
 }
 
-func writeConfig(params map[string]string) {
+func writeConfig(params map[string]string) error {
+	err := os.MkdirAll("work/", 0700)
+	if err != nil {
+		return err
+	}
+	builder := strings.Builder{}
+	for key, value := range params {
+		builder.WriteString(key)
+		builder.WriteString("=")
+		builder.WriteString(value)
+		builder.WriteString("\n")
+	}
+	return ioutil.WriteFile(fmt.Sprintf("work/%s.args"), []byte(builder.String()))
+}
+
+func readConfig() (map[string]string, error) {
 
 }
 

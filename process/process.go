@@ -68,29 +68,43 @@ func Register(name string, processHandler func()) error {
 func Cmd(name string, args []string) (*exec.Cmd, error) {
 	argsChild := make([]string, len(args)+1)
 
-
 	argsChild[0] = toKey(name)
 	if len(args) > 0 {
 		copy(argsChild[1:], args)
 	}
 
-
-	cmd:=exec.Command(path,argsChild...)
-	if cmd == nil{
-		return nil,errors.New("not supper os:"+runtime.GOOS)
+	cmd := exec.Command(path, argsChild...)
+	if cmd == nil {
+		return nil, errors.New("not supper os:" + runtime.GOOS)
 	}
 	cmd.Path = path
 	cmd.Args = argsChild
-	return cmd,nil
+	return cmd, nil
+}
+
+func Stop(name string) error {
+	path := fmt.Sprintf("%s.%s.pid", AppName(), name)
+	log.Printf("app %s is stopping,please wait...\n", toKey(name))
+	pid, err := GetPidByFile(path)
+	if err != nil {
+		return err
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return p.Signal(os.Interrupt)
 }
 
 // run process
 func Run() bool {
 
-	if runIdx == 0 {
- 		return true
-	}
-	//appName := strings.TrimPrefix(os.Args[0], "./")
+	//if runIdx == 0 {
+	//	//log.Printf("daemon:%d\n", runIdx)
+	//	//daemon(runIdx + 1)
+	//	return false
+	//}
+
 	log.Printf("run try %s", os.Args[0])
 	ph, exists := processHandlers[os.Args[0]]
 	if exists {
