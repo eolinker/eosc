@@ -8,46 +8,44 @@ import (
 )
 
 var (
-
-	logger        *Logger
-	transport     *Complex
-	lineFormatter *LineFormatter
+	logger          *Logger
+	transport       *Complex
+	lineFormatter   *LineFormatter
 	stdoutTransport *Transporter
-	isDebug = false
+	isDebug         = false
 	transportsCache []EntryTransporter
 )
-
-
 
 func init() {
 
 	lineFormatter = &LineFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 	}
-	stdoutTransport = NewTransport(os.Stdout,InfoLevel,lineFormatter)
+	stdoutTransport = NewTransport(os.Stdout, InfoLevel)
+	stdoutTransport.SetFormatter(lineFormatter)
 	transport = NewComplex()
-	logger = NewLogger(transport,false,"")
+	logger = NewLogger(transport, false, "")
 	Reset()
 	RegisterExitHandler(func() {
 		Close()
 	})
 }
-func InitDebug(d bool)  {
+func InitDebug(d bool) {
 	isDebug = d
-	if isDebug{
+	if isDebug {
 		stdoutTransport.SetLevel(DebugLevel)
-	}else {
+	} else {
 		transport.setLevel(InfoLevel)
 	}
 	Reset(transportsCache...)
 }
 
-func Reset(transports ...EntryTransporter)  {
+func Reset(transports ...EntryTransporter) {
 	transportsCache = transports
-	if isDebug || len(transports) == 0{
+	if isDebug || len(transports) == 0 {
 		transportsTmp := append(transportsCache, stdoutTransport)
 		transport.Reset(transportsTmp...)
-	}else{
+	} else {
 		transport.Reset(transports...)
 	}
 
@@ -55,7 +53,7 @@ func Reset(transports ...EntryTransporter)  {
 
 //Close 关闭
 func Close() {
-	if transport != nil{
+	if transport != nil {
 		transport.Close()
 	}
 }
@@ -66,17 +64,16 @@ func WithFields(fields Fields) Builder {
 	return logger.WithFields(fields)
 }
 
-
-
 // Debug logs a message at level Debug on the standard logger.
 func Debug(args ...interface{}) {
 
 	logger.Debug(args...)
 }
-// Debug logs a message at level Debug on the standard logger.
-func Debugf(format string,args ...interface{}) {
 
-	logger.Debugf(format,args...)
+// Debug logs a message at level Debug on the standard logger.
+func Debugf(format string, args ...interface{}) {
+
+	logger.Debugf(format, args...)
 }
 
 // Info logs a message at level Info on the standard logger.
@@ -90,8 +87,6 @@ func Warn(args ...interface{}) {
 
 	logger.Warn(args...)
 }
-
-
 
 // Error logs a message at level Error on the standard logger.
 func Error(args ...interface{}) {
@@ -136,7 +131,6 @@ func Warnf(format string, args ...interface{}) {
 
 	logger.Warnf(format, args...)
 }
-
 
 // Errorf logs a message at level Error on the standard logger.
 func Errorf(format string, args ...interface{}) {
