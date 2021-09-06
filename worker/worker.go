@@ -18,6 +18,6 @@ func Process() {
 	tf := traffic.NewTraffic()
 	tf.Read(os.Stdin)
 
+	loadPluginEnv()
 
-	LoadPlugins()
 }
