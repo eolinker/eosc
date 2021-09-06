@@ -110,7 +110,7 @@ func (m *Master) Wait() error {
 		case syscall.SIGUSR1:
 			{
 				// TODO: 平滑重启操作
-				process.Fork()  //传子进程需要的内容
+				m.Fork() //传子进程需要的内容
 			}
 		default:
 			continue

@@ -88,7 +88,7 @@ func NewController(r io.Reader) (*Controller) {
 }
 
 
-func (c *Controller) ListenTcp(network string, addr string)(net.Listener,error) {
+func (c *Controller) ListenTcp(network string, addr string)(*net.TCPListener,error) {
 
 	tcp, err := c.Traffic.ListenTcp(network, addr)
 	if err != nil {
