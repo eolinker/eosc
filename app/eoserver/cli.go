@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -26,14 +25,29 @@ func start(c *cli.Context) error {
 
 	err := validAddr(fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
-		return err
+		ipStr, has := eosc_args.Get(eosc_args.IP)
+		if !has {
+			return errors.New("start node error: missing ip")
+		}
+		ip = ipStr
+		portStr, has := eosc_args.Get(eosc_args.Port)
+		if !has {
+			return errors.New("start node error: missing port")
+		}
+		p, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("start node error: %s", err.Error())
+		}
+		port = p
+		err = validAddr(fmt.Sprintf("%s:%d", ip, port))
+		if err != nil {
+			return err
+		}
 	}
-	//os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP), ip)
-	//os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port), strconv.Itoa(port))
 
-	eosc_args.SetEnv(eosc_args.IP,ip)
-	eosc_args.SetEnv(eosc_args.Port,strconv.Itoa(port))
-	
+	eosc_args.SetEnv(eosc_args.IP, ip)
+	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
+
 	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	join := c.Bool("join")
 	if join {
@@ -41,9 +55,40 @@ func start(c *cli.Context) error {
 		// 执行join操作
 		bIP := c.String("broadcast-ip")
 		bPort := c.Int("broadcast-port")
+		err := validAddr(fmt.Sprintf("%s:%d", bIP, bPort))
+		if err != nil {
+			ipStr, has := eosc_args.Get(eosc_args.BroadcastIP)
+			if !has {
+				return errors.New("start node error: missing broadcast ip")
+			}
+			bIP = ipStr
+			portStr, has := eosc_args.Get(eosc_args.BroadcastPort)
+			if !has {
+				return errors.New("start node error: missing broadcast port")
+			}
+			p, err := strconv.Atoi(portStr)
+			if err != nil {
+				return fmt.Errorf("start node error: %s", err.Error())
+			}
+			bPort = p
+			err = validAddr(fmt.Sprintf("%s:%d", ip, port))
+			if err != nil {
+				return err
+			}
+		}
+		eosc_args.SetEnv(eosc_args.BroadcastIP, bIP)
+		eosc_args.SetEnv(eosc_args.BroadcastPort, strconv.Itoa(bPort))
 		args = append(args, fmt.Sprintf("--broadcast-ip=%s", bIP), fmt.Sprintf("--broadcast-port=%d", bPort))
 		addr := c.StringSlice("addr")
+		if len(addr) < 1 {
+			addrStr, has := eosc_args.Get(eosc_args.ClusterAddress)
+			if !has {
+				return errors.New("start node error: empty cluster address list")
+			}
+			addr = strings.Split(addrStr, ",")
+		}
 		validAddr := false
+		as := make([]string, 0, len(addr))
 		for _, a := range addr {
 			if !strings.Contains(a, "https://") && !strings.Contains(a, "http://") {
 				a = fmt.Sprintf("http://%s", a)
@@ -55,11 +100,13 @@ func start(c *cli.Context) error {
 			}
 			validAddr = true
 			args = append(args, fmt.Sprintf("--cluster-addr=%s", a))
+			as = append(as, a)
 		}
-		os.ExpandEnv()
+
 		if !validAddr {
-			return errors.New("no valid cluster address")
+			return errors.New("start node error: no valid cluster address")
 		}
+		eosc_args.SetEnv(eosc_args.ClusterAddress, strings.Join(as, ","))
 	}
 
 	_, err = Start("master", args, nil)
