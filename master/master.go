@@ -14,8 +14,10 @@ import (
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/log/filelog"
+
 	"github.com/eolinker/eosc/traffic"
+
+	"github.com/eolinker/eosc/log/filelog"
 	"google.golang.org/grpc"
 
 	"github.com/eolinker/eosc/master/service"
@@ -36,7 +38,12 @@ func Process() {
 }
 
 type Master struct {
+
+	masterTraffic traffic.IController
+	workerTraffic traffic.IController
+
 	srv *grpc.Server
+
 }
 
 func (m *Master) InitLogTransport() {
@@ -52,6 +59,10 @@ func (m *Master) InitLogTransport() {
 }
 
 func (m *Master) Start() {
+
+	m.masterTraffic = traffic.NewController(os.Stdin)
+	m.workerTraffic = traffic.NewController(os.Stdin)
+
 	m.InitLogTransport()
 
 	log.Info("start master")
@@ -63,13 +74,12 @@ func (m *Master) Start() {
 	}
 
 	m.srv = srv
-	trafficController := traffic.NewController()
-	defer trafficController.Close()
+
 	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
 	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
 	log.Info(fmt.Sprintf("%s:%s", ip, port))
 	// 监听master监听地址，用于接口处理
-	err = trafficController.Listener("tcp", fmt.Sprintf("%s:%s", ip, port))
+	_,err = m.masterTraffic.ListenTcp("tcp", fmt.Sprintf("%s:%s", ip, port))
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -81,6 +91,7 @@ func (m *Master) Start() {
 	if  os.Getenv(pEnv) != "" {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
+
 }
 
 func (m *Master) Wait() error {

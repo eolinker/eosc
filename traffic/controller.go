@@ -9,117 +9,122 @@
 package traffic
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"net"
-	"os"
-
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
+	"io"
+	"net"
+	"os"
 )
 
-var (
-	ErrorInvalidFiles = errors.New("invalid files")
-)
 
-type Traffics []*TrafficOut
+type Traffics []*Out
 
-//IController 端口管理器接口
 type IController interface {
-	Listener(network string, addr string) error
-	All() Traffics
+	ITraffic
+	Encode(startIndex int)([]byte,[]*os.File,error)
 	Close()
 }
 
 type Controller struct {
-	data eosc.IUntyped
+	Traffic
+}
+func (c *Controller) Encode(startIndex int) ([]byte, []*os.File,error) {
+	ts:=c.All()
+	pts:=new(PbTraffics)
+	files:=make([]*os.File,0,len(ts))
+	pts.Traffic = make([]*PbTraffic,0,len(ts))
+	for i,ln:=range ts{
+		file,err:=ln.File()
+		if err!= nil{
+			continue
+		}
+		ln.Close()
+		addr:= ln.Addr()
+		pt:=&PbTraffic{
+			FD: uint64(i+startIndex),
+			Addr:    addr.String(),
+			Network: addr.Network(),
+		}
+		pts.Traffic = append(pts.Traffic, pt)
+		files = append(files, file)
+	}
+
+	data, err := proto.Marshal(pts)
+	if err!= nil{
+		return nil,nil, err
+	}
+
+	return utils.EncodeFrame( data),files,nil
+
 }
 
-func (c *Controller) All() Traffics {
+func (c *Controller) All() []*net.TCPListener {
+	c.locker.Lock()
 	list := c.data.List()
-	ts := make(Traffics, 0, len(list))
-	for _, it := range list {
-		tf, ok := it.(*TrafficOut)
-		if !ok {
+	c.data = eosc.NewUntyped()
+	c.locker.Unlock()
+
+	ts:=make([]*net.TCPListener,0,len(list))
+	for _,it:=range list{
+		tf,ok:= it.(*net.TCPListener)
+		if !ok{
 			continue
 		}
 		ts = append(ts, tf)
 	}
+
 	return ts
 }
 
-//NewController 新建端口管理器（流量入口）
-func NewController() *Controller {
-	return &Controller{
-		data: eosc.NewUntyped(),
+func NewController(r io.Reader) (*Controller) {
+	c:= &Controller{
+		Traffic:Traffic{
+			data: eosc.NewUntyped(),
+		},
 	}
+	c.Read(r)
+	return c
 }
 
-func (ts Traffics) WriteTo(w io.Writer) ([]*os.File, error) {
 
-	pts := new(PbTraffics)
-	files := make([]*os.File, 0, len(ts))
-	pts.Traffic = make([]*PbTraffic, 0, len(ts))
-	for i, it := range ts {
+func (c *Controller) ListenTcp(network string, addr string)(net.Listener,error) {
 
-		pt := &PbTraffic{
-			FD:      uint64(i),
-			Addr:    it.Addr.String(),
-			Network: it.Addr.Network(),
+	tcp, err := c.Traffic.ListenTcp(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	if tcp == nil{
+		c.locker.Lock()
+		defer c.locker.Unlock()
+		tcpAddr, err := net.ResolveTCPAddr(network, addr)
+		if err != nil {
+			return nil, err
 		}
-		pts.Traffic = append(pts.Traffic, pt)
-		files = append(files, it.File)
-	}
 
-	data, err := proto.Marshal(pts)
-	if err != nil {
-		return nil, err
+		l,err:=net.ListenTCP(network,tcpAddr)
+		if err!= nil{
+			return nil,err
+		}
+
+		c.Traffic.add(l)
+		tcp = l
 	}
-	fmt.Println(data)
-	err = utils.WriteFrame(w, data)
-	if err != nil {
-		return nil, err
-	}
-	return files, nil
+	return tcp,nil
 }
 
-//Listener 设置端口监听器，如果地址已经被监听，则报错
-func (c *Controller) Listener(network string, addr string) error {
-	tcpAddr, err := net.ResolveTCPAddr(network, addr)
-	if err != nil {
-		return err
-	}
 
-	l, err := net.ListenTCP(network, tcpAddr)
-	if err != nil {
-		return err
-	}
-	file, err := l.File()
-	if err != nil {
-		return err
-	}
-	tf := &TrafficOut{
-		Addr: tcpAddr,
-		File: file,
-	}
-
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
-	c.data.Set(name, tf)
-	return nil
-}
-
-//Close 关闭文件监听
 func (c *Controller) Close() {
 	list := c.data.List()
 	c.data = eosc.NewUntyped()
 
-	for _, it := range list {
-		tf, ok := it.(*TrafficOut)
-		if !ok {
+	for _,it:=range list{
+		tf,ok:=it.(*Out)
+		if !ok{
 			continue
 		}
+		tf.Listener.Close()
 		tf.File.Close()
 	}
 }
+

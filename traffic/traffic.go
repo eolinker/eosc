@@ -4,77 +4,75 @@
  * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
  * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
  * Vestibulum commodo. Ut rhoncus gravida arcu.
- *
  */
-/*
 
-io 通信控制模块
-管理所有的需要热重启的监听管理（端口监听）， 只允许master执行新增， 序列化成描述信息+文件描述符列表，在fork worker时传递给worker，
-worker只允许使用传入进来的端口
-
- */
 package traffic
 
 import (
+	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/utils"
-	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"github.com/eolinker/eosc"
 	"io"
-	"log"
 	"net"
-	"os"
+	"sync"
 )
-
-type TrafficIn struct {
-	Addr net.Addr
-	Listener net.Listener
-	File *os.File
-}
-type TrafficOut struct {
-	Addr net.Addr
-	File *os.File
+var(
+	ErrorInvalidListener = errors.New("invalid listener")
+)
+type Traffic struct {
+	locker sync.Mutex
+	data eosc.IUntyped
 }
 
-func Reader(r io.Reader,start int)([]*TrafficIn,error) {
+func NewTraffic() *Traffic {
+	return &Traffic{
+		data: eosc.NewUntyped(),
+		locker: sync.Mutex{},
+	}
+}
 
-	frame, err := utils.ReadFrame(r)
+func (t *Traffic) ListenTcp(network, addr string) (*net.TCPListener, error) {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+
+	tcpAddr, err := net.ResolveTCPAddr(network, addr)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("readed frame:",len(frame))
+	name:=fmt.Sprintf("%s://%s",tcpAddr.Network(),tcpAddr.String())
 
-	pts:=new(PbTraffics)
-	err = proto.Unmarshal(frame, pts)
+	if o, has := t.data.Get(name);has{
+		listener,ok := o.(*net.TCPListener)
+		if !ok{
+			return nil, ErrorInvalidListener
+		}
+
+		return listener,nil
+	}
+
+	return nil,nil
+}
+
+type ITraffic interface {
+	ListenTcp(network,addr string)(net.Listener,error)
+}
+
+func (t *Traffic) Read(r io.Reader) {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+
+	listeners, err := Reader(r)
 	if err != nil {
-		return nil,err
+		return
 	}
-	log.Println("triv:",pts)
-	tfs:=make([]*TrafficIn,0,len(pts.GetTraffic()))
-	for _,pt:=range pts.GetTraffic(){
-		name:=fmt.Sprintf("%s:/%s",pt.Network,pt.Addr)
-
-		addr, err := net.ResolveTCPAddr(pt.GetNetwork(), pt.GetAddr())
-		if err != nil {
-			return nil, err
-		}
-		f:=os.NewFile(uintptr(uint64(start)+pt.GetFD()),name)
-		switch pt.Network{
-		//case "udp","udp4","udp8":
-		//
-		//	c,err:=net.FilePacketConn(f)
-		case "tcp","tcp4","tcp6":
-			l,err:= net.FileListener(f)
-			if err!= nil{
-				log.Println("error to read listener:",err)
-				return nil, err
-			}
-			tfs = append(tfs, &TrafficIn{
-				Addr: addr,
-				Listener: l,
-				File: f,
-			})
-		}
+	for _,ln:=range listeners{
+		t.add(ln)
 	}
 
-	return tfs, nil
+}
+
+func (t *Traffic) add(ln *net.TCPListener)  {
+	tcpAddr := ln.Addr()
+	name:=fmt.Sprintf("%s://%s",tcpAddr.Network(),tcpAddr.String())
+	t.data.Set(name,ln)
 }
