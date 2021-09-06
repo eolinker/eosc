@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -27,8 +28,12 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP), ip)
-	os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port), strconv.Itoa(port))
+	//os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP), ip)
+	//os.Setenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port), strconv.Itoa(port))
+
+	eosc_args.SetEnv(eosc_args.IP,ip)
+	eosc_args.SetEnv(eosc_args.Port,strconv.Itoa(port))
+	
 	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	join := c.Bool("join")
 	if join {
