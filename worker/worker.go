@@ -15,9 +15,24 @@ import (
 
 func Process() {
 
-	tf := traffic.NewTraffic()
-	tf.Read(os.Stdin)
+	worker := NewWorker()
 
 	loadPluginEnv()
 
+	worker.wait()
+}
+
+type Worker struct {
+	tf traffic.ITraffic
+}
+
+func (w *Worker) wait()error  {
+	return nil
+}
+func NewWorker() *Worker {
+	w:= &Worker{}
+	tf := traffic.NewTraffic()
+	tf.Read(os.Stdin)
+ 	w.tf = tf
+	return w
 }

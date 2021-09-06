@@ -1,2 +1,3 @@
 /eoserver
-*.master.pid
+/goku
+*.pid

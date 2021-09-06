@@ -54,7 +54,7 @@ func (t *Traffic) ListenTcp(network, addr string) (*net.TCPListener, error) {
 }
 
 type ITraffic interface {
-	ListenTcp(network,addr string)(net.Listener,error)
+	ListenTcp(network,addr string)(*net.TCPListener,error)
 }
 
 func (t *Traffic) Read(r io.Reader) {
