@@ -25,12 +25,12 @@ func start(c *cli.Context) error {
 
 	err := validAddr(fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
-		ipStr, has := eosc_args.Get(eosc_args.IP)
+		ipStr, has := eosc_args.GetEnv(eosc_args.IP)
 		if !has {
 			return errors.New("start node error: missing ip")
 		}
 		ip = ipStr
-		portStr, has := eosc_args.Get(eosc_args.Port)
+		portStr, has := eosc_args.GetEnv(eosc_args.Port)
 		if !has {
 			return errors.New("start node error: missing port")
 		}
@@ -57,12 +57,12 @@ func start(c *cli.Context) error {
 		bPort := c.Int("broadcast-port")
 		err := validAddr(fmt.Sprintf("%s:%d", bIP, bPort))
 		if err != nil {
-			ipStr, has := eosc_args.Get(eosc_args.BroadcastIP)
+			ipStr, has := eosc_args.GetEnv(eosc_args.BroadcastIP)
 			if !has {
 				return errors.New("start node error: missing broadcast ip")
 			}
 			bIP = ipStr
-			portStr, has := eosc_args.Get(eosc_args.BroadcastPort)
+			portStr, has := eosc_args.GetEnv(eosc_args.BroadcastPort)
 			if !has {
 				return errors.New("start node error: missing broadcast port")
 			}
@@ -81,7 +81,7 @@ func start(c *cli.Context) error {
 		args = append(args, fmt.Sprintf("--broadcast-ip=%s", bIP), fmt.Sprintf("--broadcast-port=%d", bPort))
 		addr := c.StringSlice("addr")
 		if len(addr) < 1 {
-			addrStr, has := eosc_args.Get(eosc_args.ClusterAddress)
+			addrStr, has := eosc_args.GetEnv(eosc_args.ClusterAddress)
 			if !has {
 				return errors.New("start node error: empty cluster address list")
 			}
@@ -156,10 +156,6 @@ func writeConfig(params map[string]string) error {
 		builder.WriteString("\n")
 	}
 	return ioutil.WriteFile(fmt.Sprintf("work/%s.args", process.AppName()), []byte(builder.String()), os.ModeAppend)
-}
-
-func readConfig() (map[string]string, error) {
-
 }
 
 func setEnvs(params map[string]string) {
