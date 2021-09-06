@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"syscall"
 )
 
 const (
@@ -82,9 +83,9 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func Stop(name string) error {
-	path := fmt.Sprintf("%s.%s.pid", AppName(), name)
-	log.Printf("app %s is stopping,please wait...\n", toKey(name))
+func Stop() error {
+	path := fmt.Sprintf("%s.pid", appName)
+	log.Printf("app %s is stopping,please wait...\n", appName)
 	pid, err := GetPidByFile(path)
 	if err != nil {
 		return err
@@ -94,6 +95,20 @@ func Stop(name string) error {
 		return err
 	}
 	return p.Signal(os.Interrupt)
+}
+
+func Restart() error {
+	path := fmt.Sprintf("%s.pid", appName)
+	log.Printf("app %s is restart,please wait...\n", appName)
+	pid, err := GetPidByFile(path)
+	if err != nil {
+		return err
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return p.Signal(syscall.SIGUSR1)
 }
 
 // run process

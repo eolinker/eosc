@@ -19,6 +19,7 @@ import (
 	"github.com/eolinker/eosc/master"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/worker"
+	"github.com/urfave/cli/v2"
 )
 
 func init() {
@@ -42,6 +43,9 @@ func main() {
 		eoscli.Info(info),
 		eoscli.Leave(leave),
 		eoscli.Cluster(clusters),
+		eoscli.Restart(func(c *cli.Context) error {
+			return process.Restart()
+		}),
 	)
 	err := app.Run(os.Args)
 	if err != nil {

@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package service
+package master
 
 import (
 	"fmt"
@@ -17,7 +17,6 @@ import (
 	"github.com/eolinker/eosc/process"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	"github.com/eolinker/eosc/service"
 	"google.golang.org/grpc"
 )
 
@@ -46,7 +45,7 @@ func StartMaster(addr string) (*grpc.Server, error) {
 		os.Exit(1)
 	}
 	grpcServer := grpc.NewServer()
-	service.RegisterMasterServer(grpcServer, NewMasterServer())
+
 	go func() {
 		grpcServer.Serve(l)
 	}()

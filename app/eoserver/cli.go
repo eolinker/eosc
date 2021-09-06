@@ -120,11 +120,12 @@ func start(c *cli.Context) error {
 
 //stop 停止节点
 func stop(c *cli.Context) error {
-	return process.Stop("master")
+	return process.Stop()
 }
 
 //join 加入集群
 func join(c *cli.Context) error {
+
 	return nil
 }
 
