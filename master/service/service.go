@@ -21,12 +21,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-var masterPid = "master.pid"
+var pidSuffix = "pid"
 
 //StartMaster 开启master
 func StartMaster(addr string) (*grpc.Server, error) {
 	// 先检查是否有pid，如果pid不存在，则unlink socket文件
-	path := fmt.Sprintf("%s.%s", process.AppName(), masterPid)
+	path := fmt.Sprintf("%s.%s", process.AppName(), pidSuffix)
 	err := process.CheckPIDFILEAlreadyExists(path)
 	if err != nil {
 		// 存在，则报错开启失败
