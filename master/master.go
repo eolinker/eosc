@@ -126,9 +126,9 @@ func (m *Master) Start() {
 		return
 	}
 
-	//TODO 若该进程是master的子进程，则给父进程一个退出信号
-	pEnv := fmt.Sprintf("%s_%s", process.AppName(), "IS_MASTER_CHILD")
-	if os.Getenv(pEnv) != "" {
+
+
+	if  _,has := eosc_args.GetEnv("MASTER_CONTINUE");has{
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 

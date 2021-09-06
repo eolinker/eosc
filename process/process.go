@@ -74,7 +74,7 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 		copy(argsChild[1:], args)
 	}
 
-	cmd := exec.Command(path, argsChild...)
+	cmd := exec.Command(path)
 	if cmd == nil {
 		return nil, errors.New("not supper os:" + runtime.GOOS)
 	}
@@ -119,13 +119,14 @@ func Run() bool {
 	//	//daemon(runIdx + 1)
 	//	return false
 	//}
-
-	log.Printf("run try %s", os.Args[0])
-	ph, exists := processHandlers[os.Args[0]]
-	if exists {
-		ph()
-		return true
+	if runIdx >0{
+		ph, exists := processHandlers[os.Args[0]]
+		if exists {
+			ph()
+			return true
+		}
 	}
+
 	return false
 }
 
