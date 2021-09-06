@@ -9,9 +9,11 @@
 package master
 
 import (
+	"context"
 	"time"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/service"
 
 	"github.com/eolinker/eosc/log"
 
@@ -19,8 +21,6 @@ import (
 
 	"github.com/eolinker/eosc/log/filelog"
 	"google.golang.org/grpc"
-
-	"github.com/eolinker/eosc/master/service"
 
 	"fmt"
 
@@ -38,12 +38,52 @@ func Process() {
 }
 
 type Master struct {
-
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
 
 	srv *grpc.Server
+}
 
+func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
+	return &service.JoinResponse{
+		Msg:  "success",
+		Code: "0000000",
+		Info: &service.NodeSecret{
+			NodeID:  1,
+			NodeKey: "dasdas",
+		},
+	}, nil
+}
+
+func (m *Master) Leave(ctx context.Context, request *service.LeaveRequest) (*service.LeaveResponse, error) {
+	return &service.LeaveResponse{
+		Msg:  "success",
+		Code: "0000000",
+	}, nil
+}
+
+func (m *Master) List(ctx context.Context, request *service.ListRequest) (*service.ListResponse, error) {
+	return &service.ListResponse{Info: []*service.NodeInfo{
+		{
+			NodeKey:       "abc",
+			NodeID:        1,
+			BroadcastIP:   "127.0.0.1",
+			BroadcastPort: "9940",
+			Status:        "running",
+			Role:          "leader",
+		},
+	}}, nil
+}
+
+func (m *Master) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
+	return &service.InfoResponse{Info: &service.NodeInfo{
+		NodeKey:       "abc",
+		NodeID:        1,
+		BroadcastIP:   "127.0.0.1",
+		BroadcastPort: "9940",
+		Status:        "running",
+		Role:          "leader",
+	}}, nil
 }
 
 func (m *Master) InitLogTransport() {
@@ -66,20 +106,20 @@ func (m *Master) Start() {
 	m.InitLogTransport()
 
 	log.Info("start master")
-	srv, err := service.StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	srv, err := StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
 		return
 	}
-
+	service.RegisterCtiServiceServer(srv, m)
 	m.srv = srv
 
 	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
 	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
 	log.Info(fmt.Sprintf("%s:%s", ip, port))
 	// 监听master监听地址，用于接口处理
-	_,err = m.masterTraffic.ListenTcp("tcp", fmt.Sprintf("%s:%s", ip, port))
+	_, err = m.masterTraffic.ListenTcp("tcp", fmt.Sprintf("%s:%s", ip, port))
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -87,8 +127,8 @@ func (m *Master) Start() {
 	}
 
 	//TODO 若该进程是master的子进程，则给父进程一个退出信号
-	pEnv := fmt.Sprintf("%s_%s",process.AppName(),"IS_MASTER_CHILD")
-	if  os.Getenv(pEnv) != "" {
+	pEnv := fmt.Sprintf("%s_%s", process.AppName(), "IS_MASTER_CHILD")
+	if os.Getenv(pEnv) != "" {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 

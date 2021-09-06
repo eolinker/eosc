@@ -49,6 +49,15 @@ message ListResponse{
   repeated NodeInfo info = 1;
 }
 
+message InfoRequest {
+
+}
+
+message InfoResponse {
+  string msg  = 1;
+  string code = 2;
+  NodeInfo info = 3;
+}
 
 message ClusterRequest{}
 message ClusterResponse{}
@@ -62,5 +71,5 @@ service CtiService {
   rpc Join(JoinRequest)returns(JoinResponse){}
   rpc Leave(LeaveRequest)returns(LeaveResponse){}
   rpc List(ListRequest)returns(ListResponse){}
-
+  rpc Info(InfoRequest)returns(InfoResponse){}
 }

@@ -22,6 +22,7 @@ type CtiServiceClient interface {
 	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error)
 	Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
+	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 }
 
 type ctiServiceClient struct {
@@ -59,6 +60,15 @@ func (c *ctiServiceClient) List(ctx context.Context, in *ListRequest, opts ...gr
 	return out, nil
 }
 
+func (c *ctiServiceClient) Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
+	out := new(InfoResponse)
+	err := c.cc.Invoke(ctx, "/service.CtiService/Info", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CtiServiceServer is the server API for CtiService service.
 // All implementations must embed UnimplementedCtiServiceServer
 // for forward compatibility
@@ -66,7 +76,7 @@ type CtiServiceServer interface {
 	Join(context.Context, *JoinRequest) (*JoinResponse, error)
 	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	mustEmbedUnimplementedCtiServiceServer()
+	Info(context.Context, *InfoRequest) (*InfoResponse, error)
 }
 
 // UnimplementedCtiServiceServer must be embedded to have forward compatible implementations.
@@ -74,14 +84,6 @@ type UnimplementedCtiServiceServer struct {
 }
 
 func (UnimplementedCtiServiceServer) Join(context.Context, *JoinRequest) (*JoinResponse, error) {
-	return &JoinResponse{
-		Msg:  "success",
-		Code: "000000",
-		Info: &NodeSecret{
-			NodeID:  1,
-			NodeKey: "asd",
-		},
-	}, nil
 	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
 func (UnimplementedCtiServiceServer) Leave(context.Context, *LeaveRequest) (*LeaveResponse, error) {
@@ -90,7 +92,9 @@ func (UnimplementedCtiServiceServer) Leave(context.Context, *LeaveRequest) (*Lea
 func (UnimplementedCtiServiceServer) List(context.Context, *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (UnimplementedCtiServiceServer) mustEmbedUnimplementedCtiServiceServer() {}
+func (UnimplementedCtiServiceServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
+}
 
 // UnsafeCtiServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to CtiServiceServer will
@@ -157,6 +161,24 @@ func _CtiService_List_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CtiService_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CtiServiceServer).Info(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.CtiService/Info",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CtiServiceServer).Info(ctx, req.(*InfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CtiService_ServiceDesc is the grpc.ServiceDesc for CtiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -175,6 +197,10 @@ var CtiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _CtiService_List_Handler,
+		},
+		{
+			MethodName: "Info",
+			Handler:    _CtiService_Info_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
