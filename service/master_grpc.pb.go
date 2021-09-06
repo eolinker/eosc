@@ -161,5 +161,5 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "master.proto",
+	Metadata: "service/master.proto",
 }
