@@ -16,6 +16,13 @@ const PluginPath = "Plugins_DIR"
 func GetEnv(name string) (string, bool) {
 	return syscall.Getenv(envName(name))
 }
+
+func GetDefault(name string,defualt string)string  {
+	if v,has:=GetEnv(name);has{
+		return v
+	}
+	return defualt
+}
 func SetEnv(name string, value string)error  {
 	return syscall.Setenv(envName(name),value)
 }

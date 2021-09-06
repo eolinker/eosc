@@ -5,7 +5,6 @@ import (
 	"github.com/eolinker/eosc/log"
 	"path/filepath"
 	"plugin"
-	"syscall"
 )
 
 //RegisterFunc 注册函数
@@ -38,5 +37,5 @@ func LoadPlugins(dir string) error {
 }
 
 func loadPluginEnv() {
-	pluginDir,has:= syscall.Getenv("")
+
 }
