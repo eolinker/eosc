@@ -13,7 +13,7 @@ package master
 import (
 
 	"github.com/eolinker/eosc/log"
-
+	"github.com/eolinker/eosc/traffic"
 
 	"fmt"
 
@@ -33,13 +33,15 @@ func Process() {
 }
 
 type Master struct {
-
+	masterTraffic traffic.IController
+	workerTraffic traffic.IController
 }
 
 
 
 func (m *Master) Start() {
-
+	m.masterTraffic = traffic.NewController(os.Stdin)
+	m.workerTraffic = traffic.NewController(os.Stdin)
 }
 
 
