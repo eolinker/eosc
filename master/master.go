@@ -33,6 +33,7 @@ import (
 )
 
 func Process() {
+	Register()
 	master := NewMasterHandle()
 	master.Start()
 	master.Wait()
