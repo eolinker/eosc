@@ -12,3 +12,13 @@ func Stop(stop cli.ActionFunc) *cli.Command {
 		Subcommands: []*cli.Command{},
 	}
 }
+
+//StopFunc 停止节点
+func StopFunc(c *cli.Context) error {
+	// 判断程序是否存在
+	if !CheckPIDFILEAlreadyExists() {
+		ClearPid()
+		return nil
+	}
+	return stopProcess()
+}

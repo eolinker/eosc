@@ -11,13 +11,13 @@ package process
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"syscall"
+
+	"github.com/eolinker/eosc/log"
 )
 
 const (
@@ -83,35 +83,6 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func Stop() error {
- 	log.Debugf("app %s is stopping,please wait...\n", appName)
-	pid, err := GetPidByFile()
-	if err != nil {
-		return err
-	}
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return err
-	}
-	return p.Signal(os.Interrupt)
-}
-
-func Restart() error {
-	pid, err := GetPidByFile()
-
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("app %s pid:%d is restart,please wait...\n", appName,pid)
-
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return err
-	}
-	return p.Signal(syscall.SIGUSR1)
-}
-
 // run process
 func Run() bool {
 
@@ -120,7 +91,7 @@ func Run() bool {
 	//	//daemon(runIdx + 1)
 	//	return false
 	//}
-	if runIdx >0{
+	if runIdx > 0 {
 		ph, exists := processHandlers[os.Args[0]]
 		if exists {
 			ph()
@@ -130,7 +101,6 @@ func Run() bool {
 
 	return false
 }
-
 
 func toKey(name string) string {
 	return fmt.Sprintf("%s: %s", appName, name)

@@ -10,8 +10,13 @@ package master
 
 import (
 	"context"
-	"github.com/eolinker/eosc/service"
 	"time"
+
+	"github.com/eolinker/eosc/eoscli"
+
+	"github.com/eolinker/eosc/raft"
+
+	"github.com/eolinker/eosc/service"
 
 	"github.com/eolinker/eosc/store"
 
@@ -36,7 +41,7 @@ import (
 
 func Process() {
 
-	if process.CheckPIDFILEAlreadyExists() {
+	if eoscli.CheckPIDFILEAlreadyExists() {
 		// 存在，则报错开启失败
 		log.Error("the master is running")
 		return
@@ -48,7 +53,7 @@ func Process() {
 	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
-	err := process.CreatePidFile()
+	err := eoscli.CreatePidFile()
 	if err != nil {
 		// 创建pid文件失败，则报错
 
@@ -60,19 +65,18 @@ func Process() {
 type Master struct {
 	service.UnimplementedMasterServer
 	service.UnimplementedCtiServiceServer
-
+	node          *raft.Node
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
-	store     eosc.IStore
-	masterSrv *grpc.Server
+	store         eosc.IStore
+	masterSrv     *grpc.Server
 }
 
 func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
 	return &service.HelloResponse{
 		Name: request.GetName(),
-	},nil
+	}, nil
 }
-
 
 func (m *Master) InitLogTransport() {
 	writer := filelog.NewFileWriteByPeriod()
@@ -111,8 +115,6 @@ func (m *Master) Start() {
 	m.masterSrv = srv
 	log.Debug("RegisterCtiServiceServer")
 
-
-
 	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
 	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
 	log.Info(fmt.Sprintf("%s:%s", ip, port))
@@ -142,13 +144,13 @@ func (m *Master) Wait() error {
 		case syscall.SIGQUIT:
 			{
 				m.close()
-				process.ClearPid()
+				eoscli.ClearPid()
 			}
 		case syscall.SIGUSR1:
 			{
 				// TODO: 平滑重启操作
 				m.Fork() //传子进程需要的内容
-				process.GetPidByFile()
+				eoscli.GetPidByFile()
 			}
 		default:
 			continue

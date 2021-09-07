@@ -11,7 +11,7 @@ import (
 
 // 客户端请求处理
 type Client struct {
-	raft *raftNode
+	raft *Node
 }
 
 type jsonResponse struct {

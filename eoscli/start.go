@@ -2,11 +2,18 @@ package eoscli
 
 import (
 	"fmt"
+	"strconv"
+
+	"github.com/eolinker/eosc/utils"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/process"
 
 	"github.com/urfave/cli/v2"
 )
 
-func Start(start cli.ActionFunc) *cli.Command {
+func Start(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "start",
 		Usage: "start goku server",
@@ -42,11 +49,39 @@ func Start(start cli.ActionFunc) *cli.Command {
 				Usage:   "port for the node broadcast",
 			},
 		},
-		Action: start,
+		Action: x,
 	}
 }
 
-func start(c *cli.Context) error {
-	fmt.Println("eosc start")
+//StartFunc 开启节点
+func StartFunc(c *cli.Context) error {
+	// 判断程序是否存在
+	if CheckPIDFILEAlreadyExists() {
+		return fmt.Errorf("the app %s is running", process.AppName())
+	}
+	ClearPid()
+	args := make([]string, 0, 20)
+	ip := c.String("ip")
+	port := c.Int("port")
+
+	err := utils.IsListen(fmt.Sprintf("%s:%d", ip, port))
+	if err != nil {
+		return err
+	}
+
+	eosc_args.SetEnv(eosc_args.IP, ip)
+	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
+
+	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
+	_, err = StartMaster(args, nil)
+	if err != nil {
+		log.Errorf("start master error: %w", err)
+		return err
+	}
+
+	isJoin := c.Bool("join")
+	if isJoin {
+		return JoinFunc(c)
+	}
 	return nil
 }

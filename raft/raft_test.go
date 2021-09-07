@@ -13,7 +13,7 @@ func TestRaft(t *testing.T) {
 
 	// 初始化服务
 	var s = Create()
-	var raft = &raftNode{}
+	var raft = &Node{}
 	var err error
 	if !join {
 		// 新建raft节点,以集群模式启动或非集群单点模式

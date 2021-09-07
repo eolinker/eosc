@@ -1,4 +1,4 @@
-package process
+package eoscli
 
 import (
 	"errors"
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/eolinker/eosc/process"
 )
 
 var errPidNotFound = errors.New("pid not found")
@@ -18,6 +20,7 @@ func processExists(pid int) bool {
 	if err != nil {
 		return false
 	}
+	fmt.Println(pid, err)
 	return true
 }
 
@@ -36,15 +39,14 @@ func CreatePidFile() error {
 
 	pid, err := readPid()
 	if err == nil {
-		if  processExists(pid) {
-			pidFile,_:=getPidFile()
+		if processExists(pid) {
+			pidFile, _ := getPidFile()
 
-			return  fmt.Errorf("ensure the process:%s is not running pid file:%s", pid, pidFile)
+			return fmt.Errorf("ensure the process:%s is not running pid file:%s", pid, pidFile)
 		}
 	}
 
-
-	pidFile,err:=getPidFile()
+	pidFile, err := getPidFile()
 	if err := os.MkdirAll(filepath.Dir(pidFile), os.FileMode(0755)); err != nil {
 		return err
 	}
@@ -62,23 +64,23 @@ func GetPidByFile() (int, error) {
 		return 0, err
 	}
 
-	return pid,nil
+	return pid, nil
 }
 
 func ClearPid() {
-	pidFile,err:= getPidFile()
-	if err!= nil{
+	pidFile, err := getPidFile()
+	if err != nil {
 		os.Remove(pidFile)
 	}
 }
 
-func getPidFile()(string,error)  {
-	pidPath := fmt.Sprintf("%s.pid", appName)
+func getPidFile() (string, error) {
+	pidPath := fmt.Sprintf("%s.pid", process.AppName())
 	absPath, err := filepath.Abs(pidPath)
 	if err != nil {
 		return "", err
 	}
-	return absPath,nil
+	return absPath, nil
 }
 func readPid() (int, error) {
 	file, err := getPidFile()
@@ -86,9 +88,9 @@ func readPid() (int, error) {
 		return 0, err
 	}
 
-	 pidByte, err := ioutil.ReadFile(file)
+	pidByte, err := ioutil.ReadFile(file)
 	if err != nil {
-		return 0,err
+		return 0, err
 	}
 	return strconv.Atoi(strings.TrimSpace(string(pidByte)))
 
