@@ -10,39 +10,32 @@ package master
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"syscall"
 
 	"github.com/eolinker/eosc/process"
-
+	"github.com/eolinker/eosc/log"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"google.golang.org/grpc"
 )
 
-var pidSuffix = "pid"
+
 
 //StartMaster 开启master
-func StartMaster(addr string) (*grpc.Server, error) {
-	// 先检查是否有pid，如果pid不存在，则unlink socket文件
-	path := fmt.Sprintf("%s.%s", process.AppName(), pidSuffix)
-	err := process.CheckPIDFILEAlreadyExists(path)
-	if err != nil {
-		// 存在，则报错开启失败
-		return nil, fmt.Errorf("the master is running")
-	}
+func (m *Master)StartMaster() (*grpc.Server, error) {
+
+	addr:=fmt.Sprintf("/tmp/%s.master.sock", process.AppName())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
-	log.Println("start Master :", addr)
+	log.Info("start Master :", addr)
 	l, err := grpc_unixsocket.Listener(addr)
 	if err != nil {
 		return nil, err
 	}
-	err = process.CreatePidFile(path)
+	err = process.CreatePidFile()
 	if err != nil {
 		// 创建pid文件失败，则报错
-		os.Exit(1)
+		return nil,err
 	}
 	grpcServer := grpc.NewServer()
 

@@ -11,8 +11,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/eolinker/eosc/eoscli"
 	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/log"
@@ -20,6 +18,7 @@ import (
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/worker"
 	"github.com/urfave/cli/v2"
+	"os"
 )
 
 func init() {
@@ -30,11 +29,11 @@ func init() {
 }
 
 func main() {
-
+	defer os.Exit(0)
 	if process.Run() {
 		return
 	}
-
+	log.InitDebug(true)
 	app := eoscli.NewApp()
 	app.AppendCommand(
 		eoscli.Start(start),
@@ -51,5 +50,6 @@ func main() {
 	if err != nil {
 		log.Error(err)
 	}
+
 
 }
