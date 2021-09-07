@@ -10,7 +10,6 @@ package master
 
 import (
 	"fmt"
-
 	"syscall"
 
 	"github.com/eolinker/eosc/process"
@@ -19,15 +18,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-var pidSuffix = "pid"
+
 
 //StartMaster 开启master
-func StartMaster(addr string) (*grpc.Server, error) {
+func (m *Master)StartMaster() (*grpc.Server, error) {
 
-	if process.CheckPIDFILEAlreadyExists() {
-		// 存在，则报错开启失败
-		return nil, fmt.Errorf("the master is running")
-	}
+	addr:=fmt.Sprintf("/tmp/%s.master.sock", process.AppName())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
