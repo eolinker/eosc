@@ -9,16 +9,10 @@
 package service
 
 import (
-	"context"
 	"fmt"
-	"github.com/eolinker/eosc/listener"
-	"github.com/eolinker/eosc/service"
-	"log"
-	"net"
-	"os"
-	"path/filepath"
-	"syscall"
 	"time"
+
+	"github.com/eolinker/eosc/service"
 )
 
 type MasterServer struct {
@@ -27,59 +21,59 @@ type MasterServer struct {
 }
 
 func NewMasterServer() *MasterServer {
-	return &MasterServer{sign: fmt.Sprintf("%d",time.Now().UnixNano())}
+	return &MasterServer{sign: fmt.Sprintf("%d", time.Now().UnixNano())}
 }
 
-func (m *MasterServer) Accept(request *service.ListenerRequest, server service.Master_AcceptServer) error {
-	lr, err := listener.ListenTCP(int(request.Port), m.sign)
-	if err!= nil{
-		return err
-	}
-	for{
-		c,e:=lr.Accept()
-		if e!=nil{
-			return e
-		}
-
-		f,e:=c.(*net.TCPConn).File()
-		if e!= nil{
-			log.Println("tcp connect to file :",e.Error())
-			continue
-		}
-
-		fd:=f.Fd()
-
-		log.Println("master send:fd=",fd)
-		er:=server.Send(&service.AcceptResponse{
-			Status:  0,
-			FD:      syscall.UnixRights(int(fd)),
-			Scheme:  request.Scheme,
-			Port:    request.Port,
-			Message: "",
-		})
-		if er!= nil{
-			log.Println(err)
-			return er
-		}
-	}
-	return nil
-}
-
-func (m *MasterServer) Open(ctx context.Context, open *service.FileOpen) (*service.FileHandler, error) {
-	path,_:= filepath.Abs(open.FilePath)
-	file, err := os.OpenFile(path, int(open.Flag), os.FileMode(open.FileMode))
-	if err!= nil{
-		return nil,err
-	}
-
-	fd:=file.Fd()
-	defer file.Close()
-	return &service.FileHandler{
-		FD:    uint64(fd),
-		Code:  0,
-		Name:  filepath.Base(open.FilePath),
-		Path:  path,
-		Error: "",
-	},nil
-}
-
+//func (m *MasterServer) Accept(request *service.ListenerRequest, server service.Master_AcceptServer) error {
+//	lr, err := listener.ListenTCP(int(request.Port), m.sign)
+//	if err!= nil{
+//		return err
+//	}
+//	for{
+//		c,e:=lr.Accept()
+//		if e!=nil{
+//			return e
+//		}
+//
+//		f,e:=c.(*net.TCPConn).File()
+//		if e!= nil{
+//			log.Println("tcp connect to file :",e.Error())
+//			continue
+//		}
+//
+//		fd:=f.Fd()
+//
+//		log.Println("master send:fd=",fd)
+//		er:=server.Send(&service.AcceptResponse{
+//			Status:  0,
+//			FD:      syscall.UnixRights(int(fd)),
+//			Scheme:  request.Scheme,
+//			Port:    request.Port,
+//			Message: "",
+//		})
+//		if er!= nil{
+//			log.Println(err)
+//			return er
+//		}
+//	}
+//	return nil
+//}
+//
+//func (m *MasterServer) Open(ctx context.Context, open *service.FileOpen) (*service.FileHandler, error) {
+//	path,_:= filepath.Abs(open.FilePath)
+//	file, err := os.OpenFile(path, int(open.Flag), os.FileMode(open.FileMode))
+//	if err!= nil{
+//		return nil,err
+//	}
+//
+//	fd:=file.Fd()
+//	defer file.Close()
+//	return &service.FileHandler{
+//		FD:    uint64(fd),
+//		Code:  0,
+//		Name:  filepath.Base(open.FilePath),
+//		Path:  path,
+//		Error: "",
+//	},nil
+//}
+//
