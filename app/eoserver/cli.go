@@ -28,26 +28,9 @@ func start(c *cli.Context) error {
 	ip := c.String("ip")
 	port := c.Int("port")
 
-	err := validAddr(fmt.Sprintf("%s:%d", ip, port))
+	err := isListen(fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
-		ipStr, has := eosc_args.GetEnv(eosc_args.IP)
-		if !has {
-			return errors.New("start node error: missing ip")
-		}
-		ip = ipStr
-		portStr, has := eosc_args.GetEnv(eosc_args.Port)
-		if !has {
-			return errors.New("start node error: missing port")
-		}
-		p, err := strconv.Atoi(portStr)
-		if err != nil {
-			return fmt.Errorf("start node error: %s", err.Error())
-		}
-		port = p
-		err = validAddr(fmt.Sprintf("%s:%d", ip, port))
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	eosc_args.SetEnv(eosc_args.IP, ip)
@@ -60,8 +43,7 @@ func start(c *cli.Context) error {
 		// 执行join操作
 		bIP := c.String("broadcast-ip")
 		bPort := c.Int("broadcast-port")
-		err := validAddr(fmt.Sprintf("%s:%d", bIP, bPort))
-		if err != nil {
+		if !validAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
 			ipStr, has := eosc_args.GetEnv(eosc_args.BroadcastIP)
 			if !has {
 				return errors.New("start node error: missing broadcast ip")
@@ -76,9 +58,9 @@ func start(c *cli.Context) error {
 				return fmt.Errorf("start node error: %s", err.Error())
 			}
 			bPort = p
-			err = validAddr(fmt.Sprintf("%s:%d", ip, port))
-			if err != nil {
-				return err
+			addr := fmt.Sprintf("%s:%d", bIP, bPort)
+			if !validAddr(addr) {
+				return fmt.Errorf("start error: invalid ip %s\n", addr)
 			}
 		}
 		eosc_args.SetEnv(eosc_args.BroadcastIP, bIP)
@@ -134,17 +116,30 @@ func join(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	client := service.NewCtiServiceClient(conn)
 	response, err := client.Join(context.Background(), &service.JoinRequest{})
 	if err != nil {
 		return err
 	}
-	fmt.Println("response:", response.String())
+	log.Infof("join successful! node id is: %d", response.Info.NodeID)
+
 	return nil
 }
 
 //leave 离开集群
 func leave(c *cli.Context) error {
+	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := service.NewCtiServiceClient(conn)
+	response, err := client.Leave(context.Background(), &service.LeaveRequest{})
+	if err != nil {
+		return err
+	}
+	log.Infof("join successful! node id is: %d", response.Info.NodeID)
 	return nil
 }
 
