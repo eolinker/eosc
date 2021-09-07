@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -9,10 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/eolinker/eosc/service"
-
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 
@@ -130,16 +125,7 @@ func stop(c *cli.Context) error {
 
 //join 加入集群
 func join(c *cli.Context) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
-	if err != nil {
-		return err
-	}
-	client := service.NewCtiServiceClient(conn)
-	response, err := client.Join(context.Background(), &service.JoinRequest{})
-	if err != nil {
-		return err
-	}
-	fmt.Println("response:", response.String())
+
 	return nil
 }
 

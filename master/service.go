@@ -10,28 +10,27 @@ package master
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/service"
 	"syscall"
 
-	"github.com/eolinker/eosc/process"
-	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/service"
+
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/process"
 	"google.golang.org/grpc"
 )
 
+//startService 开启master
+func (m *Master) startService() error {
 
-
-//StartMaster 开启master
-func (m *Master)StartMaster() (*grpc.Server, error) {
-
-	addr:=fmt.Sprintf("/tmp/%s.master.sock", process.AppName())
+	addr := fmt.Sprintf("/tmp/%s.master.sock", process.AppName())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
 	log.Info("start Master :", addr)
 	l, err := grpc_unixsocket.Listener(addr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	grpcServer := grpc.NewServer()
@@ -42,5 +41,12 @@ func (m *Master)StartMaster() (*grpc.Server, error) {
 		grpcServer.Serve(l)
 	}()
 
-	return grpcServer, nil
+	m.masterSrv = grpcServer
+	return nil
+}
+
+func (m *Master) stopService() {
+	m.masterSrv.GracefulStop()
+	addr := fmt.Sprintf("/tmp/%s.master.sock", process.AppName())
+	syscall.Unlink(addr)
 }
