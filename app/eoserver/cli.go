@@ -116,9 +116,16 @@ func join(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	broadcastIP := c.String("ip")
+	broadcastPort := c.Int("port")
+	clusterAddress := c.StringSlice("addr")
 	defer conn.Close()
 	client := service.NewCtiServiceClient(conn)
-	response, err := client.Join(context.Background(), &service.JoinRequest{})
+	response, err := client.Join(context.Background(), &service.JoinRequest{
+		BroadcastIP:    broadcastIP,
+		BroadcastPort:  int32(broadcastPort),
+		ClusterAddress: clusterAddress,
+	})
 	if err != nil {
 		return err
 	}
@@ -135,11 +142,11 @@ func leave(c *cli.Context) error {
 	}
 	defer conn.Close()
 	client := service.NewCtiServiceClient(conn)
-	response, err := client.Leave(context.Background(), &service.LeaveRequest{})
+	response, err := client.Leave(context.Background(), &service.LeaveRequest{Secret: &service.NodeSecret{}})
 	if err != nil {
 		return err
 	}
-	log.Infof("join successful! node id is: %d", response.Info.NodeID)
+	log.Infof("join successful! node id is: %d", response.Msg)
 	return nil
 }
 
