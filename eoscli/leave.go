@@ -41,16 +41,3 @@ func LeaveFunc(c *cli.Context) error {
 	log.Infof("join successful! node id is: %d", response.Msg)
 	return nil
 }
-
-func CreateLevel(pre, affter cli.ActionFunc) *cli.Command {
-	return Leave(func(c *cli.Context) error {
-		err := pre(c)
-		if err != nil {
-			return err
-		}
-		// todo cli level
-
-		return affter(c)
-
-	})
-}

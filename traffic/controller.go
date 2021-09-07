@@ -9,40 +9,41 @@
 package traffic
 
 import (
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"os"
-)
 
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/utils"
+	"google.golang.org/protobuf/proto"
+)
 
 type Traffics []*Out
 
 type IController interface {
 	ITraffic
-	Encode(startIndex int)([]byte,[]*os.File,error)
+	Encode(startIndex int) ([]byte, []*os.File, error)
 	Close()
 }
 
 type Controller struct {
 	Traffic
 }
-func (c *Controller) Encode(startIndex int) ([]byte, []*os.File,error) {
-	ts:=c.All()
-	pts:=new(PbTraffics)
-	files:=make([]*os.File,0,len(ts))
-	pts.Traffic = make([]*PbTraffic,0,len(ts))
-	for i,ln:=range ts{
-		file,err:=ln.File()
-		if err!= nil{
+
+func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
+	ts := c.All()
+	pts := new(PbTraffics)
+	files := make([]*os.File, 0, len(ts))
+	pts.Traffic = make([]*PbTraffic, 0, len(ts))
+	for i, ln := range ts {
+		file, err := ln.File()
+		if err != nil {
 			continue
 		}
 		ln.Close()
-		addr:= ln.Addr()
-		pt:=&PbTraffic{
-			FD: uint64(i+startIndex),
+		addr := ln.Addr()
+		pt := &PbTraffic{
+			FD:      uint64(i + startIndex),
 			Addr:    addr.String(),
 			Network: addr.Network(),
 		}
@@ -51,11 +52,11 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File,error) {
 	}
 
 	data, err := proto.Marshal(pts)
-	if err!= nil{
-		return nil,nil, err
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return utils.EncodeFrame( data),files,nil
+	return utils.EncodeFrame(data), files, nil
 
 }
 
@@ -65,10 +66,10 @@ func (c *Controller) All() []*net.TCPListener {
 	c.data = eosc.NewUntyped()
 	c.locker.Unlock()
 
-	ts:=make([]*net.TCPListener,0,len(list))
-	for _,it:=range list{
-		tf,ok:= it.(*net.TCPListener)
-		if !ok{
+	ts := make([]*net.TCPListener, 0, len(list))
+	for _, it := range list {
+		tf, ok := it.(*net.TCPListener)
+		if !ok {
 			continue
 		}
 		ts = append(ts, tf)
@@ -77,24 +78,25 @@ func (c *Controller) All() []*net.TCPListener {
 	return ts
 }
 
-func NewController(r io.Reader) (*Controller) {
-	c:= &Controller{
-		Traffic:Traffic{
+func NewController(r io.Reader) *Controller {
+	c := &Controller{
+		Traffic: Traffic{
 			data: eosc.NewUntyped(),
 		},
 	}
-	c.Read(r)
+	if r != nil {
+		c.Read(r)
+	}
 	return c
 }
 
-
-func (c *Controller) ListenTcp(network string, addr string)(*net.TCPListener,error) {
+func (c *Controller) ListenTcp(network string, addr string) (*net.TCPListener, error) {
 
 	tcp, err := c.Traffic.ListenTcp(network, addr)
 	if err != nil {
 		return nil, err
 	}
-	if tcp == nil{
+	if tcp == nil {
 		c.locker.Lock()
 		defer c.locker.Unlock()
 		tcpAddr, err := net.ResolveTCPAddr(network, addr)
@@ -102,29 +104,27 @@ func (c *Controller) ListenTcp(network string, addr string)(*net.TCPListener,err
 			return nil, err
 		}
 
-		l,err:=net.ListenTCP(network,tcpAddr)
-		if err!= nil{
-			return nil,err
+		l, err := net.ListenTCP(network, tcpAddr)
+		if err != nil {
+			return nil, err
 		}
 
 		c.Traffic.add(l)
 		tcp = l
 	}
-	return tcp,nil
+	return tcp, nil
 }
-
 
 func (c *Controller) Close() {
 	list := c.data.List()
 	c.data = eosc.NewUntyped()
 
-	for _,it:=range list{
-		tf,ok:=it.(*Out)
-		if !ok{
+	for _, it := range list {
+		tf, ok := it.(*Out)
+		if !ok {
 			continue
 		}
 		tf.Listener.Close()
 		tf.File.Close()
 	}
 }
-

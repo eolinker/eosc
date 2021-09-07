@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"syscall"
 	"time"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -56,6 +57,9 @@ func (m *Master) Fork() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = bytes.NewBuffer(data)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true,
+	}
 	cmd.ExtraFiles = append(filesMaster, filesWorker...)
 	cmd.Env = env
 

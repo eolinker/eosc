@@ -3,10 +3,10 @@
 package eoscli
 
 import (
-	"log"
 	"os"
 	"os/exec"
 
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
 )
 
@@ -14,7 +14,7 @@ func StartMaster(args []string, extra []*os.File) (*exec.Cmd, error) {
 
 	cmd, err := process.Cmd("master", args)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return nil, err
 	}
 	//cmd.Stdout = os.Stdout

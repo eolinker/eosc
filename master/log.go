@@ -10,16 +10,24 @@ package master
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
 	"github.com/eolinker/eosc/process"
 )
 
-func (m *Master) InitLogTransport() {
+func InitLogTransport() {
+	dir := fmt.Sprintf("/var/log/%s", process.AppName())
+	if eosc_args.IsDebug() {
+		dir = filepath.Base(".")
+		log.InitDebug(true)
+	}
 	writer := filelog.NewFileWriteByPeriod()
-	writer.Set(fmt.Sprintf("/var/log/%s", process.AppName()), "error.log", filelog.PeriodDay, 7*24*time.Hour)
+	writer.Set(dir, "error.log", filelog.PeriodDay, 7*24*time.Hour)
 	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
 	formater := &log.LineFormatter{
@@ -29,4 +37,5 @@ func (m *Master) InitLogTransport() {
 	transport.SetFormatter(formater)
 	log.NewStdTransport(formater)
 	log.Reset(transport, log.NewStdTransport(formater))
+
 }
