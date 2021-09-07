@@ -13,45 +13,76 @@ import (
 var errPidNotFound = errors.New("pid not found")
 
 // just suit for linux
-func processExists(pid string) bool {
-	if _, err := os.Stat(filepath.Join("/proc", pid)); err == nil {
-		return true
+func processExists(pid int) bool {
+	_, err := os.FindProcess(pid)
+	if err != nil {
+		return false
 	}
-	return false
+	return true
 }
 
-func CheckPIDFILEAlreadyExists(path string) error {
-	if pidByte, err := ioutil.ReadFile(path); err == nil {
-		pid := strings.TrimSpace(string(pidByte))
-		if processExists(pid) {
-			return fmt.Errorf("ensure the process:%s is not running pid file:%s", pid, path)
-		}
+func CheckPIDFILEAlreadyExists() bool {
+	pid, err := readPid()
+	if err != nil {
+
+		return false
 	}
-	return nil
+
+	return processExists(pid)
 }
 
 // CreatePidFile create the pid file
-func CreatePidFile(path string) error {
-	if err := CheckPIDFILEAlreadyExists(path); err != nil {
-		return err
+func CreatePidFile() error {
+
+	pid, err := readPid()
+	if err == nil {
+		if  processExists(pid) {
+			pidFile,_:=getPidFile()
+
+			return  fmt.Errorf("ensure the process:%s is not running pid file:%s", pid, pidFile)
+		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0755)); err != nil {
+
+	pidFile,err:=getPidFile()
+	if err := os.MkdirAll(filepath.Dir(pidFile), os.FileMode(0755)); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(path, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
+	if err := ioutil.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
 		return err
 	}
 	return nil
 }
 
 //GetPidByFile 从目录中获取pid
-func GetPidByFile(path string) (int, error) {
-	if pidByte, err := ioutil.ReadFile(path); err == nil {
-		pid := strings.TrimSpace(string(pidByte))
-		if processExists(pid) {
-			return strconv.Atoi(pid)
-		}
+func GetPidByFile() (int, error) {
+
+	pid, err := readPid()
+	if err != nil {
+		return 0, err
 	}
-	return 0, errPidNotFound
+
+	return pid,nil
+}
+
+func getPidFile()(string,error)  {
+	pidPath := fmt.Sprintf("%s.pid", appName)
+	absPath, err := filepath.Abs(pidPath)
+	if err != nil {
+		return "", err
+	}
+	return absPath,nil
+}
+func readPid() (int, error) {
+	file, err := getPidFile()
+	if err != nil {
+		return 0, err
+	}
+
+	 pidByte, err := ioutil.ReadFile(file)
+	if err != nil {
+		return 0,err
+	}
+	return strconv.Atoi(strings.TrimSpace(string(pidByte)))
+
 }

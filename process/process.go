@@ -11,7 +11,7 @@ package process
 import (
 	"errors"
 	"fmt"
-	"log"
+	"github.com/eolinker/eosc/log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,8 +42,8 @@ func init() {
 		path = p
 	}
 	appName = filepath.Base(path)
-	log.Printf("app = %s\n", appName)
-	log.Println(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
+	log.Debugf("app = %s\n", appName)
+	log.Debug(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
 	idx, err := strconv.Atoi(os.Getenv(EnvDaemonName))
 	if err != nil {
 		os.Setenv(EnvDaemonName, "1")
@@ -84,9 +84,8 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 }
 
 func Stop() error {
-	path := fmt.Sprintf("%s.pid", appName)
-	log.Printf("app %s is stopping,please wait...\n", appName)
-	pid, err := GetPidByFile(path)
+ 	log.Debugf("app %s is stopping,please wait...\n", appName)
+	pid, err := GetPidByFile()
 	if err != nil {
 		return err
 	}
@@ -98,12 +97,14 @@ func Stop() error {
 }
 
 func Restart() error {
-	path := fmt.Sprintf("%s.pid", appName)
-	log.Printf("app %s is restart,please wait...\n", appName)
-	pid, err := GetPidByFile(path)
+	pid, err := GetPidByFile()
+
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("app %s pid:%d is restart,please wait...\n", appName,pid)
+
 	p, err := os.FindProcess(pid)
 	if err != nil {
 		return err
@@ -130,24 +131,6 @@ func Run() bool {
 	return false
 }
 
-func daemon(idx int) {
-
-	log.Println("call daemon:", idx, " for ", os.Args)
-	cmd := &exec.Cmd{
-		Path:   os.Args[0],
-		Args:   os.Args, //注意,此处是包含程序名的
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		Env:    os.Environ(), //父进程中的所有环境变量
-	}
-	//为子进程设置特殊的环境变量标识
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%d", EnvDaemonName, idx))
-	if err := cmd.Start(); err != nil {
-		panic(err)
-	}
-	return
-}
 
 func toKey(name string) string {
 	return fmt.Sprintf("%s: %s", appName, name)

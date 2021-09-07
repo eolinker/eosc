@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -220,7 +221,10 @@ func (w *FileWriterByPeriod) dropHistory() {
 	}
 }
 func (w *FileWriterByPeriod) initFile() {
-	_ = os.MkdirAll(w.dir, os.ModePerm)
+	err:= os.MkdirAll(w.dir, os.ModeDir)
+	if err!= nil{
+		log.Println(err)
+	}
 	path := filepath.Join(w.dir, fmt.Sprintf("%s.log", w.file))
 	nowTag := w.timeTag(time.Now())
 	if info, e := os.Stat(path); e == nil {

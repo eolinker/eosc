@@ -6,7 +6,9 @@ import (
 )
 
 func NewStdTransport(formatter Formatter) *Transporter {
-	return NewTransport(os.Stdout, InfoLevel)
+	t:= NewTransport(os.Stderr, InfoLevel)
+	t.SetFormatter(formatter)
+	return t
 }
 
 func NewTransport(out io.Writer, level Level) *Transporter {

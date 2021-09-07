@@ -91,11 +91,13 @@ func (m *Master) InitLogTransport() {
 	writer.Set(fmt.Sprintf("/var/log/%s", process.AppName()), "error.log", filelog.PeriodDay, 7*24*time.Hour)
 	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
-	transport.SetFormatter(&log.LineFormatter{
+	formater:= &log.LineFormatter{
 		TimestampFormat:  "[2006-01-02 15:04:05]",
 		CallerPrettyfier: nil,
-	})
-	log.Reset(transport)
+	}
+	transport.SetFormatter(formater)
+	log.NewStdTransport(formater)
+	log.Reset(transport,log.NewStdTransport(formater))
 }
 
 func (m *Master) Start() {
@@ -109,9 +111,9 @@ func (m *Master) Start() {
 	srv, err := StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 	if err != nil {
 		log.Error(err)
-		os.Exit(1)
 		return
 	}
+	log.Debug("RegisterCtiServiceServer")
 	service.RegisterCtiServiceServer(srv, m)
 	m.srv = srv
 
@@ -126,11 +128,10 @@ func (m *Master) Start() {
 		return
 	}
 
-
-
 	if  _,has := eosc_args.GetEnv("MASTER_CONTINUE");has{
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
+
 
 }
 
@@ -140,13 +141,15 @@ func (m *Master) Wait() error {
 	for {
 		sig := <-sigc
 		switch sig {
-		case os.Interrupt, os.Kill, syscall.SIGQUIT:
+		case os.Interrupt, os.Kill:
 			{
 				log.Infof("Caught signal %s: shutting down.\n", sig.String())
 				m.srv.GracefulStop()
 				m.close()
 				return nil
 			}
+		case syscall.SIGQUIT:
+
 		case syscall.SIGUSR1:
 			{
 				// TODO: 平滑重启操作
