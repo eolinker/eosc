@@ -2,6 +2,13 @@ syntax = "proto3";
 option go_package = "github.com/eolinker/eosc/service";
 package service;
 
+message helloRequest {
+  string name =1;
+}
+message helloResponse{
+  string name =1;
+}
 service Master {
+ rpc  Hello(helloRequest)returns(helloResponse){};
 }
 

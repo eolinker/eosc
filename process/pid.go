@@ -65,6 +65,13 @@ func GetPidByFile() (int, error) {
 	return pid,nil
 }
 
+func ClearPid() {
+	pidFile,err:= getPidFile()
+	if err!= nil{
+		os.Remove(pidFile)
+	}
+}
+
 func getPidFile()(string,error)  {
 	pidPath := fmt.Sprintf("%s.pid", appName)
 	absPath, err := filepath.Abs(pidPath)

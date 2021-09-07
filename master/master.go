@@ -9,6 +9,8 @@
 package master
 
 import (
+	"context"
+	"github.com/eolinker/eosc/service"
 	"time"
 
 	"github.com/eolinker/eosc/store"
@@ -16,8 +18,6 @@ import (
 	"github.com/eolinker/eosc"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
-	"github.com/eolinker/eosc/service"
-
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/traffic"
@@ -48,16 +48,31 @@ func Process() {
 	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
+	err := process.CreatePidFile()
+	if err != nil {
+		// 创建pid文件失败，则报错
 
+		return
+	}
 	master.Wait()
 }
 
 type Master struct {
+	service.UnimplementedMasterServer
+	service.UnimplementedCtiServiceServer
+
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
-	store         eosc.IStore
-	srv           *grpc.Server
+	store     eosc.IStore
+	masterSrv *grpc.Server
 }
+
+func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
+	return &service.HelloResponse{
+		Name: request.GetName(),
+	},nil
+}
+
 
 func (m *Master) InitLogTransport() {
 	writer := filelog.NewFileWriteByPeriod()
@@ -93,9 +108,10 @@ func (m *Master) Start() {
 		log.Error("start master grpc server error: ", err.Error())
 		return
 	}
+	m.masterSrv = srv
 	log.Debug("RegisterCtiServiceServer")
-	service.RegisterCtiServiceServer(srv, m)
-	m.srv = srv
+
+
 
 	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
 	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
@@ -119,16 +135,20 @@ func (m *Master) Wait() error {
 		case os.Interrupt, os.Kill:
 			{
 				log.Infof("Caught signal %s: shutting down.\n", sig.String())
-				m.srv.GracefulStop()
+
 				m.close()
 				return nil
 			}
 		case syscall.SIGQUIT:
-
+			{
+				m.close()
+				process.ClearPid()
+			}
 		case syscall.SIGUSR1:
 			{
 				// TODO: 平滑重启操作
 				m.Fork() //传子进程需要的内容
+				process.GetPidByFile()
 			}
 		default:
 			continue
@@ -137,7 +157,10 @@ func (m *Master) Wait() error {
 }
 
 func (m *Master) close() {
+
 	syscall.Unlink(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+
+	m.masterSrv.GracefulStop()
 
 }
 
