@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="eoserver" type="GoApplicationRunConfiguration" factoryName="Go Application" singleton="false">
+    <module name="goku-eosc" />
+    <working_directory value="$PROJECT_DIR$/../eosc/out" />
+    <parameters value=" start" />
+    <envs>
+      <env name="eoserver_debug" value="true" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/eolinker/eosc/app/eoserver" />
+    <directory value="$PROJECT_DIR$/../eosc" />
+    <filePath value="$PROJECT_DIR$/../eosc/app/eoservice/main.go" />
+    <output_directory value="$PROJECT_DIR$/../eosc/out" />
+    <method v="2" />
+  </configuration>
+</component>
