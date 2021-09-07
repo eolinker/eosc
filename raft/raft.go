@@ -2,7 +2,6 @@ package raft
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,9 +13,7 @@ import (
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
-	"go.etcd.io/etcd/raft/v3"
 
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/etcd/server/v3/wal"
@@ -34,7 +31,7 @@ var retryFrequency time.Duration = 2000
 // 1、应用于新建一个想要加入已知集群的节点，会向已知节点发送请求获取id等新建节点信息
 // 已知节点如果还处于非集群模式，会先切换成集群模式
 // 2、也可以用于节点crash后的重启处理
-func JoinCluster(local string, target string, service IService) (*raftNode, error) {
+func JoinCluster(local string, target string, service IService) (*Node, error) {
 	msg := &JoinMsg{
 		Host: local,
 	}
@@ -70,8 +67,8 @@ func JoinCluster(local string, target string, service IService) (*raftNode, erro
 }
 
 // joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
-func joinAndCreateRaft(id int, host string, service IService, peerList map[uint64]string) *raftNode {
-	rc := &raftNode{
+func joinAndCreateRaft(id int, host string, service IService, peerList map[uint64]string) *Node {
+	rc := &Node{
 		nodeID:    uint64(id),
 		Service:   service,
 		join:      true,
@@ -119,8 +116,8 @@ func joinAndCreateRaft(id int, host string, service IService, peerList map[uint6
 // peers也可以是其余集群中的其他节点，表示这是一个多节点集群，此时其他节点也需通过同样的配置和方式启动，
 // 推荐使用JoinCluster来新建多节点集群节点
 // 3、创建加入已知集群的节点，join为true，isCluster为true，此时peers需包括其他节点地址，推荐使用JoinCluster来新建非单点集群节点
-func CreateRaftNode(id int, host string, service IService, peers string, keys string, join bool, isCluster bool) (*raftNode, error) {
-	rc := &raftNode{
+func CreateRaftNode(id int, host string, service IService, peers string, keys string, join bool, isCluster bool) (*Node, error) {
+	rc := &Node{
 		nodeID:    uint64(id),
 		Service:   service,
 		join:      join,
@@ -207,11 +204,4 @@ func writeResult(w http.ResponseWriter, v interface{}) {
 		return
 	}
 	w.Write(data)
-}
-
-func (rc *raftNode) Process(ctx context.Context, m raftpb.Message) error { return rc.node.Step(ctx, m) }
-func (rc *raftNode) IsIDRemoved(id uint64) bool                          { return false }
-func (rc *raftNode) ReportUnreachable(id uint64)                         { rc.node.ReportUnreachable(id) }
-func (rc *raftNode) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
-	rc.node.ReportSnapshot(id, status)
 }

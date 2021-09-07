@@ -46,11 +46,13 @@ message ListRequest{
 }
 
 message ListResponse{
-  repeated NodeInfo info = 1;
+  string msg  = 1;
+  string code = 2;
+  repeated NodeInfo info = 3;
 }
 
 message InfoRequest {
-
+  NodeSecret secret = 1;
 }
 
 message InfoResponse {

@@ -11,14 +11,14 @@
 package main
 
 import (
+	"os"
+
 	"github.com/eolinker/eosc/eoscli"
 	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/master"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/worker"
-	"github.com/urfave/cli/v2"
-	"os"
 )
 
 func init() {
@@ -36,20 +36,17 @@ func main() {
 	log.InitDebug(true)
 	app := eoscli.NewApp()
 	app.AppendCommand(
-		eoscli.Start(start),
-		eoscli.Join(join),
-		eoscli.Stop(stop),
-		eoscli.Info(info),
-		eoscli.Leave(leave),
-		eoscli.Cluster(clusters),
-		eoscli.Restart(func(c *cli.Context) error {
-			return process.Restart()
-		}),
+		eoscli.Start(eoscli.StartFunc),
+		eoscli.Join(eoscli.JoinFunc),
+		eoscli.Stop(eoscli.StopFunc),
+		eoscli.Info(eoscli.InfoFunc),
+		eoscli.Leave(eoscli.LeaveFunc),
+		eoscli.Cluster(eoscli.ClustersFunc),
+		eoscli.Restart(eoscli.RestartFunc),
 	)
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err)
 	}
-
 
 }

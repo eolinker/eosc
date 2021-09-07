@@ -1,31 +1,28 @@
-// +build linux freebsd darwin
+// +build windows
 
-package main
+package eoscli
 
 import (
 	"log"
 	"os"
 	"os/exec"
-	"syscall"
 
 	"github.com/eolinker/eosc/process"
 )
 
-func Start(name string, args []string, extra []*os.File) (*exec.Cmd, error) {
+func StartMaster(args []string, extra []*os.File) (*exec.Cmd, error) {
 
-	cmd, err := process.Cmd(name, args)
+	cmd, err := process.Cmd("master", args)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
 	//cmd.Stdin = os.Stdin
 	cmd.Env = os.Environ()
 	cmd.ExtraFiles = extra
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
-	}
+
 	e := cmd.Start()
 	if e != nil {
 		log.Println(e)

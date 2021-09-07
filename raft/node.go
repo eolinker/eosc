@@ -26,7 +26,7 @@ import (
 )
 
 // raft节点结构
-type raftNode struct {
+type Node struct {
 	// 节点ID
 	nodeID uint64
 
@@ -77,17 +77,17 @@ type raftNode struct {
 	active bool
 }
 
-func (rc *raftNode) NodeID() uint64 {
+func (rc *Node) NodeID() uint64 {
 	return rc.nodeID
 }
 
-func (rc *raftNode) NodeKey() string {
+func (rc *Node) NodeKey() string {
 	return rc.nodeKey
 }
 
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
-func (rc *raftNode) startRaft() {
+func (rc *Node) startRaft() {
 	log.Info("start raft Service")
 
 	// 判断快照文件夹是否存在，不存在则创建
@@ -158,7 +158,7 @@ func (rc *raftNode) startRaft() {
 }
 
 // 监听ready通道，集群模式下会开始监听
-func (rc *raftNode) serveChannels() {
+func (rc *Node) serveChannels() {
 	sn, err := rc.raftStorage.Snapshot()
 	if err != nil {
 		log.Panic(err)
@@ -211,7 +211,7 @@ func (rc *raftNode) serveChannels() {
 // publishEntries writes committed log entries to commit channel and returns
 // whether all entries could be published.
 // 日志提交处理
-func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
+func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 	if len(ents) == 0 {
 		return true
 	}
@@ -289,7 +289,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 }
 
 // 处理本节点需要committed的日志
-func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
+func (rc *Node) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 	if len(ents) == 0 {
 		return ents
 	}
@@ -306,7 +306,7 @@ func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 // 日志/快照文件相关
 
 // ReadSnap 读取快照内容到service
-func (rc *raftNode) ReadSnap(snapshotter *snap.Snapshotter) error {
+func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
 	// 读取快照的所有内容
 	snapshot, err := snapshotter.Load()
 	// 快照不存在
@@ -329,7 +329,7 @@ func (rc *raftNode) ReadSnap(snapshotter *snap.Snapshotter) error {
 }
 
 // saveToStorage 内存信息存储
-func (rc *raftNode) saveToStorage(rd raft.Ready) {
+func (rc *Node) saveToStorage(rd raft.Ready) {
 	var err error
 	err = rc.wal.Save(rd.HardState, rd.Entries)
 	if err != nil {
@@ -357,7 +357,7 @@ func (rc *raftNode) saveToStorage(rd raft.Ready) {
 }
 
 // 保存快照文件
-func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
+func (rc *Node) saveSnap(snap raftpb.Snapshot) error {
 	walSnap := walpb.Snapshot{
 		Index:     snap.Metadata.Index,
 		Term:      snap.Metadata.Term,
@@ -377,7 +377,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 }
 
 // service 从快照中重取数据
-func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
+func (rc *Node) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	if raft.IsEmptySnap(snapshotToSave) {
 		return
 	}
@@ -397,7 +397,7 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 }
 
 // 保存现有快照
-func (rc *raftNode) maybeTriggerSnapshot() {
+func (rc *Node) maybeTriggerSnapshot() {
 	// 还不到保存快照的数里
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
 		return
@@ -432,7 +432,7 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 }
 
 // 从现有文件中读取日志
-func (rc *raftNode) replayWAL() *wal.WAL {
+func (rc *Node) replayWAL() *wal.WAL {
 	// 先获取现有快照
 	snapshot := rc.loadSnapshot()
 	// 再获取现有日志
@@ -464,7 +464,7 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 }
 
 // 读取快照文件
-func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
+func (rc *Node) loadSnapshot() *raftpb.Snapshot {
 	if wal.Exist(rc.waldir) {
 		walSnaps, err := wal.ValidSnapshotEntries(rc.logger, rc.waldir)
 		if err != nil {
@@ -481,7 +481,7 @@ func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
 }
 
 // 读取(创建)wal日志文件
-func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
+func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if !wal.Exist(rc.waldir) {
 		// 创建本地文件
 		if err := os.Mkdir(rc.waldir, 0750); err != nil {
@@ -511,7 +511,7 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 
 // 停止服务相关(暂时不直接关闭程序)
 // stop closes http and stops raft.
-func (rc *raftNode) stop() {
+func (rc *Node) stop() {
 	rc.stopHTTP()
 	close(rc.stopc)
 	rc.node.Stop()
@@ -520,7 +520,7 @@ func (rc *raftNode) stop() {
 }
 
 // 停止http服务
-func (rc *raftNode) stopHTTP() {
+func (rc *Node) stopHTTP() {
 	rc.transport.Stop()
 	close(rc.httpstopc)
 	<-rc.httpdonec
@@ -535,7 +535,7 @@ func (rc *raftNode) stopHTTP() {
 // 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *raftNode) Send(command string, send []byte) error {
+func (rc *Node) Send(command string, send []byte) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
@@ -578,17 +578,18 @@ func (rc *raftNode) Send(command string, send []byte) error {
 }
 
 // GetPeers 获取集群的peer列表，供API调用
-func (rc *raftNode) GetPeers() (map[uint64]string, int, error) {
+func (rc *Node) GetPeers() (map[uint64]string, int, error) {
 	if !rc.active {
 		return nil, 0, fmt.Errorf("current node is stop")
 	}
+
 	peerList := rc.peers.GetAllPeers()
 	peerCount := rc.peers.GetConfigCount()
 	return peerList, peerCount, nil
 }
 
 // AddConfigChange 客户端发送增加/删除节点的发送处理
-func (rc *raftNode) AddConfigChange(nodeID uint64, host string) error {
+func (rc *Node) AddConfigChange(nodeID uint64, host string) error {
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
@@ -609,7 +610,7 @@ func (rc *raftNode) AddConfigChange(nodeID uint64, host string) error {
 }
 
 // DeleteConfigChange 客户端发送删除节点的发送处理
-func (rc *raftNode) DeleteConfigChange(nodeID uint64) error {
+func (rc *Node) DeleteConfigChange(nodeID uint64) error {
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
@@ -632,7 +633,7 @@ func (rc *raftNode) DeleteConfigChange(nodeID uint64) error {
 // 将service现有的缓存信息(基于service.GetInit获取)加载到日志中，便于其他节点同步
 // 此时节点刚切换到集群状态，一般会是日志中的第一条信息
 // 并通过rc.waiter等待service.ProcessInit处理完后进行后续操作(同步等待)
-func (rc *raftNode) InitSend() error {
+func (rc *Node) InitSend() error {
 	// 集群模式初始化的时候才会调
 	if !rc.isCluster {
 		return fmt.Errorf("need to change cluster mode")
@@ -671,7 +672,7 @@ func (rc *raftNode) InitSend() error {
 // changeCluster 切换集群时调用，一般是非集群节点收到其他节点的join请求时触发(rc.joinHandler)
 // 开始运行集群节点,新建日志文件，启动transport和node，
 // 并开始监听node.ready,将现有缓存加入日志中rc.InitSend
-func (rc *raftNode) changeCluster() error {
+func (rc *Node) changeCluster() error {
 	log.Info("change cluster mode")
 	rc.isCluster = true
 	// 判断快照文件夹是否存在，不存在则创建
@@ -735,7 +736,7 @@ func (rc *raftNode) changeCluster() error {
 
 // 通信相关
 // serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
-func (rc *raftNode) serveRaft() {
+func (rc *Node) serveRaft() {
 	log.Info("eosc: start raft serve listener")
 	v, ok := rc.peers.GetPeerByID(rc.nodeID)
 	if !ok {
@@ -760,7 +761,7 @@ func (rc *raftNode) serveRaft() {
 }
 
 // Handler http请求处理
-func (rc *raftNode) Handler() http.Handler {
+func (rc *Node) Handler() http.Handler {
 	sm := http.NewServeMux()
 	// 其他节点加入集群的处理
 	sm.HandleFunc("/join", rc.joinHandler)
@@ -774,7 +775,7 @@ func (rc *raftNode) Handler() http.Handler {
 // 1、如果已经是集群模式，直接返回相关id，peer等信息方便处理
 // 2、如果不是集群模式，先切换集群rc.changeCluster,再返回相关信息
 // 3、该处理也可应用于集群节点crash后的重启
-func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
+func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 
 	joinMsg := &JoinMsg{}
 	body, _ := ioutil.ReadAll(r.Body)
@@ -838,7 +839,7 @@ func (rc *raftNode) joinHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // proposeHandler 其他节点转发到leader的propose处理，由rc.Send触发
-func (rc *raftNode) proposeHandler(w http.ResponseWriter, r *http.Request) {
+func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 	res := &Response{
 		Code: "111111",
 	}
@@ -883,7 +884,7 @@ func (rc *raftNode) proposeHandler(w http.ResponseWriter, r *http.Request) {
 
 // 工具方法
 // postMessage 转发消息，基于json
-func (rc *raftNode) postMessage(addr string, command string, data []byte) error {
+func (rc *Node) postMessage(addr string, command string, data []byte) error {
 	// 转给leader
 	m := &ProposeMsg{
 		From: rc.nodeID,
@@ -918,7 +919,7 @@ func (rc *raftNode) postMessage(addr string, command string, data []byte) error 
 }
 
 // getLeader 获取leader地址以及判断当前节点是不是leader
-func (rc *raftNode) getLeader() (string, bool, error) {
+func (rc *Node) getLeader() (string, bool, error) {
 	if rc.lead == raft.None {
 		if rc.node.Status().Lead == raft.None {
 			return "", false, fmt.Errorf("current node(%d) has no leader", rc.lead)
@@ -935,4 +936,11 @@ func (rc *raftNode) getLeader() (string, bool, error) {
 		return "", flag, fmt.Errorf("current node has no leader(%d) host", rc.lead)
 	}
 	return v, flag, nil
+}
+
+func (rc *Node) Process(ctx context.Context, m raftpb.Message) error { return rc.node.Step(ctx, m) }
+func (rc *Node) IsIDRemoved(id uint64) bool                          { return false }
+func (rc *Node) ReportUnreachable(id uint64)                         { rc.node.ReportUnreachable(id) }
+func (rc *Node) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
+	rc.node.ReportSnapshot(id, status)
 }
