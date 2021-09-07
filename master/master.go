@@ -13,6 +13,8 @@ import (
 	"github.com/eolinker/eosc/service"
 	"time"
 
+	"github.com/eolinker/eosc/store"
+
 	"github.com/eolinker/eosc"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -40,14 +42,10 @@ func Process() {
 		return
 	}
 
-
-	Register()
-
 	master := NewMasterHandle()
 	master.Start()
 
-
-	if  _,has := eosc_args.GetEnv("MASTER_CONTINUE");has{
+	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 	err := process.CreatePidFile()
@@ -81,13 +79,13 @@ func (m *Master) InitLogTransport() {
 	writer.Set(fmt.Sprintf("/var/log/%s", process.AppName()), "error.log", filelog.PeriodDay, 7*24*time.Hour)
 	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
-	formater:= &log.LineFormatter{
+	formater := &log.LineFormatter{
 		TimestampFormat:  "[2006-01-02 15:04:05]",
 		CallerPrettyfier: nil,
 	}
 	transport.SetFormatter(formater)
 	log.NewStdTransport(formater)
-	log.Reset(transport,log.NewStdTransport(formater))
+	log.Reset(transport, log.NewStdTransport(formater))
 }
 
 func (m *Master) Start() {
@@ -97,12 +95,17 @@ func (m *Master) Start() {
 
 	m.InitLogTransport()
 	// 设置存储操作
-	m.store = initStore()
+	s, err := store.NewStore()
+	if err != nil {
+		log.Error("new store error: ", err.Error())
+		return
+	}
+	m.store = s
 
 	log.Info("start master")
 	srv, err := m.StartMaster()
 	if err != nil {
-		log.Error(err)
+		log.Error("start master grpc server error: ", err.Error())
 		return
 	}
 	m.masterSrv = srv
