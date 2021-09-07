@@ -11,6 +11,8 @@ package master
 import (
 	"time"
 
+	"github.com/eolinker/eosc"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/service"
 
@@ -39,8 +41,8 @@ func Process() {
 type Master struct {
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
-
-	srv *grpc.Server
+	store         eosc.IStore
+	srv           *grpc.Server
 }
 
 func (m *Master) InitLogTransport() {
@@ -61,6 +63,8 @@ func (m *Master) Start() {
 	m.workerTraffic = traffic.NewController(os.Stdin)
 
 	m.InitLogTransport()
+	// 设置存储操作
+	m.store = initStore()
 
 	log.Info("start master")
 	srv, err := StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
