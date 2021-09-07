@@ -11,6 +11,8 @@ package master
 import (
 	"time"
 
+	"github.com/eolinker/eosc"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/service"
 
@@ -31,11 +33,15 @@ import (
 )
 
 func Process() {
+
 	if process.CheckPIDFILEAlreadyExists() {
 		// 存在，则报错开启失败
 		log.Error("the master is running")
 		return
 	}
+
+
+	Register()
 
 	master := NewMasterHandle()
 	master.Start()
@@ -51,8 +57,8 @@ func Process() {
 type Master struct {
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
-
-	srv *grpc.Server
+	store         eosc.IStore
+	srv           *grpc.Server
 }
 
 func (m *Master) InitLogTransport() {
@@ -75,6 +81,8 @@ func (m *Master) Start() {
 	m.workerTraffic = traffic.NewController(os.Stdin)
 
 	m.InitLogTransport()
+	// 设置存储操作
+	m.store = initStore()
 
 	log.Info("start master")
 	srv, err := m.StartMaster()
