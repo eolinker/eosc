@@ -4,7 +4,6 @@ package service
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -77,6 +76,7 @@ type CtiServiceServer interface {
 	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
 	Info(context.Context, *InfoRequest) (*InfoResponse, error)
+	mustEmbedUnimplementedCtiServiceServer()
 }
 
 // UnimplementedCtiServiceServer must be embedded to have forward compatible implementations.
@@ -95,6 +95,7 @@ func (UnimplementedCtiServiceServer) List(context.Context, *ListRequest) (*ListR
 func (UnimplementedCtiServiceServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
 }
+func (UnimplementedCtiServiceServer) mustEmbedUnimplementedCtiServiceServer() {}
 
 // UnsafeCtiServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to CtiServiceServer will
@@ -204,5 +205,5 @@ var CtiService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "service/ctl.proto",
+	Metadata: "ctl.proto",
 }

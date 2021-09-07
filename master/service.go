@@ -10,6 +10,7 @@ package master
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/service"
 	"syscall"
 
 	"github.com/eolinker/eosc/process"
@@ -32,15 +33,14 @@ func (m *Master)StartMaster() (*grpc.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = process.CreatePidFile()
-	if err != nil {
-		// 创建pid文件失败，则报错
-		return nil,err
-	}
+
 	grpcServer := grpc.NewServer()
 
+	service.RegisterCtiServiceServer(grpcServer, m)
+	service.RegisterMasterServer(grpcServer, m)
 	go func() {
 		grpcServer.Serve(l)
 	}()
+
 	return grpcServer, nil
 }
