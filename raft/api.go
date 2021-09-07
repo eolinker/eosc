@@ -133,7 +133,7 @@ func (c *Client) addNodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	nodeId := r.PostFormValue("Id")
 	addr := r.PostFormValue("host")
-	if nodeId == "" || host == "" {
+	if nodeId == "" {
 		res.Msg = "parameters format error"
 		res.Code = "000001"
 	} else {
