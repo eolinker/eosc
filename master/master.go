@@ -112,7 +112,7 @@ func (m *Master) startHttp(l net.Listener) {
 }
 func (m *Master) handler() http.Handler {
 	sm := http.NewServeMux()
-	sm.Handle("/raft/", http.StripPrefix("/raft/", m.node.Handler()))
+	sm.Handle("/raft/", m.node.Handler())
 
 	return sm
 }
