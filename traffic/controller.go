@@ -13,6 +13,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/eolinker/eosc/log"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
@@ -90,22 +92,22 @@ func NewController(r io.Reader) *Controller {
 	return c
 }
 
-func (c *Controller) ListenTcp(network string, addr string) (*net.TCPListener, error) {
+func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 
-	tcp, err := c.Traffic.ListenTcp(network, addr)
+	tcp, err := c.Traffic.ListenTcp(ip, port)
 	if err != nil {
+		log.Warn("get listen tcp from traffic :", err)
 		return nil, err
 	}
 	if tcp == nil {
+		log.Warn("get listen tcp not exit")
 		c.locker.Lock()
 		defer c.locker.Unlock()
-		tcpAddr, err := net.ResolveTCPAddr(network, addr)
-		if err != nil {
-			return nil, err
-		}
+		tcpAddr := ResolveTCPAddr(ip, port)
 
-		l, err := net.ListenTCP(network, tcpAddr)
+		l, err := net.ListenTCP("tcp", tcpAddr)
 		if err != nil {
+			log.Warn("listen tcp:", err)
 			return nil, err
 		}
 

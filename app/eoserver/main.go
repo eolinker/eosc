@@ -29,8 +29,9 @@ func init() {
 }
 
 func main() {
-	defer os.Exit(0)
+
 	if process.Run() {
+		log.Close()
 		return
 	}
 	app := eoscli.NewApp()
@@ -47,5 +48,5 @@ func main() {
 	if err != nil {
 		log.Error(err)
 	}
-
+	log.Close()
 }

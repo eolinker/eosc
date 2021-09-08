@@ -28,7 +28,7 @@ func SetEnv(name, value string) error {
 	return syscall.Setenv(envName(name), value)
 }
 func GenEnv(name, value string) string {
-	return fmt.Sprintf("%s_%s=%s", name, value)
+	return fmt.Sprintf("%s=%s", envName(name), value)
 }
 func envName(name string) string {
 	return fmt.Sprintf("%s_%s", process.AppName(), name)

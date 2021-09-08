@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/eolinker/eosc/log"
+
 	"github.com/eolinker/eosc/process"
 )
 
@@ -47,6 +49,7 @@ func New() (*PidFile, error) {
 }
 
 func (p *PidFile) Remove() error {
+	log.Info("remove pidfile:", p.path)
 	p.locker.Lock()
 	defer p.locker.Unlock()
 	if p.path == "" {
@@ -54,8 +57,10 @@ func (p *PidFile) Remove() error {
 	}
 	err := os.Remove(p.path)
 	if err != nil {
+		log.Warn("remove pidfile :", err)
 		return err
 	}
+
 	p.path = ""
 	return nil
 }
@@ -88,7 +93,8 @@ func (p *PidFile) TryFork() error {
 	target := getOldPath()
 
 	if exist(target) {
-		return ErrorPidForking
+		// 强制清理旧文件
+		os.Remove(target)
 	}
 
 	if strings.EqualFold(p.path, target) {

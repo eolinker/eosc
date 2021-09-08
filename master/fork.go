@@ -34,7 +34,7 @@ func (m *Master) Fork() error {
 	}
 	runningMasterForked = true
 
-	// 子进程的环境变量加入IS_MASTER_CHILD字段，用于新的Master启动后给父Master传送中断信号
+	// 子进程的环境变量加入MASTER_CONTINUE字段，用于新的Master启动后给父Master传送中断信号
 	env := append(os.Environ(), eosc_args.GenEnv("MASTER_CONTINUE", "1"))
 	dataMasterTraffic, filesMaster, err := m.masterTraffic.Encode(3)
 	if err != nil {

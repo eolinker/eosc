@@ -11,50 +11,55 @@ package traffic
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
 	"io"
 	"net"
 	"sync"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 )
-var(
+
+var (
 	ErrorInvalidListener = errors.New("invalid listener")
 )
+
 type Traffic struct {
 	locker sync.Mutex
-	data eosc.IUntyped
+	data   eosc.IUntyped
 }
 
 func NewTraffic() *Traffic {
 	return &Traffic{
-		data: eosc.NewUntyped(),
+		data:   eosc.NewUntyped(),
 		locker: sync.Mutex{},
 	}
 }
 
-func (t *Traffic) ListenTcp(network, addr string) (*net.TCPListener, error) {
+func (t *Traffic) ListenTcp(ip string, port int) (*net.TCPListener, error) {
+	//if strings.HasPrefix(addr, "0.0.0.0:") {
+	//	addr = strings.TrimPrefix(addr, "0.0.0.0")
+	//}
+
+	tcpAddr := ResolveTCPAddr(ip, port)
 	t.locker.Lock()
 	defer t.locker.Unlock()
 
-	tcpAddr, err := net.ResolveTCPAddr(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	name:=fmt.Sprintf("%s://%s",tcpAddr.Network(),tcpAddr.String())
-
-	if o, has := t.data.Get(name);has{
-		listener,ok := o.(*net.TCPListener)
-		if !ok{
+	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
+	log.Debug("traffic listen:", name)
+	if o, has := t.data.Get(name); has {
+		listener, ok := o.(*net.TCPListener)
+		if !ok {
 			return nil, ErrorInvalidListener
 		}
 
-		return listener,nil
+		return listener, nil
 	}
 
-	return nil,nil
+	return nil, nil
 }
 
 type ITraffic interface {
-	ListenTcp(network,addr string)(*net.TCPListener,error)
+	ListenTcp(ip string, port int) (*net.TCPListener, error)
 }
 
 func (t *Traffic) Read(r io.Reader) {
@@ -63,16 +68,38 @@ func (t *Traffic) Read(r io.Reader) {
 
 	listeners, err := Reader(r)
 	if err != nil {
+		log.Warn("read listeners:", err)
 		return
 	}
-	for _,ln:=range listeners{
+	for _, ln := range listeners {
 		t.add(ln)
 	}
 
 }
 
-func (t *Traffic) add(ln *net.TCPListener)  {
+func (t *Traffic) add(ln *net.TCPListener) {
 	tcpAddr := ln.Addr()
-	name:=fmt.Sprintf("%s://%s",tcpAddr.Network(),tcpAddr.String())
-	t.data.Set(name,ln)
+	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
+	log.Info("traffic add:", name)
+	t.data.Set(name, ln)
+}
+
+func resolve(value string) net.IP {
+	ip := net.ParseIP(value)
+	if ip == nil {
+		return net.IPv6zero
+	}
+	if ip.Equal(net.IPv4zero) {
+		return net.IPv6zero
+	}
+	return ip
+}
+
+func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
+
+	return &net.TCPAddr{
+		IP:   resolve(ip),
+		Port: port,
+		Zone: "",
+	}
 }
