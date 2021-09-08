@@ -10,6 +10,9 @@ package master
 
 import (
 	"context"
+	"net"
+	"net/http"
+	"strconv"
 
 	"github.com/eolinker/eosc"
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -23,26 +26,22 @@ import (
 
 	"google.golang.org/grpc"
 
-	"fmt"
-
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/eolinker/eosc/process"
 )
 
 func Process() {
 	InitLogTransport()
 	file, err := pidfile.New()
 	if err != nil {
-		log.Errorf("the master is running:%v", err)
+		log.Errorf("the master is running:%v by:%d", err, os.Getpid())
 		return
 	}
 	master := NewMasterHandle(file)
 	if err := master.Start(); err != nil {
 		master.close()
-		log.Errorf("master start faild:%v", err)
+		log.Errorf("master[%d] start faild:%v", os.Getpid(), err)
 		return
 	}
 	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
@@ -68,13 +67,8 @@ type Master struct {
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
 	PID           *pidfile.PidFile
-}
 
-func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
-	return &service.HelloResponse{
-		Name: request.GetName(),
-	}, nil
-
+	httpserver *http.Server
 }
 
 func (m *Master) Start() error {
@@ -87,15 +81,26 @@ func (m *Master) Start() error {
 	}
 	m.store = s
 
-	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
-	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
-	log.Info(fmt.Sprintf("%s:%s", ip, port))
+	ip := eosc_args.GetDefault(eosc_args.IP, "")
+	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
 	// 监听master监听地址，用于接口处理
-	_, err = m.masterTraffic.ListenTcp("tcp", fmt.Sprintf("%s:%s", ip, port))
+	l, err := m.masterTraffic.ListenTcp(ip, port)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	go func(l net.Listener) {
+
+		s := http.Server{}
+		s.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("ok"))
+		})
+		e := s.Serve(l)
+		if err != nil {
+			log.Warn(e)
+		}
+	}(l)
+
 	return nil
 
 }
@@ -106,24 +111,28 @@ func (m *Master) Wait() error {
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
 	for {
 		sig := <-sigc
+		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
+
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
-				log.Infof("Caught signal %s: shutting down.\n", sig.String())
-
 				m.close()
 				return nil
 			}
 		case syscall.SIGQUIT:
 			{
+
 				m.close()
+				return nil
 			}
 		case syscall.SIGUSR1:
 			{
 
-				// TODO: 平滑重启操作
-				m.Fork() //传子进程需要的内容
-
+				log.Info("try fork new")
+				err := m.Fork() //传子进程需要的内容
+				if err != nil {
+					log.Error("fork new:", err)
+				}
 			}
 		default:
 			continue
@@ -132,10 +141,19 @@ func (m *Master) Wait() error {
 }
 
 func (m *Master) close() {
-
+	log.Info("master close")
 	m.cancelFunc()
+	log.Debug("master shutdown http:", m.httpserver.Shutdown(context.Background()))
+
+	m.masterTraffic.Close()
+	m.workerTraffic.Close()
 	m.stopService()
-	m.PID.Remove()
+	log.Debug("try remove pid")
+
+	if err := m.PID.Remove(); err != nil {
+		log.Warn("remove pid:", err)
+	}
+
 }
 
 func NewMasterHandle(pid *pidfile.PidFile) *Master {
@@ -149,9 +167,12 @@ func NewMasterHandle(pid *pidfile.PidFile) *Master {
 		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
 	}
 	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+		log.Info("init traffic from stdin")
 		m.masterTraffic = traffic.NewController(os.Stdin)
 		m.workerTraffic = traffic.NewController(os.Stdin)
 	} else {
+		log.Info("new traffic")
+
 		m.masterTraffic = traffic.NewController(nil)
 		m.workerTraffic = traffic.NewController(nil)
 	}

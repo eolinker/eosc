@@ -31,11 +31,9 @@ func InitLogTransport() {
 	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
 	formater := &log.LineFormatter{
-		TimestampFormat:  "[2006-01-02 15:04:05]",
+		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
 	transport.SetFormatter(formater)
-	log.NewStdTransport(formater)
-	log.Reset(transport, log.NewStdTransport(formater))
-
+	log.Reset(transport)
 }
