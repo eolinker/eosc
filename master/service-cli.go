@@ -3,30 +3,19 @@ package master
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/raft"
-	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
 	"github.com/eolinker/eosc/service"
 )
 
 //Join 加入集群操作
 func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
-	if m.store == nil {
-		return nil, errors.New("join error: no available store")
-	}
-	s := raft_service.NewService(m.store)
-
 	info := &service.NodeSecret{}
 	for _, addr := range request.ClusterAddress {
-		local := request.BroadcastIP
-		if request.BroadcastPort > 0 {
-			local = fmt.Sprintf("%s:%d", request.BroadcastIP, request.BroadcastPort)
-		}
-		node, err := raft.JoinCluster(local, addr, s)
+		node, err := raft.JoinCluster(request.BroadcastIP, int(request.BroadcastPort), addr, m.raftService)
 		if err != nil {
 			log.Errorf("fail to join: addr is %s, error is %s", addr, err.Error())
 			continue

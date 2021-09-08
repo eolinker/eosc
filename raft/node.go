@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
 
@@ -149,7 +148,7 @@ func (rc *Node) startRaft() {
 	for k, v := range peersList {
 		// transport加入peer列表，节点本身不添加
 		if k != rc.nodeID {
-			rc.transport.AddPeer(types.ID(k), []string{v})
+			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
 		}
 	}
 
@@ -251,22 +250,28 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			// 新增节点
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
+					var info NodeInfo
+					err := json.Unmarshal(cc.Context, &info)
+					if err != nil {
+						log.Errorf("fail to publishEntries,error:%s", err.Error())
+						return false
+					}
 					// transport不需要加自己
-					if cc.NodeID != uint64(rc.nodeID) {
+					if cc.NodeID != rc.nodeID {
 						p := rc.transport.Get(types.ID(cc.NodeID))
 						// 不存在才加进去
 						if p == nil {
-							rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
+							rc.transport.AddPeer(types.ID(cc.NodeID), []string{info.Addr})
 						}
 					}
 					_, ok := rc.peers.GetPeerByID(cc.NodeID)
 					if !ok {
-						// 已存在，不再新增
-						rc.peers.SetPeer(cc.NodeID, string(cc.Context))
+						// 不存在，新增
+						rc.peers.SetPeer(cc.NodeID, &info)
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
-				if cc.NodeID == uint64(rc.nodeID) {
+				if cc.NodeID == rc.nodeID {
 					log.Info("current node has been removed from the cluster!")
 					return false
 				}
@@ -549,7 +554,7 @@ func (rc *Node) Send(command string, send []byte) error {
 		return rc.Service.CommitHandler(cmd, data)
 	}
 	// 集群模式下的处理
-	addr, isLeader, err := rc.getLeader()
+	node, isLeader, err := rc.getLeader()
 	if err != nil {
 		return err
 	}
@@ -573,23 +578,20 @@ func (rc *Node) Send(command string, send []byte) error {
 		}
 		return rc.node.Propose(context.TODO(), b)
 	} else {
-		return rc.postMessage(addr, command, send)
+		return rc.postMessage(node.Addr, command, send)
 	}
 }
 
 // GetPeers 获取集群的peer列表，供API调用
-func (rc *Node) GetPeers() (map[uint64]string, int, error) {
+func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
 	if !rc.active {
 		return nil, 0, fmt.Errorf("current node is stop")
 	}
-
-	peerList := rc.peers.GetAllPeers()
-	peerCount := rc.peers.GetConfigCount()
-	return peerList, peerCount, nil
+	return rc.peers.GetAllPeers(), rc.peers.Index(), nil
 }
 
 // AddConfigChange 客户端发送增加/删除节点的发送处理
-func (rc *Node) AddConfigChange(nodeID uint64, host string) error {
+func (rc *Node) AddConfigChange(nodeID uint64, data []byte) error {
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
@@ -603,8 +605,8 @@ func (rc *Node) AddConfigChange(nodeID uint64, host string) error {
 	cc := raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  nodeID,
-		Context: []byte(host),
-		ID:      uint64(rc.peers.GetConfigCount() + 1),
+		Context: data,
+		ID:      rc.peers.Index() + 1,
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -624,7 +626,7 @@ func (rc *Node) DeleteConfigChange(nodeID uint64) error {
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: nodeID,
-		ID:     uint64(rc.peers.GetConfigCount() + 1),
+		ID:     uint64(rc.peers.Index() + 1),
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -674,7 +676,11 @@ func (rc *Node) InitSend() error {
 // 并开始监听node.ready,将现有缓存加入日志中rc.InitSend
 func (rc *Node) changeCluster() error {
 	log.Info("change cluster mode")
+	rc.nodeID = 1
+	rc.join = true
 	rc.isCluster = true
+	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
+	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
@@ -685,15 +691,15 @@ func (rc *Node) changeCluster() error {
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 
 	// 判断是否有日志文件目录，此时应该是没有的
-	oldwal := wal.Exist(rc.waldir)
-	if oldwal {
+	oldWal := wal.Exist(rc.waldir)
+	if oldWal {
 		return fmt.Errorf("node(%d) has been cluster mode, wal is existed", rc.nodeID)
 	}
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
 	rc.wal = rc.replayWAL()
 	// 节点配置
 	c := &raft.Config{
-		ID:                        uint64(rc.nodeID),
+		ID:                        rc.nodeID,
 		ElectionTick:              10,
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
@@ -716,11 +722,12 @@ func (rc *Node) changeCluster() error {
 	if err != nil {
 		return err
 	}
+
 	// 与集群中的其他节点建立通信
 	for k, v := range peerList {
 		// transport加入peer列表，节点本身不添加
 		if k != rc.nodeID {
-			rc.transport.AddPeer(types.ID(k), []string{v})
+			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
 		}
 	}
 	// 读ready
@@ -742,11 +749,11 @@ func (rc *Node) serveRaft() {
 	if !ok {
 		log.Fatalf("eosc: Failed read current node(%d) url ", rc.nodeID)
 	}
-	addr, err := url.Parse(v)
-	if err != nil {
-		log.Fatalf("eosc: Failed parsing URL (%v)", err)
-	}
-	ln, err := newStoppableListener(addr.Host, rc.httpstopc)
+	//addr, err := url.Parse(v)
+	//if err != nil {
+	//	log.Fatalf("eosc: Failed parsing URL (%v)", err)
+	//}
+	ln, err := newStoppableListener(v.Addr, rc.httpstopc)
 	if err != nil {
 		log.Fatalf("eosc: Failed to listen rafthttp (%v)", err)
 	}
@@ -758,128 +765,6 @@ func (rc *Node) serveRaft() {
 		log.Fatalf("eosc: Failed to serve rafthttp (%v)", err)
 	}
 	close(rc.httpdonec)
-}
-
-// Handler http请求处理
-func (rc *Node) Handler() http.Handler {
-	sm := http.NewServeMux()
-	// 其他节点加入集群的处理
-	sm.HandleFunc("/join", rc.joinHandler)
-	// 其他节点转发到leader的处理
-	sm.HandleFunc("/propose", rc.proposeHandler)
-	sm.Handle("/", rc.transport.Handler())
-	return sm
-}
-
-// joinHandler 收到其他节点加入集群的处理
-// 1、如果已经是集群模式，直接返回相关id，peer等信息方便处理
-// 2、如果不是集群模式，先切换集群rc.changeCluster,再返回相关信息
-// 3、该处理也可应用于集群节点crash后的重启
-func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
-
-	joinMsg := &JoinMsg{}
-	body, _ := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
-	err := json.Unmarshal(body, joinMsg)
-	if err != nil {
-		writeResult(w, &Response{
-			Code: "111111",
-			Msg:  err.Error(),
-		})
-		return
-	}
-	log.Infof("host(%s) apply join the cluster", joinMsg.Host)
-	// 先判断是不是集群模式
-	// 是的话返回要加入的相关信息
-	// 不是的话先切换集群模式，再初始化startRaft()，再返回加入的相关信息
-	if !rc.isCluster {
-		// 非集群模式，先本节点切换成集群模式
-		err = rc.changeCluster()
-		if err != nil {
-			// 切换错误
-			writeResult(w, &Response{
-				Code: "111111",
-				Msg:  err.Error(),
-			})
-			return
-		}
-	}
-	// 切换完了，开始新增对应节点并返回新增条件信息
-	joinMsg.Peers = rc.peers.GetAllPeers()
-	if id, exist := rc.peers.CheckExist(joinMsg.Host); exist {
-		// 已经在集群中的了，直接返回信息
-		joinMsg.Id = int(id)
-		b, _ := json.Marshal(joinMsg)
-
-		writeResult(w, &Response{
-			Code: "000000",
-			Msg:  "success",
-			Data: b,
-		})
-		return
-	}
-	// 现有的变更id+1
-	joinMsg.Id = rc.peers.GetConfigCount() + 1
-	// 已经是集群了，发送新增节点的消息后返回
-	err = rc.AddConfigChange(uint64(joinMsg.Id), joinMsg.Host)
-	if err != nil {
-		writeResult(w, &Response{
-			Code: "111111",
-			Msg:  err.Error(),
-		})
-		return
-	}
-	b, _ := json.Marshal(joinMsg)
-	writeResult(w, &Response{
-		Code: "000000",
-		Msg:  "success",
-		Data: b,
-	})
-	return
-}
-
-// proposeHandler 其他节点转发到leader的propose处理，由rc.Send触发
-func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
-	res := &Response{
-		Code: "111111",
-	}
-	// 只有leader才会收到该消息
-	_, isLeader, err := rc.getLeader()
-	if !isLeader {
-		// no current leader
-		res.Msg = "can not find leader"
-		writeResult(w, res)
-		return
-	}
-	if err != nil {
-		res.Msg = err.Error()
-		writeResult(w, res)
-		return
-	}
-	b, err := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		res.Msg = err.Error()
-		writeResult(w, res)
-		return
-	}
-
-	msg := &ProposeMsg{}
-	err = json.Unmarshal(b, msg)
-	if err != nil {
-		res.Msg = err.Error()
-		writeResult(w, res)
-		return
-	}
-	log.Infof("receive propose request from node(%d)", msg.From)
-	err = rc.Send(msg.Cmd, msg.Data)
-	if err != nil {
-		res.Msg = err.Error()
-	} else {
-		res.Code = "000000"
-		res.Msg = "success"
-	}
-	writeResult(w, res)
 }
 
 // 工具方法
@@ -896,7 +781,7 @@ func (rc *Node) postMessage(addr string, command string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
+	resp, err := http.Post(fmt.Sprintf("%s/raft/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -919,10 +804,10 @@ func (rc *Node) postMessage(addr string, command string, data []byte) error {
 }
 
 // getLeader 获取leader地址以及判断当前节点是不是leader
-func (rc *Node) getLeader() (string, bool, error) {
+func (rc *Node) getLeader() (*NodeInfo, bool, error) {
 	if rc.lead == raft.None {
 		if rc.node.Status().Lead == raft.None {
-			return "", false, fmt.Errorf("current node(%d) has no leader", rc.lead)
+			return nil, false, fmt.Errorf("current node(%d) has no leader", rc.lead)
 		} else {
 			rc.lead = rc.node.Status().Lead
 		}
@@ -933,7 +818,7 @@ func (rc *Node) getLeader() (string, bool, error) {
 	}
 	v, ok := rc.peers.GetPeerByID(rc.lead)
 	if !ok {
-		return "", flag, fmt.Errorf("current node has no leader(%d) host", rc.lead)
+		return nil, flag, fmt.Errorf("current node has no leader(%d) host", rc.lead)
 	}
 	return v, flag, nil
 }

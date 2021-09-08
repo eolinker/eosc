@@ -11,7 +11,8 @@ package master
 import (
 	"context"
 
-	"github.com/eolinker/eosc"
+	raft_service "github.com/eolinker/eosc/raft/raft-service"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
@@ -63,11 +64,12 @@ type Master struct {
 	node          *raft.Node
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
-	store         eosc.IStore
-	masterSrv     *grpc.Server
-	ctx           context.Context
-	cancelFunc    context.CancelFunc
-	PID           *pidfile.PidFile
+	raftService   raft.IService
+	//store         eosc.IStore
+	masterSrv  *grpc.Server
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+	PID        *pidfile.PidFile
 }
 
 func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
@@ -78,14 +80,16 @@ func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*ser
 }
 
 func (m *Master) Start() error {
-
 	// 设置存储操作
-	s, err := store.NewStore()
+	store, err := store.NewStore()
 	if err != nil {
 		log.Error("new store error: ", err.Error())
 		return err
 	}
-	m.store = s
+	//m.store = s
+	m.raftService = raft_service.NewService(store)
+
+	m.node, _ = raft.NewNode(m.raftService)
 
 	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
 	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))

@@ -25,7 +25,7 @@ func StartMaster(args []string, extra []*os.File) (*exec.Cmd, error) {
 
 	e := cmd.Start()
 	if e != nil {
-		log.Println(e)
+		log.Error(e)
 		return nil, e
 	}
 
