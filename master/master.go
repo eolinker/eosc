@@ -96,9 +96,10 @@ func (m *Master) Start() error {
 	go func(l net.Listener) {
 
 		s := http.Server{}
-		s.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("ok"))
-		})
+		s.Handler = m.node.Handler()
+		//s.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//	w.Write([]byte("ok"))
+		//})
 		e := s.Serve(l)
 		if err != nil {
 			log.Warn(e)

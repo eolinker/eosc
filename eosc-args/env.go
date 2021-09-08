@@ -14,6 +14,14 @@ const BroadcastPort = "BROADCAST_PORT"
 const ClusterAddress = "CLUSTER_ADDRESS"
 const PluginPath = "PLUGINS_DIR"
 
+var envs = []string{
+	IP, Port, BroadcastIP, BroadcastPort, ClusterAddress, PluginPath,
+}
+
+func Envs() []string {
+	return envs
+}
+
 func GetEnv(name string) (string, bool) {
 	return syscall.Getenv(envName(name))
 }

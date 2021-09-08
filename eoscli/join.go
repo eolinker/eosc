@@ -48,7 +48,7 @@ func Join(x cli.ActionFunc) *cli.Command {
 func JoinFunc(c *cli.Context) error {
 	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 	if err != nil {
-		return err
+		return fmt.Errorf("join cluster error:%s", err.Error())
 	}
 	defer conn.Close()
 	// 执行join操作
