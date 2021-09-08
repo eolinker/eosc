@@ -1,3 +1,4 @@
 /eoserver
 /goku
 *.pid
+*.log
