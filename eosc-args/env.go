@@ -18,11 +18,11 @@ func GetEnv(name string) (string, bool) {
 	return syscall.Getenv(envName(name))
 }
 
-func GetDefault(name string, defualt string) string {
+func GetDefault(name string, d string) string {
 	if v, has := GetEnv(name); has {
 		return v
 	}
-	return defualt
+	return d
 }
 func SetEnv(name, value string) error {
 	return syscall.Setenv(envName(name), value)

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [[2021-09-08 14:20:59]] [INFO] 0.0.0.0:9400
 [[2021-09-08 14:20:59]] [INFO] master start grpc service
 [[2021-09-08 14:20:59]] [INFO] start Master :/tmp/eoserver.master.sock
@@ -101,3 +102,11 @@
 [2021-09-08 17:27:42] [INFO] traffic add:tcp://[::]:9400
 [2021-09-08 17:27:42] [INFO] master start grpc service
 [2021-09-08 17:27:42] [INFO] start Master :/tmp/eoserver.master.sock
+=======
+[[2021-09-07 18:48:26]] [INFO] master start grpc service
+[[2021-09-07 18:48:26]] [INFO] start Master :/tmp/eoserver.master.sock
+[[2021-09-07 18:48:26]] [INFO] 0.0.0.0:9400
+[[2021-09-08 16:09:42]] [INFO] 0.0.0.0:9400
+[[2021-09-08 16:09:42]] [INFO] master start grpc service
+[[2021-09-08 16:09:42]] [INFO] start Master :/tmp/goku.master.sock
+>>>>>>> gitlab/feature/raft

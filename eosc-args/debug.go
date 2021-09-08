@@ -11,6 +11,6 @@ package eosc_args
 import "strings"
 
 func IsDebug() bool {
-	isdebug := GetDefault("DEBUG", "false")
-	return strings.ToLower(isdebug) == "true"
+	isDebug := GetDefault("DEBUG", "false")
+	return strings.ToLower(isDebug) == "true"
 }

@@ -80,6 +80,7 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 	}
 	cmd.Path = path
 	cmd.Args = argsChild
+
 	return cmd, nil
 }
 

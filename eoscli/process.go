@@ -1,7 +1,6 @@
 package eoscli
 
 import (
-	"errors"
 	"os"
 	"syscall"
 
@@ -10,15 +9,9 @@ import (
 )
 
 func restartProcess() error {
-
-	if
-
-	pid, err := GetPidByFile()
+	pid, err := readPid()
 
 	if err != nil {
-		if errors.As(err,os.ErrNotExist){
-
-		}
 		return err
 	}
 
@@ -33,7 +26,7 @@ func restartProcess() error {
 
 func stopProcess() error {
 	log.Debugf("app %s is stopping,please wait...\n", process.AppName())
-	pid, err := GetPidByFile()
+	pid, err := readPid()
 	if err != nil {
 		return err
 	}
