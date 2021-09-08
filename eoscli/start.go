@@ -1,8 +1,11 @@
 package eoscli
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
@@ -41,10 +44,10 @@ func Start(x cli.ActionFunc) *cli.Command {
 				Usage: "port for the node broadcast, required when join is true",
 				Value: 9401,
 			},
-			&cli.IntFlag{
+			&cli.StringSliceFlag{
 				Name:    "cluster-addr",
 				Aliases: []string{"addr"},
-				Usage:   "port for the node broadcast",
+				Usage:   "cluster addr",
 			},
 		},
 		Action: x,
@@ -76,9 +79,30 @@ func StartFunc(c *cli.Context) error {
 		log.Errorf("start master error: %w", err)
 		return err
 	}
-
 	isJoin := c.Bool("join")
 	if isJoin {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ticket := time.NewTicker(1 * time.Second)
+		defer ticket.Stop()
+	CheckPid:
+		for {
+			select {
+			case <-ctx.Done():
+				{
+					cancel()
+					return errors.New("join cluster timeout")
+				}
+			case <-ticket.C:
+				{
+					pid, err := readPid()
+					if err == nil {
+						if processExists(pid) {
+							break CheckPid
+						}
+					}
+				}
+			}
+		}
 		return JoinFunc(c)
 	}
 	if eosc_args.IsDebug() {

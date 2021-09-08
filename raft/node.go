@@ -766,31 +766,31 @@ func (rc *Node) changeCluster(addr string) error {
 	return nil
 }
 
-// 通信相关
-// serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
-func (rc *Node) serveRaft() {
-	log.Info("eosc: start raft serve listener")
-	v, ok := rc.peers.GetPeerByID(rc.nodeID)
-	if !ok {
-		log.Fatalf("eosc: Failed read current node(%d) url ", rc.nodeID)
-	}
-	//addr, err := url.Parse(v)
-	//if err != nil {
-	//	log.Fatalf("eosc: Failed parsing URL (%v)", err)
-	//}
-	ln, err := newStoppableListener(v.Addr, rc.httpstopc)
-	if err != nil {
-		log.Fatalf("eosc: Failed to listen rafthttp (%v)", err)
-	}
-	// 调用rc.transport.Handler()对连接进行处理
-	err = (&http.Server{Handler: rc.Handler()}).Serve(ln)
-	select {
-	case <-rc.httpstopc:
-	default:
-		log.Fatalf("eosc: Failed to serve rafthttp (%v)", err)
-	}
-	close(rc.httpdonec)
-}
+//// 通信相关
+//// serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
+//func (rc *Node) serveRaft() {
+//	log.Info("eosc: start raft serve listener")
+//	v, ok := rc.peers.GetPeerByID(rc.nodeID)
+//	if !ok {
+//		log.Fatalf("eosc: Failed read current node(%d) url ", rc.nodeID)
+//	}
+//	//addr, err := url.Parse(v)
+//	//if err != nil {
+//	//	log.Fatalf("eosc: Failed parsing URL (%v)", err)
+//	//}
+//	ln, err := newStoppableListener(v.Addr, rc.httpstopc)
+//	if err != nil {
+//		log.Fatalf("eosc: Failed to listen rafthttp (%v)", err)
+//	}
+//	// 调用rc.transport.Handler()对连接进行处理
+//	err = (&http.Server{Handler: rc.Handler()}).Serve(ln)
+//	select {
+//	case <-rc.httpstopc:
+//	default:
+//		log.Fatalf("eosc: Failed to serve rafthttp (%v)", err)
+//	}
+//	close(rc.httpdonec)
+//}
 
 // 工具方法
 // postMessage 转发消息，基于json

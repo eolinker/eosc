@@ -112,7 +112,7 @@ func joinAndCreateRaft(node *NodeInfo, service IService, peers map[uint64]*NodeI
 	}
 
 	// raft启动
-	go rc.serveRaft()
+	//go rc.serveRaft()
 	go rc.startRaft()
 	return rc
 }

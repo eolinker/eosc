@@ -71,7 +71,6 @@ type Master struct {
 	PID        *pidfile.PidFile
 
 	httpserver *http.Server
-	handlers   *http.ServeMux
 }
 
 func (m *Master) Start() error {
@@ -94,25 +93,28 @@ func (m *Master) Start() error {
 		log.Error(err)
 		return err
 	}
+
 	m.startHttp(l)
 
 	return nil
 
 }
 func (m *Master) startHttp(l net.Listener) {
-	m.httpserver = &http.Server{}
-	m.handlers = http.NewServeMux()
-	m.httpserver.Handler = m.handlers
-	m.handlers.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok"))
-	})
+	m.httpserver = &http.Server{
+		Handler: m.handler(),
+	}
 	go func() {
 		err := m.httpserver.Serve(l)
 		if err != nil {
 			log.Warn(err)
 		}
 	}()
+}
+func (m *Master) handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.Handle("/raft/", http.StripPrefix("/raft/", m.node.Handler()))
 
+	return sm
 }
 func (m *Master) Wait() error {
 

@@ -43,6 +43,7 @@ func main() {
 		eoscli.Leave(eoscli.LeaveFunc),
 		eoscli.Cluster(eoscli.ClustersFunc),
 		eoscli.Restart(eoscli.RestartFunc),
+		eoscli.Env(eoscli.EnvFunc),
 	)
 	err := app.Run(os.Args)
 	if err != nil {
