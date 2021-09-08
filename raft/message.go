@@ -3,6 +3,7 @@ package raft
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"log"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -50,6 +51,11 @@ type NodeInfo struct {
 	BroadcastIP   string `json:"broadcast_ip"`
 	BroadcastPort int    `json:"broadcast_port"`
 	Addr          string `json:"addr"`
+}
+
+func (n *NodeInfo) Marshal() []byte {
+	data, _ := json.Marshal(n)
+	return data
 }
 
 // Message 发送Propose和Init消息结构

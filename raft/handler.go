@@ -49,7 +49,7 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 	// 不是的话先切换集群模式，再初始化startRaft()，再返回加入的相关信息
 	if !rc.isCluster {
 		// 非集群模式，先本节点切换成集群模式
-		err = rc.changeCluster()
+		err = rc.changeCluster(joinData.Target)
 		if err != nil {
 			writeError(w, "110002", "fail to change cluster", err.Error())
 			return

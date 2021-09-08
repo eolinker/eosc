@@ -18,19 +18,18 @@ func GetEnv(name string) (string, bool) {
 	return syscall.Getenv(envName(name))
 }
 
-func GetDefault(name string, defualt string) string {
+func GetDefault(name string, d string) string {
 	if v, has := GetEnv(name); has {
 		return v
 	}
-	return defualt
+	return d
 }
-func SetEnv(name , value string) error {
+func SetEnv(name, value string) error {
 	return syscall.Setenv(envName(name), value)
 }
-func GenEnv(name , value string) string {
-	return fmt.Sprintf("%s_%s=%s",name,value)
+func GenEnv(name, value string) string {
+	return fmt.Sprintf("%s_%s=%s", name, value)
 }
 func envName(name string) string {
 	return fmt.Sprintf("%s_%s", process.AppName(), name)
 }
-

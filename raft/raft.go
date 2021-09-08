@@ -203,9 +203,9 @@ func NewNode(service IService) (*Node, error) {
 		ErrorC:             make(chan error),
 		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
 	}
-
+	rc.peers = NewPeers()
 	// 监听节点端口，用transport处理节点通信，此时这种情况下只是监听join
-	go rc.serveRaft()
+	//go rc.serveRaft()
 
 	return rc, nil
 }

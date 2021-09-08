@@ -8,7 +8,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/go-basic/uuid"
 
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -36,6 +40,10 @@ type Node struct {
 	node raft.Node
 
 	nodeKey string
+
+	broadcastIP string
+
+	broadcastPort int
 
 	// 当前leader
 	lead uint64
@@ -674,9 +682,10 @@ func (rc *Node) InitSend() error {
 // changeCluster 切换集群时调用，一般是非集群节点收到其他节点的join请求时触发(rc.joinHandler)
 // 开始运行集群节点,新建日志文件，启动transport和node，
 // 并开始监听node.ready,将现有缓存加入日志中rc.InitSend
-func (rc *Node) changeCluster() error {
+func (rc *Node) changeCluster(addr string) error {
 	log.Info("change cluster mode")
 	rc.nodeID = 1
+	rc.nodeKey = uuid.New()
 	rc.join = true
 	rc.isCluster = true
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
@@ -687,6 +696,22 @@ func (rc *Node) changeCluster() error {
 			return fmt.Errorf("eosc: node(%d) cannot create dir for snapshot (%v)", rc.nodeID, err)
 		}
 	}
+	rc.broadcastIP = addr
+	index := strings.Index(addr, ":")
+	if index > 0 {
+		rc.broadcastIP = addr[:index]
+		rc.broadcastPort, _ = strconv.Atoi(addr[index+1:])
+	}
+
+	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
+		NodeSecret: &NodeSecret{
+			ID:  rc.nodeID,
+			Key: rc.nodeKey,
+		},
+		BroadcastIP:   rc.broadcastIP,
+		BroadcastPort: rc.broadcastPort,
+		Addr:          addr,
+	})
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 
@@ -708,14 +733,14 @@ func (rc *Node) changeCluster() error {
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 	// 启动节点时添加peers，一般情况下此时只有自己
-	rpeers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
+	peers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
 	peerList := rc.peers.GetAllPeers()
-	for id := range peerList {
-		rpeers = append(rpeers, raft.Peer{ID: uint64(id)})
+	for id, p := range peerList {
+		peers = append(peers, raft.Peer{ID: id, Context: p.Marshal()})
 	}
 	// 启动node节点
 	// 新开一个集群
-	rc.node = raft.StartNode(c, rpeers)
+	rc.node = raft.StartNode(c, peers)
 
 	// 通信实例开始运行
 	err := rc.transport.Start()
