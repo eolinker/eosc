@@ -1,6 +1,7 @@
 package eoscli
 
 import (
+	"errors"
 	"os"
 	"syscall"
 
@@ -9,9 +10,15 @@ import (
 )
 
 func restartProcess() error {
+
+	if
+
 	pid, err := GetPidByFile()
 
 	if err != nil {
+		if errors.As(err,os.ErrNotExist){
+
+		}
 		return err
 	}
 

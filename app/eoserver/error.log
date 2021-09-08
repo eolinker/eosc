@@ -83,3 +83,21 @@
 [2021-09-08 16:21:40] [INFO] traffic add:tcp://[::]:9400
 [2021-09-08 16:21:40] [INFO] master start grpc service
 [2021-09-08 16:21:40] [INFO] start Master :/tmp/eoserver.master.sock
+[2021-09-08 17:27:02] [INFO] new traffic
+[2021-09-08 17:27:02] [WARN] get listen tcp not exit
+[2021-09-08 17:27:02] [INFO] traffic add:tcp://[::]:9400
+[2021-09-08 17:27:02] [INFO] master start grpc service
+[2021-09-08 17:27:02] [INFO] start Master :/tmp/eoserver.master.sock
+[2021-09-08 17:27:21] [INFO] new traffic
+[2021-09-08 17:27:21] [WARN] get listen tcp not exit
+[2021-09-08 17:27:21] [INFO] traffic add:tcp://[::]:9400
+[2021-09-08 17:27:21] [INFO] master start grpc service
+[2021-09-08 17:27:21] [INFO] start Master :/tmp/eoserver.master.sock
+[2021-09-08 17:27:27] [INFO] init traffic from stdin
+[2021-09-08 17:27:27] [INFO] traffic add:tcp://[::]:9400
+[2021-09-08 17:27:27] [INFO] master start grpc service
+[2021-09-08 17:27:27] [INFO] start Master :/tmp/eoserver.master.sock
+[2021-09-08 17:27:42] [INFO] init traffic from stdin
+[2021-09-08 17:27:42] [INFO] traffic add:tcp://[::]:9400
+[2021-09-08 17:27:42] [INFO] master start grpc service
+[2021-09-08 17:27:42] [INFO] start Master :/tmp/eoserver.master.sock
