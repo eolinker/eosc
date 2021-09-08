@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/eolinker/eosc/utils"
-
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/service"
+	"github.com/eolinker/eosc/utils"
 	"github.com/urfave/cli/v2"
 )
 

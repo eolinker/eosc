@@ -6,7 +6,7 @@ require (
 	github.com/docker/docker v20.10.8+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-basic/uuid v1.0.0 // indirect
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/urfave/cli v1.22.5 // indirect
 	github.com/urfave/cli/v2 v2.3.0

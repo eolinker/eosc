@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/eolinker/eosc/utils"
-
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
-
+	"github.com/eolinker/eosc/utils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -73,7 +71,7 @@ func StartFunc(c *cli.Context) error {
 	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
 
 	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
-	_, err = StartMaster(args, nil)
+	cmd, err := StartMaster(args, nil)
 	if err != nil {
 		log.Errorf("start master error: %w", err)
 		return err
@@ -82,6 +80,9 @@ func StartFunc(c *cli.Context) error {
 	isJoin := c.Bool("join")
 	if isJoin {
 		return JoinFunc(c)
+	}
+	if eosc_args.IsDebug() {
+		return cmd.Wait()
 	}
 	return nil
 }

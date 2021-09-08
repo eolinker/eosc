@@ -33,7 +33,6 @@ func main() {
 	if process.Run() {
 		return
 	}
-	log.InitDebug(true)
 	app := eoscli.NewApp()
 	app.AppendCommand(
 		eoscli.Start(eoscli.StartFunc),

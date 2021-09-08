@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/eolinker/eosc/process"
 )
@@ -16,18 +17,22 @@ var errPidNotFound = errors.New("pid not found")
 
 // just suit for linux
 func processExists(pid int) bool {
-	_, err := os.FindProcess(pid)
+	p, err := os.FindProcess(pid)
 	if err != nil {
 		return false
 	}
-	fmt.Println(pid, err)
+	err = p.Signal(syscall.Signal(0))
+
+	if err != nil {
+		return false
+	}
+
 	return true
 }
 
 func CheckPIDFILEAlreadyExists() bool {
 	pid, err := readPid()
 	if err != nil {
-
 		return false
 	}
 
