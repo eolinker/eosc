@@ -89,6 +89,15 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 			}
 			return n, nil
 		}
+		if count == 0 {
+			node := &NodeInfo{
+				NodeSecret:    resMsg.NodeSecret,
+				BroadcastIP:   broadCastIP,
+				BroadcastPort: broadPort,
+			}
+			resMsg.Peer[node.ID] = node
+			return joinAndCreateRaft(node, service, resMsg.Peer), nil
+		}
 		return nil, nil
 	}
 	return nil, fmt.Errorf(res.Err)

@@ -1,6 +1,5 @@
 /eoserver
 /goku
 *.pid
-/eosc-1/
-/eosc-1-snap/
+/eosc-*/
 *.log

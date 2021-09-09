@@ -73,3 +73,16 @@ func TestRaftNode2(t *testing.T) {
 	sm.Handle("/", node.transport.Handler())
 	log.Fatal(http.ListenAndServe(":9998", sm))
 }
+
+func TestRaftNode3(t *testing.T) {
+	store, _ := store2.NewStore()
+	node, err := JoinCluster("127.0.0.1", 9997, "http://127.0.0.1:9999", raft_service.NewService(store), 0)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	sm := http.NewServeMux()
+	sm.Handle("/raft/node/", node.Handler())
+	sm.Handle("/", node.transport.Handler())
+	log.Fatal(http.ListenAndServe(":9997", sm))
+}
