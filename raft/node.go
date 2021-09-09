@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -129,6 +130,7 @@ func (rc *Node) startRaft() {
 		MaxInflightMsgs:           256,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
+	log.Info("dasdq")
 	peersList := rc.peers.GetAllPeers()
 	// 启动node节点
 	if rc.join || oldWal {
@@ -137,14 +139,14 @@ func (rc *Node) startRaft() {
 	} else {
 
 		// 启动节点时添加peers
-		rpeers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
+		peers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
 		for id := range peersList {
-			rpeers = append(rpeers, raft.Peer{ID: uint64(id)})
+			peers = append(peers, raft.Peer{ID: id})
 		}
 		// 新开一个集群
-		rc.node = raft.StartNode(c, rpeers)
+		rc.node = raft.StartNode(c, peers)
 	}
-
+	log.Info("12345")
 	// 开启节点间通信
 	// 通信实例开始运行
 	err = rc.transport.Start()
@@ -233,20 +235,23 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			var err error
 			err = m.Decode(ents[i].Data)
 			if err != nil {
-				log.Info(err)
+				log.Error(err)
 				continue
 			}
 			err = rc.Service.CommitHandler(m.Cmd, m.Data)
+			if err != nil {
+				log.Error(err)
+			}
 			if m.Type == INIT && m.From == rc.nodeID {
 				// 释放InitSend方法的等待，仅针对切换集群的对应节点
 				if err != nil {
-					log.Info(err)
-					rc.waiter.Trigger(uint64(m.From), err.Error())
+					log.Error(err)
+					rc.waiter.Trigger(m.From, err.Error())
 					continue
-				} else {
-					rc.waiter.Trigger(uint64(m.From), "")
 				}
+				rc.waiter.Trigger(m.From, "")
 			}
+
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
@@ -648,6 +653,7 @@ func (rc *Node) InitSend() error {
 		return fmt.Errorf("need to change cluster mode")
 	}
 	cmd, data, err := rc.Service.GetInit()
+	log.Info("nodeID is ", rc.nodeID)
 	if err != nil {
 		return err
 	}
@@ -663,6 +669,7 @@ func (rc *Node) InitSend() error {
 	}
 	err = rc.node.Propose(context.TODO(), b)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	// 等待处理完
@@ -695,11 +702,15 @@ func (rc *Node) changeCluster(addr string) error {
 			return fmt.Errorf("eosc: node(%d) cannot create dir for snapshot (%v)", rc.nodeID, err)
 		}
 	}
-	rc.broadcastIP = addr
-	index := strings.Index(addr, ":")
+	u, err := url.Parse(addr)
+	if err != nil {
+		return fmt.Errorf("eosc: fail to parse address,%w", err)
+	}
+	rc.broadcastIP = u.Host
+	index := strings.Index(u.Host, ":")
 	if index > 0 {
-		rc.broadcastIP = addr[:index]
-		rc.broadcastPort, _ = strconv.Atoi(addr[index+1:])
+		rc.broadcastIP = u.Host[:index]
+		rc.broadcastPort, _ = strconv.Atoi(u.Host[index+1:])
 	}
 
 	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
@@ -707,6 +718,7 @@ func (rc *Node) changeCluster(addr string) error {
 			ID:  rc.nodeID,
 			Key: rc.nodeKey,
 		},
+		Protocol:      u.Scheme,
 		BroadcastIP:   rc.broadcastIP,
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
@@ -740,13 +752,11 @@ func (rc *Node) changeCluster(addr string) error {
 	// 启动node节点
 	// 新开一个集群
 	rc.node = raft.StartNode(c, peers)
-
 	// 通信实例开始运行
-	err := rc.transport.Start()
+	err = rc.transport.Start()
 	if err != nil {
 		return err
 	}
-
 	// 与集群中的其他节点建立通信
 	for k, v := range peerList {
 		// transport加入peer列表，节点本身不添加
@@ -757,11 +767,15 @@ func (rc *Node) changeCluster(addr string) error {
 	// 读ready
 	go rc.serveChannels()
 	log.Info("change cluster mode successfully")
-	// 开始打包处理初始化信息
-	err = rc.InitSend()
-	if err != nil {
-		return err
-	}
+	go func() {
+		// 开始打包处理初始化信息
+		err = rc.InitSend()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	}()
+
 	return nil
 }
 

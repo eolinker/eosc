@@ -19,8 +19,8 @@ func (rc *Node) Handler() http.Handler {
 	// 其他节点转发到leader的处理
 	sm.HandleFunc("/raft/propose", rc.proposeHandler)
 
-	sm.HandleFunc("/raft/status", rc.proposeHandler)
-	sm.Handle("/", rc.transport.Handler())
+	//sm.HandleFunc("/raft/status", rc.proposeHandler)
+	sm.Handle("/raft", rc.transport.Handler())
 	return sm
 }
 
@@ -52,8 +52,16 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 			writeError(w, "110002", "fail to change cluster", err.Error())
 			return
 		}
+		writeSuccessResult(w, "", &JoinResponse{
+			NodeSecret: &NodeSecret{
+				ID:  rc.peers.Index() + 1,
+				Key: uuid.New(),
+			},
+			Peer:         rc.peers.GetAllPeers(),
+			ResponseType: "cluster",
+		})
+		return
 	}
-	log.Info("cluster: ", rc.isCluster)
 	addr := fmt.Sprintf("%s://%s", joinData.Protocol, joinData.BroadcastIP)
 	if joinData.BroadcastPort > 0 {
 		addr = fmt.Sprintf("%s:%d", addr, joinData.BroadcastPort)
@@ -62,12 +70,13 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 	// 切换完了，开始新增对应节点并返回新增条件信息
 	if id, exist := rc.peers.CheckExist(addr); exist {
 		info, _ := rc.peers.GetPeerByID(id)
-		writeSuccessResult(w, "info", &JoinResponse{
+		writeSuccessResult(w, "", &JoinResponse{
 			NodeSecret: &NodeSecret{
 				ID:  info.ID,
 				Key: info.Key,
 			},
-			Peer: rc.peers.GetAllPeers(),
+			Peer:         rc.peers.GetAllPeers(),
+			ResponseType: "join",
 		})
 		return
 	}
@@ -89,12 +98,13 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return
 	}
-	writeSuccessResult(w, "info", &JoinResponse{
+	writeSuccessResult(w, "", &JoinResponse{
 		NodeSecret: &NodeSecret{
 			ID:  node.ID,
 			Key: node.Key,
 		},
-		Peer: rc.peers.GetAllPeers(),
+		Peer:         rc.peers.GetAllPeers(),
+		ResponseType: "join",
 	})
 	return
 }

@@ -3,6 +3,7 @@ package raft
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/eolinker/eosc/log"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
 
@@ -29,26 +31,33 @@ var retryFrequency time.Duration = 2000
 // 1、应用于新建一个想要加入已知集群的节点，会向已知节点发送请求获取id等新建节点信息
 // 已知节点如果还处于非集群模式，会先切换成集群模式
 // 2、也可以用于节点crash后的重启处理
-func JoinCluster(broadCastIP string, broadPort int, target string, service IService) (*Node, error) {
+func JoinCluster(broadCastIP string, broadPort int, target string, service IService, count int) (*Node, error) {
+	if count > 2 {
+		return nil, errors.New("join error")
+	}
 	msg := JoinRequest{
 		BroadcastIP:   broadCastIP,
 		BroadcastPort: broadPort,
 		Protocol:      "http",
+		Target:        target,
 	}
 	b, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("ad3qr")
 	// 向集群中的某个节点发送要加入的请求
 	resp, err := http.Post(fmt.Sprintf("%s/raft/join", target), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
+	log.Info("q3er")
 	defer resp.Body.Close()
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	res := &Response{}
 	err = json.Unmarshal(content, res)
 	if err != nil {
@@ -56,18 +65,22 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 	}
 	if res.Code == "000000" {
 		resMsg := &JoinResponse{}
-		log.Info(resMsg)
+
 		data, _ := json.Marshal(res.Data)
 		err = json.Unmarshal(data, resMsg)
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("receive join message id(%d), peers number(%d)", resMsg.ID, len(resMsg.Peer))
+
+		if resMsg.ResponseType != "join" {
+			return JoinCluster(broadCastIP, broadPort, target, service, count+1)
+		}
 		node := &NodeInfo{
 			NodeSecret:    resMsg.NodeSecret,
 			BroadcastIP:   broadCastIP,
 			BroadcastPort: broadPort,
 		}
+
 		resMsg.Peer[node.ID] = node
 		return joinAndCreateRaft(node, service, resMsg.Peer), nil
 	}

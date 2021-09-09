@@ -39,7 +39,8 @@ type JoinRequest struct {
 
 type JoinResponse struct {
 	*NodeSecret
-	Peer map[uint64]*NodeInfo
+	Peer         map[uint64]*NodeInfo `json:"peer"`
+	ResponseType string               `json:"response_type"`
 }
 
 type NodeSecret struct {
