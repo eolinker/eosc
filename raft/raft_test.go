@@ -41,15 +41,35 @@ func TestRaftNode1(t *testing.T) {
 	store, _ := store2.NewStore()
 	node, _ := NewNode(raft_service.NewService(store))
 	sm := http.NewServeMux()
-	sm.Handle("/", node.Handler())
+
+	sm.Handle("/raft/node/", node.Handler())
+	go func() {
+		for {
+			select {
+			case v, ok := <-node.updateTransport:
+				{
+					if !ok {
+						return
+					}
+					if v {
+						sm.Handle("/", node.transportHandler)
+					}
+				}
+			}
+		}
+	}()
 	log.Fatal(http.ListenAndServe(":9999", sm))
 }
 
 func TestRaftNode2(t *testing.T) {
 	store, _ := store2.NewStore()
-	node, _ := NewNode(raft_service.NewService(store))
-	t.Log(JoinCluster("127.0.0.1", 9998, "http://127.0.0.1:9999", raft_service.NewService(store), 0))
+	node, err := JoinCluster("127.0.0.1", 9998, "http://127.0.0.1:9999", raft_service.NewService(store), 0)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 	sm := http.NewServeMux()
-	sm.Handle("/", node.Handler())
+	sm.Handle("/raft/node/", node.Handler())
+	sm.Handle("/", node.transport.Handler())
 	log.Fatal(http.ListenAndServe(":9998", sm))
 }

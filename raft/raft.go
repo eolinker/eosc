@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-basic/uuid"
+
 	"github.com/eolinker/eosc/log"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -45,13 +47,13 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 	if err != nil {
 		return nil, err
 	}
-	log.Info("ad3qr")
+	log.Info("dadqer")
 	// 向集群中的某个节点发送要加入的请求
-	resp, err := http.Post(fmt.Sprintf("%s/raft/join", target), "application/json;charset=utf-8", bytes.NewBuffer(b))
+	resp, err := http.Post(fmt.Sprintf("%s/raft/node/join", target), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	log.Info("q3er")
+	log.Info("asdqr")
 	defer resp.Body.Close()
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -65,7 +67,7 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 	}
 	if res.Code == "000000" {
 		resMsg := &JoinResponse{}
-
+		log.Info("dqwqeer")
 		data, _ := json.Marshal(res.Data)
 		err = json.Unmarshal(data, resMsg)
 		if err != nil {
@@ -90,42 +92,52 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 
 // joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
 func joinAndCreateRaft(node *NodeInfo, service IService, peers map[uint64]*NodeInfo) *Node {
-	rc := &Node{
-		nodeID:    node.ID,
-		Service:   service,
-		join:      true,
-		isCluster: true,
-		// 日志文件目前直接以id命名初始化
-		waldir:    fmt.Sprintf("eosc-%d", node.ID),
-		snapdir:   fmt.Sprintf("eosc-%d-snap", node.ID),
-		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
-		httpstopc: make(chan struct{}),
-		httpdonec: make(chan struct{}),
-		logger:    zap.NewExample(),
-		waiter:    wait.New(),
-		lead:      0,
-		active:    true,
-	}
+	rc := NewNode(service)
+	rc.waldir = fmt.Sprintf("eosc-%d", node.ID)
+	rc.snapdir = fmt.Sprintf("eosc-%d-snap", node.ID)
+	rc.join, rc.isCluster = true, true
+	rc.nodeKey = uuid.New()
+	rc.transport.ID = types.ID(rc.nodeID)
+	rc.transport.Raft = rc
+	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
+	//rc := &Node{
+	//	nodeID:    node.ID,
+	//	Service:   service,
+	//	join:      true,
+	//	isCluster: true,
+	//	// 日志文件目前直接以id命名初始化
+	//	waldir:          fmt.Sprintf("eosc-%d", node.ID),
+	//	snapdir:         fmt.Sprintf("eosc-%d-snap", node.ID),
+	//	snapCount:       defaultSnapshotCount,
+	//	stopc:           make(chan struct{}),
+	//	httpstopc:       make(chan struct{}),
+	//	httpdonec:       make(chan struct{}),
+	//	logger:          zap.NewExample(),
+	//	waiter:          wait.New(),
+	//	lead:            0,
+	//	active:          true,
+	//	updateTransport: make(chan bool, 1),
+	//}
 
 	// 确保peer一定有节点本身
-	rc.peers = NewPeers()
+	//rc.peers = NewPeers()
 	for _, p := range peers {
 		rc.peers.SetPeer(p.ID, p)
 	}
-	// 创建并启动 transport 实例，该负责节点之间的网络通信，
-	// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
-	rc.transport = &rafthttp.Transport{
-		Logger:             rc.logger,
-		ID:                 types.ID(rc.nodeID),
-		ClusterID:          0x1000,
-		Raft:               rc,
-		ServerStats:        stats.NewServerStats("", ""),
-		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
-		ErrorC:             make(chan error),
-		DialRetryFrequency: rate.Every(retryFrequency * time.Millisecond),
-	}
+	//// 创建并启动 transport 实例，该负责节点之间的网络通信，
+	//// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
+	//rc.transport = &rafthttp.Transport{
+	//	Logger:             rc.logger,
+	//	ID:                 types.ID(rc.nodeID),
+	//	ClusterID:          0x1000,
+	//	Raft:               rc,
+	//	ServerStats:        stats.NewServerStats("", ""),
+	//	LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
+	//	ErrorC:             make(chan error),
+	//	DialRetryFrequency: rate.Every(retryFrequency * time.Millisecond),
+	//}
 
+	rc.updateTransport <- true
 	// raft启动
 	//go rc.serveRaft()
 	go rc.startRaft()
@@ -193,36 +205,33 @@ func joinAndCreateRaft(node *NodeInfo, service IService, peers map[uint64]*NodeI
 //	return rc, nil
 //}
 
-func NewNode(service IService) (*Node, error) {
+//NewNode 新建raft节点
+func NewNode(service IService) *Node {
+	logger := zap.NewExample()
 	rc := &Node{
-		Service:   service,
-		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
-		httpstopc: make(chan struct{}),
-		httpdonec: make(chan struct{}),
-		logger:    zap.NewExample(),
-		waiter:    wait.New(),
-		lead:      0,
-		active:    true,
+		peers:           NewPeers(),
+		Service:         service,
+		snapCount:       defaultSnapshotCount,
+		stopc:           make(chan struct{}),
+		httpstopc:       make(chan struct{}),
+		httpdonec:       make(chan struct{}),
+		logger:          zap.NewExample(),
+		waiter:          wait.New(),
+		lead:            0,
+		active:          true,
+		updateTransport: make(chan bool, 1),
+		transport: &rafthttp.Transport{
+			Logger:             logger,
+			ClusterID:          0x1000,
+			ServerStats:        stats.NewServerStats("", ""),
+			ErrorC:             make(chan error),
+			DialRetryFrequency: rate.Every(2000 * time.Millisecond),
+		},
 	}
 
-	// 创建并启动 transport 实例，负责节点之间的网络通信，
-	// 非集群模式下主要是为了listener的Handler处理，监听join请求，此时transport尚未start
-	rc.transport = &rafthttp.Transport{
-		Logger:             rc.logger,
-		ID:                 types.ID(rc.nodeID),
-		ClusterID:          0x1000,
-		Raft:               rc,
-		ServerStats:        stats.NewServerStats("", ""),
-		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
-		ErrorC:             make(chan error),
-		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
-	}
-	rc.peers = NewPeers()
-	// 监听节点端口，用transport处理节点通信，此时这种情况下只是监听join
-	//go rc.serveRaft()
+	rc.transport.Raft = rc
 
-	return rc, nil
+	return rc
 }
 
 //// Adjust 参数校验与调整

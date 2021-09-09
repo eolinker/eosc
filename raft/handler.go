@@ -11,17 +11,28 @@ import (
 	"github.com/eolinker/eosc/log"
 )
 
+func (rc *Node) UpdateHandler() (bool, bool) {
+	v, ok := <-rc.updateTransport
+
+	return v, ok
+}
+
 // Handler http请求处理
 func (rc *Node) Handler() http.Handler {
 	sm := http.NewServeMux()
 	// 其他节点加入集群的处理
-	sm.HandleFunc("/raft/join", rc.joinHandler)
+	sm.HandleFunc("/raft/node/join", rc.joinHandler)
 	// 其他节点转发到leader的处理
-	sm.HandleFunc("/raft/propose", rc.proposeHandler)
+	sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
 
 	//sm.HandleFunc("/raft/status", rc.proposeHandler)
-	sm.Handle("/", rc.transport.Handler())
+	//sm.Handle("/", rc.transport.Handler())
 	return sm
+}
+
+// Handler http请求处理
+func (rc *Node) TransportHandler() http.Handler {
+	return rc.transport.Handler()
 }
 
 // joinHandler 收到其他节点加入集群的处理
@@ -93,7 +104,7 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data, _ := json.Marshal(node)
 	// 已经是集群了，发送新增节点的消息后返回
-	err = rc.AddConfigChange(node.ID, data)
+	err = rc.AddNode(node.ID, data)
 	if err != nil {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return

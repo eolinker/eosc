@@ -15,11 +15,12 @@ import (
 func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
 	for _, addr := range request.ClusterAddress {
-		node, err := raft.JoinCluster(request.BroadcastIP, int(request.BroadcastPort), addr, m.raftService)
+		node, err := raft.JoinCluster(request.BroadcastIP, int(request.BroadcastPort), addr, m.raftService, 0)
 		if err != nil {
 			log.Errorf("fail to join: addr is %s, error is %s", addr, err.Error())
 			continue
 		}
+		log.Info("dqer")
 		m.node = node
 		info.NodeID, info.NodeKey = int32(node.NodeID()), node.NodeKey()
 		break

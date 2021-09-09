@@ -13,10 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-basic/uuid"
-	"golang.org/x/time/rate"
-
 	"github.com/eolinker/eosc/log"
+	"github.com/go-basic/uuid"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
@@ -82,9 +80,11 @@ type Node struct {
 	httpdonec chan struct{} // signals http server shutdown complete
 
 	// 日志相关，后续改为eosc_log
-	logger *zap.Logger
-	waiter wait.Wait
-	active bool
+	logger           *zap.Logger
+	waiter           wait.Wait
+	active           bool
+	updateTransport  chan bool
+	transportHandler http.Handler
 }
 
 func (rc *Node) NodeID() uint64 {
@@ -109,9 +109,6 @@ func (rc *Node) startRaft() {
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 
-	// 判断是否有日志文件目录
-	oldWal := wal.Exist(rc.waldir)
-
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage
 	rc.wal = rc.replayWAL()
 
@@ -134,6 +131,8 @@ func (rc *Node) startRaft() {
 	}
 	log.Info("dasdq")
 	peersList := rc.peers.GetAllPeers()
+	// 判断是否有日志文件目录
+	oldWal := wal.Exist(rc.waldir)
 	// 启动node节点
 	if rc.join || oldWal {
 		// 选择加入集群或已有日志消息（曾经切换过集群模式）
@@ -605,8 +604,8 @@ func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
 	return rc.peers.GetAllPeers(), rc.peers.Index(), nil
 }
 
-// AddConfigChange 客户端发送增加/删除节点的发送处理
-func (rc *Node) AddConfigChange(nodeID uint64, data []byte) error {
+// AddNode 客户端发送增加节点的发送处理
+func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
@@ -615,7 +614,7 @@ func (rc *Node) AddConfigChange(nodeID uint64, data []byte) error {
 	}
 	p := rc.transport.Get(types.ID(nodeID))
 	if p != nil {
-		return fmt.Errorf("added node is existed")
+		return nil
 	}
 	cc := raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
@@ -640,7 +639,7 @@ func (rc *Node) DeleteConfigChange(nodeID uint64) error {
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: nodeID,
-		ID:     uint64(rc.peers.Index() + 1),
+		ID:     rc.peers.Index() + 1,
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -698,16 +697,12 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.isCluster = true
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
-	rc.transport = &rafthttp.Transport{
-		Logger:             rc.logger,
-		ID:                 types.ID(rc.nodeID),
-		ClusterID:          0x1000,
-		Raft:               rc,
-		ServerStats:        stats.NewServerStats("", ""),
-		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
-		ErrorC:             make(chan error),
-		DialRetryFrequency: rate.Every(retryFrequency * time.Millisecond),
-	}
+
+	rc.transport.ID = types.ID(rc.nodeID)
+	rc.transport.Raft = rc
+	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
+	rc.transportHandler = rc.transport.Handler()
+	rc.updateTransport <- true
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
@@ -769,13 +764,13 @@ func (rc *Node) changeCluster(addr string) error {
 	if err != nil {
 		return err
 	}
-	// 与集群中的其他节点建立通信
-	for k, v := range peerList {
-		// transport加入peer列表，节点本身不添加
-		if k != rc.nodeID {
-			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
-		}
-	}
+	//// 与集群中的其他节点建立通信
+	//for k, v := range peerList {
+	//	// transport加入peer列表，节点本身不添加
+	//	if k != rc.nodeID {
+	//		rc.transport.AddPeer(types.ID(k), []string{v.Addr})
+	//	}
+	//}
 	// 读ready
 	go rc.serveChannels()
 	log.Info("change cluster mode successfully")
@@ -831,7 +826,7 @@ func (rc *Node) postMessage(addr string, command string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/raft/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
+	resp, err := http.Post(fmt.Sprintf("%s/raft/node/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}

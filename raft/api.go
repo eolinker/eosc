@@ -134,7 +134,7 @@ package raft
 //			res.Msg = fmt.Sprintf("Failed to convert ID for conf change (%v)\n", err)
 //			res.Code = "000002"
 //		} else {
-//			err = c.raft.AddConfigChange(Id, addr)
+//			err = c.raft.AddNode(Id, addr)
 //			if err != nil {
 //				res.Code = "000003"
 //				res.Msg = err.Error()
