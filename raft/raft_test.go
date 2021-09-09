@@ -39,7 +39,7 @@ import (
 
 func TestRaftNode1(t *testing.T) {
 	store, _ := store2.NewStore()
-	node, _ := NewNode(raft_service.NewService(store))
+	node := NewNode(raft_service.NewService(store))
 	sm := http.NewServeMux()
 
 	sm.Handle("/raft/node/", node.Handler())

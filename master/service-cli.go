@@ -22,6 +22,7 @@ func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*servi
 		}
 		log.Info("dqer")
 		m.node = node
+		m.AddHandler("/", m.node.TransportHandler())
 		info.NodeID, info.NodeKey = int32(node.NodeID()), node.NodeKey()
 		break
 	}
