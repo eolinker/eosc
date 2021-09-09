@@ -93,23 +93,29 @@ func (m *Master) Start() error {
 		log.Error(err)
 		return err
 	}
-	go func(l net.Listener) {
 
-		s := http.Server{}
-		s.Handler = m.node.Handler()
-		//s.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//	w.Write([]byte("ok"))
-		//})
-		e := s.Serve(l)
-		if err != nil {
-			log.Warn(e)
-		}
-	}(l)
+	m.startHttp(l)
 
 	return nil
 
 }
+func (m *Master) startHttp(l net.Listener) {
+	m.httpserver = &http.Server{
+		Handler: m.handler(),
+	}
+	go func() {
+		err := m.httpserver.Serve(l)
+		if err != nil {
+			log.Warn(err)
+		}
+	}()
+}
+func (m *Master) handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.Handle("/raft/", m.node.Handler())
 
+	return sm
+}
 func (m *Master) Wait() error {
 
 	sigc := make(chan os.Signal, 1)
