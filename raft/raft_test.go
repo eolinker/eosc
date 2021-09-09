@@ -41,12 +41,15 @@ func TestRaftNode1(t *testing.T) {
 	store, _ := store2.NewStore()
 	node, _ := NewNode(raft_service.NewService(store))
 	sm := http.NewServeMux()
-	sm.Handle("/raft", node.Handler())
+	sm.Handle("/", node.Handler())
 	log.Fatal(http.ListenAndServe(":9999", sm))
 }
 
 func TestRaftNode2(t *testing.T) {
 	store, _ := store2.NewStore()
+	node, _ := NewNode(raft_service.NewService(store))
 	t.Log(JoinCluster("127.0.0.1", 9998, "http://127.0.0.1:9999", raft_service.NewService(store), 0))
-	select {}
+	sm := http.NewServeMux()
+	sm.Handle("/", node.Handler())
+	log.Fatal(http.ListenAndServe(":9998", sm))
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-basic/uuid"
+	"golang.org/x/time/rate"
 
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -24,6 +25,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
@@ -696,6 +698,16 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.isCluster = true
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
+	rc.transport = &rafthttp.Transport{
+		Logger:             rc.logger,
+		ID:                 types.ID(rc.nodeID),
+		ClusterID:          0x1000,
+		Raft:               rc,
+		ServerStats:        stats.NewServerStats("", ""),
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
+		ErrorC:             make(chan error),
+		DialRetryFrequency: rate.Every(retryFrequency * time.Millisecond),
+	}
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
@@ -861,9 +873,19 @@ func (rc *Node) getLeader() (*NodeInfo, bool, error) {
 	return v, flag, nil
 }
 
-func (rc *Node) Process(ctx context.Context, m raftpb.Message) error { return rc.node.Step(ctx, m) }
-func (rc *Node) IsIDRemoved(id uint64) bool                          { return false }
-func (rc *Node) ReportUnreachable(id uint64)                         { rc.node.ReportUnreachable(id) }
+func (rc *Node) Process(ctx context.Context, m raftpb.Message) error {
+	if rc.node == nil {
+		return nil
+	}
+	return rc.node.Step(ctx, m)
+}
+func (rc *Node) IsIDRemoved(id uint64) bool { return false }
+func (rc *Node) ReportUnreachable(id uint64) {
+	if rc.node == nil {
+		return
+	}
+	rc.node.ReportUnreachable(id)
+}
 func (rc *Node) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	rc.node.ReportSnapshot(id, status)
 }

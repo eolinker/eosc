@@ -20,7 +20,7 @@ func (rc *Node) Handler() http.Handler {
 	sm.HandleFunc("/raft/propose", rc.proposeHandler)
 
 	//sm.HandleFunc("/raft/status", rc.proposeHandler)
-	sm.Handle("/raft", rc.transport.Handler())
+	sm.Handle("/", rc.transport.Handler())
 	return sm
 }
 
