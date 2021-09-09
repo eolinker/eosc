@@ -41,8 +41,6 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
 	}
-	addr := fmt.Sprintf("%s:%d", joinData.BroadcastIP, joinData.BroadcastPort)
-	log.Infof("host(%s) apply join the cluster", addr)
 
 	// 先判断是不是集群模式
 	// 是的话返回要加入的相关信息
@@ -55,7 +53,12 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	log.Info("cluster: ", rc.isCluster)
+	addr := fmt.Sprintf("%s://%s", joinData.Protocol, joinData.BroadcastIP)
+	if joinData.BroadcastPort > 0 {
+		addr = fmt.Sprintf("%s:%d", addr, joinData.BroadcastPort)
+	}
+	log.Infof("address %s apply join the cluster", addr)
 	// 切换完了，开始新增对应节点并返回新增条件信息
 	if id, exist := rc.peers.CheckExist(addr); exist {
 		info, _ := rc.peers.GetPeerByID(id)
@@ -68,6 +71,7 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
 	node := &NodeInfo{
 		NodeSecret: &NodeSecret{
 			ID:  rc.peers.Index() + 1,
@@ -75,6 +79,8 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		BroadcastIP:   joinData.BroadcastIP,
 		BroadcastPort: joinData.BroadcastPort,
+		Addr:          addr,
+		Protocol:      joinData.Protocol,
 	}
 	data, _ := json.Marshal(node)
 	// 已经是集群了，发送新增节点的消息后返回

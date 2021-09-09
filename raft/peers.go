@@ -48,9 +48,9 @@ func (p *Peers) GetPeerByID(id uint64) (*NodeInfo, bool) {
 
 func (p *Peers) SetPeer(id uint64, value *NodeInfo) {
 	p.mu.Lock()
-	addr := value.BroadcastIP
+	addr := fmt.Sprintf("%s://%s", value.Protocol, value.BroadcastIP)
 	if value.BroadcastPort > 0 {
-		addr = fmt.Sprintf("%s:%d", value.BroadcastIP, value.BroadcastPort)
+		addr = fmt.Sprintf("%s:%d", addr, value.BroadcastPort)
 	}
 	value.Addr = addr
 	p.peers[id] = value

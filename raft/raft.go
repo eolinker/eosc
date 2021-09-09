@@ -33,6 +33,7 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 	msg := JoinRequest{
 		BroadcastIP:   broadCastIP,
 		BroadcastPort: broadPort,
+		Protocol:      "http",
 	}
 	b, err := json.Marshal(msg)
 	if err != nil {
@@ -55,6 +56,7 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 	}
 	if res.Code == "000000" {
 		resMsg := &JoinResponse{}
+		log.Info(resMsg)
 		data, _ := json.Marshal(res.Data)
 		err = json.Unmarshal(data, resMsg)
 		if err != nil {
@@ -68,9 +70,9 @@ func JoinCluster(broadCastIP string, broadPort int, target string, service IServ
 		}
 		resMsg.Peer[node.ID] = node
 		return joinAndCreateRaft(node, service, resMsg.Peer), nil
-	} else {
-		return nil, fmt.Errorf(res.Msg)
 	}
+	return nil, fmt.Errorf(res.Err)
+
 }
 
 // joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理

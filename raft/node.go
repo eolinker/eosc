@@ -614,7 +614,6 @@ func (rc *Node) AddConfigChange(nodeID uint64, data []byte) error {
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  nodeID,
 		Context: data,
-		ID:      rc.peers.Index() + 1,
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -714,12 +713,12 @@ func (rc *Node) changeCluster(addr string) error {
 	})
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
-
-	// 判断是否有日志文件目录，此时应该是没有的
-	oldWal := wal.Exist(rc.waldir)
-	if oldWal {
-		return fmt.Errorf("node(%d) has been cluster mode, wal is existed", rc.nodeID)
-	}
+	//
+	//// 判断是否有日志文件目录，此时应该是没有的
+	//oldWal := wal.Exist(rc.waldir)
+	//if oldWal {
+	//	return fmt.Errorf("node(%d) has been cluster mode, wal is existed", rc.nodeID)
+	//}
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
 	rc.wal = rc.replayWAL()
 	// 节点配置

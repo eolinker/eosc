@@ -18,7 +18,7 @@ func Env(x cli.ActionFunc) *cli.Command {
 
 func EnvFunc(c *cli.Context) error {
 	for _, name := range eosc_args.Envs() {
-		fmt.Printf("%s = %s\n", name, eosc_args.GetDefault(name, ""))
+		fmt.Println(eosc_args.GenEnv(name, eosc_args.GetDefault(name, "")))
 	}
 	return nil
 }
