@@ -131,7 +131,7 @@ func NewNode(service IService) *Node {
 		stopc:           make(chan struct{}),
 		httpstopc:       make(chan struct{}),
 		httpdonec:       make(chan struct{}),
-		logger:          zap.NewExample(),
+		logger:          logger,
 		waiter:          wait.New(),
 		lead:            0,
 		active:          true,
