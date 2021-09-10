@@ -5,24 +5,74 @@ package service;
 //cli service : 提供管理接口给 cli
 
 message JoinRequest {
-
+  string broadcastIP = 1;
+  int32 broadcastPort = 2;
+  string protocol = 3;
+  repeated string clusterAddress = 4;
 }
+
 message JoinResponse{
-
+  string msg  = 1;
+  string code = 2;
+  NodeSecret info = 3;
 }
+
+message NodeInfo {
+  string nodeKey = 1;
+  int32 nodeID = 2;
+  string broadcastIP = 3;
+  string broadcastPort =4;
+  // status 状态：running | leave | stop | timeout
+  string status = 5;
+  // role 角色
+  string role = 6;
+}
+
+message NodeSecret {
+  string nodeKey = 1;
+  int32 nodeID = 2;
+}
+
 message LeaveRequest{
-
+  NodeSecret secret = 1;
 }
+
 message LeaveResponse{
-
+  string msg  = 1;
+  string code = 2;
 }
-message InfoRequest{}
-message InfoResponse{}
+
+message ListRequest{
+  NodeSecret secret = 1;
+}
+
+message ListResponse{
+  string msg  = 1;
+  string code = 2;
+  repeated NodeInfo info = 3;
+}
+
+message InfoRequest {
+  NodeSecret secret = 1;
+}
+
+message InfoResponse {
+  string msg  = 1;
+  string code = 2;
+  NodeInfo info = 3;
+}
 
 message ClusterRequest{}
 message ClusterResponse{}
 
+message EnvConfig {
+  string key = 1;
+  string value = 2;
+}
+
 service CtiService {
   rpc Join(JoinRequest)returns(JoinResponse){}
   rpc Leave(LeaveRequest)returns(LeaveResponse){}
+  rpc List(ListRequest)returns(ListResponse){}
+  rpc Info(InfoRequest)returns(InfoResponse){}
 }

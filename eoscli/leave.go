@@ -1,12 +1,19 @@
 package eoscli
 
 import (
+	"context"
+	"fmt"
+
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
 
 var CmdLeave = "leave"
 
-func Leave(leave cli.ActionFunc) *cli.Command {
+func Leave(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  CmdLeave,
 		Usage: "leave the cluster",
@@ -17,6 +24,22 @@ func Leave(leave cli.ActionFunc) *cli.Command {
 				Required: true,
 			},
 		},
-		Action: leave,
+		Action: x,
 	}
+}
+
+//LeaveFunc 离开集群
+func LeaveFunc(c *cli.Context) error {
+	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := service.NewCtiServiceClient(conn)
+	response, err := client.Leave(context.Background(), &service.LeaveRequest{Secret: &service.NodeSecret{}})
+	if err != nil {
+		return err
+	}
+	log.Infof("join successful! node id is: %d", response.Msg)
+	return nil
 }
