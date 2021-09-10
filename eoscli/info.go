@@ -11,9 +11,11 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var CmdInfo = "info"
+
 func Info(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:   "info",
+		Name:   CmdInfo,
 		Usage:  "display information of the node",
 		Action: x,
 	}
