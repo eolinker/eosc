@@ -8,6 +8,6 @@
 
 package helper
 
-func Helper() {
+func Process() {
 
 }

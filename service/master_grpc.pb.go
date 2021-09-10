@@ -18,8 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterClient interface {
-	Accept(ctx context.Context, in *ListenerRequest, opts ...grpc.CallOption) (Master_AcceptClient, error)
-	Open(ctx context.Context, in *FileOpen, opts ...grpc.CallOption) (*FileHandler, error)
+	Hello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
 }
 
 type masterClient struct {
@@ -30,41 +29,9 @@ func NewMasterClient(cc grpc.ClientConnInterface) MasterClient {
 	return &masterClient{cc}
 }
 
-func (c *masterClient) Accept(ctx context.Context, in *ListenerRequest, opts ...grpc.CallOption) (Master_AcceptClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Master_ServiceDesc.Streams[0], "/service.Master/Accept", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &masterAcceptClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Master_AcceptClient interface {
-	Recv() (*AcceptResponse, error)
-	grpc.ClientStream
-}
-
-type masterAcceptClient struct {
-	grpc.ClientStream
-}
-
-func (x *masterAcceptClient) Recv() (*AcceptResponse, error) {
-	m := new(AcceptResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *masterClient) Open(ctx context.Context, in *FileOpen, opts ...grpc.CallOption) (*FileHandler, error) {
-	out := new(FileHandler)
-	err := c.cc.Invoke(ctx, "/service.Master/Open", in, out, opts...)
+func (c *masterClient) Hello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error) {
+	out := new(HelloResponse)
+	err := c.cc.Invoke(ctx, "/service.Master/Hello", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +42,7 @@ func (c *masterClient) Open(ctx context.Context, in *FileOpen, opts ...grpc.Call
 // All implementations must embed UnimplementedMasterServer
 // for forward compatibility
 type MasterServer interface {
-	Accept(*ListenerRequest, Master_AcceptServer) error
-	Open(context.Context, *FileOpen) (*FileHandler, error)
+	Hello(context.Context, *HelloRequest) (*HelloResponse, error)
 	mustEmbedUnimplementedMasterServer()
 }
 
@@ -84,11 +50,8 @@ type MasterServer interface {
 type UnimplementedMasterServer struct {
 }
 
-func (UnimplementedMasterServer) Accept(*ListenerRequest, Master_AcceptServer) error {
-	return status.Errorf(codes.Unimplemented, "method Accept not implemented")
-}
-func (UnimplementedMasterServer) Open(context.Context, *FileOpen) (*FileHandler, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Open not implemented")
+func (UnimplementedMasterServer) Hello(context.Context, *HelloRequest) (*HelloResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Hello not implemented")
 }
 func (UnimplementedMasterServer) mustEmbedUnimplementedMasterServer() {}
 
@@ -103,41 +66,20 @@ func RegisterMasterServer(s grpc.ServiceRegistrar, srv MasterServer) {
 	s.RegisterService(&Master_ServiceDesc, srv)
 }
 
-func _Master_Accept_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ListenerRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(MasterServer).Accept(m, &masterAcceptServer{stream})
-}
-
-type Master_AcceptServer interface {
-	Send(*AcceptResponse) error
-	grpc.ServerStream
-}
-
-type masterAcceptServer struct {
-	grpc.ServerStream
-}
-
-func (x *masterAcceptServer) Send(m *AcceptResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _Master_Open_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FileOpen)
+func _Master_Hello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HelloRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServer).Open(ctx, in)
+		return srv.(MasterServer).Hello(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/service.Master/Open",
+		FullMethod: "/service.Master/Hello",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).Open(ctx, req.(*FileOpen))
+		return srv.(MasterServer).Hello(ctx, req.(*HelloRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -150,16 +92,10 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MasterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Open",
-			Handler:    _Master_Open_Handler,
+			MethodName: "Hello",
+			Handler:    _Master_Hello_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "Accept",
-			Handler:       _Master_Accept_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "master.proto",
 }

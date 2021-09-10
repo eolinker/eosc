@@ -6,13 +6,19 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package main
+package utils
 
-import (
-	"github.com/eolinker/eosc/master"
-)
+import "os"
 
-func main() {
-	master.Master()
+func ExistFile(path string) bool {
 
+	_, err := os.Stat(path)
+
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }

@@ -1,79 +1,90 @@
 package raft
 
 import (
+	"fmt"
 	"sync"
 )
 
 type Peers struct {
-	currentPeers map[uint64]string
-	configCount  int
-	mu           sync.RWMutex
+	peers       map[uint64]*NodeInfo
+	peersByAddr map[string]*NodeInfo
+	index       uint64
+	mu          sync.RWMutex
 }
 
-func NewPeers(peers map[uint64]string, count int) *Peers {
+func NewPeers() *Peers {
 	return &Peers{
-		currentPeers: peers,
-		configCount:  count,
-		mu:           sync.RWMutex{},
+		peers:       make(map[uint64]*NodeInfo),
+		peersByAddr: make(map[string]*NodeInfo),
+		index:       1,
+		mu:          sync.RWMutex{},
 	}
 }
 
 func (p *Peers) GetPeerNum() int {
-	return len(p.currentPeers)
+	return len(p.peers)
 }
 
-func (p *Peers) GetConfigCount() int {
-	return p.configCount
+func (p *Peers) Index() uint64 {
+	return p.index
 }
 
 // CheckExist 判断host对应的ID是否存在
 func (p *Peers) CheckExist(host string) (uint64, bool) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	for k, v := range p.currentPeers {
-		if v == host {
-			return k, true
-		}
+	if v, ok := p.peersByAddr[host]; ok {
+		return v.ID, true
 	}
 	return 0, false
 }
 
-func (p *Peers) GetPeerByID(id uint64) (string, bool) {
+func (p *Peers) GetPeerByID(id uint64) (*NodeInfo, bool) {
 	p.mu.RLock()
-	v, ok := p.currentPeers[id]
+	v, ok := p.peers[id]
 	p.mu.RUnlock()
 	return v, ok
 }
 
-func (p *Peers) SetPeer(id uint64, value string) {
+func (p *Peers) SetPeer(id uint64, value *NodeInfo) {
 	p.mu.Lock()
-	p.currentPeers[id] = value
+
+	addr := fmt.Sprintf("%s://%s", value.Protocol, value.BroadcastIP)
+	if value.BroadcastPort > 0 {
+		addr = fmt.Sprintf("%s:%d", addr, value.BroadcastPort)
+	}
+	if value.Addr != "" {
+		addr = value.Addr
+	}
+	value.Addr = addr
+	p.peers[id] = value
+	p.peersByAddr[addr] = value
 	p.mu.Unlock()
-	p.configCount++
+	if p.index < id {
+		p.index = id
+	}
 }
 
 //GetAllPeers 获取所有节点列表
-func (p *Peers) GetAllPeers() map[uint64]string {
-	res := make(map[uint64]string)
+func (p *Peers) GetAllPeers() map[uint64]*NodeInfo {
+	res := make(map[uint64]*NodeInfo)
 	p.mu.RLock()
-	for k, v := range p.currentPeers {
+	for k, v := range p.peers {
 		res[k] = v
 	}
 	p.mu.RUnlock()
 	return res
 }
 
-//UpdatePeerByID 通过ID更新节点信息
-func (p *Peers) UpdatePeerByID(id uint64, value string) {
-	p.mu.Lock()
-	p.currentPeers[id] = value
-	p.mu.Unlock()
-}
-
 //DeletePeerByID 通过ID删除节点
 func (p *Peers) DeletePeerByID(id uint64) {
+	info, has := p.GetPeerByID(id)
+	if !has {
+		return
+	}
+
 	p.mu.Lock()
-	delete(p.currentPeers, id)
+	delete(p.peers, id)
+	delete(p.peersByAddr, fmt.Sprintf("%s:%d", info.BroadcastIP, info.BroadcastPort))
 	p.mu.Unlock()
-	p.configCount++
 }
