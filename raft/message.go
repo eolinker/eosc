@@ -33,12 +33,14 @@ type ProposeMsg struct {
 type JoinRequest struct {
 	BroadcastIP   string `json:"broadcast_ip"`
 	BroadcastPort int    `json:"broadcast_port"`
+	Protocol      string `json:"protocol"`
 	Target        string `json:"target"`
 }
 
 type JoinResponse struct {
 	*NodeSecret
-	Peer map[uint64]*NodeInfo
+	Peer         map[uint64]*NodeInfo `json:"peer"`
+	ResponseType string               `json:"response_type"`
 }
 
 type NodeSecret struct {
@@ -51,6 +53,7 @@ type NodeInfo struct {
 	BroadcastIP   string `json:"broadcast_ip"`
 	BroadcastPort int    `json:"broadcast_port"`
 	Addr          string `json:"addr"`
+	Protocol      string `json:"protocol"`
 }
 
 func (n *NodeInfo) Marshal() []byte {

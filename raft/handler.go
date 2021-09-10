@@ -11,17 +11,28 @@ import (
 	"github.com/eolinker/eosc/log"
 )
 
+func (rc *Node) UpdateHandler() (bool, bool) {
+	v, ok := <-rc.updateTransport
+
+	return v, ok
+}
+
 // Handler http请求处理
 func (rc *Node) Handler() http.Handler {
 	sm := http.NewServeMux()
 	// 其他节点加入集群的处理
-	sm.HandleFunc("/raft/join", rc.joinHandler)
+	sm.HandleFunc("/raft/node/join", rc.joinHandler)
 	// 其他节点转发到leader的处理
-	sm.HandleFunc("/raft/propose", rc.proposeHandler)
+	sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
 
-	sm.HandleFunc("/raft/status", rc.proposeHandler)
-	sm.Handle("/", rc.transport.Handler())
+	//sm.HandleFunc("/raft/status", rc.proposeHandler)
+	//sm.Handle("/", rc.transport.Handler())
 	return sm
+}
+
+// Handler http请求处理
+func (rc *Node) TransportHandler() http.Handler {
+	return rc.transport.Handler()
 }
 
 // joinHandler 收到其他节点加入集群的处理
@@ -41,8 +52,6 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
 	}
-	addr := fmt.Sprintf("%s:%d", joinData.BroadcastIP, joinData.BroadcastPort)
-	log.Infof("host(%s) apply join the cluster", addr)
 
 	// 先判断是不是集群模式
 	// 是的话返回要加入的相关信息
@@ -54,20 +63,35 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 			writeError(w, "110002", "fail to change cluster", err.Error())
 			return
 		}
+		writeSuccessResult(w, "", &JoinResponse{
+			NodeSecret: &NodeSecret{
+				ID:  rc.peers.Index() + 1,
+				Key: uuid.New(),
+			},
+			Peer:         rc.peers.GetAllPeers(),
+			ResponseType: "cluster",
+		})
+		return
 	}
-
+	addr := fmt.Sprintf("%s://%s", joinData.Protocol, joinData.BroadcastIP)
+	if joinData.BroadcastPort > 0 {
+		addr = fmt.Sprintf("%s:%d", addr, joinData.BroadcastPort)
+	}
+	log.Infof("address %s apply join the cluster", addr)
 	// 切换完了，开始新增对应节点并返回新增条件信息
 	if id, exist := rc.peers.CheckExist(addr); exist {
 		info, _ := rc.peers.GetPeerByID(id)
-		writeSuccessResult(w, "info", &JoinResponse{
+		writeSuccessResult(w, "", &JoinResponse{
 			NodeSecret: &NodeSecret{
 				ID:  info.ID,
 				Key: info.Key,
 			},
-			Peer: rc.peers.GetAllPeers(),
+			Peer:         rc.peers.GetAllPeers(),
+			ResponseType: "join",
 		})
 		return
 	}
+
 	node := &NodeInfo{
 		NodeSecret: &NodeSecret{
 			ID:  rc.peers.Index() + 1,
@@ -75,20 +99,23 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		BroadcastIP:   joinData.BroadcastIP,
 		BroadcastPort: joinData.BroadcastPort,
+		Addr:          addr,
+		Protocol:      joinData.Protocol,
 	}
 	data, _ := json.Marshal(node)
 	// 已经是集群了，发送新增节点的消息后返回
-	err = rc.AddConfigChange(node.ID, data)
+	err = rc.AddNode(node.ID, data)
 	if err != nil {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return
 	}
-	writeSuccessResult(w, "info", &JoinResponse{
+	writeSuccessResult(w, "", &JoinResponse{
 		NodeSecret: &NodeSecret{
 			ID:  node.ID,
 			Key: node.Key,
 		},
-		Peer: rc.peers.GetAllPeers(),
+		Peer:         rc.peers.GetAllPeers(),
+		ResponseType: "join",
 	})
 	return
 }

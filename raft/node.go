@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-basic/uuid"
-
 	"github.com/eolinker/eosc/log"
+	"github.com/go-basic/uuid"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
@@ -79,9 +80,11 @@ type Node struct {
 	httpdonec chan struct{} // signals http server shutdown complete
 
 	// 日志相关，后续改为eosc_log
-	logger *zap.Logger
-	waiter wait.Wait
-	active bool
+	logger           *zap.Logger
+	waiter           wait.Wait
+	active           bool
+	updateTransport  chan bool
+	transportHandler http.Handler
 }
 
 func (rc *Node) NodeID() uint64 {
@@ -106,9 +109,6 @@ func (rc *Node) startRaft() {
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 
-	// 判断是否有日志文件目录
-	oldWal := wal.Exist(rc.waldir)
-
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage
 	rc.wal = rc.replayWAL()
 
@@ -129,7 +129,10 @@ func (rc *Node) startRaft() {
 		MaxInflightMsgs:           256,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
+	log.Info("dasdq")
 	peersList := rc.peers.GetAllPeers()
+	// 判断是否有日志文件目录
+	oldWal := wal.Exist(rc.waldir)
 	// 启动node节点
 	if rc.join || oldWal {
 		// 选择加入集群或已有日志消息（曾经切换过集群模式）
@@ -137,14 +140,14 @@ func (rc *Node) startRaft() {
 	} else {
 
 		// 启动节点时添加peers
-		rpeers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
+		peers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
 		for id := range peersList {
-			rpeers = append(rpeers, raft.Peer{ID: uint64(id)})
+			peers = append(peers, raft.Peer{ID: id})
 		}
 		// 新开一个集群
-		rc.node = raft.StartNode(c, rpeers)
+		rc.node = raft.StartNode(c, peers)
 	}
-
+	log.Info("12345")
 	// 开启节点间通信
 	// 通信实例开始运行
 	err = rc.transport.Start()
@@ -233,20 +236,23 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			var err error
 			err = m.Decode(ents[i].Data)
 			if err != nil {
-				log.Info(err)
+				log.Error(err)
 				continue
 			}
 			err = rc.Service.CommitHandler(m.Cmd, m.Data)
+			if err != nil {
+				log.Error(err)
+			}
 			if m.Type == INIT && m.From == rc.nodeID {
 				// 释放InitSend方法的等待，仅针对切换集群的对应节点
 				if err != nil {
-					log.Info(err)
-					rc.waiter.Trigger(uint64(m.From), err.Error())
+					log.Error(err)
+					rc.waiter.Trigger(m.From, err.Error())
 					continue
-				} else {
-					rc.waiter.Trigger(uint64(m.From), "")
 				}
+				rc.waiter.Trigger(m.From, "")
 			}
+
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
@@ -598,8 +604,8 @@ func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
 	return rc.peers.GetAllPeers(), rc.peers.Index(), nil
 }
 
-// AddConfigChange 客户端发送增加/删除节点的发送处理
-func (rc *Node) AddConfigChange(nodeID uint64, data []byte) error {
+// AddNode 客户端发送增加节点的发送处理
+func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
@@ -608,13 +614,12 @@ func (rc *Node) AddConfigChange(nodeID uint64, data []byte) error {
 	}
 	p := rc.transport.Get(types.ID(nodeID))
 	if p != nil {
-		return fmt.Errorf("added node is existed")
+		return nil
 	}
 	cc := raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  nodeID,
 		Context: data,
-		ID:      rc.peers.Index() + 1,
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -634,7 +639,7 @@ func (rc *Node) DeleteConfigChange(nodeID uint64) error {
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: nodeID,
-		ID:     uint64(rc.peers.Index() + 1),
+		ID:     rc.peers.Index() + 1,
 	}
 	return rc.node.ProposeConfChange(context.TODO(), cc)
 }
@@ -649,6 +654,7 @@ func (rc *Node) InitSend() error {
 		return fmt.Errorf("need to change cluster mode")
 	}
 	cmd, data, err := rc.Service.GetInit()
+	log.Info("nodeID is ", rc.nodeID)
 	if err != nil {
 		return err
 	}
@@ -664,6 +670,7 @@ func (rc *Node) InitSend() error {
 	}
 	err = rc.node.Propose(context.TODO(), b)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	// 等待处理完
@@ -690,17 +697,27 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.isCluster = true
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
+
+	rc.transport.ID = types.ID(rc.nodeID)
+	rc.transport.Raft = rc
+	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
+	rc.transportHandler = rc.transport.Handler()
+	rc.updateTransport <- true
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
 			return fmt.Errorf("eosc: node(%d) cannot create dir for snapshot (%v)", rc.nodeID, err)
 		}
 	}
-	rc.broadcastIP = addr
-	index := strings.Index(addr, ":")
+	u, err := url.Parse(addr)
+	if err != nil {
+		return fmt.Errorf("eosc: fail to parse address,%w", err)
+	}
+	rc.broadcastIP = u.Host
+	index := strings.Index(u.Host, ":")
 	if index > 0 {
-		rc.broadcastIP = addr[:index]
-		rc.broadcastPort, _ = strconv.Atoi(addr[index+1:])
+		rc.broadcastIP = u.Host[:index]
+		rc.broadcastPort, _ = strconv.Atoi(u.Host[index+1:])
 	}
 
 	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
@@ -708,18 +725,19 @@ func (rc *Node) changeCluster(addr string) error {
 			ID:  rc.nodeID,
 			Key: rc.nodeKey,
 		},
+		Protocol:      u.Scheme,
 		BroadcastIP:   rc.broadcastIP,
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
 	})
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
-
-	// 判断是否有日志文件目录，此时应该是没有的
-	oldWal := wal.Exist(rc.waldir)
-	if oldWal {
-		return fmt.Errorf("node(%d) has been cluster mode, wal is existed", rc.nodeID)
-	}
+	//
+	//// 判断是否有日志文件目录，此时应该是没有的
+	//oldWal := wal.Exist(rc.waldir)
+	//if oldWal {
+	//	return fmt.Errorf("node(%d) has been cluster mode, wal is existed", rc.nodeID)
+	//}
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
 	rc.wal = rc.replayWAL()
 	// 节点配置
@@ -741,28 +759,30 @@ func (rc *Node) changeCluster(addr string) error {
 	// 启动node节点
 	// 新开一个集群
 	rc.node = raft.StartNode(c, peers)
-
 	// 通信实例开始运行
-	err := rc.transport.Start()
+	err = rc.transport.Start()
 	if err != nil {
 		return err
 	}
-
-	// 与集群中的其他节点建立通信
-	for k, v := range peerList {
-		// transport加入peer列表，节点本身不添加
-		if k != rc.nodeID {
-			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
-		}
-	}
+	//// 与集群中的其他节点建立通信
+	//for k, v := range peerList {
+	//	// transport加入peer列表，节点本身不添加
+	//	if k != rc.nodeID {
+	//		rc.transport.AddPeer(types.ID(k), []string{v.Addr})
+	//	}
+	//}
 	// 读ready
 	go rc.serveChannels()
 	log.Info("change cluster mode successfully")
-	// 开始打包处理初始化信息
-	err = rc.InitSend()
-	if err != nil {
-		return err
-	}
+	go func() {
+		// 开始打包处理初始化信息
+		err = rc.InitSend()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	}()
+
 	return nil
 }
 
@@ -806,7 +826,7 @@ func (rc *Node) postMessage(addr string, command string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/raft/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
+	resp, err := http.Post(fmt.Sprintf("%s/raft/node/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -848,9 +868,19 @@ func (rc *Node) getLeader() (*NodeInfo, bool, error) {
 	return v, flag, nil
 }
 
-func (rc *Node) Process(ctx context.Context, m raftpb.Message) error { return rc.node.Step(ctx, m) }
-func (rc *Node) IsIDRemoved(id uint64) bool                          { return false }
-func (rc *Node) ReportUnreachable(id uint64)                         { rc.node.ReportUnreachable(id) }
+func (rc *Node) Process(ctx context.Context, m raftpb.Message) error {
+	if rc.node == nil {
+		return nil
+	}
+	return rc.node.Step(ctx, m)
+}
+func (rc *Node) IsIDRemoved(id uint64) bool { return false }
+func (rc *Node) ReportUnreachable(id uint64) {
+	if rc.node == nil {
+		return
+	}
+	rc.node.ReportUnreachable(id)
+}
 func (rc *Node) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	rc.node.ReportSnapshot(id, status)
 }
