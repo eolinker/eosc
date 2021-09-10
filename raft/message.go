@@ -3,6 +3,7 @@ package raft
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"log"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -16,9 +17,10 @@ const PROPOSE commandType = 2
 // json接口交互用的结构
 
 type Response struct {
-	Code string `json:"code"`
-	Msg  string `json:"msg"`
-	Data []byte `json:"data"`
+	Code string      `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data,omitempty"`
+	Err  string      `json:"error,omitempty"`
 }
 
 type ProposeMsg struct {
@@ -28,10 +30,35 @@ type ProposeMsg struct {
 	Data []byte `json:"data"`
 }
 
-type JoinMsg struct {
-	Id    int               `json:"id"`
-	Host  string            `json:"host"`
-	Peers map[uint64]string `json:"peers"`
+type JoinRequest struct {
+	BroadcastIP   string `json:"broadcast_ip"`
+	BroadcastPort int    `json:"broadcast_port"`
+	Protocol      string `json:"protocol"`
+	Target        string `json:"target"`
+}
+
+type JoinResponse struct {
+	*NodeSecret
+	Peer         map[uint64]*NodeInfo `json:"peer"`
+	ResponseType string               `json:"response_type"`
+}
+
+type NodeSecret struct {
+	ID  uint64 `json:"id"`
+	Key string `json:"key"`
+}
+
+type NodeInfo struct {
+	*NodeSecret
+	BroadcastIP   string `json:"broadcast_ip"`
+	BroadcastPort int    `json:"broadcast_port"`
+	Addr          string `json:"addr"`
+	Protocol      string `json:"protocol"`
+}
+
+func (n *NodeInfo) Marshal() []byte {
+	data, _ := json.Marshal(n)
+	return data
 }
 
 // Message 发送Propose和Init消息结构

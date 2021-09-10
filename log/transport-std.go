@@ -6,13 +6,14 @@ import (
 )
 
 func NewStdTransport(formatter Formatter) *Transporter {
-	return NewTransport(os.Stdout,InfoLevel,formatter)
+	t:= NewTransport(os.Stderr, InfoLevel)
+	t.SetFormatter(formatter)
+	return t
 }
 
-func NewTransport(out io.Writer, level Level, formatter Formatter) *Transporter {
+func NewTransport(out io.Writer, level Level) *Transporter {
 	return &Transporter{
-		output:    out,
-		level:     level,
-		formatter: formatter,
+		output: out,
+		level:  level,
 	}
 }

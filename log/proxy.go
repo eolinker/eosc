@@ -2,14 +2,9 @@ package log
 
 import (
 	"os"
-
 )
 
-
-
-
 type exitFunc func(int)
-
 
 func (logger *Logger) Tracef(format string, args ...interface{}) {
 	logger.Logf(TraceLevel, format, args...)
@@ -22,7 +17,6 @@ func (logger *Logger) Debugf(format string, args ...interface{}) {
 func (logger *Logger) Infof(format string, args ...interface{}) {
 	logger.Logf(InfoLevel, format, args...)
 }
-
 
 func (logger *Logger) Warnf(format string, args ...interface{}) {
 	logger.Logf(WarnLevel, format, args...)
@@ -44,8 +38,6 @@ func (logger *Logger) Fatalf(format string, args ...interface{}) {
 func (logger *Logger) Panicf(format string, args ...interface{}) {
 	logger.Logf(PanicLevel, format, args...)
 }
-
-
 
 func (logger *Logger) Trace(args ...interface{}) {
 	logger.Log(TraceLevel, args...)
@@ -80,7 +72,6 @@ func (logger *Logger) Panic(args ...interface{}) {
 	logger.Log(PanicLevel, args...)
 }
 
-
 func (logger *Logger) Traceln(args ...interface{}) {
 	logger.Logln(TraceLevel, args...)
 }
@@ -92,7 +83,6 @@ func (logger *Logger) Debugln(args ...interface{}) {
 func (logger *Logger) Infoln(args ...interface{}) {
 	logger.Logln(InfoLevel, args...)
 }
-
 
 func (logger *Logger) Warnln(args ...interface{}) {
 	logger.Logln(WarnLevel, args...)
@@ -122,8 +112,6 @@ func (logger *Logger) Exit(code int) {
 	}
 	logger.exitFunc(code)
 }
-
-
 
 // GetLevel returns the LoggerProxy level.
 func (logger *Logger) GetLevel() Level {
