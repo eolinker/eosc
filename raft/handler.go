@@ -11,28 +11,26 @@ import (
 	"github.com/eolinker/eosc/log"
 )
 
-func (rc *Node) UpdateHandler() (bool, bool) {
-	v, ok := <-rc.updateTransport
+func (rc *Node) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	if rc.transportHandler != nil {
+		rc.transportHandler.ServeHTTP(writer, request)
+		return
+	}
+	http.NotFound(writer, request)
 
-	return v, ok
 }
 
-// Handler http请求处理
-func (rc *Node) Handler() http.Handler {
+// genHandler http请求处理
+func (rc *Node) genHandler() http.Handler {
 	sm := http.NewServeMux()
 	// 其他节点加入集群的处理
 	sm.HandleFunc("/raft/node/join", rc.joinHandler)
 	// 其他节点转发到leader的处理
 	sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
 
-	//sm.HandleFunc("/raft/status", rc.proposeHandler)
-	//sm.Handle("/", rc.transport.Handler())
+	fmt.Println("gen handler,node id is", rc.transport.ID)
+	sm.Handle("/", rc.transport.Handler())
 	return sm
-}
-
-// Handler http请求处理
-func (rc *Node) TransportHandler() http.Handler {
-	return rc.transport.Handler()
 }
 
 // joinHandler 收到其他节点加入集群的处理

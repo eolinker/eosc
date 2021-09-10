@@ -97,5 +97,5 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "master.proto",
+	Metadata: "service/master.proto",
 }

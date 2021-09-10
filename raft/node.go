@@ -129,7 +129,6 @@ func (rc *Node) startRaft() {
 		MaxInflightMsgs:           256,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
-	log.Info("dasdq")
 	peersList := rc.peers.GetAllPeers()
 	// 判断是否有日志文件目录
 	oldWal := wal.Exist(rc.waldir)
@@ -147,7 +146,6 @@ func (rc *Node) startRaft() {
 		// 新开一个集群
 		rc.node = raft.StartNode(c, peers)
 	}
-	log.Info("12345")
 	// 开启节点间通信
 	// 通信实例开始运行
 	err = rc.transport.Start()
@@ -701,8 +699,7 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
-	rc.transportHandler = rc.transport.Handler()
-	rc.updateTransport <- true
+	rc.transportHandler = rc.genHandler()
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {

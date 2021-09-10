@@ -3,6 +3,8 @@ package master
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 
 	"github.com/eolinker/eosc/log"
 
@@ -14,16 +16,18 @@ import (
 //Join 加入集群操作
 func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
-	for _, addr := range request.ClusterAddress {
-		node, err := raft.JoinCluster(request.BroadcastIP, int(request.BroadcastPort), addr, m.raftService, 0)
+	for _, address := range request.ClusterAddress {
+		uri, err := url.Parse(fmt.Sprintf("%s/raft/node/join", address))
 		if err != nil {
-			log.Errorf("fail to join: addr is %s, error is %s", addr, err.Error())
+			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
 			continue
 		}
-		log.Info("dqer")
-		m.node = node
-		m.AddHandler("/", m.node.TransportHandler())
-		info.NodeID, info.NodeKey = int32(node.NodeID()), node.NodeKey()
+		err = raft.JoinCluster(m.node, request.BroadcastIP, int(request.BroadcastPort), address, uri.String(), request.Protocol, m.raftService, 0)
+		if err != nil {
+			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
+			continue
+		}
+		info.NodeID, info.NodeKey = int32(m.node.NodeID()), m.node.NodeKey()
 		break
 	}
 	if info.NodeID < 1 {

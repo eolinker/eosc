@@ -11,6 +11,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var CmdLeave = "leave"
+
 func Leave(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  CmdLeave,
