@@ -69,21 +69,10 @@ type Master struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 	PID        *pidfile.PidFile
-	mux        *http.ServeMux
 	httpserver *http.Server
 }
 
 func (m *Master) Start() error {
-
-	ip := eosc_args.GetDefault(eosc_args.IP, "")
-	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
-	// 监听master监听地址，用于接口处理
-	l, err := m.masterTraffic.ListenTcp(ip, port)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
 	// 设置存储操作
 	s, err := store.NewStore()
 	if err != nil {
@@ -95,29 +84,25 @@ func (m *Master) Start() error {
 
 	m.node = raft.NewNode(m.raftService)
 
+	ip := eosc_args.GetDefault(eosc_args.IP, "")
+	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
+	// 监听master监听地址，用于接口处理
+	l, err := m.masterTraffic.ListenTcp(ip, port)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	m.startHttp(l)
 
 	return nil
 
 }
 func (m *Master) startHttp(l net.Listener) {
-	m.AddHandler("/raft/node/", m.node.Handler())
 	m.httpserver = &http.Server{
-		Handler: m.mux,
+		Handler: m.handler(),
 	}
-	go func() {
-		// 启动监听节点handler变化的协程
-		for {
-			v, ok := m.node.UpdateHandler()
-			if !ok {
-				break
-			}
-			if v {
-				log.Info("daser")
-				m.AddHandler("/", m.node.TransportHandler())
-			}
-		}
-	}()
+
 	go func() {
 		err := m.httpserver.Serve(l)
 		if err != nil {
@@ -126,20 +111,13 @@ func (m *Master) startHttp(l net.Listener) {
 	}()
 }
 
-func (m *Master) AddHandler(prefix string, handler http.Handler) {
-	m.mux.Handle(prefix, handler)
-}
+func (m *Master) handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.Handle("/raft", m.node)
+	sm.Handle("/raft/", m.node)
 
-func (m *Master) AddHandlerFunc(prefix string, handler http.HandlerFunc) {
-	m.mux.HandleFunc(prefix, handler)
+	return sm
 }
-
-//func (m *Master) handler() http.Handler {
-//	sm := http.NewServeMux()
-//	sm.Handle("/raft/node", m.node.Handler())
-//
-//	return sm
-//}
 func (m *Master) Wait() error {
 
 	sigc := make(chan os.Signal, 1)
@@ -200,7 +178,6 @@ func NewMasterHandle(pid *pidfile.PidFile) *Master {
 		ctx:                           cancel,
 		UnimplementedMasterServer:     service.UnimplementedMasterServer{},
 		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
-		mux:                           http.NewServeMux(),
 	}
 	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("init traffic from stdin")

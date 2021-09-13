@@ -38,15 +38,25 @@ func Start(x cli.ActionFunc) *cli.Command {
 				Name:  "broadcast-ip",
 				Usage: "ip for the node broadcast, required when join is true",
 			},
-			&cli.IntFlag{
-				Name:  "broadcast-port",
-				Usage: "port for the node broadcast, required when join is true",
-				Value: 9401,
+			&cli.StringFlag{
+				Name:  "protocol",
+				Usage: "node listen protocol",
+				Value: "http",
 			},
 			&cli.StringSliceFlag{
 				Name:    "cluster-addr",
 				Aliases: []string{"addr"},
 				Usage:   "cluster addr",
+			},
+			&cli.StringFlag{
+				Name:    "user",
+				Aliases: []string{"u"},
+				Usage:   "eosc",
+			},
+			&cli.StringFlag{
+				Name:    "group",
+				Aliases: []string{"g"},
+				Usage:   "eosc",
 			},
 		},
 		Action: x,

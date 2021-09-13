@@ -205,5 +205,5 @@ var CtiService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ctl.proto",
+	Metadata: "service/ctl.proto",
 }

@@ -16,9 +16,11 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var CmdJoin = "join"
+
 func Join(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:  "join",
+		Name:  CmdJoin,
 		Usage: "join the cluster",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -27,16 +29,16 @@ func Join(x cli.ActionFunc) *cli.Command {
 				Usage:    "ip for the node broadcast",
 				Required: true,
 			},
-			&cli.IntFlag{
-				Name:    "broadcast-port",
-				Aliases: []string{"p", "port"},
-				Usage:   "port for the node broadcast",
-				Value:   9401,
+			&cli.StringFlag{
+				Name:  "protocol",
+				Usage: "node listen protocol",
+				Value: "http",
 			},
 			&cli.StringSliceFlag{
-				Name:    "cluster-addr",
-				Aliases: []string{"addr"},
-				Usage:   "<scheme>://<ip>:<port> of any node that already in cluster",
+				Name:     "cluster-addr",
+				Aliases:  []string{"addr"},
+				Usage:    "<scheme>://<ip>:<port> of any node that already in cluster",
+				Required: true,
 			},
 		},
 		Action: x,
@@ -52,7 +54,8 @@ func JoinFunc(c *cli.Context) error {
 	defer conn.Close()
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
-	bPort := c.Int("broadcast-port")
+	port := eosc_args.GetDefault(eosc_args.Port, "0")
+	bPort, _ := strconv.Atoi(port)
 	if !utils.ValidAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
 		ipStr, has := eosc_args.GetEnv(eosc_args.BroadcastIP)
 		if !has {
@@ -106,6 +109,7 @@ func JoinFunc(c *cli.Context) error {
 	response, err := client.Join(context.Background(), &service.JoinRequest{
 		BroadcastIP:    bIP,
 		BroadcastPort:  int32(bPort),
+		Protocol:       c.String("protocol"),
 		ClusterAddress: as,
 	})
 	if err != nil {
