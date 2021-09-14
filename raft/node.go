@@ -732,7 +732,7 @@ func (rc *Node) changeCluster(addr string) error {
 	})
 	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
 	cfg.Set(eosc_args.IsCluster, "true")
-	cfg.Set("NODE_ID", rc.nodeID)
+	cfg.Set("NODE_ID", strconv.Itoa(int(rc.nodeID)))
 	eosc_args.SetEnv(eosc_args.IsCluster, "true")
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
