@@ -39,11 +39,11 @@ func NewService(handlers ...ICreateHandler) *Service {
 	return s
 }
 //
-//func (s *Service) commitHandlerSet(namespace string, handler ICommitHandler) {
+//func (s *service) commitHandlerSet(namespace string, handler ICommitHandler) {
 //	s.commitHandlers.Set(namespace, handler)
 //}
 //
-//func (s *Service) processHandlerSet(namespace string, handler IProcessHandler) {
+//func (s *service) processHandlerSet(namespace string, handler IProcessHandler) {
 //	s.processHandlers.Set(namespace, handler)
 //}
 

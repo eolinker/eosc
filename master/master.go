@@ -87,7 +87,7 @@ func (m *Master) Start() error {
 
 	ws := workers.NewWorker()
 	ps := professions.NewProfessions()
-	 raftService := raft_service.NewService(
+	raftService := raft_service.NewService(
 		raft_service.NewCreateHandler("worker",ws),
 		raft_service.NewCreateHandler("profession",ps),
 		)

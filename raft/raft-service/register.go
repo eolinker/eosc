@@ -31,6 +31,6 @@ func NewCreateHandlerS(namespace string, commitHandler ICommitHandler,processHan
 //	ff.Set(namespace, createFunc)
 //}
 //
-//func initHandler(s *Service) {
+//func initHandler(s *service) {
 
 //}
