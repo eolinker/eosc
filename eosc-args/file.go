@@ -42,12 +42,12 @@ func NewConfig(path string) (*Config, error) {
 
 func (c *Config) Set(name string, value string) {
 	if name != "" {
-		c.args.Set(envName(name), value)
+		c.args.Set(EnvName(name), value)
 	}
 }
 
 func (c *Config) Get(name string) (string, bool) {
-	vl, has := c.args.Get(envName(name))
+	vl, has := c.args.Get(EnvName(name))
 	if !has {
 		return "", false
 	}
@@ -59,7 +59,7 @@ func (c *Config) Get(name string) (string, bool) {
 }
 
 func (c *Config) GetDefault(name string, value string) string {
-	vl, has := c.args.Get(envName(name))
+	vl, has := c.args.Get(EnvName(name))
 	if !has {
 		return value
 	}
