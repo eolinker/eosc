@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-basic/uuid"
 
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
 
@@ -77,7 +79,7 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 				Protocol:      protocol,
 			}
 			resMsg.Peer[nodeInfo.ID] = nodeInfo
-			joinAndCreateRaft(node, nodeInfo, resMsg.Peer)
+			startRaft(node, nodeInfo, resMsg.Peer)
 
 			err = JoinCluster(node, broadCastIP, broadPort, target, addr, protocol, service, count+1)
 			if err != nil {
@@ -93,7 +95,8 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 				Protocol:      protocol,
 			}
 			resMsg.Peer[nodeInfo.ID] = nodeInfo
-			joinAndCreateRaft(node, nodeInfo, resMsg.Peer)
+			startRaft(node, nodeInfo, resMsg.Peer)
+
 			return nil
 		}
 		return nil
@@ -102,32 +105,37 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 
 }
 
-// joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
-func joinAndCreateRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) *Node {
+// startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
+func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 	rc.nodeID = node.ID
-	rc.waldir = fmt.Sprintf("eosc-%d", node.ID)
-	rc.snapdir = fmt.Sprintf("eosc-%d-snap", node.ID)
+	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
+	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
 	rc.join, rc.isCluster = true, true
-	rc.nodeKey = uuid.New()
+	rc.nodeKey = node.Key
+	rc.broadcastIP = node.BroadcastIP
+	rc.broadcastPort = node.BroadcastPort
 
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
 	for _, p := range peers {
-		fmt.Println(p)
 		rc.peers.SetPeer(p.ID, p)
 	}
-
-	//rc.updateTransport <- true
+	rc.writeConfig()
 	go rc.startRaft()
-	return rc
 }
 
 //NewNode 新建raft节点
 func NewNode(service IService) *Node {
+	// 判断是否存在nodeID，若存在，则当作旧节点处理，加入集群
+	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "0"))
+	nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
 	logger := zap.NewExample()
 	rc := &Node{
+		nodeID:          uint64(nodeID),
+		nodeKey:         nodeKey,
 		peers:           NewPeers(),
 		Service:         service,
 		snapCount:       defaultSnapshotCount,
@@ -148,9 +156,27 @@ func NewNode(service IService) *Node {
 		},
 	}
 
-	rc.transport.Raft = rc
-	if rc.transportHandler == nil {
-		rc.transportHandler = rc.genHandler()
+	if rc.nodeID != 0 {
+		if rc.nodeKey == "" {
+			rc.nodeKey = uuid.New()
+		}
+		port, _ := strconv.Atoi(cfg.GetDefault(eosc_args.BroadcastIP, ""))
+		node := &NodeInfo{
+			NodeSecret: &NodeSecret{
+				ID:  rc.nodeID,
+				Key: rc.nodeKey,
+			},
+			BroadcastIP:   cfg.GetDefault(eosc_args.BroadcastIP, ""),
+			BroadcastPort: port,
+			Protocol:      cfg.GetDefault(eosc_args.Protocol, "http"),
+		}
+		peers := map[uint64]*NodeInfo{rc.nodeID: node}
+		startRaft(rc, node, peers)
+	} else {
+		rc.transport.Raft = rc
+		if rc.transportHandler == nil {
+			rc.transportHandler = rc.genHandler()
+		}
 	}
 
 	return rc

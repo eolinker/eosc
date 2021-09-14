@@ -1,11 +1,8 @@
 package eoscli
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
@@ -77,9 +74,9 @@ func StartFunc(c *cli.Context) error {
 	// 从文件中读取cli运行配置
 	// 读取存在顺序，若值相同，后读取的会全量覆盖相关配置
 	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
-	nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
+	//nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
 	cfg := eosc_args.NewConfig(argsName)
-	cfg.ReadFile(argsName, nodeName)
+	cfg.ReadFile(argsName)
 
 	err := utils.IsListen(fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
@@ -102,39 +99,39 @@ func StartFunc(c *cli.Context) error {
 		return err
 	}
 
-	isJoin := c.Bool("join")
-	if !isJoin {
-		isJoin, _ = strconv.ParseBool(getDefaultArg(cfg, eosc_args.IsCluster, "false"))
-	}
-
-	if isJoin {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		ticket := time.NewTicker(1 * time.Second)
-		defer ticket.Stop()
-	CheckPid:
-		for {
-			select {
-			case <-ctx.Done():
-				{
-					cancel()
-					return errors.New("join cluster timeout")
-				}
-			case <-ticket.C:
-				{
-					pid, err := readPid()
-					if err == nil {
-						if processExists(pid) {
-							break CheckPid
-						}
-					}
-				}
-			}
-		}
-		err = join(c, cfg)
-		if err != nil {
-			return err
-		}
-	}
+	//isJoin := c.Bool("join")
+	//if !isJoin {
+	//	isJoin, _ = strconv.ParseBool(getDefaultArg(cfg, eosc_args.IsCluster, "false"))
+	//}
+	//
+	//if isJoin {
+	//	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//	ticket := time.NewTicker(1 * time.Second)
+	//	defer ticket.Stop()
+	//CheckPid:
+	//	for {
+	//		select {
+	//		case <-ctx.Done():
+	//			{
+	//				cancel()
+	//				return errors.New("join cluster timeout")
+	//			}
+	//		case <-ticket.C:
+	//			{
+	//				pid, err := readPid()
+	//				if err == nil {
+	//					if processExists(pid) {
+	//						break CheckPid
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//	err = join(c, cfg)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 	cfg.Save()
 
 	if eosc_args.IsDebug() {

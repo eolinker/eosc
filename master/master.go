@@ -54,6 +54,15 @@ func Process() {
 		log.Error("master start  grpc server error: ", err.Error())
 		return
 	}
+	//cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+	//nodeID, has := cfg.Get(eosc_args.NodeID)
+	//if has {
+	//	id, err := strconv.Atoi(nodeID)
+	//	if err == nil {
+	//		// 节点存在，启动节点
+	//		nodeKey, _ := cfg.Get(node)
+	//	}
+	//}
 	master.Wait()
 }
 

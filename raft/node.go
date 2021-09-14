@@ -48,6 +48,8 @@ type Node struct {
 
 	broadcastPort int
 
+	protocol string
+
 	// 当前leader
 	lead uint64
 
@@ -95,6 +97,28 @@ func (rc *Node) NodeID() uint64 {
 
 func (rc *Node) NodeKey() string {
 	return rc.nodeKey
+}
+
+//writeConfig 将raft节点的运行配置写进文件中
+func (rc *Node) writeConfig() {
+	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+	cfg.Set(eosc_args.IsCluster, "true")
+	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
+	cfg.Set(eosc_args.NodeKey, strconv.Itoa(int(rc.nodeID)))
+	cfg.Set(eosc_args.BroadcastIP, rc.broadcastIP)
+	cfg.Set(eosc_args.Port, strconv.Itoa(rc.broadcastPort))
+	cfg.Save()
+}
+
+func (rc *Node) clearConfig() {
+	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+	cfg.Save()
+	rc.nodeID = 0
+	rc.nodeKey = ""
+	rc.broadcastIP = ""
+	rc.broadcastPort = 0
+	rc.join, rc.isCluster = false, false
+	rc.transportHandler = rc.genHandler()
 }
 
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
@@ -626,23 +650,33 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 }
 
 // DeleteConfigChange 客户端发送删除节点的发送处理
-func (rc *Node) DeleteConfigChange(nodeID uint64) error {
+func (rc *Node) DeleteConfigChange() error {
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
 	if !rc.isCluster {
 		return fmt.Errorf("current node is not cluster mode")
 	}
-	p := rc.transport.Get(types.ID(nodeID))
-	if p == nil && nodeID != uint64(rc.nodeID) {
-		return fmt.Errorf("deleted node is not existed")
-	}
+	//p := rc.transport.Get(types.ID(rc.nodeID))
+	//if p == nil {
+	//	return fmt.Errorf("deleted node is not existed")
+	//}
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
-		NodeID: nodeID,
-		ID:     rc.peers.Index() + 1,
+		NodeID: rc.nodeID,
+		ID:     rc.nodeID,
 	}
-	return rc.node.ProposeConfChange(context.TODO(), cc)
+	err := rc.node.ProposeConfChange(context.TODO(), cc)
+	if err != nil {
+		return err
+	}
+	rc.transport.Stop()
+	rc.clearConfig()
+	return nil
+}
+
+func (rc *Node) Stop() {
+
 }
 
 // InitSend 切换集群时调用，一般一个集群仅调用一次
@@ -730,18 +764,10 @@ func (rc *Node) changeCluster(addr string) error {
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
 	})
-	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	cfg.Set(eosc_args.IsCluster, "true")
-	cfg.Set("NODE_ID", strconv.Itoa(int(rc.nodeID)))
-	eosc_args.SetEnv(eosc_args.IsCluster, "true")
+
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
-	//
-	//// 判断是否有日志文件目录，此时应该是没有的
-	//oldWal := wal.Exist(rc.waldir)
-	//if oldWal {
-	//	return fmt.Errorf("node(%d) has been cluster mode, wal is existed", rc.nodeID)
-	//}
+
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
 	rc.wal = rc.replayWAL()
 	// 节点配置
@@ -760,21 +786,20 @@ func (rc *Node) changeCluster(addr string) error {
 	for id, p := range peerList {
 		peers = append(peers, raft.Peer{ID: id, Context: p.Marshal()})
 	}
-	// 启动node节点
-	// 新开一个集群
+	// 启动node节点,新开一个集群
 	rc.node = raft.StartNode(c, peers)
 	// 通信实例开始运行
 	err = rc.transport.Start()
 	if err != nil {
 		return err
 	}
-	//// 与集群中的其他节点建立通信
-	//for k, v := range peerList {
-	//	// transport加入peer列表，节点本身不添加
-	//	if k != rc.nodeID {
-	//		rc.transport.AddPeer(types.ID(k), []string{v.Addr})
-	//	}
-	//}
+	// 与集群中的其他节点建立通信
+	for k, v := range peerList {
+		// transport加入peer列表，节点本身不添加
+		if k != rc.nodeID {
+			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
+		}
+	}
 	// 读ready
 	go rc.serveChannels()
 	log.Info("change cluster mode successfully")
@@ -786,35 +811,9 @@ func (rc *Node) changeCluster(addr string) error {
 			return
 		}
 	}()
-	cfg.Save()
+	rc.writeConfig()
 	return nil
 }
-
-//// 通信相关
-//// serveRaft 用于监听当前节点的指定端口，处理与其他节点的网络连接，需更改
-//func (rc *Node) serveRaft() {
-//	log.Info("eosc: start raft serve listener")
-//	v, ok := rc.peers.GetPeerByID(rc.nodeID)
-//	if !ok {
-//		log.Fatalf("eosc: Failed read current node(%d) url ", rc.nodeID)
-//	}
-//	//addr, err := url.Parse(v)
-//	//if err != nil {
-//	//	log.Fatalf("eosc: Failed parsing URL (%v)", err)
-//	//}
-//	ln, err := newStoppableListener(v.Addr, rc.httpstopc)
-//	if err != nil {
-//		log.Fatalf("eosc: Failed to listen rafthttp (%v)", err)
-//	}
-//	// 调用rc.transport.Handler()对连接进行处理
-//	err = (&http.Server{Handler: rc.Handler()}).Serve(ln)
-//	select {
-//	case <-rc.httpstopc:
-//	default:
-//		log.Fatalf("eosc: Failed to serve rafthttp (%v)", err)
-//	}
-//	close(rc.httpdonec)
-//}
 
 // 工具方法
 // postMessage 转发消息，基于json

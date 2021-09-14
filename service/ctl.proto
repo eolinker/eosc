@@ -9,6 +9,7 @@ message JoinRequest {
   int32 broadcastPort = 2;
   string protocol = 3;
   repeated string clusterAddress = 4;
+    NodeSecret secret = 5;
 }
 
 message JoinResponse{
