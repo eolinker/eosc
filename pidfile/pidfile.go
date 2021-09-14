@@ -18,9 +18,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/eolinker/eosc/log"
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 
-	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/log"
 )
 
 var (
@@ -146,12 +146,12 @@ func Exist() bool {
 }
 
 func getPath() string {
-	name := process.AppName()
+	name := eosc_args.AppName()
 	path, _ := filepath.Abs(fmt.Sprintf("%s.pid", name))
 	return path
 }
 func getOldPath() string {
-	name := process.AppName()
+	name := eosc_args.AppName()
 	path, _ := filepath.Abs(fmt.Sprintf("%s.old.pid", name))
 	return path
 }

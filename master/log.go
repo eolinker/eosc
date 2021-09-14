@@ -17,11 +17,10 @@ import (
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
-	"github.com/eolinker/eosc/process"
 )
 
 func InitLogTransport() {
-	dir := fmt.Sprintf("/var/log/%s", process.AppName())
+	dir := fmt.Sprintf("/var/log/%s", eosc_args.AppName())
 	if eosc_args.IsDebug() {
 		dir = filepath.Base(".")
 		log.InitDebug(true)

@@ -9,7 +9,6 @@ import (
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -68,7 +67,7 @@ func Start(x cli.ActionFunc) *cli.Command {
 func StartFunc(c *cli.Context) error {
 	// 判断程序是否存在
 	if CheckPIDFILEAlreadyExists() {
-		return fmt.Errorf("the app %s is running", process.AppName())
+		return fmt.Errorf("the app %s is running", eosc_args.AppName())
 	}
 	ClearPid()
 	args := make([]string, 0, 20)

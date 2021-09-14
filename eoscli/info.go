@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
@@ -23,7 +23,7 @@ func Info(x cli.ActionFunc) *cli.Command {
 
 //InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
 	if err != nil {
 		return err
 	}
