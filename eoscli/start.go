@@ -94,7 +94,12 @@ func StartFunc(c *cli.Context) error {
 		log.Errorf("start master error: %w", err)
 		return err
 	}
+
 	isJoin := c.Bool("join")
+	if !isJoin {
+		isJoin, _ = strconv.ParseBool(eosc_args.GetDefault(eosc_args.IsCluster, "false"))
+	}
+
 	if isJoin {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		ticket := time.NewTicker(1 * time.Second)

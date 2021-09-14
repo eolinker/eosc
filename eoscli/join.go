@@ -11,7 +11,6 @@ import (
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/utils"
 	"github.com/urfave/cli/v2"
@@ -46,9 +45,9 @@ func Join(x cli.ActionFunc) *cli.Command {
 	}
 }
 
-func join(c *cli.Context) error {
-	eosc_args.SetEnv(eosc_args.IsCluster, "true")
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+//JoinFunc 加入集群
+func JoinFunc(c *cli.Context) error {
+	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
 	if err != nil {
 		return fmt.Errorf("join cluster error:%s", err.Error())
 	}

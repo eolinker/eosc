@@ -75,6 +75,7 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 	if joinData.BroadcastPort > 0 {
 		addr = fmt.Sprintf("%s:%d", addr, joinData.BroadcastPort)
 	}
+	fmt.Println("addr is", addr)
 	log.Infof("address %s apply join the cluster", addr)
 	// 切换完了，开始新增对应节点并返回新增条件信息
 	if id, exist := rc.peers.CheckExist(addr); exist {
