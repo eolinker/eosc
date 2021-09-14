@@ -552,14 +552,14 @@ func (rc *Node) stopHTTP() {
 // 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *Node) Send(command string, send []byte) error {
+func (rc *Node) Send(command string, msg []byte) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
-		cmd, data, err := rc.Service.ProcessHandler(command, send)
+		cmd, data, err := rc.Service.ProcessHandler(command, msg)
 		if err != nil {
 			return err
 		}
@@ -570,11 +570,11 @@ func (rc *Node) Send(command string, send []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("send:leader is node(%d)", rc.lead)
+	log.Infof("msg:leader is node(%d)", rc.lead)
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// Service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		cmd, data, err := rc.Service.ProcessHandler(command, send)
+		cmd, data, err := rc.Service.ProcessHandler(command, msg)
 		if err != nil {
 			return err
 		}
@@ -590,7 +590,7 @@ func (rc *Node) Send(command string, send []byte) error {
 		}
 		return rc.node.Propose(context.TODO(), b)
 	} else {
-		return rc.postMessage(node.Addr, command, send)
+		return rc.postMessage(node.Addr, command, msg)
 	}
 }
 

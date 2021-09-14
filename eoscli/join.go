@@ -46,8 +46,8 @@ func Join(x cli.ActionFunc) *cli.Command {
 	}
 }
 
-//JoinFunc 加入集群
-func JoinFunc(c *cli.Context) error {
+func join(c *cli.Context) error {
+	eosc_args.SetEnv(eosc_args.IsCluster, "true")
 	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
 	if err != nil {
 		return fmt.Errorf("join cluster error:%s", err.Error())
@@ -63,22 +63,12 @@ func JoinFunc(c *cli.Context) error {
 			return errors.New("start node error: missing broadcast ip")
 		}
 		bIP = ipStr
-		portStr, has := eosc_args.GetEnv(eosc_args.BroadcastPort)
-		if !has {
-			return errors.New("start node error: missing broadcast port")
-		}
-		p, err := strconv.Atoi(portStr)
-		if err != nil {
-			return fmt.Errorf("start node error: %s", err.Error())
-		}
-		bPort = p
 		addr := fmt.Sprintf("%s:%d", bIP, bPort)
 		if !utils.ValidAddr(addr) {
 			return fmt.Errorf("start error: invalid ip %s\n", addr)
 		}
 	}
 	eosc_args.SetEnv(eosc_args.BroadcastIP, bIP)
-	eosc_args.SetEnv(eosc_args.BroadcastPort, strconv.Itoa(bPort))
 	addr := c.StringSlice("addr")
 	if len(addr) < 1 {
 		addrStr, has := eosc_args.GetEnv(eosc_args.ClusterAddress)
@@ -105,18 +95,28 @@ func JoinFunc(c *cli.Context) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
+
 	eosc_args.SetEnv(eosc_args.ClusterAddress, strings.Join(as, ","))
 	client := service.NewCtiServiceClient(conn)
 	response, err := client.Join(context.Background(), &service.JoinRequest{
 		BroadcastIP:    bIP,
 		BroadcastPort:  int32(bPort),
-		Protocol:       c.String("protocol"),
+		Protocol:       eosc_args.GetDefault(eosc_args.Protocol, "http"),
 		ClusterAddress: as,
 	})
 	if err != nil {
 		return err
 	}
 	log.Infof("join successful! node id is: %d", response.Info.NodeID)
+	return nil
+}
 
+//JoinFunc 加入集群
+func JoinFunc(c *cli.Context) error {
+	err := join(c)
+	if err != nil {
+		return err
+	}
+	eosc_args.WriteArgsToFile()
 	return nil
 }

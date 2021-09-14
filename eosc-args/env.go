@@ -9,13 +9,14 @@ import (
 
 const IP = "IP"
 const Port = "PORT"
+const Protocol = "PROTOCOL"
 const BroadcastIP = "BROADCAST_IP"
-const BroadcastPort = "BROADCAST_PORT"
 const ClusterAddress = "CLUSTER_ADDRESS"
+const IsCluster = "IS_CLUSTER"
 const PluginPath = "PLUGINS_DIR"
 
 var envs = []string{
-	IP, Port, BroadcastIP, BroadcastPort, ClusterAddress, PluginPath,
+	IP, Port, Protocol, BroadcastIP, ClusterAddress, PluginPath, IsCluster,
 }
 
 func Envs() []string {
@@ -23,7 +24,15 @@ func Envs() []string {
 }
 
 func GetEnv(name string) (string, bool) {
-	return syscall.Getenv(envName(name))
+	name = envName(name)
+	value, has := syscall.Getenv(name)
+	if has {
+		return value, has
+	}
+	if v, ok := args[name]; ok {
+		return v, ok
+	}
+	return "", false
 }
 
 func GetDefault(name string, d string) string {
@@ -32,8 +41,18 @@ func GetDefault(name string, d string) string {
 	}
 	return d
 }
+
 func SetEnv(name, value string) error {
-	return syscall.Setenv(envName(name), value)
+	name = envName(name)
+	err := syscall.Setenv(name, value)
+	if err != nil {
+		return err
+	}
+	if name != "" {
+		args[name] = value
+	}
+
+	return nil
 }
 func GenEnv(name, value string) string {
 	return fmt.Sprintf("%s=%s", envName(name), value)

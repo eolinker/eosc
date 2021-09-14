@@ -78,13 +78,17 @@ func (p *Peers) GetAllPeers() map[uint64]*NodeInfo {
 
 //DeletePeerByID 通过ID删除节点
 func (p *Peers) DeletePeerByID(id uint64) {
-	info, has := p.GetPeerByID(id)
+	value, has := p.GetPeerByID(id)
 	if !has {
 		return
 	}
 
 	p.mu.Lock()
 	delete(p.peers, id)
-	delete(p.peersByAddr, fmt.Sprintf("%s:%d", info.BroadcastIP, info.BroadcastPort))
+	addr := fmt.Sprintf("%s://%s", value.Protocol, value.BroadcastIP)
+	if value.BroadcastPort > 0 {
+		addr = fmt.Sprintf("%s:%d", addr, value.BroadcastPort)
+	}
+	delete(p.peersByAddr, addr)
 	p.mu.Unlock()
 }

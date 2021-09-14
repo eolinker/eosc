@@ -13,8 +13,6 @@ var (
 	ErrInvalidNamespace     = errors.New("invalid namespace")
 	ErrInvalidCommitHandler = errors.New("invalid commit handler")
 	ErrInvalidKey           = errors.New("invalid key")
-	commandSet              = "set"
-	commandDel              = "delete"
 )
 
 type Service struct {
@@ -24,18 +22,20 @@ type Service struct {
 }
 
 func NewService(store eosc.IStore) *Service {
-	return &Service{
+	s := &Service{
 		store:           store,
 		commitHandlers:  eosc.NewUntyped(),
 		processHandlers: eosc.NewUntyped(),
 	}
+	initHandler(s)
+	return s
 }
 
-func (s *Service) CommitHandlerSet(namespace string, handler ICommitHandler) {
+func (s *Service) commitHandlerSet(namespace string, handler ICommitHandler) {
 	s.commitHandlers.Set(namespace, handler)
 }
 
-func (s *Service) ProcessHandlerSet(namespace string, handler IProcessHandler) {
+func (s *Service) processHandlerSet(namespace string, handler IProcessHandler) {
 	s.processHandlers.Set(namespace, handler)
 }
 

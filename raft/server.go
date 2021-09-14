@@ -18,3 +18,7 @@ type IService interface {
 	// GetSnapshot 生成快照，用于快照文件的生成
 	GetSnapshot() (data []byte, err error)
 }
+
+type IRaft interface {
+	Send(cmd string, msg []byte) error
+}
