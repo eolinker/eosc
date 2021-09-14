@@ -82,6 +82,12 @@ func StartFunc(c *cli.Context) error {
 	eosc_args.SetEnv(eosc_args.IP, ip)
 	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
 
+	protocol := c.String("protocol")
+	if protocol == "" {
+		protocol = "http"
+	}
+	eosc_args.SetEnv(eosc_args.Protocol, protocol)
+
 	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	cmd, err := StartMaster(args, nil)
 	if err != nil {
@@ -112,7 +118,14 @@ func StartFunc(c *cli.Context) error {
 				}
 			}
 		}
-		return JoinFunc(c)
+		err = join(c)
+		if err != nil {
+			return err
+		}
+	}
+	err = eosc_args.WriteArgsToFile()
+	if err != nil {
+		log.Errorf("write args error: %s", err.Error())
 	}
 	if eosc_args.IsDebug() {
 		return cmd.Wait()

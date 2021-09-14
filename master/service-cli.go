@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 
 	"github.com/eolinker/eosc/log"
 
@@ -22,7 +25,11 @@ func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*servi
 			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
 			continue
 		}
-		err = raft.JoinCluster(m.node, request.BroadcastIP, int(request.BroadcastPort), address, uri.String(), request.Protocol, m.raftService, 0)
+		port, err := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
+		if err != nil {
+			return nil, err
+		}
+		err = raft.JoinCluster(m.node, request.BroadcastIP, port, address, uri.String(), request.Protocol, m.raftService, 0)
 		if err != nil {
 			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
 			continue

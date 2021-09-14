@@ -1,4 +1,4 @@
-package raft_service
+package worker
 
 import (
 	"bytes"
@@ -7,13 +7,21 @@ import (
 	"errors"
 	"time"
 
+	raft_service "github.com/eolinker/eosc/raft/raft-service"
+
 	"github.com/eolinker/eosc"
 )
 
-func RegisterWorker(s *Service) {
-	worker := NewWorker(s.store)
-	s.CommitHandlerSet(eosc.SpaceWorker, worker)
-	s.ProcessHandlerSet(eosc.SpaceWorker, worker)
+var (
+	commandSet = "set"
+	commandDel = "delete"
+)
+
+func init() {
+	raft_service.Register("worker", func(s eosc.IStore) (raft_service.ICommitHandler, raft_service.IProcessHandler) {
+		worker := NewWorker(s)
+		return worker, worker
+	})
 }
 
 type baseConfig struct {
@@ -56,7 +64,7 @@ func (w *Worker) CommitHandler(data []byte) error {
 	if w.store == nil {
 		return errors.New("no valid store")
 	}
-	kv := &WorkerCmd{}
+	kv := &Cmd{}
 	err := kv.Decode(data)
 	if err != nil {
 		return err
@@ -99,17 +107,17 @@ func (w *Worker) CommitHandler(data []byte) error {
 			return nil
 		}
 	default:
-		return ErrInvalidKey
+		return raft_service.ErrInvalidKey
 	}
 }
 
-// WorkerCmd 用于传输的结构
-type WorkerCmd struct {
+// Cmd 用于传输的结构
+type Cmd struct {
 	Key    string
 	Config *baseConfig
 }
 
-func (kv *WorkerCmd) Encode() ([]byte, error) {
+func (kv *Cmd) Encode() ([]byte, error) {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(kv); err != nil {
 		return nil, err
@@ -117,7 +125,7 @@ func (kv *WorkerCmd) Encode() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (kv *WorkerCmd) Decode(data []byte) error {
+func (kv *Cmd) Decode(data []byte) error {
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	if err := dec.Decode(kv); err != nil {
 		return err

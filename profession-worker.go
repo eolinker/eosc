@@ -38,14 +38,6 @@ func (p *Profession) CheckerConfig(driver string, cdata IData, workers IWorkers)
 
 	_, _, _, err := p.checkConfig(driver, cdata, workers)
 	return err
-	//
-	//worker, err := d.Create(v.Id, v.Name, config, requires)
-	//
-	//if err != nil {
-	//	return nil
-	//}
-	//
-
 }
 
 func (p *Profession) ChangeWorker(driver, id, name string, cdata IData, workers IWorkers) error {
