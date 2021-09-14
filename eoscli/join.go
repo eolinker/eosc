@@ -45,8 +45,8 @@ func Join(x cli.ActionFunc) *cli.Command {
 	}
 }
 
-//JoinFunc 加入集群
-func JoinFunc(c *cli.Context) error {
+//join 加入集群
+func join(c *cli.Context, cfg *eosc_args.Config) error {
 	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
 	if err != nil {
 		return fmt.Errorf("join cluster error:%s", err.Error())
@@ -54,10 +54,10 @@ func JoinFunc(c *cli.Context) error {
 	defer conn.Close()
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
-	port := eosc_args.GetDefault(eosc_args.Port, "0")
+	port := getDefaultArg(cfg, eosc_args.Port, "0")
 	bPort, _ := strconv.Atoi(port)
 	if !utils.ValidAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
-		ipStr, has := eosc_args.GetEnv(eosc_args.BroadcastIP)
+		ipStr, has := getArg(cfg, eosc_args.BroadcastIP)
 		if !has {
 			return errors.New("start node error: missing broadcast ip")
 		}
@@ -67,10 +67,10 @@ func JoinFunc(c *cli.Context) error {
 			return fmt.Errorf("start error: invalid ip %s\n", addr)
 		}
 	}
-	eosc_args.SetEnv(eosc_args.BroadcastIP, bIP)
+	cfg.Set(eosc_args.BroadcastIP, bIP)
 	addr := c.StringSlice("addr")
 	if len(addr) < 1 {
-		addrStr, has := eosc_args.GetEnv(eosc_args.ClusterAddress)
+		addrStr, has := getArg(cfg, eosc_args.ClusterAddress)
 		if !has {
 			return errors.New("start node error: empty cluster address list")
 		}
@@ -94,8 +94,7 @@ func JoinFunc(c *cli.Context) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
-
-	eosc_args.SetEnv(eosc_args.ClusterAddress, strings.Join(as, ","))
+	cfg.Set(eosc_args.ClusterAddress, strings.Join(as, ","))
 	client := service.NewCtiServiceClient(conn)
 	response, err := client.Join(context.Background(), &service.JoinRequest{
 		BroadcastIP:    bIP,
@@ -112,10 +111,11 @@ func JoinFunc(c *cli.Context) error {
 
 //JoinFunc 加入集群
 func JoinFunc(c *cli.Context) error {
-	err := join(c)
+	cfg := eosc_args.NewConfig(fmt.Sprintf("%s.args", eosc_args.AppName()))
+	err := join(c, cfg)
 	if err != nil {
 		return err
 	}
-	eosc_args.WriteArgsToFile()
+	cfg.Save()
 	return nil
 }

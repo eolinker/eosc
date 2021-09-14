@@ -74,19 +74,26 @@ func StartFunc(c *cli.Context) error {
 	ip := c.String("ip")
 	port := c.Int("port")
 
+	// 从文件中读取cli运行配置
+	// 读取存在顺序，若值相同，后读取的会全量覆盖相关配置
+	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
+	nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
+	cfg := eosc_args.NewConfig(argsName)
+	cfg.ReadFile(argsName, nodeName)
+
 	err := utils.IsListen(fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
 		return err
 	}
 
-	eosc_args.SetEnv(eosc_args.IP, ip)
-	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
+	cfg.Set(eosc_args.IP, ip)
+	cfg.Set(eosc_args.Port, strconv.Itoa(port))
 
 	protocol := c.String("protocol")
 	if protocol == "" {
-		protocol = "http"
+		protocol = getDefaultArg(cfg, eosc_args.Protocol, "http")
 	}
-	eosc_args.SetEnv(eosc_args.Protocol, protocol)
+	cfg.Set(eosc_args.Protocol, protocol)
 
 	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	cmd, err := StartMaster(args, nil)
@@ -97,7 +104,7 @@ func StartFunc(c *cli.Context) error {
 
 	isJoin := c.Bool("join")
 	if !isJoin {
-		isJoin, _ = strconv.ParseBool(eosc_args.GetDefault(eosc_args.IsCluster, "false"))
+		isJoin, _ = strconv.ParseBool(getDefaultArg(cfg, eosc_args.IsCluster, "false"))
 	}
 
 	if isJoin {
@@ -123,15 +130,13 @@ func StartFunc(c *cli.Context) error {
 				}
 			}
 		}
-		err = join(c)
+		err = join(c, cfg)
 		if err != nil {
 			return err
 		}
 	}
-	err = eosc_args.WriteArgsToFile()
-	if err != nil {
-		log.Errorf("write args error: %s", err.Error())
-	}
+	cfg.Save()
+
 	if eosc_args.IsDebug() {
 		return cmd.Wait()
 	}

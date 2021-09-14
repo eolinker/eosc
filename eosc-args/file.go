@@ -1,6 +1,8 @@
 package eosc_args
 
 import (
+	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -15,39 +17,46 @@ type Config struct {
 	args eosc.IUntyped
 }
 
-func NewConfig(path string) (*Config, error) {
-	// 参数配置文件格式：分行获取
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		log.Errorf("load args error: %s", err.Error())
-		return nil, err
-	}
-	var args = map[string]string{}
-	lineData := strings.Split(string(data), "\n")
-	for _, d := range lineData {
-		d = strings.TrimSpace(d)
-		index := strings.Index(d, "=")
-		if index == -1 {
-			args[d] = ""
+func NewConfig(path string) *Config {
+	return &Config{path: path, args: eosc.NewUntyped()}
+}
+
+func (c *Config) ReadFile(paths ...string) {
+	for _, path := range paths {
+		// 参数配置文件格式：分行获取
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
 			continue
 		}
-		args[d[:index]] = d[index+1:]
+		buf := bytes.NewBuffer(data)
+		for {
+			line, err := buf.ReadString('\n')
+			if err != nil && err != io.EOF {
+				break
+			}
+			line = strings.TrimSpace(line)
+			if len(line) > 0 {
+				index := strings.Index(line, "=")
+				if index == -1 {
+					continue
+				}
+				c.Set(line[:index], line[index+1:])
+			}
+			if err != nil {
+				return
+			}
+		}
 	}
-	cfg := &Config{path: path, args: eosc.NewUntyped()}
-	for key, value := range args {
-		cfg.Set(key, value)
-	}
-	return cfg, nil
 }
 
 func (c *Config) Set(name string, value string) {
 	if name != "" {
-		c.args.Set(envName(name), value)
+		c.args.Set(name, value)
 	}
 }
 
 func (c *Config) Get(name string) (string, bool) {
-	vl, has := c.args.Get(envName(name))
+	vl, has := c.args.Get(name)
 	if !has {
 		return "", false
 	}
@@ -59,7 +68,7 @@ func (c *Config) Get(name string) (string, bool) {
 }
 
 func (c *Config) GetDefault(name string, value string) string {
-	vl, has := c.args.Get(envName(name))
+	vl, has := c.args.Get(name)
 	if !has {
 		return value
 	}
