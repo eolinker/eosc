@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/go-basic/uuid"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -157,6 +159,7 @@ func (rc *Node) startRaft() {
 	for k, v := range peersList {
 		// transport加入peer列表，节点本身不添加
 		if k != rc.nodeID {
+			fmt.Println("v addr is", v.Addr)
 			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
 		}
 	}
@@ -727,6 +730,7 @@ func (rc *Node) changeCluster(addr string) error {
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
 	})
+	eosc_args.SetEnv(eosc_args.IsCluster, "true")
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 	//

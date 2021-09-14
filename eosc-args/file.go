@@ -1,29 +1,28 @@
 package eosc_args
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc"
 
-	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/log"
 )
 
-var args = map[string]string{}
-
-func init() {
-	loadArgs()
+type Config struct {
+	path string
+	args eosc.IUntyped
 }
 
-func loadArgs() {
+func NewConfig(path string) (*Config, error) {
 	// 参数配置文件格式：分行获取
-	data, err := ioutil.ReadFile(fmt.Sprintf("%s.args", process.AppName()))
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Errorf("load args error: %s", err.Error())
-		return
+		return nil, err
 	}
+	var args = map[string]string{}
 	lineData := strings.Split(string(data), "\n")
 	for _, d := range lineData {
 		d = strings.TrimSpace(d)
@@ -34,18 +33,56 @@ func loadArgs() {
 		}
 		args[d[:index]] = d[index+1:]
 	}
-	return
+	cfg := &Config{path: path, args: eosc.NewUntyped()}
+	for key, value := range args {
+		cfg.Set(key, value)
+	}
+	return cfg, nil
 }
 
-func WriteArgsToFile() error {
+func (c *Config) Set(name string, value string) {
+	if name != "" {
+		c.args.Set(envName(name), value)
+	}
+}
+
+func (c *Config) Get(name string) (string, bool) {
+	vl, has := c.args.Get(envName(name))
+	if !has {
+		return "", false
+	}
+	v, ok := vl.(string)
+	if !ok {
+		return "", false
+	}
+	return v, true
+}
+
+func (c *Config) GetDefault(name string, value string) string {
+	vl, has := c.args.Get(envName(name))
+	if !has {
+		return value
+	}
+	v, ok := vl.(string)
+	if !ok {
+		return value
+	}
+	return v
+}
+
+func (c *Config) Save() error {
 	builder := strings.Builder{}
-	for key, value := range args {
+	for key, value := range c.args.All() {
+		v, ok := value.(string)
+		if !ok {
+			continue
+		}
 		builder.WriteString(key)
 		builder.WriteString("=")
-		builder.WriteString(value)
+		builder.WriteString(v)
 		builder.WriteString("\n")
 	}
-	f, err := os.OpenFile(fmt.Sprintf("%s.args", process.AppName()), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+	f, err := os.OpenFile(c.path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}

@@ -74,9 +74,10 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 				NodeSecret:    resMsg.NodeSecret,
 				BroadcastIP:   broadCastIP,
 				BroadcastPort: broadPort,
+				Protocol:      protocol,
 			}
 			resMsg.Peer[nodeInfo.ID] = nodeInfo
-			joinAndCreateRaft(node, nodeInfo, service, resMsg.Peer)
+			joinAndCreateRaft(node, nodeInfo, resMsg.Peer)
 
 			err = JoinCluster(node, broadCastIP, broadPort, target, addr, protocol, service, count+1)
 			if err != nil {
@@ -89,9 +90,10 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 				NodeSecret:    resMsg.NodeSecret,
 				BroadcastIP:   broadCastIP,
 				BroadcastPort: broadPort,
+				Protocol:      protocol,
 			}
 			resMsg.Peer[nodeInfo.ID] = nodeInfo
-			joinAndCreateRaft(node, nodeInfo, service, resMsg.Peer)
+			joinAndCreateRaft(node, nodeInfo, resMsg.Peer)
 			return nil
 		}
 		return nil
@@ -101,7 +103,7 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 }
 
 // joinAndCreateRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
-func joinAndCreateRaft(rc *Node, node *NodeInfo, service IService, peers map[uint64]*NodeInfo) *Node {
+func joinAndCreateRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) *Node {
 	rc.nodeID = node.ID
 	rc.waldir = fmt.Sprintf("eosc-%d", node.ID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", node.ID)
@@ -113,6 +115,7 @@ func joinAndCreateRaft(rc *Node, node *NodeInfo, service IService, peers map[uin
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
 	for _, p := range peers {
+		fmt.Println(p)
 		rc.peers.SetPeer(p.ID, p)
 	}
 
