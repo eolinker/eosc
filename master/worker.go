@@ -48,7 +48,7 @@ func (wc *WorkerController) Stop() {
 		}
 		err =wc.cmd.Wait()
 		if err!=nil{
-			log.Warn("stop worker:",err)
+			log.Warn("stop workers:",err)
 			return
 		}
 	}
@@ -76,7 +76,7 @@ func (wc *WorkerController)Restart()  {
 }
 
 func (wc *WorkerController) new() ( *exec.Cmd,error) {
-	worker,err :=process.Cmd("worker",nil)
+	worker,err :=process.Cmd("workers",nil)
 	if err != nil{
 		log.Warn(err)
 		return nil,err

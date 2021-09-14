@@ -16,34 +16,46 @@ var (
 )
 
 type Service struct {
-	store           eosc.IStore
-	commitHandlers  eosc.IUntyped
-	processHandlers eosc.IUntyped
+	handlers  eosc.IUntyped
+	//processHandlers eosc.IUntyped
 }
 
-func NewService(store eosc.IStore) *Service {
+func NewService(handlers ...ICreateHandler) *Service {
 	s := &Service{
-		store:           store,
-		commitHandlers:  eosc.NewUntyped(),
-		processHandlers: eosc.NewUntyped(),
+		handlers:  eosc.NewUntyped(),
 	}
-	initHandler(s)
+
+	if handlers != nil{
+		for _, cf := range handlers {
+			h, ok := cf.(ICreateHandler)
+			if !ok {
+				continue
+			}
+			s.SetHandler(h.Namespace(),h.Handler())
+			//s.commitHandlerSet(namespace,h.CommitHandler() )
+			//s.processHandlerSet(namespace, h.ProcessHandler())
+		}
+	}
 	return s
 }
+//
+//func (s *Service) commitHandlerSet(namespace string, handler ICommitHandler) {
+//	s.commitHandlers.Set(namespace, handler)
+//}
+//
+//func (s *Service) processHandlerSet(namespace string, handler IProcessHandler) {
+//	s.processHandlers.Set(namespace, handler)
+//}
 
-func (s *Service) commitHandlerSet(namespace string, handler ICommitHandler) {
-	s.commitHandlers.Set(namespace, handler)
-}
-
-func (s *Service) processHandlerSet(namespace string, handler IProcessHandler) {
-	s.processHandlers.Set(namespace, handler)
+func (s *Service)SetHandler(namespace string,handler IRaftServiceHandler)  {
+	s.handlers.Set(namespace,handler)
 }
 
 func (s *Service) CommitHandler(namespace string, data []byte) error {
 	if namespace == "init" {
 		return s.ResetSnap(data)
 	}
-	v, has := s.commitHandlers.Get(namespace)
+	v, has := s.handlers.Get(namespace)
 	if !has {
 		return ErrInvalidNamespace
 	}
@@ -55,7 +67,7 @@ func (s *Service) CommitHandler(namespace string, data []byte) error {
 }
 
 func (s *Service) ProcessHandler(namespace string, propose []byte) (string, []byte, error) {
-	v, has := s.processHandlers.Get(namespace)
+	v, has := s.handlers.Get(namespace)
 	if !has {
 		return "", nil, ErrInvalidNamespace
 	}
@@ -78,7 +90,7 @@ func (s *Service) ResetSnap(data []byte) error {
 		return err
 	}
 	for namespace, value := range snaps {
-		handler, has := s.commitHandlers.Get(namespace)
+		handler, has := s.handlers.Get(namespace)
 		if !has {
 			log.Warnf("reset snap %s:%w", namespace, ErrInvalidNamespace)
 			continue
@@ -104,7 +116,7 @@ func (s *Service) ResetSnap(data []byte) error {
 
 func (s *Service) GetSnapshot() ([]byte, error) {
 	snapshots := make(map[string]string)
-	for namespace, handler := range s.commitHandlers.All() {
+	for namespace, handler := range s.handlers.All() {
 		h, ok := handler.(ICommitHandler)
 		if !ok {
 			continue

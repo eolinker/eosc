@@ -10,6 +10,8 @@ package master
 
 import (
 	"context"
+	"github.com/eolinker/eosc/master/professions"
+	"github.com/eolinker/eosc/master/workers"
 	"net"
 	"net/http"
 	"strconv"
@@ -21,8 +23,6 @@ import (
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/raft"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/store"
-
 	"github.com/eolinker/eosc/traffic"
 
 	"google.golang.org/grpc"
@@ -64,25 +64,29 @@ type Master struct {
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
 	raftService   raft.IService
-	//store         eosc.IStore
-	masterSrv  *grpc.Server
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	PID        *pidfile.PidFile
-	httpserver *http.Server
+	masterSrv     *grpc.Server
+	ctx           context.Context
+	cancelFunc    context.CancelFunc
+	PID           *pidfile.PidFile
+	httpserver    *http.Server
+
+
 }
 
 func (m *Master) Start() error {
-	// 设置存储操作
-	s, err := store.NewStore()
-	if err != nil {
-		log.Error("new store error: ", err.Error())
-		return err
-	}
-	//m.store = s
-	m.raftService = raft_service.NewService(s)
 
-	m.node = raft.NewNode(m.raftService)
+
+	ws := workers.NewWorker()
+	ps := professions.NewProfessions()
+	 raftService := raft_service.NewService(
+		raft_service.NewCreateHandler("worker",ws),
+		raft_service.NewCreateHandler("profession",ps),
+		)
+
+	m.node = raft.NewNode(raftService)
+
+
+
 
 	ip := eosc_args.GetDefault(eosc_args.IP, "")
 	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))

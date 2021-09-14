@@ -27,14 +27,14 @@ func (s *Store) Reset(values []eosc.StoreValue) error {
 }
 
 //NewStore 创建存储器
-func NewStore() (eosc.IStore, error) {
+func NewStore() eosc.IStore {
 
 	s := &Store{
 		data:       eosc.NewUntyped(),
 		dispatcher: eosc.NewStoreDispatcher(),
 	}
 
-	return s, nil
+	return s
 }
 
 //Initialization 初始化存储器

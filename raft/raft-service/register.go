@@ -1,23 +1,36 @@
 package raft_service
 
-import "github.com/eolinker/eosc"
+//var ff = eosc.NewUntyped()
 
-var ff = eosc.NewUntyped()
-
-type CreateHandler func(s eosc.IStore) (ICommitHandler, IProcessHandler)
-
-func Register(namespace string, createFunc CreateHandler) {
-	ff.Set(namespace, createFunc)
+type ICreateHandler interface {
+	Namespace()string
+	Handler()IRaftServiceHandler
 }
 
-func initHandler(s *Service) {
-	for namespace, cf := range ff.All() {
-		f, ok := cf.(CreateHandler)
-		if !ok {
-			continue
-		}
-		ch, ph := f(s.store)
-		s.commitHandlerSet(namespace, ch)
-		s.processHandlerSet(namespace, ph)
-	}
+type createHandler struct {
+	namespace string
+	handler IRaftServiceHandler
 }
+
+func (c *createHandler) Namespace() string {
+	return c.namespace
+}
+
+func (c *createHandler) Handler() IRaftServiceHandler {
+	return c.handler
+}
+
+func NewCreateHandler(namespace string, handler IRaftServiceHandler) ICreateHandler {
+	return &createHandler{namespace: namespace, handler: handler}
+}
+func NewCreateHandlerS(namespace string, commitHandler ICommitHandler,processHandler IProcessHandler) ICreateHandler {
+	return &createHandler{namespace: namespace, handler: NewRaftServiceHandler(commitHandler,processHandler)}
+}
+//
+//func Register(namespace string, createFunc ICreateHandler) {
+//	ff.Set(namespace, createFunc)
+//}
+//
+//func initHandler(s *Service) {
+
+//}
