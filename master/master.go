@@ -10,11 +10,12 @@ package master
 
 import (
 	"context"
-	"github.com/eolinker/eosc/master/professions"
-	"github.com/eolinker/eosc/master/workers"
 	"net"
 	"net/http"
 	"strconv"
+
+	"github.com/eolinker/eosc/master/professions"
+	"github.com/eolinker/eosc/master/workers"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
@@ -78,24 +79,18 @@ type Master struct {
 	cancelFunc    context.CancelFunc
 	PID           *pidfile.PidFile
 	httpserver    *http.Server
-
-
 }
 
 func (m *Master) Start() error {
 
-
 	ws := workers.NewWorker()
 	ps := professions.NewProfessions()
 	raftService := raft_service.NewService(
-		raft_service.NewCreateHandler("worker",ws),
-		raft_service.NewCreateHandler("profession",ps),
-		)
+		raft_service.NewCreateHandler("worker", ws),
+		raft_service.NewCreateHandler("profession", ps),
+	)
 
 	m.node = raft.NewNode(raftService)
-
-
-
 
 	ip := eosc_args.GetDefault(eosc_args.IP, "")
 	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
