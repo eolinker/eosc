@@ -25,12 +25,45 @@ func (rc *Node) genHandler() http.Handler {
 	sm := http.NewServeMux()
 	// 其他节点加入集群的处理
 	sm.HandleFunc("/raft/node/join", rc.joinHandler)
+
+	sm.HandleFunc("/raft/node/info", rc.getNodeInfo)
 	// 其他节点转发到leader的处理
 	sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
 
-	fmt.Println("gen handler,node id is", rc.transport.ID)
 	sm.Handle("/", rc.transport.Handler())
 	return sm
+}
+
+//getNodeInfo 获取集群信息
+func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return
+	}
+	defer r.Body.Close()
+	var joinData JoinRequest
+	err = json.Unmarshal(body, &joinData)
+	if err != nil {
+		writeError(w, "110001", "fail to parse join data", err.Error())
+		return
+	}
+	if !rc.isCluster {
+		// 非集群模式，先本节点切换成集群模式
+		err = rc.changeCluster(joinData.Target)
+		if err != nil {
+			writeError(w, "110002", "fail to change cluster", err.Error())
+			return
+		}
+	}
+	writeSuccessResult(w, "", &JoinResponse{
+		NodeSecret: &NodeSecret{
+			ID:  rc.peers.Index() + 1,
+			Key: uuid.New(),
+		},
+		Peer:        rc.peers.GetAllPeers(),
+		InitCluster: rc.isCluster,
+	})
+	return
 }
 
 // joinHandler 收到其他节点加入集群的处理
@@ -38,7 +71,6 @@ func (rc *Node) genHandler() http.Handler {
 // 2、如果不是集群模式，先切换集群rc.changeCluster,再返回相关信息
 // 3、该处理也可应用于集群节点crash后的重启
 func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return
@@ -51,50 +83,26 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 先判断是不是集群模式
-	// 是的话返回要加入的相关信息
-	// 不是的话先切换集群模式，再初始化startRaft()，再返回加入的相关信息
-	if !rc.isCluster {
-		// 非集群模式，先本节点切换成集群模式
-		err = rc.changeCluster(joinData.Target)
-		if err != nil {
-			writeError(w, "110002", "fail to change cluster", err.Error())
-			return
-		}
-		writeSuccessResult(w, "", &JoinResponse{
-			NodeSecret: &NodeSecret{
-				ID:  rc.peers.Index() + 1,
-				Key: uuid.New(),
-			},
-			Peer:         rc.peers.GetAllPeers(),
-			ResponseType: "cluster",
-		})
-		return
-	}
 	addr := fmt.Sprintf("%s://%s", joinData.Protocol, joinData.BroadcastIP)
 	if joinData.BroadcastPort > 0 {
 		addr = fmt.Sprintf("%s:%d", addr, joinData.BroadcastPort)
 	}
-	fmt.Println("addr is", addr)
 	log.Infof("address %s apply join the cluster", addr)
-	// 切换完了，开始新增对应节点并返回新增条件信息
 	if id, exist := rc.peers.CheckExist(addr); exist {
-		info, _ := rc.peers.GetPeerByID(id)
-		writeSuccessResult(w, "", &JoinResponse{
-			NodeSecret: &NodeSecret{
-				ID:  info.ID,
-				Key: info.Key,
-			},
-			Peer:         rc.peers.GetAllPeers(),
-			ResponseType: "join",
-		})
+		// 当前地址已经存在
+		if id != joinData.NodeID {
+			// ID错误
+			writeError(w, "110004", "id and address do not match", "id and address do not match")
+			return
+		}
+		writeSuccessResult(w, "", nil)
 		return
 	}
 
 	node := &NodeInfo{
 		NodeSecret: &NodeSecret{
-			ID:  rc.peers.Index() + 1,
-			Key: uuid.New(),
+			ID:  joinData.NodeID,
+			Key: joinData.NodeKey,
 		},
 		BroadcastIP:   joinData.BroadcastIP,
 		BroadcastPort: joinData.BroadcastPort,
@@ -102,20 +110,13 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		Protocol:      joinData.Protocol,
 	}
 	data, _ := json.Marshal(node)
-	// 已经是集群了，发送新增节点的消息后返回
+	// 发送新增节点请求
 	err = rc.AddNode(node.ID, data)
 	if err != nil {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return
 	}
-	writeSuccessResult(w, "", &JoinResponse{
-		NodeSecret: &NodeSecret{
-			ID:  node.ID,
-			Key: node.Key,
-		},
-		Peer:         rc.peers.GetAllPeers(),
-		ResponseType: "join",
-	})
+	writeSuccessResult(w, "", nil)
 	return
 }
 

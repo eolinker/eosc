@@ -1,12 +1,9 @@
 package raft
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -16,6 +13,8 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
@@ -32,77 +31,33 @@ var retryFrequency time.Duration = 2000
 // 1、应用于新建一个想要加入已知集群的节点，会向已知节点发送请求获取id等新建节点信息
 // 已知节点如果还处于非集群模式，会先切换成集群模式
 // 2、也可以用于节点crash后的重启处理
-func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr string, protocol string, count int) error {
-	if count > 2 {
-		return errors.New("join error")
-	}
+func JoinCluster(node *Node, broadCastIP string, broadPort int, address string, protocol string) error {
 	msg := JoinRequest{
 		BroadcastIP:   broadCastIP,
 		BroadcastPort: broadPort,
 		Protocol:      protocol,
-		Target:        target,
+		Target:        address,
 	}
-	b, err := json.Marshal(msg)
+	data, _ := json.Marshal(msg)
+
+	resp, err := getNodeInfoRequest(address, data)
 	if err != nil {
 		return err
 	}
-
-	// 向集群中的某个节点发送要加入的请求
-	resp, err := http.Post(addr, "application/json;charset=utf-8", bytes.NewBuffer(b))
-	if err != nil {
-		return err
+	nodeInfo := &NodeInfo{
+		NodeSecret:    resp.NodeSecret,
+		BroadcastIP:   broadCastIP,
+		BroadcastPort: broadPort,
+		Protocol:      protocol,
 	}
-	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+	resp.Peer[nodeInfo.ID] = nodeInfo
+	startRaft(node, nodeInfo, resp.Peer)
 
-	res := &Response{}
-	err = json.Unmarshal(content, res)
-	if err != nil {
-		return err
-	}
-	if res.Code == "000000" {
-		resMsg := &JoinResponse{}
-		data, _ := json.Marshal(res.Data)
-		err = json.Unmarshal(data, resMsg)
-		if err != nil {
-			return err
-		}
-
-		if resMsg.ResponseType != "join" {
-			nodeInfo := &NodeInfo{
-				NodeSecret:    resMsg.NodeSecret,
-				BroadcastIP:   broadCastIP,
-				BroadcastPort: broadPort,
-				Protocol:      protocol,
-			}
-			resMsg.Peer[nodeInfo.ID] = nodeInfo
-			startRaft(node, nodeInfo, resMsg.Peer)
-
-			err = JoinCluster(node, broadCastIP, broadPort, target, addr, protocol, count+1)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		if count == 0 {
-			nodeInfo := &NodeInfo{
-				NodeSecret:    resMsg.NodeSecret,
-				BroadcastIP:   broadCastIP,
-				BroadcastPort: broadPort,
-				Protocol:      protocol,
-			}
-			resMsg.Peer[nodeInfo.ID] = nodeInfo
-			startRaft(node, nodeInfo, resMsg.Peer)
-
-			return nil
-		}
-		return nil
-	}
-	return fmt.Errorf(res.Err)
-
+	msg.NodeID = resp.ID
+	msg.NodeKey = resp.Key
+	data, _ = json.Marshal(msg)
+	err = joinClusterRequest(address, data)
+	return nil
 }
 
 // startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
@@ -114,7 +69,7 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 	rc.nodeKey = node.Key
 	rc.broadcastIP = node.BroadcastIP
 	rc.broadcastPort = node.BroadcastPort
-
+	rc.active = true
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
@@ -145,7 +100,7 @@ func NewNode(service IService) *Node {
 		logger:          logger,
 		waiter:          wait.New(),
 		lead:            0,
-		active:          true,
+		active:          false,
 		updateTransport: make(chan bool, 1),
 		transport: &rafthttp.Transport{
 			Logger:             logger,
@@ -180,4 +135,21 @@ func NewNode(service IService) *Node {
 	}
 
 	return rc
+}
+
+func (rc *Node) Process(ctx context.Context, m raftpb.Message) error {
+	if rc.node == nil {
+		return nil
+	}
+	return rc.node.Step(ctx, m)
+}
+func (rc *Node) IsIDRemoved(id uint64) bool { return false }
+func (rc *Node) ReportUnreachable(id uint64) {
+	if rc.node == nil {
+		return
+	}
+	rc.node.ReportUnreachable(id)
+}
+func (rc *Node) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
+	rc.node.ReportSnapshot(id, status)
 }

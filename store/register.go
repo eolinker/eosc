@@ -15,7 +15,6 @@ type Factory struct {
 
 //Create 创建存储器
 func (f *Factory) Create(params map[string]string) (eosc.IStore, error) {
-
-	return NewStore()
+	return NewStore(), nil
 
 }

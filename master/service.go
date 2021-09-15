@@ -49,5 +49,4 @@ func (m *Master) stopService() {
 	m.masterSrv.GracefulStop()
 	addr := fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName())
 	syscall.Unlink(addr)
-
 }

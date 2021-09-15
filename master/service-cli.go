@@ -3,8 +3,6 @@ package master
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/url"
 	"strconv"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -20,16 +18,11 @@ import (
 func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
 	for _, address := range request.ClusterAddress {
-		uri, err := url.Parse(fmt.Sprintf("%s/raft/node/join", address))
-		if err != nil {
-			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
-			continue
-		}
 		port, err := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
 		if err != nil {
 			return nil, err
 		}
-		err = raft.JoinCluster(m.node, request.BroadcastIP, port, address, uri.String(), request.Protocol, m.raftService, 0)
+		err = raft.JoinCluster(m.node, request.BroadcastIP, port, address, request.Protocol)
 		if err != nil {
 			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
 			continue
@@ -50,7 +43,7 @@ func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*servi
 
 //Leave 将节点移除
 func (m *Master) Leave(ctx context.Context, request *service.LeaveRequest) (*service.LeaveResponse, error) {
-	err := m.node.DeleteConfigChange(m.node.NodeID())
+	err := m.node.DeleteConfigChange()
 	if err != nil {
 		return nil, err
 	}
