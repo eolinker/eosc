@@ -26,28 +26,3 @@ func (kv *Cmd) Decode(data []byte) error {
 	}
 	return nil
 }
-
-func CreateCommandDel(id string) ([]byte, error) {
-	cmd := Cmd{
-		Key: CommandDel,
-		Config: &baseConfig{
-			Id: id,
-		},
-	}
-	return cmd.Encode()
-}
-
-func CreateCommandSet() ([]byte, error) {
-	cmd := Cmd{
-		Key: CommandSet,
-		Config: &baseConfig{
-			Id:         id,
-			Name:       "",
-			Profession: "",
-			Driver:     "",
-			CreateTime: "",
-			UpdateTime: "",
-		},
-	}
-	return cmd.Encode()
-}

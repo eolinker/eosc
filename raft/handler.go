@@ -123,9 +123,8 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 // proposeHandler 其他节点转发到leader的propose处理，由rc.Send触发
 func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 	// 只有leader才会收到该消息
-	_, isLeader, err := rc.getLeader()
+	isLeader, err := rc.isLeader()
 	if err != nil {
-		writeError(w, "120001", "can not find leader", err.Error())
 		return
 	}
 	if !isLeader {
@@ -147,9 +146,14 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Infof("receive propose request from node(%d)", msg.From)
-	err = rc.Send(msg.Cmd, msg.Data)
+	data, err := rc.service.ProcessDataHandler(msg.Body)
 	if err != nil {
 		writeError(w, "120004", "fail to send propose message", err.Error())
+		return
+	}
+	err = rc.ProcessData(data)
+	if err != nil {
+		writeError(w, "120005", "fail to send propose message", err.Error())
 		return
 	}
 	writeSuccessResult(w, "", nil)

@@ -3,7 +3,6 @@ package workers
 import (
 	"encoding/json"
 	"errors"
-	"time"
 
 	"github.com/eolinker/eosc"
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
@@ -56,39 +55,21 @@ func (w *Worker) ProcessHandler(cmd string, propose interface{}) ([]byte, error)
 	return json.Marshal(propose)
 }
 
-func (w *Worker) CommitHandler(data []byte) error {
+func (w *Worker) CommitHandler(cmd string, data []byte) error {
 	if w.store == nil {
 		return errors.New("no valid store")
 	}
-	kv := &Cmd{}
-	err := kv.Decode(data)
-	if err != nil {
-		return err
-	}
-	switch kv.Key {
+
+	switch cmd {
 	case CommandSet:
 		{
-			if kv.Config.CreateTime == "" {
-				kv.Config.CreateTime = time.Now().Format("2006-01-02 15:04:05")
-			}
-			if kv.Config.UpdateTime == "" {
-				kv.Config.UpdateTime = time.Now().Format("2006-01-02 15:04:05")
-			}
-			b, err := json.Marshal(kv.Config)
+			iData := eosc.BytesData(data)
+			value := new(eosc.StoreValue)
+			err := iData.UnMarshal(value)
 			if err != nil {
 				return err
 			}
-			storeValue := eosc.StoreValue{
-				Id:         kv.Config.Id,
-				Profession: kv.Config.Profession,
-				Name:       kv.Config.Name,
-				Driver:     kv.Config.Driver,
-				CreateTime: kv.Config.CreateTime,
-				UpdateTime: kv.Config.UpdateTime,
-				IData:      eosc.JsonData(b),
-				Sing:       "",
-			}
-			err = w.store.Set(storeValue)
+			err = w.store.Set(*value)
 			if err != nil {
 				return err
 			}
@@ -96,13 +77,15 @@ func (w *Worker) CommitHandler(data []byte) error {
 		}
 	case CommandDel:
 		{
-			err = w.store.Del(kv.Config.Id)
+			id := string(data)
+
+			err := w.store.Del(id)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
 	default:
-		return raft_service.ErrInvalidKey
+		return raft_service.ErrInvalidCommand
 	}
 }

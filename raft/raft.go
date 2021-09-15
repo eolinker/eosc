@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"go.etcd.io/etcd/raft/v3/raftpb"
+
 	"github.com/go-basic/uuid"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -14,7 +16,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
 	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
@@ -137,10 +138,23 @@ func NewNode(service IService) *Node {
 			rc.transportHandler = rc.genHandler()
 		}
 	}
-
+	service.SetRaft(rc)
 	return rc
 }
 
+func (rc *Node) ProcessData(data []byte) error {
+
+	m := &Message{
+		From: rc.nodeID,
+		Type: PROPOSE,
+		Data: data,
+	}
+	b, err := m.Encode()
+	if err != nil {
+		return err
+	}
+	return rc.node.Propose(context.TODO(), b)
+}
 func (rc *Node) Process(ctx context.Context, m raftpb.Message) error {
 	if rc.node == nil {
 		return nil

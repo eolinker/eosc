@@ -26,8 +26,7 @@ type Response struct {
 type ProposeMsg struct {
 	From uint64 `json:"from"`
 	To   int    `json:"to"`
-	Cmd  string `json:"cmd"`
-	Data []byte `json:"data"`
+	Body []byte `json:"body"`
 }
 
 type GetNodeInfoRequest struct {
