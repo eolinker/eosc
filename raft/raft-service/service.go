@@ -15,29 +15,51 @@ var (
 	ErrInvalidKey           = errors.New("invalid key")
 )
 
+const (
+	initNamespace       = "init"
+	preProposeNamespace = "pre_propose"
+)
+
 type Service struct {
-	handlers  eosc.IUntyped
+	handlers eosc.IUntyped
 	//processHandlers eosc.IUntyped
+}
+
+func (s *Service) ProcessHandler(namespace string, command string, propose interface{}) (data []byte, err error) {
+	v, has := s.handlers.Get(namespace)
+	if !has {
+		return nil, ErrInvalidNamespace
+	}
+	f, ok := v.(IProcessHandler)
+	if !ok {
+		return nil, ErrInvalidCommitHandler
+	}
+	return f.ProcessHandler(propose)
+}
+
+func (s *Service) PreProcessHandler(namespace string, command string, propose interface{}) (newNamespace string, data []byte, err error) {
+	panic("implement me")
 }
 
 func NewService(handlers ...ICreateHandler) *Service {
 	s := &Service{
-		handlers:  eosc.NewUntyped(),
+		handlers: eosc.NewUntyped(),
 	}
 
-	if handlers != nil{
+	if handlers != nil {
 		for _, cf := range handlers {
 			h, ok := cf.(ICreateHandler)
 			if !ok {
 				continue
 			}
-			s.SetHandler(h.Namespace(),h.Handler())
+			s.SetHandler(h.Namespace(), h.Handler())
 			//s.commitHandlerSet(namespace,h.CommitHandler() )
 			//s.processHandlerSet(namespace, h.ProcessHandler())
 		}
 	}
 	return s
 }
+
 //
 //func (s *service) commitHandlerSet(namespace string, handler ICommitHandler) {
 //	s.commitHandlers.Set(namespace, handler)
@@ -47,35 +69,28 @@ func NewService(handlers ...ICreateHandler) *Service {
 //	s.processHandlers.Set(namespace, handler)
 //}
 
-func (s *Service)SetHandler(namespace string,handler IRaftServiceHandler)  {
-	s.handlers.Set(namespace,handler)
+func (s *Service) SetHandler(namespace string, handler IRaftServiceHandler) {
+	s.handlers.Set(namespace, handler)
 }
 
 func (s *Service) CommitHandler(namespace string, data []byte) error {
-	if namespace == "init" {
+	switch namespace {
+	case initNamespace:
 		return s.ResetSnap(data)
+	case preProposeNamespace:
+		// TODO 将数据解出新的数据
+		return nil
+	default:
+		v, has := s.handlers.Get(namespace)
+		if !has {
+			return ErrInvalidNamespace
+		}
+		f, ok := v.(ICommitHandler)
+		if !ok {
+			return ErrInvalidCommitHandler
+		}
+		return f.CommitHandler(data)
 	}
-	v, has := s.handlers.Get(namespace)
-	if !has {
-		return ErrInvalidNamespace
-	}
-	f, ok := v.(ICommitHandler)
-	if !ok {
-		return ErrInvalidCommitHandler
-	}
-	return f.CommitHandler(data)
-}
-
-func (s *Service) ProcessHandler(namespace string, propose []byte) (string, []byte, error) {
-	v, has := s.handlers.Get(namespace)
-	if !has {
-		return "", nil, ErrInvalidNamespace
-	}
-	f, ok := v.(IProcessHandler)
-	if !ok {
-		return "", nil, ErrInvalidCommitHandler
-	}
-	return f.ProcessHandler(propose)
 }
 
 func (s *Service) GetInit() (string, []byte, error) {

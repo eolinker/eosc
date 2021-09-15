@@ -5,8 +5,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"github.com/eolinker/eosc/store"
 	"time"
+
+	"github.com/eolinker/eosc/store"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
@@ -17,7 +18,6 @@ var (
 	commandSet = "set"
 	commandDel = "delete"
 )
-
 
 type baseConfig struct {
 	Id         string `json:"id" yaml:"id"`
@@ -48,11 +48,11 @@ func (w *Worker) ResetHandler(data []byte) error {
 }
 
 func NewWorker() *Worker {
-	return &Worker{store: 	store.NewStore()}
+	return &Worker{store: store.NewStore()}
 }
 
-func (w *Worker) ProcessHandler(propose []byte) (string, []byte, error) {
-	return eosc.SpaceWorker, propose, nil
+func (w *Worker) ProcessHandler(propose interface{}) ([]byte, error) {
+	return propose, nil
 }
 
 func (w *Worker) CommitHandler(data []byte) error {

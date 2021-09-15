@@ -116,7 +116,7 @@ func (rc *Node) clearConfig() {
 	rc.nodeKey = ""
 	rc.broadcastIP = ""
 	rc.broadcastPort = 0
-	rc.join, rc.isCluster = false, false
+	rc.active, rc.join, rc.isCluster = false, false, false
 	rc.transportHandler = rc.genHandler()
 }
 
@@ -249,7 +249,6 @@ func (rc *Node) stop() {
 	<-rc.httpdonec
 	close(rc.stopc)
 	rc.node.Stop()
-	rc.active = false
 	rc.clearConfig()
 	//os.Exit(0)
 }
@@ -263,18 +262,18 @@ func (rc *Node) stop() {
 // 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *Node) Send(command string, msg []byte) error {
+func (rc *Node) Send(namespace, command string, msg interface{}) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
-		cmd, data, err := rc.service.ProcessHandler(command, msg)
+		data, err := rc.service.ProcessHandler(namespace, command, msg)
 		if err != nil {
 			return err
 		}
-		return rc.service.CommitHandler(cmd, data)
+		return rc.service.CommitHandler(namespace, data)
 	}
 	// 集群模式下的处理
 	node, isLeader, err := rc.getLeader()
@@ -285,14 +284,14 @@ func (rc *Node) Send(command string, msg []byte) error {
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		cmd, data, err := rc.service.ProcessHandler(command, msg)
+		data, err := rc.service.ProcessHandler(namespace, command, msg)
 		if err != nil {
 			return err
 		}
 		m := &Message{
 			From: rc.nodeID,
 			Type: PROPOSE,
-			Cmd:  cmd,
+			Cmd:  namespace,
 			Data: data,
 		}
 		b, err := m.Encode()
@@ -301,7 +300,11 @@ func (rc *Node) Send(command string, msg []byte) error {
 		}
 		return rc.node.Propose(context.TODO(), b)
 	} else {
-		return rc.postMessage(node.Addr, command, msg)
+		cmd, data, err := rc.service.PreProcessHandler(namespace, command, msg)
+		if err != nil {
+			return err
+		}
+		return rc.postMessage(node.Addr, cmd, data)
 	}
 }
 
@@ -419,6 +422,8 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
+	rc.stopc = make(chan struct{})
+	rc.httpstopc = make(chan struct{})
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {

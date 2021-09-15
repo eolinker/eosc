@@ -74,6 +74,10 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
+
+	rc.stopc = make(chan struct{})
+	rc.httpstopc = make(chan struct{})
+
 	for _, p := range peers {
 		rc.peers.SetPeer(p.ID, p)
 	}
