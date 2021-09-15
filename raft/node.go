@@ -79,8 +79,8 @@ type Node struct {
 	// 与其他节点通信
 	transport *rafthttp.Transport
 	stopc     chan struct{} // signals proposal channel closed
-	httpstopc chan struct{} // signals http server to shutdown
-	httpdonec chan struct{} // signals http server shutdown complete
+	//httpstopc chan struct{} // signals http server to shutdown
+	//httpdonec chan struct{} // signals http server shutdown complete
 
 	// 日志相关，后续改为eosc_log
 	logger           *zap.Logger
@@ -222,8 +222,9 @@ func (rc *Node) serveChannels() {
 			// 处理需要commit的日志
 			ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
 			if !ok {
-				// 此时节点停止
+				//// 此时节点停止
 				rc.stop()
+				rc.clearConfig()
 				return
 			}
 			// 必要时生成快照
@@ -242,15 +243,11 @@ func (rc *Node) serveChannels() {
 }
 
 // 停止服务相关(暂时不直接关闭程序)
-// stop closes http and stops raft.
+// leave closes http and stops raft.
 func (rc *Node) stop() {
-	rc.transport.Stop()
-	close(rc.httpstopc)
-	<-rc.httpdonec
 	close(rc.stopc)
+	rc.transport.Stop()
 	rc.node.Stop()
-	rc.clearConfig()
-	//os.Exit(0)
 }
 
 // Send 客户端发送propose请求的处理
@@ -265,7 +262,7 @@ func (rc *Node) stop() {
 func (rc *Node) Send(msg []byte) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	if !rc.active {
-		return fmt.Errorf("current node is stop")
+		return fmt.Errorf("current node is leave")
 	}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
@@ -298,7 +295,7 @@ func (rc *Node) Send(msg []byte) error {
 // GetPeers 获取集群的peer列表，供API调用
 func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
 	if !rc.active {
-		return nil, 0, fmt.Errorf("current node is stop")
+		return nil, 0, fmt.Errorf("current node is leave")
 	}
 	return rc.peers.GetAllPeers(), rc.peers.Index(), nil
 }
@@ -306,7 +303,7 @@ func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
 // AddNode 客户端发送增加节点的发送处理
 func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 	if !rc.active {
-		return fmt.Errorf("current node is stop")
+		return fmt.Errorf("current node is leave")
 	}
 	if !rc.isCluster {
 		return fmt.Errorf("current node is not cluster mode")
@@ -326,7 +323,7 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 // DeleteConfigChange 客户端发送删除节点的发送处理
 func (rc *Node) DeleteConfigChange() error {
 	if !rc.active {
-		return fmt.Errorf("current node is stop")
+		return fmt.Errorf("current node is leave")
 	}
 	if !rc.isCluster {
 		return fmt.Errorf("current node is not cluster mode")
@@ -341,13 +338,12 @@ func (rc *Node) DeleteConfigChange() error {
 	if err != nil {
 		return err
 	}
-	//rc.stop()
+	//rc.leave()
 	return nil
 }
 
 func (rc *Node) Stop() {
 	rc.stop()
-
 }
 
 // InitSend 切换集群时调用，一般一个集群仅调用一次
@@ -409,7 +405,6 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
 	rc.stopc = make(chan struct{})
-	rc.httpstopc = make(chan struct{})
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {

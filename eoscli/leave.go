@@ -30,10 +30,10 @@ func LeaveFunc(c *cli.Context) error {
 	}
 	defer conn.Close()
 	client := service.NewCtiServiceClient(conn)
-	response, err := client.Leave(context.Background(), &service.LeaveRequest{Secret: &service.NodeSecret{}})
+	response, err := client.Leave(context.Background(), &service.LeaveRequest{})
 	if err != nil {
 		return err
 	}
-	log.Infof("join successful! node id is: %d", response.Msg)
+	log.Infof("leave successful! node id is: %d", response.Secret.NodeID)
 	return nil
 }

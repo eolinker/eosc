@@ -35,12 +35,12 @@ message NodeSecret {
 }
 
 message LeaveRequest{
-  NodeSecret secret = 1;
 }
 
 message LeaveResponse{
   string msg  = 1;
   string code = 2;
+  NodeSecret secret = 3;
 }
 
 message ListRequest{

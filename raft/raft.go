@@ -77,7 +77,6 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 	rc.transportHandler = rc.genHandler()
 
 	rc.stopc = make(chan struct{})
-	rc.httpstopc = make(chan struct{})
 
 	for _, p := range peers {
 		rc.peers.SetPeer(p.ID, p)
@@ -88,8 +87,10 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 
 //NewNode 新建raft节点
 func NewNode(service IService) *Node {
+	fileName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
 	// 判断是否存在nodeID，若存在，则当作旧节点处理，加入集群
-	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+	cfg := eosc_args.NewConfig(fileName)
+	cfg.ReadFile(fileName)
 	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "0"))
 	nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
 	logger := zap.NewExample()
@@ -100,8 +101,6 @@ func NewNode(service IService) *Node {
 		service:         service,
 		snapCount:       defaultSnapshotCount,
 		stopc:           make(chan struct{}),
-		httpstopc:       make(chan struct{}),
-		httpdonec:       make(chan struct{}),
 		logger:          logger,
 		waiter:          wait.New(),
 		lead:            0,
