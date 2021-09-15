@@ -27,7 +27,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/etcd/server/v3/wal"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
 )
 
@@ -117,7 +116,7 @@ func (rc *Node) clearConfig() {
 	rc.nodeKey = ""
 	rc.broadcastIP = ""
 	rc.broadcastPort = 0
-	rc.join, rc.isCluster = false, false
+	rc.active, rc.join, rc.isCluster = false, false, false
 	rc.transportHandler = rc.genHandler()
 }
 
@@ -163,7 +162,6 @@ func (rc *Node) startRaft() {
 		// 选择加入集群或已有日志消息（曾经切换过集群模式）
 		rc.node = raft.RestartNode(c)
 	} else {
-
 		// 启动节点时添加peers
 		peers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
 		for id := range peersList {
@@ -243,331 +241,16 @@ func (rc *Node) serveChannels() {
 	}
 }
 
-// publishEntries writes committed log entries to commit channel and returns
-// whether all entries could be published.
-// 日志提交处理
-func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
-	if len(ents) == 0 {
-		return true
-	}
-	for i := range ents {
-		switch ents[i].Type {
-		case raftpb.EntryNormal:
-			if len(ents[i].Data) == 0 {
-				// ignore empty messages
-				continue
-			}
-			m := &Message{}
-			var err error
-			err = m.Decode(ents[i].Data)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			err = rc.service.CommitHandler(m.Cmd, m.Data)
-			if err != nil {
-				log.Error(err)
-			}
-			if m.Type == INIT && m.From == rc.nodeID {
-				// 释放InitSend方法的等待，仅针对切换集群的对应节点
-				if err != nil {
-					log.Error(err)
-					rc.waiter.Trigger(m.From, err.Error())
-					continue
-				}
-				rc.waiter.Trigger(m.From, "")
-			}
-
-		case raftpb.EntryConfChange:
-			var cc raftpb.ConfChange
-			cc.Unmarshal(ents[i].Data)
-
-			rc.confState = *rc.node.ApplyConfChange(cc)
-			// eosc: 修改快照里的confState
-			rc.raftStorage.UpdateConState(&rc.confState)
-			switch cc.Type {
-			// 新增节点
-			case raftpb.ConfChangeAddNode:
-				if len(cc.Context) > 0 {
-					var info NodeInfo
-					err := json.Unmarshal(cc.Context, &info)
-					if err != nil {
-						log.Errorf("fail to publishEntries,error:%s", err.Error())
-						return false
-					}
-					// transport不需要加自己
-					if cc.NodeID != rc.nodeID {
-						p := rc.transport.Get(types.ID(cc.NodeID))
-						// 不存在才加进去
-						if p == nil {
-							rc.transport.AddPeer(types.ID(cc.NodeID), []string{info.Addr})
-						}
-					}
-					_, ok := rc.peers.GetPeerByID(cc.NodeID)
-					if !ok {
-						// 不存在，新增
-						rc.peers.SetPeer(cc.NodeID, &info)
-					}
-				}
-			case raftpb.ConfChangeRemoveNode:
-				if cc.NodeID == rc.nodeID {
-					log.Info("current node has been removed from the cluster!")
-					return false
-				}
-				p := rc.transport.Get(types.ID(cc.NodeID))
-				if p != nil {
-					// 存在才移除
-					rc.transport.RemovePeer(types.ID(cc.NodeID))
-				}
-				_, ok := rc.peers.GetPeerByID(cc.NodeID)
-				if ok {
-					// 存在，减去
-					rc.peers.DeletePeerByID(cc.NodeID)
-				}
-			}
-		}
-	}
-	// after commit, update appliedIndex
-	rc.appliedIndex = ents[len(ents)-1].Index
-	return true
-}
-
-// 处理本节点需要committed的日志
-func (rc *Node) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
-	if len(ents) == 0 {
-		return ents
-	}
-	firstIdx := ents[0].Index
-	if firstIdx > rc.appliedIndex+1 {
-		log.Fatalf("first index of committed entry[%d] should <= progress.appliedIndex[%d]+1", firstIdx, rc.appliedIndex)
-	}
-	if rc.appliedIndex-firstIdx+1 < uint64(len(ents)) {
-		nents = ents[rc.appliedIndex-firstIdx+1:]
-	}
-	return nents
-}
-
-// 日志/快照文件相关
-
-// ReadSnap 读取快照内容到service
-func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
-	// 读取快照的所有内容
-	snapshot, err := snapshotter.Load()
-	// 快照不存在
-	if err == snap.ErrNoSnapshot {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	// 快照不为空的话写进service
-	if snapshot != nil {
-		// 将快照内容缓存到service中
-		log.Infof("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		err = rc.service.ResetSnap(snapshot.Data)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// saveToStorage 内存信息存储
-func (rc *Node) saveToStorage(rd raft.Ready) {
-	var err error
-	err = rc.wal.Save(rd.HardState, rd.Entries)
-	if err != nil {
-		log.Fatal("save wal error: ", err)
-	}
-	// 安装快照信息
-	if !raft.IsEmptySnap(rd.Snapshot) {
-		log.Info("begin save snap")
-		err = rc.saveSnap(rd.Snapshot)
-		if err != nil {
-			log.Fatal("save snap error: ", err)
-		}
-		// 有快照信息则根据快照修改内存
-		err = rc.raftStorage.ApplySnapshot(rd.Snapshot)
-		if err != nil {
-			log.Fatal("raftStorage apply snapshot error: ", err)
-		}
-		rc.publishSnapshot(rd.Snapshot)
-	}
-	// 日志信息写入节点缓存
-	err = rc.raftStorage.Append(rd.Entries)
-	if err != nil {
-		log.Fatal("raftStorage append entries error: ", err)
-	}
-}
-
-// 保存快照文件
-func (rc *Node) saveSnap(snap raftpb.Snapshot) error {
-	walSnap := walpb.Snapshot{
-		Index:     snap.Metadata.Index,
-		Term:      snap.Metadata.Term,
-		ConfState: &snap.Metadata.ConfState,
-	}
-	// save the snapshot file before writing the snapshot to the wal.
-	// This makes it possible for the snapshot file to become orphaned, but prevents
-	// a WAL snapshot entry from having no corresponding snapshot file.
-	if err := rc.snapshotter.SaveSnap(snap); err != nil {
-		return err
-	}
-	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
-		return err
-	}
-	// 压缩日志
-	return rc.wal.ReleaseLockTo(snap.Metadata.Index)
-}
-
-// service 从快照中重取数据
-func (rc *Node) publishSnapshot(snapshotToSave raftpb.Snapshot) {
-	if raft.IsEmptySnap(snapshotToSave) {
-		return
-	}
-	log.Infof("publishing snapshot at index %d", rc.snapshotIndex)
-	defer log.Infof("finished publishing snapshot at index %d", rc.snapshotIndex)
-
-	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
-		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
-	}
-	err := rc.ReadSnap(rc.snapshotter)
-	if err != nil {
-		log.Info("read snap from snap shotter error:", err)
-	}
-	rc.confState = snapshotToSave.Metadata.ConfState
-	rc.snapshotIndex = snapshotToSave.Metadata.Index
-	rc.appliedIndex = snapshotToSave.Metadata.Index
-}
-
-// 保存现有快照
-func (rc *Node) maybeTriggerSnapshot() {
-	// 还不到保存快照的数里
-	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
-		return
-	}
-	log.Infof("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
-
-	// 获取service中的信息
-	data, err := rc.service.GetSnapshot()
-	if err != nil {
-		log.Panic(err)
-	}
-	// 利用现有信息生成要保存的快照信息
-	snapContent, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex, &rc.confState, data)
-	if err != nil {
-		log.Panic(err)
-	}
-	if err = rc.saveSnap(snapContent); err != nil {
-		log.Panic(err)
-	}
-	// 暂时先不做日志的压缩处理，有bug如下：
-	// 已有集群中的节点生成快照后，后续新节点加入集群时无法成功同步
-	// 修复处理：集群节点配置更新的时候也更新raftStorage中已有快照的confState
-	compactIndex := uint64(1)
-	if rc.appliedIndex > snapshotCatchUpEntriesN {
-		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
-	}
-	if err = rc.raftStorage.Compact(compactIndex); err != nil {
-		log.Panic(err)
-	}
-	log.Infof("compacted log at index %d", compactIndex)
-	rc.snapshotIndex = rc.appliedIndex
-}
-
-// 从现有文件中读取日志
-func (rc *Node) replayWAL() *wal.WAL {
-	// 先获取现有快照
-	snapshot := rc.loadSnapshot()
-	// 再获取现有日志
-	w := rc.openWAL(snapshot)
-	_, st, ents, err := w.ReadAll()
-	if err != nil {
-		log.Fatalf("eosc: failed to read WAL (%v)", err)
-	}
-
-	// 节点日志缓存初始化
-	rc.raftStorage = NewMemoryStorage()
-	if snapshot != nil {
-
-		err = rc.raftStorage.ApplySnapshot(*snapshot)
-		if err != nil {
-			log.Infof("eosc: failed to apply snapshot for raftStorage (%v)", err)
-		}
-	}
-	err = rc.raftStorage.SetHardState(st)
-	if err != nil {
-		log.Infof("eosc: failed to set hardState for raftStorage (%v)", err)
-	}
-	// append to storage so raft starts at the right place in log
-	err = rc.raftStorage.Append(ents)
-	if err != nil {
-		log.Infof("eosc: failed to append ents for raftStorage (%v)", err)
-	}
-	return w
-}
-
-// 读取快照文件
-func (rc *Node) loadSnapshot() *raftpb.Snapshot {
-	if wal.Exist(rc.waldir) {
-		walSnaps, err := wal.ValidSnapshotEntries(rc.logger, rc.waldir)
-		if err != nil {
-			log.Fatalf("eosc: error listing snapshots (%v)", err)
-		}
-		// 获取最新的快照
-		snapshot, err := rc.snapshotter.LoadNewestAvailable(walSnaps)
-		if err != nil && err != snap.ErrNoSnapshot {
-			log.Fatalf("eosc: error loading snapshot (%v)", err)
-		}
-		return snapshot
-	}
-	return &raftpb.Snapshot{}
-}
-
-// 读取(创建)wal日志文件
-func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
-	if !wal.Exist(rc.waldir) {
-		// 创建本地文件
-		if err := os.Mkdir(rc.waldir, 0750); err != nil {
-			log.Fatalf("eosc: cannot create dir for wal (%v)", err)
-		}
-		// 创建wal日志对象
-		w, err := wal.Create(zap.NewExample(), rc.waldir, nil)
-		if err != nil {
-			log.Fatalf("eosc: create wal error (%v)", err)
-		}
-		w.Close()
-	}
-	// 该结构用于日志对象定位快照索引，方便日志读取
-	walsnap := walpb.Snapshot{}
-	// 获取目前快照的最新记录
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	log.Infof("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
-	// 开启日志
-	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
-	if err != nil {
-		log.Fatalf("eosc: error loading wal (%v)", err)
-	}
-	return w
-}
-
 // 停止服务相关(暂时不直接关闭程序)
 // stop closes http and stops raft.
 func (rc *Node) stop() {
-	rc.stopHTTP()
-	close(rc.stopc)
-	rc.node.Stop()
-	rc.active = false
-	//os.Exit(0)
-}
-
-// 停止http服务
-func (rc *Node) stopHTTP() {
 	rc.transport.Stop()
 	close(rc.httpstopc)
 	<-rc.httpdonec
+	close(rc.stopc)
+	rc.node.Stop()
+	rc.clearConfig()
+	//os.Exit(0)
 }
 
 // Send 客户端发送propose请求的处理
@@ -579,18 +262,18 @@ func (rc *Node) stopHTTP() {
 // 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *Node) Send(command string, msg []byte) error {
+func (rc *Node) Send(namespace, command string, msg interface{}) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	if !rc.active {
 		return fmt.Errorf("current node is stop")
 	}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
-		cmd, data, err := rc.service.ProcessHandler(command, msg)
+		data, err := rc.service.ProcessHandler(namespace, command, msg)
 		if err != nil {
 			return err
 		}
-		return rc.service.CommitHandler(cmd, data)
+		return rc.service.CommitHandler(namespace, data)
 	}
 	// 集群模式下的处理
 	node, isLeader, err := rc.getLeader()
@@ -601,14 +284,14 @@ func (rc *Node) Send(command string, msg []byte) error {
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		cmd, data, err := rc.service.ProcessHandler(command, msg)
+		data, err := rc.service.ProcessHandler(namespace, command, msg)
 		if err != nil {
 			return err
 		}
 		m := &Message{
 			From: rc.nodeID,
 			Type: PROPOSE,
-			Cmd:  cmd,
+			Cmd:  namespace,
 			Data: data,
 		}
 		b, err := m.Encode()
@@ -617,7 +300,11 @@ func (rc *Node) Send(command string, msg []byte) error {
 		}
 		return rc.node.Propose(context.TODO(), b)
 	} else {
-		return rc.postMessage(node.Addr, command, msg)
+		cmd, data, err := rc.service.PreProcessHandler(namespace, command, msg)
+		if err != nil {
+			return err
+		}
+		return rc.postMessage(node.Addr, cmd, data)
 	}
 }
 
@@ -657,10 +344,7 @@ func (rc *Node) DeleteConfigChange() error {
 	if !rc.isCluster {
 		return fmt.Errorf("current node is not cluster mode")
 	}
-	//p := rc.transport.Get(types.ID(rc.nodeID))
-	//if p == nil {
-	//	return fmt.Errorf("deleted node is not existed")
-	//}
+
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: rc.nodeID,
@@ -670,12 +354,12 @@ func (rc *Node) DeleteConfigChange() error {
 	if err != nil {
 		return err
 	}
-	rc.transport.Stop()
-	rc.clearConfig()
+	//rc.stop()
 	return nil
 }
 
 func (rc *Node) Stop() {
+	rc.stop()
 
 }
 
@@ -730,6 +414,7 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.nodeKey = uuid.New()
 	rc.join = true
 	rc.isCluster = true
+	rc.active = true
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
 
@@ -737,6 +422,8 @@ func (rc *Node) changeCluster(addr string) error {
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
+	rc.stopc = make(chan struct{})
+	rc.httpstopc = make(chan struct{})
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
@@ -869,21 +556,4 @@ func (rc *Node) getLeader() (*NodeInfo, bool, error) {
 		return nil, flag, fmt.Errorf("current node has no leader(%d) host", rc.lead)
 	}
 	return v, flag, nil
-}
-
-func (rc *Node) Process(ctx context.Context, m raftpb.Message) error {
-	if rc.node == nil {
-		return nil
-	}
-	return rc.node.Step(ctx, m)
-}
-func (rc *Node) IsIDRemoved(id uint64) bool { return false }
-func (rc *Node) ReportUnreachable(id uint64) {
-	if rc.node == nil {
-		return
-	}
-	rc.node.ReportUnreachable(id)
-}
-func (rc *Node) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
-	rc.node.ReportSnapshot(id, status)
 }

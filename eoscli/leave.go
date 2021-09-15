@@ -15,15 +15,9 @@ var CmdLeave = "leave"
 
 func Leave(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:  CmdLeave,
-		Usage: "leave the cluster",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "id",
-				Usage:    "id of node",
-				Required: true,
-			},
-		},
+		Name:   CmdLeave,
+		Usage:  "leave the cluster",
+		Flags:  []cli.Flag{},
 		Action: x,
 	}
 }

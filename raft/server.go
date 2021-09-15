@@ -7,7 +7,9 @@ type IService interface {
 	CommitHandler(cmd string, data []byte) (err error)
 
 	// ProcessHandler 节点propose信息前的处理
-	ProcessHandler(command string, propose []byte) (cmd string, data []byte, err error)
+	ProcessHandler(namespace string, command string, propose interface{}) (data []byte, err error)
+
+	PreProcessHandler(namespace string, command string, propose interface{}) (newNamespace string, data []byte, err error)
 
 	// GetInit 集群初始化时的将service缓存中的信息进行打包处理,只会在切换集群模式的时候调用一次
 	GetInit() (cmd string, data []byte, err error)

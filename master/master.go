@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eolinker/eosc/master/professions"
 	"github.com/eolinker/eosc/master/workers"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
@@ -55,15 +54,7 @@ func Process() {
 		log.Error("master start  grpc server error: ", err.Error())
 		return
 	}
-	//cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	//nodeID, has := cfg.Get(eosc_args.NodeID)
-	//if has {
-	//	id, err := strconv.Atoi(nodeID)
-	//	if err == nil {
-	//		// 节点存在，启动节点
-	//		nodeKey, _ := cfg.Get(node)
-	//	}
-	//}
+
 	master.Wait()
 }
 
@@ -84,10 +75,11 @@ type Master struct {
 func (m *Master) Start() error {
 
 	ws := workers.NewWorker()
-	ps := professions.NewProfessions()
+	//ps := professions.NewProfessions()
 	raftService := raft_service.NewService(
+
 		raft_service.NewCreateHandler(workers.SpaceWorker, ws),
-		raft_service.NewCreateHandler(professions.SpaceProfession, ps),
+		//raft_service.NewCreateHandler(professions.SpaceProfession, ps),
 	)
 
 	m.node = raft.NewNode(raftService)
