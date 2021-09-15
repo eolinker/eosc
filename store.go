@@ -1,7 +1,6 @@
 package eosc
 
 import (
-	"context"
 	"encoding/json"
 )
 
@@ -33,7 +32,6 @@ type IStoreRW interface {
 	Get(id string) (StoreValue, bool)
 	Set(v StoreValue) error
 	Del(id string) error
-	ReadOnly() bool
 	Reset([]StoreValue) error
 }
 
@@ -41,17 +39,8 @@ type IStoreListener interface {
 	AddListen(h IStoreEventHandler) error
 }
 
-type IStoreLock interface {
-	IStoreRW
-	// 分布式时需要锁住全局
-	ReadLock(ctx context.Context) (bool, error)
-	ReadUnLock() error
-	TryLock(ctx context.Context, expire int) (bool, error)
-	UnLock() error
-}
-
 type IStore interface {
-	IStoreLock
+	IStoreRW
 	GetListener() IStoreListener
 }
 

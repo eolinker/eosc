@@ -1,21 +1,18 @@
 package admin
 
-import "github.com/eolinker/eosc/raft"
+import (
+	"github.com/eolinker/eosc/admin"
+	"github.com/eolinker/eosc/raft"
+)
 
-type IProfessions interface {
-
-}
-
-type IWorkers interface {
-
-}
+type WorkerInfo map[string]interface{}
 
 type Admin struct {
-	professions IProfessions
-	workers IWorkers
-	raft raft.IRaft
+	professions admin.IProfessions
+	workers     admin.IWorkers
+	raft        raft.IRaft
 }
 
-func NewAdmin(professions IProfessions, workers IWorkers, raft raft.IRaft) *Admin {
+func NewAdmin(professions admin.IProfessions, workers admin.IWorkers, raft raft.IRaft) *Admin {
 	return &Admin{professions: professions, workers: workers, raft: raft}
 }
