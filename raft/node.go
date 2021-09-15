@@ -37,7 +37,7 @@ type Node struct {
 	nodeID uint64
 
 	// eosc 服务相关
-	Service IService
+	service IService
 
 	// 节点相关
 	node raft.Node
@@ -124,7 +124,7 @@ func (rc *Node) clearConfig() {
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
 func (rc *Node) startRaft() {
-	log.Info("start raft Service")
+	log.Info("start raft service")
 
 	// 判断快照文件夹是否存在，不存在则创建
 	if !fileutil.Exist(rc.snapdir) {
@@ -142,7 +142,7 @@ func (rc *Node) startRaft() {
 	// TODO 非集群想要切换成集群的时候，要么这里做进一步校验，要么切换前先存好快照和日志
 	err := rc.ReadSnap(rc.snapshotter)
 	if err != nil {
-		log.Info("reload snap to Service error:", err)
+		log.Info("reload snap to service error:", err)
 	}
 
 	// 节点配置
@@ -264,7 +264,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				log.Error(err)
 				continue
 			}
-			err = rc.Service.CommitHandler(m.Cmd, m.Data)
+			err = rc.service.CommitHandler(m.Cmd, m.Data)
 			if err != nil {
 				log.Error(err)
 			}
@@ -364,7 +364,7 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
 	if snapshot != nil {
 		// 将快照内容缓存到service中
 		log.Infof("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		err = rc.Service.ResetSnap(snapshot.Data)
+		err = rc.service.ResetSnap(snapshot.Data)
 		if err != nil {
 			return err
 		}
@@ -449,7 +449,7 @@ func (rc *Node) maybeTriggerSnapshot() {
 	log.Infof("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
 
 	// 获取service中的信息
-	data, err := rc.Service.GetSnapshot()
+	data, err := rc.service.GetSnapshot()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -586,11 +586,11 @@ func (rc *Node) Send(command string, msg []byte) error {
 	}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
-		cmd, data, err := rc.Service.ProcessHandler(command, msg)
+		cmd, data, err := rc.service.ProcessHandler(command, msg)
 		if err != nil {
 			return err
 		}
-		return rc.Service.CommitHandler(cmd, data)
+		return rc.service.CommitHandler(cmd, data)
 	}
 	// 集群模式下的处理
 	node, isLeader, err := rc.getLeader()
@@ -600,8 +600,8 @@ func (rc *Node) Send(command string, msg []byte) error {
 	log.Infof("msg:leader is node(%d)", rc.lead)
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
-		// Service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		cmd, data, err := rc.Service.ProcessHandler(command, msg)
+		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
+		cmd, data, err := rc.service.ProcessHandler(command, msg)
 		if err != nil {
 			return err
 		}
@@ -688,7 +688,7 @@ func (rc *Node) InitSend() error {
 	if !rc.isCluster {
 		return fmt.Errorf("need to change cluster mode")
 	}
-	cmd, data, err := rc.Service.GetInit()
+	cmd, data, err := rc.service.GetInit()
 	log.Info("nodeID is ", rc.nodeID)
 	if err != nil {
 		return err

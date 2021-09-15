@@ -32,7 +32,7 @@ var retryFrequency time.Duration = 2000
 // 1、应用于新建一个想要加入已知集群的节点，会向已知节点发送请求获取id等新建节点信息
 // 已知节点如果还处于非集群模式，会先切换成集群模式
 // 2、也可以用于节点crash后的重启处理
-func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr string, protocol string, service IService, count int) error {
+func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr string, protocol string, count int) error {
 	if count > 2 {
 		return errors.New("join error")
 	}
@@ -81,7 +81,7 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, target, addr str
 			resMsg.Peer[nodeInfo.ID] = nodeInfo
 			startRaft(node, nodeInfo, resMsg.Peer)
 
-			err = JoinCluster(node, broadCastIP, broadPort, target, addr, protocol, service, count+1)
+			err = JoinCluster(node, broadCastIP, broadPort, target, addr, protocol, count+1)
 			if err != nil {
 				return err
 			}
@@ -137,7 +137,7 @@ func NewNode(service IService) *Node {
 		nodeID:          uint64(nodeID),
 		nodeKey:         nodeKey,
 		peers:           NewPeers(),
-		Service:         service,
+		service:         service,
 		snapCount:       defaultSnapshotCount,
 		stopc:           make(chan struct{}),
 		httpstopc:       make(chan struct{}),

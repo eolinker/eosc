@@ -1,10 +1,11 @@
-package worker
+package workers
 
 import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
+	"github.com/eolinker/eosc/store"
 	"time"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
@@ -17,12 +18,6 @@ var (
 	commandDel = "delete"
 )
 
-func init() {
-	raft_service.Register("worker", func(s eosc.IStore) (raft_service.ICommitHandler, raft_service.IProcessHandler) {
-		worker := NewWorker(s)
-		return worker, worker
-	})
-}
 
 type baseConfig struct {
 	Id         string `json:"id" yaml:"id"`
@@ -52,8 +47,8 @@ func (w *Worker) ResetHandler(data []byte) error {
 	return w.store.Reset(values)
 }
 
-func NewWorker(store eosc.IStore) *Worker {
-	return &Worker{store: store}
+func NewWorker() *Worker {
+	return &Worker{store: 	store.NewStore()}
 }
 
 func (w *Worker) ProcessHandler(propose []byte) (string, []byte, error) {

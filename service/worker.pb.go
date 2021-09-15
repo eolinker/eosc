@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.23.0
 // 	protoc        v3.17.3
-// source: service/worker.proto
+// source: service/workers.proto
 
 package service
 
