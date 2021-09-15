@@ -11,7 +11,7 @@ type ICommitHandler interface {
 
 type IProcessHandler interface {
 	// ProcessHandler 节点propose信息前的处理
-	ProcessHandler(propose interface{}) ([]byte, error)
+	ProcessHandler(cmd string, propose interface{}) ([]byte, error)
 }
 
 type IRaftServiceHandler interface {
