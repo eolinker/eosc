@@ -43,13 +43,16 @@ func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*servi
 
 //Leave 将节点移除
 func (m *Master) Leave(ctx context.Context, request *service.LeaveRequest) (*service.LeaveResponse, error) {
+	id := m.node.NodeID()
+	nodeKey := m.node.NodeKey()
 	err := m.node.DeleteConfigChange()
 	if err != nil {
 		return nil, err
 	}
 	return &service.LeaveResponse{
-		Msg:  "success",
-		Code: "0000000",
+		Msg:    "success",
+		Code:   "0000000",
+		Secret: &service.NodeSecret{NodeID: int32(id), NodeKey: nodeKey},
 	}, nil
 }
 

@@ -10,6 +10,7 @@ package master
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -124,7 +125,7 @@ func (m *Master) Wait() error {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-
+		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
@@ -133,7 +134,6 @@ func (m *Master) Wait() error {
 			}
 		case syscall.SIGQUIT:
 			{
-
 				m.close()
 				return nil
 			}
@@ -154,11 +154,15 @@ func (m *Master) Wait() error {
 
 func (m *Master) close() {
 	log.Info("master close")
+	log.Info("raft node close")
+	m.node.Stop()
+
 	m.cancelFunc()
 	log.Debug("master shutdown http:", m.httpserver.Shutdown(context.Background()))
-
 	m.masterTraffic.Close()
+
 	m.workerTraffic.Close()
+
 	m.stopService()
 	log.Debug("try remove pid")
 

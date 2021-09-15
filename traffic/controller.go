@@ -9,6 +9,7 @@
 package traffic
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -120,13 +121,17 @@ func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 func (c *Controller) Close() {
 	list := c.data.List()
 	c.data = eosc.NewUntyped()
-
+	fmt.Println("list")
 	for _, it := range list {
 		tf, ok := it.(*Out)
 		if !ok {
 			continue
 		}
+		fmt.Println("listen close")
 		tf.Listener.Close()
+		fmt.Println("file close")
 		tf.File.Close()
+		fmt.Println("end")
 	}
+	fmt.Println("abc")
 }

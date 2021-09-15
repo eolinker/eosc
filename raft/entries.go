@@ -58,8 +58,8 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 					var info NodeInfo
 					err := json.Unmarshal(cc.Context, &info)
 					if err != nil {
-						log.Errorf("fail to publishEntries,error:%s", err.Error())
-						return false
+						log.Errorf("fail to publish Entries,error:%s", err.Error())
+						continue
 					}
 					// transport不需要加自己
 					if cc.NodeID != rc.nodeID {

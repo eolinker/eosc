@@ -147,10 +147,10 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Infof("receive propose request from node(%d)", msg.From)
-	err = rc.Send(msg.Cmd, msg.Data)
-	if err != nil {
-		writeError(w, "120004", "fail to send propose message", err.Error())
-		return
-	}
+	//err = rc.Send(msg.Cmd, msg.Data)
+	//if err != nil {
+	//	writeError(w, "120004", "fail to send propose message", err.Error())
+	//	return
+	//}
 	writeSuccessResult(w, "", nil)
 }

@@ -52,7 +52,7 @@ func NewWorker() *Worker {
 }
 
 func (w *Worker) ProcessHandler(propose interface{}) ([]byte, error) {
-	return propose, nil
+	return nil, nil
 }
 
 func (w *Worker) CommitHandler(data []byte) error {
