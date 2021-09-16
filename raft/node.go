@@ -102,8 +102,10 @@ func (rc *Node) writeConfig() {
 	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
 	cfg.Set(eosc_args.IsCluster, "true")
 	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
-	cfg.Set(eosc_args.NodeKey, strconv.Itoa(int(rc.nodeID)))
+	cfg.Set(eosc_args.NodeKey, rc.nodeKey)
 	cfg.Set(eosc_args.BroadcastIP, rc.broadcastIP)
+
+	fmt.Println(rc.broadcastPort)
 	cfg.Set(eosc_args.Port, strconv.Itoa(rc.broadcastPort))
 	cfg.Save()
 }
