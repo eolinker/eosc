@@ -51,8 +51,9 @@ func NewWorker() *Worker {
 	return &Worker{store: store.NewStore()}
 }
 
-func (w *Worker) ProcessHandler(cmd string, propose interface{}) ([]byte, error) {
-	return json.Marshal(propose)
+func (w *Worker) ProcessHandler(cmd string, propose []byte) ([]byte, error) {
+	//return json.Marshal(propose)
+	return propose, nil
 }
 
 func (w *Worker) CommitHandler(cmd string, data []byte) error {

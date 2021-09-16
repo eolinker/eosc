@@ -31,24 +31,30 @@ type Service struct {
 }
 
 func (s *Service) CommitHandler(data []byte) error {
-	cmd := new(Commend)
-	err := proto.Unmarshal(data, cmd)
+	cmd, err := unMarshalCmd(data)
 	if err != nil {
 		return err
 	}
-	return s.commitHandler(cmd.Cmd, cmd.Cmd, cmd.Body)
+	if err != nil {
+		return err
+	}
+	return s.commitHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
 
 }
 
 func (s *Service) ProcessDataHandler(body []byte) (data []byte, err error) {
-	panic("implement me")
+	cmd, err := unMarshalCmd(data)
+	if err != nil {
+		return nil, err
+	}
+	return s.ProcessHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
 }
 
 func (s *Service) SetRaft(raft raft.IRaftSender) {
 	s.raftNode = raft
 }
 
-func (s *Service) ProcessHandler(namespace string, command string, propose interface{}) ([]byte, error) {
+func (s *Service) ProcessHandler(namespace string, command string, processData []byte) ([]byte, error) {
 	v, has := s.handlers.Get(namespace)
 	if !has {
 		return nil, ErrInvalidNamespace
@@ -57,21 +63,12 @@ func (s *Service) ProcessHandler(namespace string, command string, propose inter
 	if !ok {
 		return nil, ErrInvalidCommitHandler
 	}
-	body, err := f.ProcessHandler(command, propose)
+	body, err := f.ProcessHandler(command, processData)
 	if err != nil {
 		return nil, err
 	}
+	return encodeCmd(namespace, command, body)
 
-	cmd := &Commend{
-		Namespace: namespace,
-		Cmd:       command,
-		Body:      body,
-	}
-	data, err := proto.Marshal(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return data, err
 }
 func (s *Service) SetHandlers(handlers ...ICreateHandler) {
 	if handlers != nil {
