@@ -1,5 +1,5 @@
 package workers
 
-func (w *Worker) set() {
+func (w *Workers) set() {
 
 }

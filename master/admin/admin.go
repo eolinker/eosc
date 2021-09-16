@@ -10,7 +10,7 @@ type WorkerInfo map[string]interface{}
 type Admin struct {
 	professions admin.IProfessions
 	workers     admin.IWorkers
-	raft        raft.IRaft
+	raft        raft.IRaftSender
 }
 
 func NewAdmin(professions admin.IProfessions, workers admin.IWorkers, raft raft.IRaft) *Admin {

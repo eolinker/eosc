@@ -5,22 +5,22 @@ import (
 	"github.com/eolinker/eosc/admin"
 )
 
-func (w *Worker) GetWork(id string) (admin.TWorker, error) {
+func (w *Workers) GetWork(id string) (admin.TWorker, error) {
 	panic("implement me")
 }
 
-func (w *Worker) GetList(profession string) ([]admin.TWorker, error) {
+func (w *Workers) GetList(profession string) ([]admin.TWorker, error) {
 	panic("implement me")
 }
 
-func (w *Worker) CheckerSkill(id string, skill string) (bool, error) {
+func (w *Workers) CheckerSkill(id string, skill string) (bool, error) {
 	panic("implement me")
 }
 
-func (w *Worker) Delete(id string) (*admin.WorkerInfo, bool) {
+func (w *Workers) Delete(id string) (*admin.WorkerInfo, bool) {
 	panic("implement me")
 }
 
-func (w *Worker) Set(profession, name, driver string, data eosc.IData) error {
+func (w *Workers) Set(profession, name, driver string, data eosc.IData) error {
 	panic("implement me")
 }

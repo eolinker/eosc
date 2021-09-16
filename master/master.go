@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/eolinker/eosc/master/professions"
+
 	"github.com/eolinker/eosc/master/workers"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
@@ -75,8 +77,9 @@ type Master struct {
 
 func (m *Master) Start() error {
 
-	ws := workers.NewWorker()
-	//ps := professions.NewProfessions()
+	ps := professions.NewProfessions()
+	ws := workers.NewWorkers(ps)
+
 	raftService := raft_service.NewService()
 	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
 	var err error
