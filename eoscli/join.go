@@ -54,10 +54,10 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 	defer conn.Close()
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
-	port := getDefaultArg(cfg, eosc_args.Port, "0")
+	port := eosc_args.GetDefaultArg(cfg, eosc_args.Port, "0")
 	bPort, _ := strconv.Atoi(port)
 	if !utils.ValidAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
-		ipStr, has := getArg(cfg, eosc_args.BroadcastIP)
+		ipStr, has := eosc_args.GetArg(cfg, eosc_args.BroadcastIP)
 		if !has {
 			return errors.New("start node error: missing broadcast ip")
 		}
@@ -70,7 +70,7 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 	cfg.Set(eosc_args.BroadcastIP, bIP)
 	addr := c.StringSlice("addr")
 	if len(addr) < 1 {
-		addrStr, has := getArg(cfg, eosc_args.ClusterAddress)
+		addrStr, has := eosc_args.GetArg(cfg, eosc_args.ClusterAddress)
 		if !has {
 			return errors.New("start node error: empty cluster address list")
 		}

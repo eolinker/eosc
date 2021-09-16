@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"sync"
 
 	"github.com/eolinker/eosc"
@@ -84,35 +83,6 @@ func (s *Store) Del(id string) error {
 	return nil
 }
 
-//ReadOnly 返回储存器是否只读状态值
-func (s *Store) ReadOnly() bool {
-	return false
-}
-
-//ReadLock 存储器开启读锁
-func (s *Store) ReadLock(ctx context.Context) (bool, error) {
-	s.locker.RLock()
-	return true, nil
-}
-
-//ReadUnLock 存储器解除读锁
-func (s *Store) ReadUnLock() error {
-	s.locker.RUnlock()
-	return nil
-}
-
-//TryLock 存储器开启写锁
-func (s *Store) TryLock(ctx context.Context, expire int) (bool, error) {
-	s.locker.Lock()
-	return true, nil
-}
-
-//UnLock 存储器解除写锁
-func (s *Store) UnLock() error {
-	s.locker.Unlock()
-	return nil
-}
-
 //GetListener 获取存储监听器
 func (s *Store) GetListener() eosc.IStoreListener {
 	return s
@@ -123,6 +93,5 @@ func (s *Store) AddListen(h eosc.IStoreEventHandler) error {
 	if s.dispatcher.AddListen(h) {
 		return h.OnInit(s.All())
 	}
-
 	return nil
 }

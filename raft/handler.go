@@ -41,8 +41,10 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	var joinData JoinRequest
-	err = json.Unmarshal(body, &joinData)
+	joinData, err := decodeJoinRequest(body)
+	if err != nil {
+		return
+	}
 	if err != nil {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
@@ -76,8 +78,7 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	var joinData JoinRequest
-	err = json.Unmarshal(body, &joinData)
+	joinData, err := decodeJoinRequest(body)
 	if err != nil {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
@@ -123,9 +124,8 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 // proposeHandler 其他节点转发到leader的propose处理，由rc.Send触发
 func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 	// 只有leader才会收到该消息
-	_, isLeader, err := rc.getLeader()
+	isLeader, err := rc.isLeader()
 	if err != nil {
-		writeError(w, "120001", "can not find leader", err.Error())
 		return
 	}
 	if !isLeader {
@@ -140,17 +140,68 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	msg := &ProposeMsg{}
-	err = json.Unmarshal(b, msg)
+	msg, err := decodeProposeMsg(b)
 	if err != nil {
 		writeError(w, "120003", "fail to parse propose message", err.Error())
 		return
 	}
-	log.Infof("receive propose request from node(%d)", msg.From)
-	//err = rc.Send(msg.Cmd, msg.Data)
-	//if err != nil {
-	//	writeError(w, "120004", "fail to send propose message", err.Error())
-	//	return
-	//}
+	data, err := rc.service.ProcessDataHandler(msg.Body)
+	if err != nil {
+		writeError(w, "120004", "fail to send propose message", err.Error())
+		return
+	}
+	err = rc.ProcessData(data)
+	if err != nil {
+		writeError(w, "120005", "fail to send propose message", err.Error())
+		return
+	}
 	writeSuccessResult(w, "", nil)
+}
+
+func encodeProposeMsg(from uint64, data []byte) ([]byte, error) {
+	msg := &ProposeMsg{
+		Body: data,
+		From: from,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+
+}
+func decodeProposeMsg(data []byte) (*ProposeMsg, error) {
+	msg := &ProposeMsg{}
+	err := json.Unmarshal(data, msg)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func decodeResponse(data []byte) (*Response, error) {
+	res := &Response{}
+	err := json.Unmarshal(data, res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func decodeJoinRequest(data []byte) (*JoinRequest, error) {
+	joinData := new(JoinRequest)
+	err := json.Unmarshal(data, joinData)
+	if err != nil {
+		return nil, err
+	}
+	return joinData, nil
+}
+
+func decodeJoinResponse(data []byte) (*JoinResponse, error) {
+	res := new(JoinResponse)
+	err := json.Unmarshal(data, res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

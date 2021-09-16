@@ -3,7 +3,6 @@ package raft
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -261,21 +260,21 @@ func (rc *Node) stop() {
 // 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *Node) Send(namespace, command string, msg interface{}) error {
+func (rc *Node) Send(msg []byte) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	if !rc.active {
 		return fmt.Errorf("current node is leave")
 	}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
-		data, err := rc.service.ProcessHandler(namespace, command, msg)
+		data, err := rc.service.ProcessDataHandler(msg)
 		if err != nil {
 			return err
 		}
-		return rc.service.CommitHandler(namespace, data)
+		return rc.service.CommitHandler(data)
 	}
 	// 集群模式下的处理
-	node, isLeader, err := rc.getLeader()
+	isLeader, err := rc.isLeader()
 	if err != nil {
 		return err
 	}
@@ -283,27 +282,14 @@ func (rc *Node) Send(namespace, command string, msg interface{}) error {
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		data, err := rc.service.ProcessHandler(namespace, command, msg)
+		data, err := rc.service.ProcessDataHandler(msg)
 		if err != nil {
 			return err
 		}
-		m := &Message{
-			From: rc.nodeID,
-			Type: PROPOSE,
-			Cmd:  namespace,
-			Data: data,
-		}
-		b, err := m.Encode()
-		if err != nil {
-			return err
-		}
-		return rc.node.Propose(context.TODO(), b)
+		return rc.ProcessData(data)
 	} else {
-		cmd, data, err := rc.service.PreProcessHandler(namespace, command, msg)
-		if err != nil {
-			return err
-		}
-		return rc.postMessage(node.Addr, cmd, data)
+
+		return rc.postMessage(msg)
 	}
 }
 
@@ -370,7 +356,7 @@ func (rc *Node) InitSend() error {
 	if !rc.isCluster {
 		return fmt.Errorf("need to change cluster mode")
 	}
-	cmd, data, err := rc.service.GetInit()
+	data, err := rc.service.GetInit()
 	log.Info("nodeID is ", rc.nodeID)
 	if err != nil {
 		return err
@@ -378,7 +364,6 @@ func (rc *Node) InitSend() error {
 	m := &Message{
 		From: rc.nodeID,
 		Type: INIT,
-		Cmd:  cmd,
 		Data: data,
 	}
 	b, err := m.Encode()
@@ -501,19 +486,17 @@ func (rc *Node) changeCluster(addr string) error {
 
 // 工具方法
 // postMessage 转发消息，基于json
-func (rc *Node) postMessage(addr string, command string, data []byte) error {
-	// 转给leader
-	m := &ProposeMsg{
-		From: rc.nodeID,
-		To:   int(rc.lead),
-		Cmd:  command,
-		Data: data,
-	}
-	b, err := json.Marshal(m)
+func (rc *Node) postMessage(body []byte) error {
+	leader, err := rc.getLeader()
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/raft/node/propose", addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
+	// 转给leader
+	b, err := encodeProposeMsg(rc.nodeID, body)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(fmt.Sprintf("%s/raft/node/propose", leader.Addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -522,8 +505,8 @@ func (rc *Node) postMessage(addr string, command string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	res := &Response{}
-	err = json.Unmarshal(content, res)
+	resp.Body.Close()
+	res, err := decodeResponse(content)
 	if err != nil {
 		return err
 	}
@@ -536,21 +519,29 @@ func (rc *Node) postMessage(addr string, command string, data []byte) error {
 }
 
 // getLeader 获取leader地址以及判断当前节点是不是leader
-func (rc *Node) getLeader() (*NodeInfo, bool, error) {
+func (rc *Node) getLeader() (*NodeInfo, error) {
 	if rc.lead == raft.None {
 		if rc.node.Status().Lead == raft.None {
-			return nil, false, fmt.Errorf("current node(%d) has no leader", rc.lead)
+			return nil, fmt.Errorf("current node(%d) has no leader", rc.lead)
 		} else {
 			rc.lead = rc.node.Status().Lead
 		}
 	}
-	flag := false
-	if rc.nodeID == rc.lead {
-		flag = true
-	}
+
 	v, ok := rc.peers.GetPeerByID(rc.lead)
 	if !ok {
-		return nil, flag, fmt.Errorf("current node has no leader(%d) host", rc.lead)
+		return nil, fmt.Errorf("current node has no leader(%d) host", rc.lead)
 	}
-	return v, flag, nil
+	return v, nil
+}
+func (rc *Node) isLeader() (bool, error) {
+	if rc.lead == raft.None {
+		if rc.node.Status().Lead == raft.None {
+			return false, fmt.Errorf("current node(%d) has no leader", rc.lead)
+		} else {
+			rc.lead = rc.node.Status().Lead
+		}
+	}
+	return rc.nodeID == rc.lead, nil
+
 }

@@ -77,15 +77,17 @@ func (m *Master) Start() error {
 
 	ws := workers.NewWorker()
 	//ps := professions.NewProfessions()
-	raftService := raft_service.NewService(
-		raft_service.NewCreateHandler("worker", ws),
-		//raft_service.NewCreateHandler("profession", ps),
-	)
-	fmt.Println(os.Args, os.Environ())
-	m.node = raft.NewNode(raftService)
+	raftService := raft_service.NewService()
+	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
 
-	ip := eosc_args.GetDefault(eosc_args.IP, "")
-	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
+	m.node = raft.NewNode(raftService)
+	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
+	//nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
+	cfg := eosc_args.NewConfig(argsName)
+	cfg.ReadFile(argsName)
+
+	ip := eosc_args.GetDefaultArg(cfg, eosc_args.IP, "")
+	port, _ := strconv.Atoi(eosc_args.GetDefaultArg(cfg, eosc_args.Port, "9400"))
 	// 监听master监听地址，用于接口处理
 	l, err := m.masterTraffic.ListenTcp(ip, port)
 	if err != nil {

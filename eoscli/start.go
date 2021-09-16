@@ -88,7 +88,7 @@ func StartFunc(c *cli.Context) error {
 
 	protocol := c.String("protocol")
 	if protocol == "" {
-		protocol = getDefaultArg(cfg, eosc_args.Protocol, "http")
+		protocol = eosc_args.GetDefaultArg(cfg, eosc_args.Protocol, "http")
 	}
 	cfg.Set(eosc_args.Protocol, protocol)
 

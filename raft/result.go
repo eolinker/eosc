@@ -28,7 +28,7 @@ func writeSuccessResult(w http.ResponseWriter, key string, value interface{}) {
 func writeError(w http.ResponseWriter, code string, msg, errInfo string) {
 	result := &Response{
 		Code: code,
-		Msg:  "fail",
+		Msg:  msg,
 		Err:  errInfo,
 	}
 	data, _ := json.Marshal(result)

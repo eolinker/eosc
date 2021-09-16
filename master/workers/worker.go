@@ -1,22 +1,21 @@
 package workers
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"time"
-
-	"github.com/eolinker/eosc/store"
-
-	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
 	"github.com/eolinker/eosc"
+	raft_service "github.com/eolinker/eosc/raft/raft-service"
+	"github.com/eolinker/eosc/store"
+)
+
+const (
+	SpaceWorker = "worker"
 )
 
 var (
-	commandSet = "set"
-	commandDel = "delete"
+	CommandSet = "set"
+	CommandDel = "delete"
 )
 
 type baseConfig struct {
@@ -44,6 +43,7 @@ func (w *Worker) ResetHandler(data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	return w.store.Reset(values)
 }
 
@@ -51,79 +51,41 @@ func NewWorker() *Worker {
 	return &Worker{store: store.NewStore()}
 }
 
-func (w *Worker) ProcessHandler(propose interface{}) ([]byte, error) {
-	return nil, nil
+func (w *Worker) ProcessHandler(cmd string, propose interface{}) ([]byte, error) {
+	return json.Marshal(propose)
 }
 
-func (w *Worker) CommitHandler(data []byte) error {
+func (w *Worker) CommitHandler(cmd string, data []byte) error {
 	if w.store == nil {
 		return errors.New("no valid store")
 	}
-	kv := &Cmd{}
-	err := kv.Decode(data)
-	if err != nil {
-		return err
-	}
-	switch kv.Key {
-	case commandSet:
+
+	switch cmd {
+	case CommandSet:
 		{
-			if kv.Config.CreateTime == "" {
-				kv.Config.CreateTime = time.Now().Format("2006-01-02 15:04:05")
-			}
-			if kv.Config.UpdateTime == "" {
-				kv.Config.UpdateTime = time.Now().Format("2006-01-02 15:04:05")
-			}
-			b, err := json.Marshal(kv.Config)
+			iData := eosc.BytesData(data)
+			value := new(eosc.StoreValue)
+			err := iData.UnMarshal(value)
 			if err != nil {
 				return err
 			}
-			storeValue := eosc.StoreValue{
-				Id:         kv.Config.Id,
-				Profession: kv.Config.Profession,
-				Name:       kv.Config.Name,
-				Driver:     kv.Config.Driver,
-				CreateTime: kv.Config.CreateTime,
-				UpdateTime: kv.Config.UpdateTime,
-				IData:      eosc.JsonData(b),
-				Sing:       "",
-			}
-			err = w.store.Set(storeValue)
+			err = w.store.Set(*value)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
-	case commandDel:
+	case CommandDel:
 		{
-			err = w.store.Del(kv.Config.Id)
+			id := string(data)
+
+			err := w.store.Del(id)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
 	default:
-		return raft_service.ErrInvalidKey
+		return raft_service.ErrInvalidCommand
 	}
-}
-
-// Cmd 用于传输的结构
-type Cmd struct {
-	Key    string
-	Config *baseConfig
-}
-
-func (kv *Cmd) Encode() ([]byte, error) {
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(kv); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func (kv *Cmd) Decode(data []byte) error {
-	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	if err := dec.Decode(kv); err != nil {
-		return err
-	}
-	return nil
 }

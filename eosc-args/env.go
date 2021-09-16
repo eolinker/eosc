@@ -49,9 +49,7 @@ func GetDefault(name string, d string) string {
 	}
 	return d
 }
-func SetEnv(name, value string) error {
-	return syscall.Setenv(EnvName(name), value)
-}
+
 func GenEnv(name, value string) string {
 	return fmt.Sprintf("%s=%s", EnvName(name), value)
 }
