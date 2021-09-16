@@ -1,11 +1,38 @@
 package eoscli
 
-import "github.com/urfave/cli/v2"
+import (
+	"context"
+	"fmt"
 
-func Info(info cli.ActionFunc) *cli.Command {
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/service"
+	"github.com/urfave/cli/v2"
+)
+
+var CmdInfo = "info"
+
+func Info(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:   "info",
+		Name:   CmdInfo,
 		Usage:  "display information of the node",
-		Action: info,
+		Action: x,
 	}
+}
+
+//InfoFunc 获取节点信息
+func InfoFunc(c *cli.Context) error {
+	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := service.NewCtiServiceClient(conn)
+	response, err := client.Info(context.Background(), &service.InfoRequest{})
+	if err != nil {
+		return err
+	}
+	log.Info(response.Info)
+	return nil
 }

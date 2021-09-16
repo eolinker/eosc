@@ -1,36 +1,52 @@
 package raft
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/eolinker/eosc/log"
+
+	raft_service "github.com/eolinker/eosc/raft/raft-service"
+	store2 "github.com/eolinker/eosc/store"
 )
 
-func TestRaft(t *testing.T) {
-	initFlag()
+func TestRaftNode1(t *testing.T) {
+	store, _ := store2.NewStore()
+	node := NewNode(raft_service.NewService(store))
+	sm := http.NewServeMux()
 
-	// 初始化服务
-	var s = Create()
-	var raft = &raftNode{}
-	var err error
-	if !join {
-		// 新建raft节点,以集群模式启动或非集群单点模式
-		raft, err = CreateRaftNode(nodeID, host, s, peers, keys, join, isCluster)
-	} else {
-		// 新建raft节点,加入一个集群
-		raft, err = JoinCluster(host, target, s)
-	}
+	sm.Handle("/raft/", node)
+	sm.Handle("/raft", node)
+
+	log.Fatal(http.ListenAndServe(":9999", sm))
+}
+
+func TestRaftNode2(t *testing.T) {
+	store, _ := store2.NewStore()
+	service := raft_service.NewService(store)
+	node := NewNode(service)
+	err := JoinCluster(node, "127.0.0.1", 9998, "http://127.0.0.1:9999", "http://127.0.0.1:9999/raft/node/join", "http", service, 0)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return
 	}
-	client := &Client{
-		raft: raft,
-	}
+	sm := http.NewServeMux()
+	sm.Handle("/raft/", node)
+	sm.Handle("/raft", node)
+	log.Fatal(http.ListenAndServe(":9998", sm))
+}
 
-	//httpServer := http.NewServeMux()
-	//httpServer.Handle("/raft/api/", client.Handler())
-	log.Info(fmt.Sprintf("Listen http port %d successfully", httpPort))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), client.Handler()))
+func TestRaftNode3(t *testing.T) {
+	store, _ := store2.NewStore()
+	service := raft_service.NewService(store)
+	node := NewNode(service)
+	err := JoinCluster(node, "127.0.0.1", 9997, "http://127.0.0.1:9999", "http://127.0.0.1:9999/raft/node/join", "http", service, 0)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	sm := http.NewServeMux()
+	sm.Handle("/raft/", node)
+	sm.Handle("/raft", node)
+	log.Fatal(http.ListenAndServe(":9997", sm))
 }

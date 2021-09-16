@@ -58,3 +58,11 @@ func WriteFrame(w io.Writer,data []byte) error {
 	_,err =w.Write(data)
 	return err
 }
+func EncodeFrame(data []byte)[]byte  {
+	size := len(data)
+	buf:= make([]byte,size+8)
+	binary.BigEndian.PutUint32(buf[0:4],frameCode)
+	binary.BigEndian.PutUint32(buf[4:8],uint32(size))
+  	copy(buf[8:],data)
+	return buf
+}

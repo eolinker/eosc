@@ -9,97 +9,148 @@
 package master
 
 import (
-	"time"
+	"context"
+	"fmt"
+	"net"
+	"net/http"
+	"strconv"
+
+	"github.com/eolinker/eosc/master/workers"
+
+	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
-
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/log/filelog"
+	"github.com/eolinker/eosc/pidfile"
+	"github.com/eolinker/eosc/raft"
+	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
+
 	"google.golang.org/grpc"
-
-	"github.com/eolinker/eosc/master/service"
-
-	"fmt"
 
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/eolinker/eosc/process"
 )
 
 func Process() {
-	master := NewMasterHandle()
-	master.Start()
+	InitLogTransport()
+	file, err := pidfile.New()
+	if err != nil {
+		log.Errorf("the master is running:%v by:%d", err, os.Getpid())
+		return
+	}
+	master := NewMasterHandle(file)
+	if err := master.Start(); err != nil {
+		master.close()
+		log.Errorf("master[%d] start faild:%v", os.Getpid(), err)
+		return
+	}
+	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
+	}
+	log.Info("master start grpc service")
+	err = master.startService()
+	if err != nil {
+		log.Error("master start  grpc server error: ", err.Error())
+		return
+	}
+
 	master.Wait()
 }
 
 type Master struct {
-	srv *grpc.Server
+	service.UnimplementedMasterServer
+	service.UnimplementedCtiServiceServer
+	node          *raft.Node
+	masterTraffic traffic.IController
+	workerTraffic traffic.IController
+	raftService   raft.IService
+	masterSrv     *grpc.Server
+	ctx           context.Context
+	cancelFunc    context.CancelFunc
+	PID           *pidfile.PidFile
+	httpserver    *http.Server
 }
 
-func (m *Master) InitLogTransport() {
-	writer := filelog.NewFileWriteByPeriod()
-	writer.Set(fmt.Sprintf("/var/log/%s", process.AppName()), "error.log", filelog.PeriodDay, 7*24*time.Hour)
-	writer.Open()
-	transport := log.NewTransport(writer, log.InfoLevel)
-	transport.SetFormatter(&log.LineFormatter{
-		TimestampFormat:  "[2006-01-02 15:04:05]",
-		CallerPrettyfier: nil,
-	})
-	log.Reset(transport)
-}
+func (m *Master) Start() error {
 
-func (m *Master) Start() {
-	m.InitLogTransport()
-
-	log.Info("start master")
-	srv, err := service.StartMaster(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	ws := workers.NewWorker()
+	//ps := professions.NewProfessions()
+	raftService := raft_service.NewService()
+	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
+	var err error
+	m.node, err = raft.NewNode(raftService)
 	if err != nil {
 		log.Error(err)
-		os.Exit(1)
-		return
+		return err
 	}
+	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
+	//nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
+	cfg := eosc_args.NewConfig(argsName)
+	cfg.ReadFile(argsName)
 
-	m.srv = srv
-	trafficController := traffic.NewController()
-	defer trafficController.Close()
-	ip := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.IP))
-	port := os.Getenv(fmt.Sprintf("%s_%s", process.AppName(), eosc_args.Port))
-	log.Info(fmt.Sprintf("%s:%s", ip, port))
+	ip := eosc_args.GetDefaultArg(cfg, eosc_args.IP, "")
+	port, _ := strconv.Atoi(eosc_args.GetDefaultArg(cfg, eosc_args.Port, "9400"))
 	// 监听master监听地址，用于接口处理
-	err = trafficController.Listener("tcp", fmt.Sprintf("%s:%s", ip, port))
+	l, err := m.masterTraffic.ListenTcp(ip, port)
 	if err != nil {
 		log.Error(err)
-		os.Exit(1)
-		return
+		return err
 	}
 
-	//TODO 若该进程是master的子进程，则给父进程一个退出信号
-	pEnv := fmt.Sprintf("%s_%s",process.AppName(),"IS_MASTER_CHILD")
-	if  os.Getenv(pEnv) != "" {
-		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
+	m.startHttp(l)
+
+	return nil
+
+}
+func (m *Master) startHttp(l net.Listener) {
+	m.httpserver = &http.Server{
+		Handler: m.handler(),
 	}
+
+	go func() {
+		err := m.httpserver.Serve(l)
+		if err != nil {
+			log.Warn(err)
+		}
+	}()
 }
 
+func (m *Master) handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.Handle("/raft", m.node)
+	sm.Handle("/raft/", m.node)
+
+	return sm
+}
 func (m *Master) Wait() error {
+
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
 	for {
 		sig := <-sigc
+		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
+		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
-		case os.Interrupt, os.Kill, syscall.SIGQUIT:
+		case os.Interrupt, os.Kill:
 			{
-				log.Infof("Caught signal %s: shutting down.\n", sig.String())
-				m.srv.GracefulStop()
+				m.close()
+				return nil
+			}
+		case syscall.SIGQUIT:
+			{
 				m.close()
 				return nil
 			}
 		case syscall.SIGUSR1:
 			{
-				// TODO: 平滑重启操作
-				process.Fork()  //传子进程需要的内容
+
+				log.Info("try fork new")
+				err := m.Fork() //传子进程需要的内容
+				if err != nil {
+					log.Error("fork new:", err)
+				}
 			}
 		default:
 			continue
@@ -108,10 +159,44 @@ func (m *Master) Wait() error {
 }
 
 func (m *Master) close() {
-	syscall.Unlink(fmt.Sprintf("/tmp/%s.master.sock", process.AppName()))
+	log.Info("master close")
+	log.Info("raft node close")
+	m.node.Stop()
+
+	m.cancelFunc()
+	log.Debug("master shutdown http:", m.httpserver.Shutdown(context.Background()))
+	m.masterTraffic.Close()
+
+	m.workerTraffic.Close()
+
+	m.stopService()
+	log.Debug("try remove pid")
+
+	if err := m.PID.Remove(); err != nil {
+		log.Warn("remove pid:", err)
+	}
 
 }
 
-func NewMasterHandle() *Master {
-	return &Master{}
+func NewMasterHandle(pid *pidfile.PidFile) *Master {
+
+	cancel, cancelFunc := context.WithCancel(context.Background())
+	m := &Master{
+		PID:                           pid,
+		cancelFunc:                    cancelFunc,
+		ctx:                           cancel,
+		UnimplementedMasterServer:     service.UnimplementedMasterServer{},
+		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
+	}
+	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+		log.Info("init traffic from stdin")
+		m.masterTraffic = traffic.NewController(os.Stdin)
+		m.workerTraffic = traffic.NewController(os.Stdin)
+	} else {
+		log.Info("new traffic")
+
+		m.masterTraffic = traffic.NewController(nil)
+		m.workerTraffic = traffic.NewController(nil)
+	}
+	return m
 }

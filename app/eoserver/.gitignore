@@ -1,2 +1,6 @@
 /eoserver
-*.master.pid
+/goku
+*.pid
+/eosc-*/
+*.log
+*.args

@@ -10,10 +10,10 @@ package master
 
 import (
 	"bytes"
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/traffic"
 	"io"
-	"github.com/eolinker/eosc/log"
 	"os"
 	"os/exec"
 	"sync"
@@ -48,13 +48,19 @@ func (wc *WorkerController) Stop() {
 		}
 		err =wc.cmd.Wait()
 		if err!=nil{
-			log.Warn("stop worker:",err)
+			log.Warn("stop workers:",err)
 			return
 		}
 	}
 }
+
 func (wc *WorkerController) Start() {
+
 	wc.Restart()
+	go func() {
+
+
+	}()
 }
 func (wc *WorkerController)Restart()  {
 	wc.locker.Lock()
@@ -65,23 +71,22 @@ func (wc *WorkerController)Restart()  {
 		if err!= nil{
 			log.Warn("Signal error:",err)
 		}
-
+		wc.cmd = nil
 	}
 }
 
 func (wc *WorkerController) new() ( *exec.Cmd,error) {
-	worker,err :=process.Cmd("worker",nil)
+	worker,err :=process.Cmd("workers",nil)
 	if err != nil{
 		log.Warn(err)
 		return nil,err
 	}
-	traffics:=wc.tc.All()
-	buf:=&bytes.Buffer{}
-	files,err := traffics.WriteTo(buf)
+	data,files,err:=wc.tc.Encode(3)
+
 	if err != nil {
 		return nil,err
 	}
-	worker.Stdin = buf
+	worker.Stdin = bytes.NewBuffer(data)
 	worker.Stdout = os.Stdout
 	worker.Stderr = os.Stderr
 	worker.ExtraFiles = files
@@ -90,4 +95,13 @@ func (wc *WorkerController) new() ( *exec.Cmd,error) {
 		return nil,err
 	}
 	return worker,nil
+}
+
+func getWaitCmd(cmd *exec.Cmd) <- chan  error {
+	c:=make(chan error,0)
+	go func() {
+		c<-cmd.Wait()
+		close(c)
+	}()
+	return c
 }

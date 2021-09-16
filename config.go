@@ -18,12 +18,6 @@ func TypeNameOf(v interface{}) string {
 	return TypeName(reflect.TypeOf(v))
 }
 
-//func TypeNameOfValue(v reflect.Value) string {
-//	 if v.Kind() == reflect.Ptr{
-//	 	return TypeNameOfValue(v.Elem())
-//	 }
-//	 return TypeName(v.Type())
-//}
 func TypeName(t reflect.Type) string {
 	if t.Kind() == reflect.Ptr {
 		return TypeName(t.Elem())

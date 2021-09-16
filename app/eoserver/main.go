@@ -23,7 +23,7 @@ import (
 
 func init() {
 
-	process.Register("worker", worker.Process)
+	process.Register("workers", worker.Process)
 	process.Register("master", master.Process)
 	process.Register("helper", helper.Process)
 }
@@ -31,21 +31,23 @@ func init() {
 func main() {
 
 	if process.Run() {
+		log.Close()
 		return
 	}
-
 	app := eoscli.NewApp()
 	app.AppendCommand(
-		eoscli.Start(start),
-		eoscli.Join(join),
-		eoscli.Stop(stop),
-		eoscli.Info(info),
-		eoscli.Leave(leave),
-		eoscli.Cluster(clusters),
+		eoscli.Start(eoscli.StartFunc),
+		eoscli.Join(eoscli.JoinFunc),
+		eoscli.Stop(eoscli.StopFunc),
+		eoscli.Info(eoscli.InfoFunc),
+		eoscli.Leave(eoscli.LeaveFunc),
+		eoscli.Cluster(eoscli.ClustersFunc),
+		eoscli.Restart(eoscli.RestartFunc),
+		eoscli.Env(eoscli.EnvFunc),
 	)
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err)
 	}
-
+	log.Close()
 }

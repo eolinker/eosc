@@ -1,6 +1,11 @@
 package eoscli
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/urfave/cli/v2"
+)
 
 type App struct {
 	app *cli.App
@@ -8,8 +13,8 @@ type App struct {
 
 func NewApp() *App {
 	return &App{app: &cli.App{
-		Name:     "goku",
-		Usage:    "goku controller",
+		Name:     eosc_args.AppName(),
+		Usage:    fmt.Sprintf("%s controller", eosc_args.AppName()),
 		Commands: make([]*cli.Command, 0, 6),
 	}}
 }
