@@ -289,7 +289,7 @@ func (rc *Node) Send(msg []byte) error {
 		return rc.ProcessData(data)
 	} else {
 
-		return rc.postMessage(msg)
+		return rc.postMessageToLeader(msg)
 	}
 }
 
@@ -485,8 +485,8 @@ func (rc *Node) changeCluster(addr string) error {
 }
 
 // 工具方法
-// postMessage 转发消息，基于json
-func (rc *Node) postMessage(body []byte) error {
+// postMessageToLeader 转发消息，基于json
+func (rc *Node) postMessageToLeader(body []byte) error {
 	leader, err := rc.getLeader()
 	if err != nil {
 		return err
@@ -505,7 +505,6 @@ func (rc *Node) postMessage(body []byte) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
 	res, err := decodeResponse(content)
 	if err != nil {
 		return err

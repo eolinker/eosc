@@ -25,10 +25,6 @@ type IService interface {
 type IRaftSender interface {
 	Send(msg []byte) error
 }
-type IRaft interface {
-	Encode(body map[string]interface{}) ([]byte, error)
-	Decode([]byte) (body interface{}, err error)
-}
 
 //
 //type raftDemo struct {

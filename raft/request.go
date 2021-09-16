@@ -28,7 +28,7 @@ func getNodeInfoRequest(address string, data []byte) (*JoinResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp.Body.Close()
+
 	res, err := decodeResponse(content)
 	if err != nil {
 		return nil, err
