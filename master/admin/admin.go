@@ -13,6 +13,6 @@ type Admin struct {
 	raft        raft.IRaftSender
 }
 
-func NewAdmin(professions admin.IProfessions, workers admin.IWorkers, raft raft.IRaft) *Admin {
+func NewAdmin(professions admin.IProfessions, workers admin.IWorkers, raft raft.IRaftSender) *Admin {
 	return &Admin{professions: professions, workers: workers, raft: raft}
 }

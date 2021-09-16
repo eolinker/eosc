@@ -4,7 +4,12 @@ syntax = "proto3";
 
 option go_package = "github.com/eolinker/eosc/service";
 package service;
-
+message WorkerHelloRequest{
+  string hello=1;
+}
+message WorkerHelloResponse{
+  string hello=1;
+}
 message WorkerCheckRequest {
   string cmd =1;
   bytes body = 2;
@@ -16,5 +21,6 @@ message WorkerCheckResponse{
 }
 
 service WorkerService{
-  rpc check(WorkerCheckRequest)returns(WorkerCheckResponse);
+  rpc check(WorkerCheckRequest)returns(WorkerCheckResponse){};
+  rpc ping(WorkerHelloRequest)returns(WorkerHelloResponse){}
 }

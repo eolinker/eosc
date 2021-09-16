@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
+	"time"
 
 	"github.com/eolinker/eosc/service"
 
@@ -62,10 +64,15 @@ func (w *Workers) ResetHandler(data []byte) error {
 }
 
 func (w *Workers) ProcessHandler(cmd string, body []byte) ([]byte, error) {
+	err := w.checkClient()
+	if err != nil {
+		return nil, err
+	}
 	request := &service.WorkerCheckRequest{
 		Cmd:  cmd,
 		Body: body,
 	}
+
 	response, err := w.workerServiceClient.Check(context.TODO(), request)
 	if err != nil {
 		return nil, err
@@ -77,7 +84,6 @@ func (w *Workers) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 }
 
 func (w *Workers) CommitHandler(cmd string, data []byte) error {
-
 	switch cmd {
 	case CommandSet:
 		{
@@ -97,4 +103,33 @@ func (w *Workers) CommitHandler(cmd string, data []byte) error {
 	default:
 		return raft_service.ErrInvalidCommand
 	}
+}
+func (w *Workers) checkClient() (errOut error) {
+
+	for i := 0; i < 2; i++ {
+		if w.workerServiceClient == nil {
+			client, err := createClient()
+			if err != nil {
+				return
+			}
+			w.workerServiceClient = client
+		}
+		hello := strconv.FormatInt(time.Now().UnixNano(), 10)
+		response, err := w.workerServiceClient.Ping(context.TODO(), &service.WorkerHelloRequest{
+			Hello: hello,
+		})
+		if err != nil {
+			w.workerServiceClient = nil
+			errOut = err
+			continue
+		}
+		if response.Hello != hello {
+			w.workerServiceClient = nil
+			continue
+		}
+		errOut = nil
+		return
+	}
+	w.workerServiceClient = nil
+	return
 }
