@@ -3,7 +3,6 @@ package raft
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -491,12 +490,7 @@ func (rc *Node) postMessage(body []byte) error {
 		return err
 	}
 	// 转给leader
-	m := &ProposeMsg{
-		From: rc.nodeID,
-		To:   int(rc.lead),
-		Body: body,
-	}
-	b, err := json.Marshal(m)
+	b, err := encodeProposeMsg(rc.nodeID, body)
 	if err != nil {
 		return err
 	}
@@ -509,8 +503,8 @@ func (rc *Node) postMessage(body []byte) error {
 	if err != nil {
 		return err
 	}
-	res := &Response{}
-	err = json.Unmarshal(content, res)
+	resp.Body.Close()
+	res, err := decodeResponse(content)
 	if err != nil {
 		return err
 	}

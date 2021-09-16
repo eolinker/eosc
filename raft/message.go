@@ -25,7 +25,6 @@ type Response struct {
 
 type ProposeMsg struct {
 	From uint64 `json:"from"`
-	To   int    `json:"to"`
 	Body []byte `json:"body"`
 }
 

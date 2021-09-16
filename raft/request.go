@@ -28,15 +28,15 @@ func getNodeInfoRequest(address string, data []byte) (*JoinResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	res := &Response{}
-	err = json.Unmarshal(content, res)
+	resp.Body.Close()
+	res, err := decodeResponse(content)
 	if err != nil {
 		return nil, err
 	}
 	if res.Code == "000000" {
-		resMsg := &JoinResponse{}
+
 		data, _ := json.Marshal(res.Data)
-		err = json.Unmarshal(data, resMsg)
+		resMsg, err := decodeJoinResponse(data)
 		if err != nil {
 			return nil, err
 		}
@@ -62,8 +62,7 @@ func joinClusterRequest(address string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	res := &Response{}
-	err = json.Unmarshal(content, res)
+	res, err := decodeResponse(content)
 	if err != nil {
 		return err
 	}
