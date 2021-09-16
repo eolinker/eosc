@@ -81,7 +81,7 @@ func (m *Master) Start() error {
 		raft_service.NewCreateHandler("worker", ws),
 		//raft_service.NewCreateHandler("profession", ps),
 	)
-
+	fmt.Println(os.Args, os.Environ())
 	m.node = raft.NewNode(raftService)
 
 	ip := eosc_args.GetDefault(eosc_args.IP, "")
