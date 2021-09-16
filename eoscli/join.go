@@ -111,7 +111,9 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 
 //JoinFunc 加入集群
 func JoinFunc(c *cli.Context) error {
-	cfg := eosc_args.NewConfig(fmt.Sprintf("%s.args", eosc_args.AppName()))
+	argName := fmt.Sprintf("%s.args", eosc_args.AppName())
+	cfg := eosc_args.NewConfig(argName)
+	cfg.ReadFile(argName)
 	err := join(c, cfg)
 	if err != nil {
 		return err

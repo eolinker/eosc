@@ -52,7 +52,10 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, address string, 
 		Protocol:      protocol,
 	}
 	resp.Peer[nodeInfo.ID] = nodeInfo
-	startRaft(node, nodeInfo, resp.Peer)
+	err = startRaft(node, nodeInfo, resp.Peer)
+	if err != nil {
+		return err
+	}
 
 	msg.NodeID = resp.ID
 	msg.NodeKey = resp.Key
@@ -62,7 +65,7 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, address string, 
 }
 
 // startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
-func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
+func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) error {
 	rc.nodeID = node.ID
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
@@ -70,7 +73,7 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 	rc.nodeKey = node.Key
 	rc.broadcastIP = node.BroadcastIP
 	rc.broadcastPort = node.BroadcastPort
-	rc.active = true
+
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
@@ -82,11 +85,11 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) {
 		rc.peers.SetPeer(p.ID, p)
 	}
 	rc.writeConfig()
-	go rc.startRaft()
+	return rc.startRaft()
 }
 
 //NewNode 新建raft节点
-func NewNode(service IService) *Node {
+func NewNode(service IService) (*Node, error) {
 	fileName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
 	// 判断是否存在nodeID，若存在，则当作旧节点处理，加入集群
 	cfg := eosc_args.NewConfig(fileName)
@@ -119,7 +122,7 @@ func NewNode(service IService) *Node {
 		if rc.nodeKey == "" {
 			rc.nodeKey = uuid.New()
 		}
-		port, _ := strconv.Atoi(cfg.GetDefault(eosc_args.BroadcastIP, ""))
+		port, _ := strconv.Atoi(cfg.GetDefault(eosc_args.Port, ""))
 		node := &NodeInfo{
 			NodeSecret: &NodeSecret{
 				ID:  rc.nodeID,
@@ -130,7 +133,10 @@ func NewNode(service IService) *Node {
 			Protocol:      cfg.GetDefault(eosc_args.Protocol, "http"),
 		}
 		peers := map[uint64]*NodeInfo{rc.nodeID: node}
-		startRaft(rc, node, peers)
+		err := startRaft(rc, node, peers)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		rc.transport.Raft = rc
 		if rc.transportHandler == nil {
@@ -138,7 +144,7 @@ func NewNode(service IService) *Node {
 		}
 	}
 	service.SetRaft(rc)
-	return rc
+	return rc, nil
 }
 
 func (rc *Node) ProcessData(data []byte) error {

@@ -79,8 +79,12 @@ func (m *Master) Start() error {
 	//ps := professions.NewProfessions()
 	raftService := raft_service.NewService()
 	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
-
-	m.node = raft.NewNode(raftService)
+	var err error
+	m.node, err = raft.NewNode(raftService)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
 	//nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
 	cfg := eosc_args.NewConfig(argsName)
