@@ -10,27 +10,30 @@ const (
 )
 
 type Professions struct {
-	store eosc.IStore
-}
-
-func NewProfessions() *Professions {
-	return &Professions{
-		store: store.NewStore(),
-	}
+	store       eosc.IStore
+	fileName    string
+	professions []interface{}
 }
 
 func (p *Professions) ResetHandler(data []byte) error {
 	return nil
 }
 
-func (p *Professions) CommitHandler(data []byte) error {
-	panic("implement me")
+func (p *Professions) CommitHandler(cmd string, data []byte) error {
+	return nil
 }
 
 func (p *Professions) Snapshot() []byte {
-	panic("implement me")
+	return nil
 }
 
-func (p *Professions) ProcessHandler(propose []byte) (string, []byte, error) {
-	panic("implement me")
+func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func NewProfessions(fileName string) *Professions {
+	return &Professions{
+		store:    store.NewStore(),
+		fileName: fileName,
+	}
 }

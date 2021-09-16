@@ -92,13 +92,17 @@ func StartFunc(c *cli.Context) error {
 	}
 	cfg.Set(eosc_args.Protocol, protocol)
 
-	args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
+	// 设置环境变量
+	eosc_args.SetEnv(eosc_args.IP, ip)
+	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
+	eosc_args.SetEnv(eosc_args.Protocol, protocol)
+
+	//args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	cmd, err := StartMaster(args, nil)
 	if err != nil {
 		log.Errorf("start master error: %w", err)
 		return err
 	}
-
 	cfg.Save()
 
 	if eosc_args.IsDebug() {
