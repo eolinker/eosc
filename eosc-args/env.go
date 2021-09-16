@@ -50,6 +50,10 @@ func GetDefault(name string, d string) string {
 	return d
 }
 
+func SetEnv(name string, value string) {
+	os.Setenv(EnvName(name), value)
+}
+
 func GenEnv(name, value string) string {
 	return fmt.Sprintf("%s=%s", EnvName(name), value)
 }

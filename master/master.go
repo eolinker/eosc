@@ -85,13 +85,9 @@ func (m *Master) Start() error {
 		log.Error(err)
 		return err
 	}
-	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
-	//nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
-	cfg := eosc_args.NewConfig(argsName)
-	cfg.ReadFile(argsName)
 
-	ip := eosc_args.GetDefaultArg(cfg, eosc_args.IP, "")
-	port, _ := strconv.Atoi(eosc_args.GetDefaultArg(cfg, eosc_args.Port, "9400"))
+	ip := eosc_args.GetDefault(eosc_args.IP, "")
+	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
 	// 监听master监听地址，用于接口处理
 	l, err := m.masterTraffic.ListenTcp(ip, port)
 	if err != nil {
