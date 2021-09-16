@@ -54,24 +54,39 @@ func (m *Master) List(ctx context.Context, request *service.ListRequest) (*servi
 	m.node.GetPeers()
 	return &service.ListResponse{Info: []*service.NodeInfo{
 		{
-			NodeKey:       "abc",
-			NodeID:        1,
-			BroadcastIP:   "127.0.0.1",
-			BroadcastPort: "9940",
-			Status:        "running",
-			Role:          "leader",
+			NodeKey: "abc",
+			NodeID:  1,
+			Status:  "running",
 		},
 	}}, nil
 }
 
 //Info 获取节点信息
 func (m *Master) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
+	status := "inactive"
+	var term int32 = 0
+	var leaderID int32 = 0
+	raftState := "stand"
+	var nodeID int32 = 0
+	nodeKey := ""
+	addr := ""
+	if m.node.IsActive() {
+		status = "active"
+		nodeStatus := m.node.Status()
+		term = int32(nodeStatus.Term)
+		leaderID = int32(nodeStatus.Lead)
+		raftState = nodeStatus.RaftState.String()
+		nodeID = int32(m.node.NodeID())
+		nodeKey = m.node.NodeKey()
+		addr = m.node.Addr()
+	}
 	return &service.InfoResponse{Info: &service.NodeInfo{
-		NodeKey:       "abc",
-		NodeID:        1,
-		BroadcastIP:   "127.0.0.1",
-		BroadcastPort: "9940",
-		Status:        "running",
-		Role:          "leader",
+		NodeKey:   nodeKey,
+		NodeID:    nodeID,
+		Status:    status,
+		Term:      term,
+		LeaderID:  leaderID,
+		RaftState: raftState,
+		Addr:      addr,
 	}}, nil
 }

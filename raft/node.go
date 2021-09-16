@@ -78,8 +78,6 @@ type Node struct {
 	// 与其他节点通信
 	transport *rafthttp.Transport
 	stopc     chan struct{} // signals proposal channel closed
-	//httpstopc chan struct{} // signals http server to shutdown
-	//httpdonec chan struct{} // signals http server shutdown complete
 
 	// 日志相关，后续改为eosc_log
 	logger           *zap.Logger
@@ -96,6 +94,14 @@ func (rc *Node) NodeID() uint64 {
 
 func (rc *Node) NodeKey() string {
 	return rc.nodeKey
+}
+
+func (rc *Node) Addr() string {
+	addr := fmt.Sprintf("%s://%s", rc.protocol, rc.broadcastIP)
+	if rc.broadcastPort > 0 {
+		addr = fmt.Sprintf("%s:%d", addr, rc.broadcastPort)
+	}
+	return addr
 }
 
 func (rc *Node) readConfig() {
@@ -265,7 +271,14 @@ func (rc *Node) stop() {
 		rc.transport.Stop()
 		rc.node.Stop()
 	}
+}
 
+func (rc *Node) IsActive() bool {
+	return rc.active
+}
+
+func (rc *Node) Status() raft.Status {
+	return rc.node.Status()
 }
 
 // Send 客户端发送propose请求的处理
@@ -433,6 +446,7 @@ func (rc *Node) changeCluster(addr string) error {
 	if err != nil {
 		return fmt.Errorf("eosc: fail to parse address,%w", err)
 	}
+	rc.protocol = u.Scheme
 	rc.broadcastIP = u.Host
 	index := strings.Index(u.Host, ":")
 	if index > 0 {

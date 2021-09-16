@@ -73,6 +73,7 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) error {
 	rc.nodeKey = node.Key
 	rc.broadcastIP = node.BroadcastIP
 	rc.broadcastPort = node.BroadcastPort
+	rc.protocol = node.Protocol
 
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
@@ -96,7 +97,7 @@ func NewNode(service IService) (*Node, error) {
 	cfg.ReadFile(fileName)
 	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "0"))
 	nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
-	logger := zap.NewExample()
+	logger, _ := zap.NewProduction()
 	rc := &Node{
 		nodeID:          uint64(nodeID),
 		nodeKey:         nodeKey,

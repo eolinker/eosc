@@ -145,7 +145,6 @@ func (m *Master) Wait() error {
 			}
 		case syscall.SIGUSR1:
 			{
-
 				log.Info("try fork new")
 				err := m.Fork() //传子进程需要的内容
 				if err != nil {
