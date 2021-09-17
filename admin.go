@@ -26,15 +26,17 @@ type Item struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
 }
-
 type IAdmin interface {
+	IAdminWorker
+	IAdminPermission
+}
+type IAdminWorker interface {
 	ListEmployees(profession string) ([]interface{}, error)
 	ListEmployeeNames(profession string) ([]string, error)
 	Update(profession, name, driver string, data IData) (*WorkerInfo, error)
 	Delete(profession, name string) (*WorkerInfo, error)
 	GetEmployee(profession, name string) (interface{}, error)
 	SearchBySkill(profession string, skill []string) ([]WorkerInfo, error)
-	//ExportByProfession(profession string) ([]StoreValue, error)
 }
 
 type IAdminPermission interface {

@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/eolinker/eosc/master/admin"
+
 	"github.com/eolinker/eosc/master/professions"
 
 	"github.com/eolinker/eosc/master/workers"
@@ -73,22 +75,25 @@ type Master struct {
 	cancelFunc    context.CancelFunc
 	PID           *pidfile.PidFile
 	httpserver    *http.Server
+
+	admin *admin.Admin
 }
 
 func (m *Master) Start() error {
 	raftService := raft_service.NewService()
 
 	ps := professions.NewProfessions("profession.yaml")
-	ws := workers.NewWorkers(ps)
-
+	ws := workers.NewWorkers(ps, raftService)
+	m.admin = admin.NewAdmin(ps, ws, "/api")
 	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
-	var err error
-	m.node, err = raft.NewNode(raftService)
+
+	node, err := raft.NewNode(raftService)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
+	m.node = node
 	ip := eosc_args.GetDefault(eosc_args.IP, "")
 	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
 	// 监听master监听地址，用于接口处理
@@ -120,6 +125,9 @@ func (m *Master) handler() http.Handler {
 	sm := http.NewServeMux()
 	sm.Handle("/raft", m.node)
 	sm.Handle("/raft/", m.node)
+
+	sm.Handle("/api/", m.admin)
+	sm.Handle("/api", m.admin)
 
 	return sm
 }
