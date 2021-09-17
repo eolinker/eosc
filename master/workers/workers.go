@@ -37,10 +37,11 @@ type Workers struct {
 	professions         admin.IProfessions
 	data                eosc.IUntyped
 	workerServiceClient service.WorkerServiceClient
+	service             raft_service.IService
 }
 
-func NewWorkers(professions admin.IProfessions) *Workers {
-	return &Workers{professions: professions, data: eosc.NewUntyped()}
+func NewWorkers(professions admin.IProfessions, service raft_service.IService) *Workers {
+	return &Workers{professions: professions, data: eosc.NewUntyped(), service: service}
 }
 
 func (w *Workers) Snapshot() []byte {

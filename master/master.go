@@ -76,11 +76,11 @@ type Master struct {
 }
 
 func (m *Master) Start() error {
+	raftService := raft_service.NewService()
 
-	ps := professions.NewProfessions()
+	ps := professions.NewProfessions("profession.yaml")
 	ws := workers.NewWorkers(ps)
 
-	raftService := raft_service.NewService()
 	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
 	var err error
 	m.node, err = raft.NewNode(raftService)

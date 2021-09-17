@@ -74,7 +74,6 @@ func decodeWorker(data []byte) (*Worker, error) {
 		return nil, err
 	}
 	wa := make(WorkerAttr)
-
 	err = json.Unmarshal(w.Data, &wa)
 	if err != nil {
 		return nil, err

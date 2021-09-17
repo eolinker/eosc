@@ -3,7 +3,7 @@ package raft_service
 import "github.com/golang/protobuf/proto"
 
 type IService interface {
-	Send(namespace, cmd string, body interface{})
+	Send(namespace, cmd string, body []byte) error
 }
 
 type IRaftServiceHandler interface {
