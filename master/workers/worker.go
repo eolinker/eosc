@@ -3,90 +3,89 @@ package workers
 import (
 	"encoding/json"
 	"errors"
-
-	"github.com/eolinker/eosc"
-	raft_service "github.com/eolinker/eosc/raft/raft-service"
-	"github.com/eolinker/eosc/store"
-)
-
-const (
-	SpaceWorker = "worker"
+	"fmt"
 )
 
 var (
-	CommandSet = "set"
-	CommandDel = "delete"
+	ErrorInvalidWorkerData = errors.New("invalid worker data")
 )
 
-type baseConfig struct {
-	Id         string `json:"id" yaml:"id"`
-	Name       string `json:"name" yaml:"name"`
-	Profession string `json:"profession" yaml:"profession"`
-	Driver     string `json:"driver" yaml:"driver"`
-	CreateTime string `json:"create_time" yaml:"create_time"`
-	UpdateTime string `json:"update_time" yaml:"update_time"`
+type WorkerData struct {
+	Id         string `json:"id"`
+	Profession string `json:"profession"`
+	Name       string `json:"name"`
+	Driver     string `json:"driver"`
+	CreateTime string `json:"create_time"`
+	UpdateTime string `json:"update_time"`
+	Sing       string `json:"sing"`
+	Data       []byte `json:"data"`
+}
+
+type WorkerAttr map[string]interface{}
+
+func (wa WorkerAttr) Get(field string) string {
+	v, has := wa[field]
+	if !has {
+		return ""
+	}
+	return fmt.Sprint(v)
 }
 
 type Worker struct {
-	store eosc.IStore
+	Id         string
+	Profession string
+	Name       string
+	Driver     string
+	CreateTime string
+	UpdateTime string
+	Sing       string
+	Data       WorkerAttr
 }
 
-func (w *Worker) Snapshot() []byte {
-	values := w.store.All()
-	data, _ := json.Marshal(values)
-	return data
-}
+func (w *Worker) MarshalJSON() ([]byte, error) {
+	if w.Data == nil {
+		return nil, ErrorInvalidWorkerData
+	}
 
-func (w *Worker) ResetHandler(data []byte) error {
-	values := make([]eosc.StoreValue, 0, 10)
-	err := json.Unmarshal(data, &values)
+	data, err := json.Marshal(w.Data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return w.store.Reset(values)
-}
-
-func NewWorker() *Worker {
-	return &Worker{store: store.NewStore()}
-}
-
-func (w *Worker) ProcessHandler(cmd string, propose []byte) ([]byte, error) {
-	//return json.Marshal(propose)
-	return propose, nil
-}
-
-func (w *Worker) CommitHandler(cmd string, data []byte) error {
-	if w.store == nil {
-		return errors.New("no valid store")
+	wd := &WorkerData{
+		Id:         w.Id,
+		Profession: w.Profession,
+		Name:       w.Name,
+		Driver:     w.Driver,
+		CreateTime: w.UpdateTime,
+		UpdateTime: w.UpdateTime,
+		Sing:       w.Sing,
+		Data:       data,
 	}
-
-	switch cmd {
-	case CommandSet:
-		{
-			iData := eosc.BytesData(data)
-			value := new(eosc.StoreValue)
-			err := iData.UnMarshal(value)
-			if err != nil {
-				return err
-			}
-			err = w.store.Set(*value)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-	case CommandDel:
-		{
-			id := string(data)
-
-			err := w.store.Del(id)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-	default:
-		return raft_service.ErrInvalidCommand
+	return json.Marshal(wd)
+}
+func encodeWorker(w *Worker) ([]byte, error) {
+	return w.MarshalJSON()
+}
+func decodeWorker(data []byte) (*Worker, error) {
+	w := new(WorkerData)
+	err := json.Unmarshal(data, w)
+	if err != nil {
+		return nil, err
 	}
+	wa := make(WorkerAttr)
+	err = json.Unmarshal(w.Data, &wa)
+	if err != nil {
+		return nil, err
+	}
+	return &Worker{
+		Id:         w.Id,
+		Profession: w.Profession,
+		Name:       w.Name,
+		Driver:     w.Driver,
+		CreateTime: w.CreateTime,
+		UpdateTime: w.UpdateTime,
+		Sing:       w.Sing,
+		Data:       wa,
+	}, nil
 }

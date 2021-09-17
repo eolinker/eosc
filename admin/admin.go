@@ -1,5 +1,11 @@
 package admin
 
+import "errors"
+
+var (
+	ErrorWorkerNotExist = errors.New("not exits")
+)
+
 type DriverInfo struct {
 	Id         string            `json:"id"`
 	Name       string            `json:"name"`

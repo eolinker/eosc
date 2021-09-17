@@ -30,6 +30,15 @@ type Service struct {
 	//processHandlers eosc.IUntyped
 }
 
+func (s *Service) Send(namespace, cmd string, body []byte) error {
+
+	data, err := encodeCmd(namespace, cmd, body)
+	if err != nil {
+		return err
+	}
+	return s.raftNode.Send(data)
+}
+
 func (s *Service) CommitHandler(data []byte) error {
 	cmd, err := unMarshalCmd(data)
 	if err != nil {
