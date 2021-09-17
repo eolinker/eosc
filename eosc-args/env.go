@@ -2,28 +2,45 @@ package eosc_args
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"syscall"
-
-	"github.com/eolinker/eosc/process"
 )
 
 const IP = "IP"
 const Port = "PORT"
+const Protocol = "PROTOCOL"
 const BroadcastIP = "BROADCAST_IP"
-const BroadcastPort = "BROADCAST_PORT"
+
 const ClusterAddress = "CLUSTER_ADDRESS"
+const IsCluster = "IS_CLUSTER"
 const PluginPath = "PLUGINS_DIR"
+const NodeID = "NODE_ID"
+const NodeKey = "NODE_KEY"
 
 var envs = []string{
-	IP, Port, BroadcastIP, BroadcastPort, ClusterAddress, PluginPath,
+	IP, Port, Protocol, BroadcastIP, ClusterAddress, PluginPath, IsCluster, NodeID, NodeKey,
 }
+var (
+	appName = createApp()
+)
 
+func createApp() string {
+	if app, has := os.LookupEnv("APP"); has {
+		return app
+	}
+	app := filepath.Base(os.Args[0])
+	if err := os.Setenv("APP", app); err != nil {
+		panic(err)
+	}
+	return app
+}
 func Envs() []string {
 	return envs
 }
 
 func GetEnv(name string) (string, bool) {
-	return syscall.Getenv(envName(name))
+	return syscall.Getenv(EnvName(name))
 }
 
 func GetDefault(name string, d string) string {
@@ -32,12 +49,18 @@ func GetDefault(name string, d string) string {
 	}
 	return d
 }
-func SetEnv(name, value string) error {
-	return syscall.Setenv(envName(name), value)
+
+func SetEnv(name string, value string) {
+	os.Setenv(EnvName(name), value)
 }
+
 func GenEnv(name, value string) string {
-	return fmt.Sprintf("%s=%s", envName(name), value)
+	return fmt.Sprintf("%s=%s", EnvName(name), value)
 }
-func envName(name string) string {
-	return fmt.Sprintf("%s_%s", process.AppName(), name)
+func EnvName(name string) string {
+	return fmt.Sprintf("%s_%s", appName, name)
+}
+
+func AppName() string {
+	return appName
 }

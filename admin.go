@@ -28,19 +28,22 @@ type Item struct {
 }
 
 type IAdmin interface {
-	ListProfessions() []ProfessionInfo
 	ListEmployees(profession string) ([]interface{}, error)
 	ListEmployeeNames(profession string) ([]string, error)
 	Update(profession, name, driver string, data IData) (*WorkerInfo, error)
 	Delete(profession, name string) (*WorkerInfo, error)
 	GetEmployee(profession, name string) (interface{}, error)
+	SearchBySkill(profession string, skill []string) ([]WorkerInfo, error)
+	//ExportByProfession(profession string) ([]StoreValue, error)
+}
+
+type IAdminPermission interface {
 	Render(profession, driver string) (*Render, error)
 	Renders(profession string) (map[string]*Render, error)
 	Drivers(profession string) ([]DriverInfo, error)
 	DriverInfo(profession, driver string) (DriverDetail, error)
 	DriversItem(profession string) ([]Item, error)
-	SearchBySkill(profession string, skill []string) ([]WorkerInfo, error)
-	//ExportByProfession(profession string) ([]StoreValue, error)
+	ListProfessions() []ProfessionInfo
 }
 
 type IAdminHandler interface {

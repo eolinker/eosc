@@ -2,7 +2,8 @@ package eoscli
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/process"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/urfave/cli/v2"
 )
 
@@ -12,8 +13,8 @@ type App struct {
 
 func NewApp() *App {
 	return &App{app: &cli.App{
-		Name:     process.AppName(),
-		Usage:    fmt.Sprintf("%s controller",process.AppName()),
+		Name:     eosc_args.AppName(),
+		Usage:    fmt.Sprintf("%s controller", eosc_args.AppName()),
 		Commands: make([]*cli.Command, 0, 6),
 	}}
 }

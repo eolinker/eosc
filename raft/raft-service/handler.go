@@ -1,15 +1,39 @@
 package raft_service
 
-type ICommitHandler interface {
-	// InitHandler 初始化日志操作
-	ResetHandler(data []byte) error
-	// CommitHandler 节点commit信息前的处理
-	CommitHandler(data []byte) error
+import "github.com/golang/protobuf/proto"
 
-	Snapshot() []byte
+type IService interface {
+	Send(namespace, cmd string, body interface{})
 }
 
-type IProcessHandler interface {
+type IRaftServiceHandler interface {
+	// ResetHandler  初始化日志操作
+	ResetHandler(data []byte) error
+	// CommitHandler 节点commit信息前的处理
+	CommitHandler(cmd string, data []byte) error
+	// Snapshot 获取快照
+	Snapshot() []byte
 	// ProcessHandler 节点propose信息前的处理
-	ProcessHandler(propose []byte) (string, []byte, error)
+	ProcessHandler(cmd string, body []byte) ([]byte, error)
+}
+
+func unMarshalCmd(data []byte) (*Commend, error) {
+	cmd := new(Commend)
+	err := proto.Unmarshal(data, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return cmd, err
+}
+func encodeCmd(namespace, command string, body []byte) ([]byte, error) {
+	cmd := &Commend{
+		Namespace: namespace,
+		Cmd:       command,
+		Body:      body,
+	}
+	data, err := proto.Marshal(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return data, err
 }

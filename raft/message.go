@@ -25,12 +25,19 @@ type Response struct {
 
 type ProposeMsg struct {
 	From uint64 `json:"from"`
-	To   int    `json:"to"`
-	Cmd  string `json:"cmd"`
-	Data []byte `json:"data"`
+	Body []byte `json:"body"`
+}
+
+type GetNodeInfoRequest struct {
+	BroadcastIP   string `json:"broadcast_ip"`
+	BroadcastPort int    `json:"broadcast_port"`
+	Protocol      string `json:"protocol"`
+	Target        string `json:"target"`
 }
 
 type JoinRequest struct {
+	NodeID        uint64 `json:"node_id"`
+	NodeKey       string `json:"node_key"`
 	BroadcastIP   string `json:"broadcast_ip"`
 	BroadcastPort int    `json:"broadcast_port"`
 	Protocol      string `json:"protocol"`
@@ -39,8 +46,8 @@ type JoinRequest struct {
 
 type JoinResponse struct {
 	*NodeSecret
-	Peer         map[uint64]*NodeInfo `json:"peer"`
-	ResponseType string               `json:"response_type"`
+	Peer        map[uint64]*NodeInfo `json:"peer"`
+	InitCluster bool                 `json:"init_cluster"`
 }
 
 type NodeSecret struct {

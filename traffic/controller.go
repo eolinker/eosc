@@ -120,7 +120,6 @@ func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 func (c *Controller) Close() {
 	list := c.data.List()
 	c.data = eosc.NewUntyped()
-
 	for _, it := range list {
 		tf, ok := it.(*Out)
 		if !ok {

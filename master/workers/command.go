@@ -1,17 +1,17 @@
-package raft_service
+package workers
 
 import (
 	"bytes"
 	"encoding/gob"
 )
 
-// KV 用于传输的结构
-type KV struct {
+// Cmd 用于传输的结构
+type Cmd struct {
 	Key    string
-	Config interface{}
+	Config *baseConfig
 }
 
-func (kv *KV) Encode() ([]byte, error) {
+func (kv *Cmd) Encode() ([]byte, error) {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(kv); err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func (kv *KV) Encode() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (kv *KV) Decode(data []byte) error {
+func (kv *Cmd) Decode(data []byte) error {
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	if err := dec.Decode(kv); err != nil {
 		return err

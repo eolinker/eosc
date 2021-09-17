@@ -10,9 +10,12 @@ package master
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
+
+	"github.com/eolinker/eosc/master/workers"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
@@ -21,8 +24,6 @@ import (
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/raft"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/store"
-
 	"github.com/eolinker/eosc/traffic"
 
 	"google.golang.org/grpc"
@@ -54,6 +55,7 @@ func Process() {
 		log.Error("master start  grpc server error: ", err.Error())
 		return
 	}
+
 	master.Wait()
 }
 
@@ -64,25 +66,25 @@ type Master struct {
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
 	raftService   raft.IService
-	//store         eosc.IStore
-	masterSrv  *grpc.Server
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	PID        *pidfile.PidFile
-	httpserver *http.Server
+	masterSrv     *grpc.Server
+	ctx           context.Context
+	cancelFunc    context.CancelFunc
+	PID           *pidfile.PidFile
+	httpserver    *http.Server
 }
 
 func (m *Master) Start() error {
-	// 设置存储操作
-	s, err := store.NewStore()
+
+	ws := workers.NewWorker()
+	//ps := professions.NewProfessions()
+	raftService := raft_service.NewService()
+	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
+	var err error
+	m.node, err = raft.NewNode(raftService)
 	if err != nil {
-		log.Error("new store error: ", err.Error())
+		log.Error(err)
 		return err
 	}
-	//m.store = s
-	m.raftService = raft_service.NewService(s)
-
-	m.node = raft.NewNode(m.raftService)
 
 	ip := eosc_args.GetDefault(eosc_args.IP, "")
 	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
@@ -125,7 +127,7 @@ func (m *Master) Wait() error {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-
+		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
@@ -134,13 +136,11 @@ func (m *Master) Wait() error {
 			}
 		case syscall.SIGQUIT:
 			{
-
 				m.close()
 				return nil
 			}
 		case syscall.SIGUSR1:
 			{
-
 				log.Info("try fork new")
 				err := m.Fork() //传子进程需要的内容
 				if err != nil {
@@ -155,11 +155,15 @@ func (m *Master) Wait() error {
 
 func (m *Master) close() {
 	log.Info("master close")
+	log.Info("raft node close")
+	m.node.Stop()
+
 	m.cancelFunc()
 	log.Debug("master shutdown http:", m.httpserver.Shutdown(context.Background()))
-
 	m.masterTraffic.Close()
+
 	m.workerTraffic.Close()
+
 	m.stopService()
 	log.Debug("try remove pid")
 
