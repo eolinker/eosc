@@ -6,8 +6,17 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package process_master
 
-type IAdmin interface {
+import (
+	"context"
+
+	"github.com/eolinker/eosc/service"
+)
+
+func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
+	return &service.HelloResponse{
+		Name: request.GetName(),
+	}, nil
 
 }

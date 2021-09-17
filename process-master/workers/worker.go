@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ErrorInvalidWorkerData = errors.New("invalid worker data")
+	ErrorInvalidWorkerData = errors.New("invalid process-worker data")
 	ErrorNotExist          = errors.New("not exist")
 	ErrorUnknown           = errors.New("unknown error")
 	ErrorChangeDriver      = errors.New("try change driver")

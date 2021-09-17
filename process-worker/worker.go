@@ -6,17 +6,34 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package process_worker
 
 import (
-	"context"
+	"os"
 
-	"github.com/eolinker/eosc/service"
+	"github.com/eolinker/eosc/traffic"
 )
 
-func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
-	return &service.HelloResponse{
-		Name: request.GetName(),
-	}, nil
+func Process() {
 
+	worker := NewWorker()
+
+	loadPluginEnv()
+
+	worker.wait()
+}
+
+type Worker struct {
+	tf traffic.ITraffic
+}
+
+func (w *Worker) wait() error {
+	return nil
+}
+func NewWorker() *Worker {
+	w := &Worker{}
+	tf := traffic.NewTraffic()
+	tf.Read(os.Stdin)
+	w.tf = tf
+	return w
 }

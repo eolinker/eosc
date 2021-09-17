@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	SpaceWorker = "worker"
+	SpaceWorker = "process-worker"
 )
 
 var (

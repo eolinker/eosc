@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eolinker/eosc/master/admin"
+	"github.com/eolinker/eosc/process-master/admin"
 
 	"github.com/eolinker/eosc/log"
 

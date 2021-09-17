@@ -1,10 +1,11 @@
-package worker
+package process_worker
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	"path/filepath"
 	"plugin"
+
+	"github.com/eolinker/eosc/log"
 )
 
 //RegisterFunc 注册函数

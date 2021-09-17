@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package process_master
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ import (
 //startService 开启master
 func (m *Master) startService() error {
 
-	addr := fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName())
+	addr := fmt.Sprintf("/tmp/%s.process-master.sock", eosc_args.AppName())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
@@ -47,6 +47,6 @@ func (m *Master) startService() error {
 
 func (m *Master) stopService() {
 	m.masterSrv.GracefulStop()
-	addr := fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName())
+	addr := fmt.Sprintf("/tmp/%s.process-master.sock", eosc_args.AppName())
 	syscall.Unlink(addr)
 }
