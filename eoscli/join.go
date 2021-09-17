@@ -46,11 +46,6 @@ func Join(x cli.ActionFunc) *cli.Command {
 
 //join 加入集群
 func join(c *cli.Context, cfg *eosc_args.Config) error {
-	client, err := createCtlServiceClient()
-	if err != nil {
-		return fmt.Errorf("join cluster error:%s", err.Error())
-	}
-	defer client.Close()
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
 	port := eosc_args.GetDefaultArg(cfg, eosc_args.Port, "0")
@@ -93,6 +88,11 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
+	client, err := createCtlServiceClient()
+	if err != nil {
+		return fmt.Errorf("join cluster error:%s", err.Error())
+	}
+	defer client.Close()
 	cfg.Set(eosc_args.ClusterAddress, strings.Join(as, ","))
 	response, err := client.Join(context.Background(), &service.JoinRequest{
 		BroadcastIP:    bIP,

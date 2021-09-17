@@ -11,10 +11,11 @@ const (
 )
 
 type Professions struct {
-	fileName        string
-	professionSlice []eosc.ProfessionConfig
-	professions     eosc.IUntyped
-	drivers         eosc.IUntyped
+	fileName string
+
+	professions eosc.IUntyped
+	//professions     eosc.IUntyped
+	//drivers         eosc.IUntyped
 }
 
 func (p *Professions) ResetHandler(data []byte) error {
