@@ -84,7 +84,7 @@ func (m *Master) Start() error {
 
 	ps := professions.NewProfessions("profession.yaml")
 	ws := workers.NewWorkers(ps, raftService)
-	m.admin = admin.NewAdmin(ps, ws, "/api")
+	m.admin = admin.NewAdmin(ps, ws, "/")
 	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
 
 	node, err := raft.NewNode(raftService)
