@@ -1,8 +1,9 @@
 package professions
 
 import (
+	"encoding/json"
+
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/store"
 )
 
 const (
@@ -10,12 +11,19 @@ const (
 )
 
 type Professions struct {
-	store       eosc.IStore
-	fileName    string
-	professions []interface{}
+	fileName        string
+	professionSlice []eosc.ProfessionConfig
+	professions     eosc.IUntyped
+	drivers         eosc.IUntyped
 }
 
 func (p *Professions) ResetHandler(data []byte) error {
+	professions, err := readProfessionConfig(p.fileName)
+	if err != nil {
+		return err
+	}
+	p.professionSlice = professions
+
 	return nil
 }
 
@@ -24,7 +32,8 @@ func (p *Professions) CommitHandler(cmd string, data []byte) error {
 }
 
 func (p *Professions) Snapshot() []byte {
-	return nil
+	data, _ := json.Marshal(p.professionSlice)
+	return data
 }
 
 func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
@@ -33,7 +42,7 @@ func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 
 func NewProfessions(fileName string) *Professions {
 	return &Professions{
-		store:    store.NewStore(),
-		fileName: fileName,
+		fileName:        fileName,
+		professionSlice: nil,
 	}
 }
