@@ -44,9 +44,7 @@ func (ps *Professions) ListEmployees(profession string) ([]interface{}, error) {
 }
 
 func (ps *Professions) Delete(profession, name string) (*WorkerInfo, error) {
-	if ps.store.ReadOnly() {
-		return nil, ErrorStoreReadOnly
-	}
+
 	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist
@@ -201,9 +199,7 @@ func (ps *Professions) SearchBySkill(profession string, skill []string) ([]Worke
 }
 
 func (ps *Professions) Update(profession, name, driver string, data IData) (*WorkerInfo, error) {
-	if ps.store.ReadOnly() {
-		return nil, ErrorStoreReadOnly
-	}
+
 	p, has := ps.data.get(profession)
 	if !has {
 		return nil, ErrorProfessionNotExist

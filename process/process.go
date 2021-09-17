@@ -13,9 +13,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strconv"
+
+	eosc_args "github.com/eolinker/eosc/eosc-args"
 
 	"github.com/eolinker/eosc/log"
 )
@@ -30,7 +31,7 @@ var (
 	ErrorProcessHandlerConflict = errors.New("process handler name conflict")
 	runIdx                      = 0
 	path                        = ""
-	appName                     = ""
+	appName                     = eosc_args.AppName()
 )
 
 func init() {
@@ -41,8 +42,6 @@ func init() {
 	} else {
 		path = p
 	}
-	appName = filepath.Base(path)
-	log.Debugf("app = %s\n", appName)
 	log.Debug(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
 	idx, err := strconv.Atoi(os.Getenv(EnvDaemonName))
 	if err != nil {
@@ -86,12 +85,6 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 
 // run process
 func Run() bool {
-
-	//if runIdx == 0 {
-	//	//log.Printf("daemon:%d\n", runIdx)
-	//	//daemon(runIdx + 1)
-	//	return false
-	//}
 	if runIdx > 0 {
 		ph, exists := processHandlers[os.Args[0]]
 		if exists {
@@ -105,8 +98,4 @@ func Run() bool {
 
 func toKey(name string) string {
 	return fmt.Sprintf("%s: %s", appName, name)
-}
-
-func AppName() string {
-	return appName
 }
