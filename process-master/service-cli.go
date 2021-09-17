@@ -1,4 +1,4 @@
-package master
+package process_master
 
 import (
 	"context"

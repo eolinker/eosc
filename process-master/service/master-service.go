@@ -43,7 +43,7 @@ func NewMasterServer() *MasterServer {
 //
 //		fd:=f.Fd()
 //
-//		log.Println("master send:fd=",fd)
+//		log.Println("process-master send:fd=",fd)
 //		er:=server.Send(&service.AcceptResponse{
 //			Status:  0,
 //			FD:      syscall.UnixRights(int(fd)),

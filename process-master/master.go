@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package process_master
 
 import (
 	"context"
@@ -15,11 +15,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eolinker/eosc/master/admin"
+	"github.com/eolinker/eosc/process-master/admin"
 
-	"github.com/eolinker/eosc/master/professions"
+	"github.com/eolinker/eosc/process-master/professions"
 
-	"github.com/eolinker/eosc/master/workers"
+	"github.com/eolinker/eosc/process-master/workers"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
@@ -41,22 +41,22 @@ func Process() {
 	InitLogTransport()
 	file, err := pidfile.New()
 	if err != nil {
-		log.Errorf("the master is running:%v by:%d", err, os.Getpid())
+		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
 	master := NewMasterHandle(file)
 	if err := master.Start(); err != nil {
 		master.close()
-		log.Errorf("master[%d] start faild:%v", os.Getpid(), err)
+		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
 	}
 	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
-	log.Info("master start grpc service")
+	log.Info("process-master start grpc service")
 	err = master.startService()
 	if err != nil {
-		log.Error("master start  grpc server error: ", err.Error())
+		log.Error("process-master start  grpc server error: ", err.Error())
 		return
 	}
 
@@ -165,12 +165,12 @@ func (m *Master) Wait() error {
 }
 
 func (m *Master) close() {
-	log.Info("master close")
+	log.Info("process-master close")
 	log.Info("raft node close")
 	m.node.Stop()
 
 	m.cancelFunc()
-	log.Debug("master shutdown http:", m.httpserver.Shutdown(context.Background()))
+	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
 	m.masterTraffic.Close()
 
 	m.workerTraffic.Close()

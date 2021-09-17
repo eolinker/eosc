@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package master
+package process_master
 
 import (
 	"bytes"
@@ -50,7 +50,7 @@ func (m *Master) Fork() error {
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
 
-	cmd, err := process.Cmd("master", os.Args[1:])
+	cmd, err := process.Cmd("process-master", os.Args[1:])
 	if err != nil {
 		return err
 	}
