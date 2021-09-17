@@ -11,13 +11,15 @@ package process_worker
 import (
 	"os"
 
+	"github.com/eolinker/eosc/listener"
+
 	"github.com/eolinker/eosc/traffic"
 )
 
 func Process() {
 
 	worker := NewWorker()
-
+	listener.SetTraffic(worker.tf)
 	loadPluginEnv()
 
 	worker.wait()
@@ -35,5 +37,6 @@ func NewWorker() *Worker {
 	tf := traffic.NewTraffic()
 	tf.Read(os.Stdin)
 	w.tf = tf
+
 	return w
 }

@@ -5,17 +5,20 @@ import (
 	"path/filepath"
 	"plugin"
 
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+
 	"github.com/eolinker/eosc/log"
 )
 
 //RegisterFunc 注册函数
 type RegisterFunc func()
 
-func LoadPlugins(dir string) error {
+func LoadPlugins(dir string) {
 
 	files, err := filepath.Glob(fmt.Sprintf("%s/*.so", dir))
 	if err != nil {
-		return err
+		log.Error(err)
+		return
 	}
 
 	for _, f := range files {
@@ -31,12 +34,11 @@ func LoadPlugins(dir string) error {
 			log.Errorf("call register from  plugin : %s : %s", f, err.Error())
 			continue
 		}
-
 		r.(RegisterFunc)()
 	}
-	return nil
 }
 
 func loadPluginEnv() {
-
+	dir := eosc_args.GetDefault("plugin_dir", "plugins")
+	LoadPlugins(dir)
 }

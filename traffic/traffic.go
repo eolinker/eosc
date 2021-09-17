@@ -36,9 +36,6 @@ func NewTraffic() *Traffic {
 }
 
 func (t *Traffic) ListenTcp(ip string, port int) (*net.TCPListener, error) {
-	//if strings.HasPrefix(addr, "0.0.0.0:") {
-	//	addr = strings.TrimPrefix(addr, "0.0.0.0")
-	//}
 
 	tcpAddr := ResolveTCPAddr(ip, port)
 	t.locker.Lock()
@@ -60,13 +57,14 @@ func (t *Traffic) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 
 type ITraffic interface {
 	ListenTcp(ip string, port int) (*net.TCPListener, error)
+	Close()
 }
 
 func (t *Traffic) Read(r io.Reader) {
 	t.locker.Lock()
 	defer t.locker.Unlock()
 
-	listeners, err := Reader(r)
+	listeners, err := readListener(r)
 	if err != nil {
 		log.Warn("read listeners:", err)
 		return
@@ -82,6 +80,21 @@ func (t *Traffic) add(ln *net.TCPListener) {
 	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Info("traffic add:", name)
 	t.data.Set(name, ln)
+}
+
+func (t *Traffic) Close() {
+	t.locker.Lock()
+	list := t.data.List()
+
+	t.data = eosc.NewUntyped()
+	t.locker.Unlock()
+	for _, it := range list {
+		tf, ok := it.(*net.TCPListener)
+		if !ok {
+			continue
+		}
+		tf.Close()
+	}
 }
 
 func resolve(value string) net.IP {
