@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/admin"
 )
 
 func (p *Professions) Render(profession, driver string) (*eosc.Render, error) {
@@ -43,5 +44,8 @@ func (p *Professions) DriversItem(profession string) ([]eosc.Item, error) {
 }
 
 func (p *Professions) ListProfessions() []eosc.ProfessionInfo {
+}
+
+func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
 	panic("implement me")
 }
