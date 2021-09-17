@@ -4,21 +4,46 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/admin"
 )
 
 func (w *Workers) GetWork(id string) (admin.TWorker, error) {
-	panic("implement me")
+	if o, b := w.data.Get(id); b {
+		ow, ok := o.(*Worker)
+		if !ok {
+			return nil, ErrorUnknown
+		}
+		p, has := w.professions.GetProfession(ow.Profession)
+		if !has {
+			return nil, ErrorUnknown
+		}
+		return ow.Format(p.AppendAttr()), nil
+	}
+	return nil, ErrorNotExist
 }
 
 func (w *Workers) GetList(profession string) ([]admin.TWorker, error) {
-	panic("implement me")
-}
+	p, has := w.professions.GetProfession(profession)
+	if !has {
+		return nil, ErrorInvalidProfession
+	}
+	attrs := p.AppendAttr()
 
-func (w *Workers) CheckerSkill(id string, skill string) (bool, error) {
-	panic("implement me")
-}
+	all := w.data.List()
 
+	result := make([]admin.TWorker, 0, len(all))
+	for _, o := range all {
+		ow, ok := o.(*Worker)
+		if !ok {
+			continue
+		}
+		if ow.Profession == profession {
+			result = append(result, ow.Format(attrs))
+		}
+	}
+	return result, nil
+}
 func (w *Workers) Delete(id string) (*admin.WorkerInfo, error) {
 	o, has := w.data.Get(id)
 	if !has {
@@ -40,16 +65,39 @@ func (w *Workers) Delete(id string) (*admin.WorkerInfo, error) {
 }
 
 func (w *Workers) Set(profession, name, driver string, data []byte) error {
+
+	id := fmt.Sprintf("%s@%s", name, profession)
+
+	createTime := eosc.Now()
+	if o, has := w.data.Get(id); has {
+		ow, ok := o.(*Worker)
+		if !ok {
+			return ErrorUnknown
+		}
+		if ow.Driver != driver {
+			return ErrorChangeDriver
+		}
+		createTime = ow.CreateTime
+	} else {
+		pf, b := w.professions.GetProfession(profession)
+		if !b {
+			return ErrorInvalidProfession
+		}
+		if !pf.HasDriver(driver) {
+			return ErrorInvalidDriver
+		}
+	}
+
 	d := &WorkerData{
-		Id:         fmt.Sprintf("%s@%s", name, profession),
+		Id:         id,
 		Profession: profession,
 		Name:       name,
 		Driver:     driver,
-		CreateTime: "",
-		UpdateTime: "",
-		Sing:       "",
+		CreateTime: createTime,
+		UpdateTime: eosc.Now(),
 		Data:       data,
 	}
+
 	body, err := json.Marshal(d)
 	if err != nil {
 		return err

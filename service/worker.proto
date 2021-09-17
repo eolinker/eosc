@@ -19,7 +19,9 @@ message WorkerCheckResponse{
   string msg=2;
   bytes body=3;
 }
-
+message WorkerSkillCheck {
+  string p
+}
 service WorkerService{
   rpc check(WorkerCheckRequest)returns(WorkerCheckResponse){};
   rpc ping(WorkerHelloRequest)returns(WorkerHelloResponse){}

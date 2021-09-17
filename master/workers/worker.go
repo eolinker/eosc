@@ -8,6 +8,11 @@ import (
 
 var (
 	ErrorInvalidWorkerData = errors.New("invalid worker data")
+	ErrorNotExist          = errors.New("not exist")
+	ErrorUnknown           = errors.New("unknown error")
+	ErrorChangeDriver      = errors.New("try change driver")
+	ErrorInvalidProfession = errors.New("invalid profession")
+	ErrorInvalidDriver     = errors.New("invalid driver")
 )
 
 type WorkerData struct {
@@ -17,8 +22,8 @@ type WorkerData struct {
 	Driver     string `json:"driver"`
 	CreateTime string `json:"create_time"`
 	UpdateTime string `json:"update_time"`
-	Sing       string `json:"sing"`
-	Data       []byte `json:"data"`
+	//Sing       string `json:"sing"`
+	Data []byte `json:"data"`
 }
 
 type WorkerAttr map[string]interface{}
@@ -38,7 +43,6 @@ type Worker struct {
 	Driver     string
 	CreateTime string
 	UpdateTime string
-	Sing       string
 	Data       WorkerAttr
 }
 
@@ -59,7 +63,6 @@ func (w *Worker) MarshalJSON() ([]byte, error) {
 		Driver:     w.Driver,
 		CreateTime: w.UpdateTime,
 		UpdateTime: w.UpdateTime,
-		Sing:       w.Sing,
 		Data:       data,
 	}
 	return json.Marshal(wd)
@@ -85,7 +88,21 @@ func decodeWorker(data []byte) (*Worker, error) {
 		Driver:     w.Driver,
 		CreateTime: w.CreateTime,
 		UpdateTime: w.UpdateTime,
-		Sing:       w.Sing,
 		Data:       wa,
 	}, nil
+}
+
+func (w *Worker) Format(attrs []string) map[string]interface{} {
+	m := make(map[string]interface{})
+	m["id"] = w.Id
+	m["profession"] = w.Profession
+	m["name"] = w.Name
+	m["create"] = w.CreateTime
+	m["update"] = w.UpdateTime
+	if w.Data != nil {
+		for _, n := range attrs {
+			m[n] = w.Data[n]
+		}
+	}
+	return m
 }
