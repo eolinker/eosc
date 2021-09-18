@@ -5,6 +5,7 @@ import "github.com/eolinker/eosc"
 type IProfessions interface {
 	GetProfession(name string) (IProfession, bool)
 	List() []IProfession
+	Infos() []*ProfessionInfo
 }
 
 type IProfession interface {

@@ -29,6 +29,19 @@ func (p *Professions) List() []admin.IProfession {
 	return ps
 }
 
+func (p *Professions) Infos() []*admin.ProfessionInfo {
+	professions := p.professions.List()
+	ps := make([]*admin.ProfessionInfo, 0, len(professions))
+	for _, p := range professions {
+		v, ok := p.(admin.IProfession)
+		if !ok {
+			continue
+		}
+		ps = append(ps, v.Info())
+	}
+	return ps
+}
+
 func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
 	vl, has := p.professions.Get(name)
 	if !has {
