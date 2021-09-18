@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/admin"
 )
 
 const (
@@ -11,11 +12,33 @@ const (
 )
 
 type Professions struct {
-	fileName string
-
+	fileName    string
 	professions eosc.IUntyped
-	//professions     eosc.IUntyped
-	//drivers         eosc.IUntyped
+}
+
+func (p *Professions) List() []admin.IProfession {
+	professions := p.professions.List()
+	ps := make([]admin.IProfession, 0, len(professions))
+	for _, p := range professions {
+		v, ok := p.(admin.IProfession)
+		if !ok {
+			continue
+		}
+		ps = append(ps, v)
+	}
+	return ps
+}
+
+func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
+	vl, has := p.professions.Get(name)
+	if !has {
+		return nil, false
+	}
+	v, ok := vl.(admin.IProfession)
+	if ok {
+		return v, ok
+	}
+	return nil, false
 }
 
 func (p *Professions) ResetHandler(data []byte) error {
@@ -23,8 +46,26 @@ func (p *Professions) ResetHandler(data []byte) error {
 	if err != nil {
 		return err
 	}
-	p.professionSlice = professions
-
+	for _, pf := range professions {
+		adminProfession := NewProfession(
+			&admin.ProfessionInfo{
+				Name:         pf.Name,
+				LocalName:    pf.Name,
+				Desc:         pf.Desc,
+				Dependencies: pf.Dependencies,
+				AppendLabels: pf.AppendLabel,
+			})
+		for _, d := range pf.Drivers {
+			adminProfession.SetDriver(d.Name, &eosc.DriverInfo{
+				Id:         d.ID,
+				Name:       d.Name,
+				Label:      d.Label,
+				Desc:       d.Desc,
+				Profession: pf.Name,
+			})
+		}
+		p.professions.Set(pf.Name, adminProfession)
+	}
 	return nil
 }
 
@@ -33,7 +74,8 @@ func (p *Professions) CommitHandler(cmd string, data []byte) error {
 }
 
 func (p *Professions) Snapshot() []byte {
-	data, _ := json.Marshal(p.professionSlice)
+	professions := p.List()
+	data, _ := json.Marshal(professions)
 	return data
 }
 
@@ -43,7 +85,7 @@ func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 
 func NewProfessions(fileName string) *Professions {
 	return &Professions{
-		fileName:        fileName,
-		professionSlice: nil,
+		fileName:    fileName,
+		professions: eosc.NewUntyped(),
 	}
 }

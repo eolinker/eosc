@@ -7,7 +7,15 @@ import (
 
 type Profession struct {
 	drivers    eosc.IUntyped
-	appendAttr []string
+	profession *admin.ProfessionInfo
+}
+
+func NewProfession(profession *admin.ProfessionInfo) *Profession {
+	return &Profession{profession: profession, drivers: eosc.NewUntyped()}
+}
+
+func (p *Profession) SetDriver(name string, driver *eosc.DriverInfo) {
+	p.drivers.Set(name, driver)
 }
 
 func (p *Profession) Drivers() []*eosc.DriverInfo {
@@ -38,72 +46,33 @@ func (p *Profession) HasDriver(name string) bool {
 }
 
 func (p *Profession) AppendAttr() []string {
-	return p.appendAttr
+	return p.profession.AppendLabels
 }
 
 func (p *Profession) Render(driver string) (*admin.Render, bool) {
-	panic("implement me")
+	return nil, false
 }
 
 func (p *Profession) Renders() map[string]*admin.Render {
-	panic("implement me")
+	return nil
 }
 
 func (p *Profession) DriversItem() []admin.Item {
-	panic("implement me")
+	drivers := p.drivers.List()
+	ds := make([]admin.Item, 0, len(drivers))
+	for _, d := range drivers {
+		v, ok := d.(*eosc.DriverInfo)
+		if !ok {
+			continue
+		}
+		ds = append(ds, admin.Item{
+			Value: v.Name,
+			Label: v.Label,
+		})
+	}
+	return ds
 }
 
-func (p *Profession) List() []*eosc.ProfessionInfo {
-	panic("implement me")
-}
-
-//func (p *Professions) Render(profession, driver string) (*eosc.Render, error) {
-//	return nil, nil
-//}
-//
-//func (p *Professions) Renders(profession string) (map[string]*eosc.Render, error) {
-//	panic("implement me")
-//}
-//
-//func (p *Professions) Drivers(profession string) ([]eosc.DriverInfo, error) {
-//	if value, has := p.drivers.Get(profession); has {
-//		vl, ok := value.(eosc.IUntyped)
-//		if !ok {
-//			return nil, errors.New("invalid type")
-//		}
-//		drivers := vl.List()
-//		ds := make([]eosc.DriverInfo, 0, len(drivers))
-//		for _, d := range drivers {
-//			v, ok := d.(eosc.DriverInfo)
-//			if !ok {
-//				continue
-//			}
-//			ds = append(ds, v)
-//		}
-//		return ds, nil
-//	}
-//	return nil, errors.New("invalid profession")
-//}
-//
-//func (p *Professions) DriverInfo(profession, driver string) (eosc.DriverDetail, error) {
-//	panic("implement me")
-//}
-//
-//func (p *Professions) DriversItem(profession string) ([]eosc.Item, error) {
-//	panic("implement me")
-//}
-//
-//func (p *Professions) ListProfessions() []eosc.ProfessionInfo {
-//}
-
-func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
-	vl, has := p.professions.Get(name)
-	if !has {
-		return nil, false
-	}
-	v, ok := vl.(admin.IProfession)
-	if ok {
-		return v, ok
-	}
-	return nil, false
+func (p *Profession) Info() *admin.ProfessionInfo {
+	return p.profession
 }

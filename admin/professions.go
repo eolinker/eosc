@@ -4,6 +4,7 @@ import "github.com/eolinker/eosc"
 
 type IProfessions interface {
 	GetProfession(name string) (IProfession, bool)
+	List() []IProfession
 }
 
 type IProfession interface {
@@ -14,5 +15,5 @@ type IProfession interface {
 	Render(driver string) (*Render, bool)
 	Renders() map[string]*Render
 	DriversItem() []Item
-	List() []*eosc.ProfessionInfo
+	Info() *ProfessionInfo
 }
