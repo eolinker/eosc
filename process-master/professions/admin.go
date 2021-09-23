@@ -14,19 +14,15 @@ func NewProfession(profession *admin.ProfessionInfo) *Profession {
 	return &Profession{profession: profession, drivers: eosc.NewUntyped()}
 }
 
-func (p *Profession) SetDriver(name string, driver *eosc.DriverInfo) {
-	p.drivers.Set(name, driver)
-}
-
 func (p *Profession) Drivers() []*eosc.DriverInfo {
 	drivers := p.drivers.List()
 	ds := make([]*eosc.DriverInfo, 0, len(drivers))
 	for _, d := range drivers {
-		v, ok := d.(*eosc.DriverInfo)
+		v, ok := d.(*eosc.DriverDetail)
 		if !ok {
 			continue
 		}
-		ds = append(ds, v)
+		ds = append(ds, &v.DriverInfo)
 	}
 	return ds
 }
@@ -75,4 +71,14 @@ func (p *Profession) DriversItem() []admin.Item {
 
 func (p *Profession) Info() *admin.ProfessionInfo {
 	return p.profession
+}
+
+func (p *Profession) SetDriver(name string, detail *eosc.DriverDetail) error {
+	p.drivers.Set(name, detail)
+	return nil
+}
+
+func (p *Profession) DeleteDriver(name string) error {
+	p.drivers.Del(name)
+	return nil
 }

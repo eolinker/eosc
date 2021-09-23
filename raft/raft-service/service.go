@@ -79,6 +79,19 @@ func (s *Service) ProcessHandler(namespace string, command string, processData [
 	return encodeCmd(namespace, command, body)
 
 }
+
+//func RegisterHandlers(s *Service, handlers ...ICreateHandler) {
+//	if handlers != nil {
+//		for _, cf := range handlers {
+//			h, ok := cf.(ICreateHandler)
+//			if !ok {
+//				continue
+//			}
+//			s.SetHandler(h.Namespace(), h.Handler())
+//		}
+//	}
+//}
+
 func (s *Service) SetHandlers(handlers ...ICreateHandler) {
 	if handlers != nil {
 		for _, cf := range handlers {

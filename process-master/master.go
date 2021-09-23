@@ -15,8 +15,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eolinker/eosc/process-master/admin"
+	admin2 "github.com/eolinker/eosc/admin"
 
+	"github.com/eolinker/eosc/process-master/admin"
 	"github.com/eolinker/eosc/process-master/professions"
 
 	"github.com/eolinker/eosc/process-master/workers"
@@ -45,18 +46,9 @@ func Process() {
 		return
 	}
 	master := NewMasterHandle(file)
-	if err := master.Start(); err != nil {
+	if err := master.Start(nil); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
-		return
-	}
-	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
-		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
-	}
-	log.Info("process-master start grpc service")
-	err = master.startService()
-	if err != nil {
-		log.Error("process-master start  grpc server error: ", err.Error())
 		return
 	}
 
@@ -79,21 +71,48 @@ type Master struct {
 	admin *admin.Admin
 }
 
-func (m *Master) Start() error {
-	raftService := raft_service.NewService()
+type MasterHandler struct {
+	Professions admin2.IProfessions
+	//Workers     admin2.IWorkers
+	//RaftService raft_service.IService
+	//RaftServiceHandler raft_service.IRaftServiceHandler
+	//Service            raft.IService
+}
 
-	ps := professions.NewProfessions("profession.yaml")
-	ws := workers.NewWorkers(ps, raftService)
-	m.admin = admin.NewAdmin(ps, ws, "/")
-	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, ws))
+func (mh *MasterHandler) initHandler() {
+	if mh.Professions == nil {
+		mh.Professions = professions.NewProfessions()
+	}
+}
 
-	node, err := raft.NewNode(raftService)
+func (m *Master) start(handler *MasterHandler) error {
+	if handler == nil {
+		handler = new(MasterHandler)
+	}
+	handler.initHandler()
+	s := raft_service.NewService()
+
+	worker := workers.NewWorkers(handler.Professions, s)
+	m.admin = admin.NewAdmin(handler.Professions, worker, "/")
+
+	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker))
+	node, err := raft.NewNode(s)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
 	m.node = node
+	return nil
+}
+
+func (m *Master) Start(handler *MasterHandler) error {
+
+	err := m.start(handler)
+	if err != nil {
+		return err
+	}
+
 	ip := eosc_args.GetDefault(eosc_args.IP, "")
 	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
 	// 监听master监听地址，用于接口处理
@@ -104,7 +123,15 @@ func (m *Master) Start() error {
 	}
 
 	m.startHttp(l)
-
+	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
+	}
+	log.Info("process-master start grpc service")
+	err = m.startService()
+	if err != nil {
+		log.Error("process-master start  grpc server error: ", err.Error())
+		return err
+	}
 	return nil
 
 }
@@ -162,6 +189,10 @@ func (m *Master) Wait() error {
 			continue
 		}
 	}
+}
+
+func (m *Master) Close() {
+	m.close()
 }
 
 func (m *Master) close() {

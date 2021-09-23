@@ -18,3 +18,13 @@ type IProfession interface {
 	DriversItem() []Item
 	Info() *ProfessionInfo
 }
+
+type IProfessionEdit interface {
+	SetDriver(name string, detail *eosc.DriverDetail) error
+	DeleteDriver(name string) error
+}
+
+type IProfessionsEdit interface {
+	Set(name string, profession *ProfessionInfo) error
+	Delete(name string) error
+}

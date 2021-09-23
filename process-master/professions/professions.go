@@ -12,8 +12,29 @@ const (
 )
 
 type Professions struct {
-	fileName    string
 	professions eosc.IUntyped
+}
+
+func (p *Professions) Set(name string, profession *admin.ProfessionInfo) error {
+	adminProfession := NewProfession(profession)
+	for _, d := range profession.Drivers {
+		adminProfession.SetDriver(d.Name, &eosc.DriverDetail{
+			DriverInfo: eosc.DriverInfo{
+				Id:         d.Id,
+				Name:       d.Name,
+				Label:      d.Label,
+				Desc:       d.Desc,
+				Profession: profession.Name,
+			},
+		})
+	}
+	p.professions.Set(name, adminProfession)
+	return nil
+}
+
+func (p *Professions) Delete(name string) error {
+	p.professions.Del(name)
+	return nil
 }
 
 func (p *Professions) List() []admin.IProfession {
@@ -54,11 +75,8 @@ func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
 	return nil, false
 }
 
-func (p *Professions) ResetHandler(data []byte) error {
-	professions, err := readProfessionConfig(p.fileName)
-	if err != nil {
-		return err
-	}
+func (p *Professions) Reset(professions []*eosc.ProfessionConfig) {
+	pfs := eosc.NewUntyped()
 	for _, pf := range professions {
 		adminProfession := NewProfession(
 			&admin.ProfessionInfo{
@@ -69,16 +87,28 @@ func (p *Professions) ResetHandler(data []byte) error {
 				AppendLabels: pf.AppendLabel,
 			})
 		for _, d := range pf.Drivers {
-			adminProfession.SetDriver(d.Name, &eosc.DriverInfo{
-				Id:         d.ID,
-				Name:       d.Name,
-				Label:      d.Label,
-				Desc:       d.Desc,
-				Profession: pf.Name,
+			adminProfession.SetDriver(d.Name, &eosc.DriverDetail{
+				DriverInfo: eosc.DriverInfo{
+					Id:         d.ID,
+					Name:       d.Name,
+					Label:      d.Label,
+					Desc:       d.Desc,
+					Profession: pf.Name,
+				},
 			})
 		}
-		p.professions.Set(pf.Name, adminProfession)
+		pfs.Set(pf.Name, adminProfession)
 	}
+	p.professions = pfs
+}
+
+func (p *Professions) ResetHandler(data []byte) error {
+	var professions []*eosc.ProfessionConfig
+	err := json.Unmarshal(data, professions)
+	if err != nil {
+		return err
+	}
+	p.Reset(professions)
 	return nil
 }
 
@@ -96,9 +126,8 @@ func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func NewProfessions(fileName string) *Professions {
+func NewProfessions() *Professions {
 	return &Professions{
-		fileName:    fileName,
 		professions: eosc.NewUntyped(),
 	}
 }
