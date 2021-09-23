@@ -15,6 +15,28 @@ type Professions struct {
 	professions eosc.IUntyped
 }
 
+func (p *Professions) Set(name string, profession *admin.ProfessionInfo) error {
+	adminProfession := NewProfession(profession)
+	for _, d := range profession.Drivers {
+		adminProfession.SetDriver(d.Name, &eosc.DriverDetail{
+			DriverInfo: eosc.DriverInfo{
+				Id:         d.Id,
+				Name:       d.Name,
+				Label:      d.Label,
+				Desc:       d.Desc,
+				Profession: profession.Name,
+			},
+		})
+	}
+	p.professions.Set(name, adminProfession)
+	return nil
+}
+
+func (p *Professions) Delete(name string) error {
+	p.professions.Del(name)
+	return nil
+}
+
 func (p *Professions) List() []admin.IProfession {
 	professions := p.professions.List()
 	ps := make([]admin.IProfession, 0, len(professions))
@@ -65,12 +87,14 @@ func (p *Professions) Reset(professions []*eosc.ProfessionConfig) {
 				AppendLabels: pf.AppendLabel,
 			})
 		for _, d := range pf.Drivers {
-			adminProfession.SetDriver(d.Name, &eosc.DriverInfo{
-				Id:         d.ID,
-				Name:       d.Name,
-				Label:      d.Label,
-				Desc:       d.Desc,
-				Profession: pf.Name,
+			adminProfession.SetDriver(d.Name, &eosc.DriverDetail{
+				DriverInfo: eosc.DriverInfo{
+					Id:         d.ID,
+					Name:       d.Name,
+					Label:      d.Label,
+					Desc:       d.Desc,
+					Profession: pf.Name,
+				},
 			})
 		}
 		pfs.Set(pf.Name, adminProfession)
