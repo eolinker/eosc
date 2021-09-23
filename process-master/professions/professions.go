@@ -12,7 +12,6 @@ const (
 )
 
 type Professions struct {
-	fileName    string
 	professions eosc.IUntyped
 }
 
@@ -54,11 +53,8 @@ func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
 	return nil, false
 }
 
-func (p *Professions) ResetHandler(data []byte) error {
-	professions, err := readProfessionConfig(p.fileName)
-	if err != nil {
-		return err
-	}
+func (p *Professions) Reset(professions []*eosc.ProfessionConfig) {
+	pfs := eosc.NewUntyped()
 	for _, pf := range professions {
 		adminProfession := NewProfession(
 			&admin.ProfessionInfo{
@@ -77,8 +73,18 @@ func (p *Professions) ResetHandler(data []byte) error {
 				Profession: pf.Name,
 			})
 		}
-		p.professions.Set(pf.Name, adminProfession)
+		pfs.Set(pf.Name, adminProfession)
 	}
+	p.professions = pfs
+}
+
+func (p *Professions) ResetHandler(data []byte) error {
+	var professions []*eosc.ProfessionConfig
+	err := json.Unmarshal(data, professions)
+	if err != nil {
+		return err
+	}
+	p.Reset(professions)
 	return nil
 }
 
@@ -96,9 +102,8 @@ func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func NewProfessions(fileName string) *Professions {
+func NewProfessions() *Professions {
 	return &Professions{
-		fileName:    fileName,
 		professions: eosc.NewUntyped(),
 	}
 }

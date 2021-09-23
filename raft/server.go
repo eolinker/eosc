@@ -1,5 +1,7 @@
 package raft
 
+import raft_service "github.com/eolinker/eosc/raft/raft-service"
+
 // 业务处理，根据实际需求更改service，service是外层的业务对象
 
 type IService interface {
@@ -19,11 +21,18 @@ type IService interface {
 
 	// GetSnapshot 生成快照，用于快照文件的生成
 	GetSnapshot() (data []byte, err error)
+
 	SetRaft(raft IRaftSender)
+
+	SetHandlers(handlers ...raft_service.ICreateHandler)
 }
 
 type IRaftSender interface {
 	Send(msg []byte) error
+}
+
+type IRaftService interface {
+	IService
 }
 
 //
