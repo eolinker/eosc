@@ -2,16 +2,36 @@ package professions
 
 import (
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/admin"
 )
 
 type Profession struct {
 	drivers    eosc.IUntyped
-	profession *admin.ProfessionInfo
+	profession *eosc.ProfessionDetail
+	info       *eosc.ProfessionInfo
 }
 
-func NewProfession(profession *admin.ProfessionInfo) *Profession {
-	return &Profession{profession: profession, drivers: eosc.NewUntyped()}
+func NewProfession(profession *eosc.ProfessionConfig) *Profession {
+	dm := eosc.NewUntyped()
+
+	for _, d := range profession.Drivers {
+		dm.Set(d.Name, eosc.ToDriverDetail(d))
+	}
+	return &Profession{
+		profession: &eosc.ProfessionDetail{
+			Name:         profession.Name,
+			LocalName:    profession.LocalName,
+			Desc:         profession.Desc,
+			Dependencies: profession.Dependencies,
+			AppendLabels: profession.AppendLabels,
+			Drivers:      eosc.ToDriverDetails(profession.Drivers),
+		},
+		drivers: dm,
+		info: &eosc.ProfessionInfo{
+			Name:      profession.Name,
+			LocalName: profession.LocalName,
+			Desc:      profession.Desc,
+		},
+	}
 }
 
 func (p *Profession) Drivers() []*eosc.DriverInfo {
@@ -22,7 +42,12 @@ func (p *Profession) Drivers() []*eosc.DriverInfo {
 		if !ok {
 			continue
 		}
-		ds = append(ds, &v.DriverInfo)
+		ds = append(ds, &eosc.DriverInfo{
+			Id:    v.Id,
+			Name:  v.Name,
+			Label: v.Label,
+			Desc:  v.Desc,
+		})
 	}
 	return ds
 }
@@ -45,23 +70,15 @@ func (p *Profession) AppendAttr() []string {
 	return p.profession.AppendLabels
 }
 
-func (p *Profession) Render(driver string) (*admin.Render, bool) {
-	return nil, false
-}
-
-func (p *Profession) Renders() map[string]*admin.Render {
-	return nil
-}
-
-func (p *Profession) DriversItem() []admin.Item {
+func (p *Profession) DriversItem() []*eosc.Item {
 	drivers := p.drivers.List()
-	ds := make([]admin.Item, 0, len(drivers))
+	ds := make([]*eosc.Item, 0, len(drivers))
 	for _, d := range drivers {
 		v, ok := d.(*eosc.DriverInfo)
 		if !ok {
 			continue
 		}
-		ds = append(ds, admin.Item{
+		ds = append(ds, &eosc.Item{
 			Value: v.Name,
 			Label: v.Label,
 		})
@@ -69,11 +86,12 @@ func (p *Profession) DriversItem() []admin.Item {
 	return ds
 }
 
-func (p *Profession) Info() *admin.ProfessionInfo {
+func (p *Profession) Detail() *eosc.ProfessionDetail {
 	return p.profession
 }
 
-func (p *Profession) SetDriver(name string, detail *eosc.DriverDetail) error {
+func (p *Profession) SetDriver(name string, detail *eosc.DriverConfig) error {
+
 	p.drivers.Set(name, detail)
 	return nil
 }

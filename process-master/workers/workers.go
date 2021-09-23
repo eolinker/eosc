@@ -84,21 +84,23 @@ func (w *Workers) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 		if response.Status != service.WorkerStatusCode_SUCCESS {
 			return nil, errors.New(response.Message)
 		}
+		return body, nil
 	case CommandDel:
 		request := &service.WorkerDeleteRequest{
 			Id: string(body),
 		}
 
-		response, err := w.workerServiceClient.SetCheck(context.TODO(), request)
+		response, err := w.workerServiceClient.DeleteCheck(context.TODO(), request)
 		if err != nil {
 			return nil, err
 		}
 		if response.Status != service.WorkerStatusCode_SUCCESS {
 			return nil, errors.New(response.Message)
 		}
+		return body, nil
 	}
+	return nil, ErrorInvalidCommand
 
-	return response.Body, nil
 }
 
 func (w *Workers) CommitHandler(cmd string, data []byte) error {

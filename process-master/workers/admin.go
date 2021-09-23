@@ -2,7 +2,6 @@ package workers
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/admin"
@@ -44,7 +43,7 @@ func (w *Workers) GetList(profession string) ([]admin.TWorker, error) {
 	}
 	return result, nil
 }
-func (w *Workers) Delete(id string) (*admin.WorkerInfo, error) {
+func (w *Workers) Delete(id string) (*eosc.WorkerInfo, error) {
 	o, has := w.data.Get(id)
 	if !has {
 		return nil, admin.ErrorWorkerNotExist
@@ -55,18 +54,19 @@ func (w *Workers) Delete(id string) (*admin.WorkerInfo, error) {
 		return nil, err
 	}
 	worker := o.(*Worker)
-	return &admin.WorkerInfo{
-		Id:     worker.Id,
-		Name:   worker.Name,
-		Driver: worker.Driver,
-		Create: worker.CreateTime,
-		Update: worker.UpdateTime,
+	return &eosc.WorkerInfo{
+		Id:         worker.Id,
+		Profession: worker.Profession,
+		Name:       worker.Name,
+		Driver:     worker.Driver,
+		Create:     worker.CreateTime,
+		Update:     worker.UpdateTime,
 	}, nil
 }
 
 func (w *Workers) Set(profession, name, driver string, data []byte) error {
 
-	id := fmt.Sprintf("%s@%s", name, profession)
+	id := eosc.ToWorkerId(name, profession)
 
 	createTime := eosc.Now()
 	if o, has := w.data.Get(id); has {
@@ -88,14 +88,14 @@ func (w *Workers) Set(profession, name, driver string, data []byte) error {
 		}
 	}
 
-	d := &WorkerData{
+	d := &eosc.WorkerData{
 		Id:         id,
 		Profession: profession,
 		Name:       name,
 		Driver:     driver,
-		CreateTime: createTime,
-		UpdateTime: eosc.Now(),
-		Data:       data,
+		Create:     createTime,
+		Update:     eosc.Now(),
+		Body:       data,
 	}
 
 	body, err := json.Marshal(d)

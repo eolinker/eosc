@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/eolinker/eosc/process-worker/worker"
 )
 
 type RequireId string
@@ -27,7 +25,7 @@ func TypeName(t reflect.Type) string {
 	return fmt.Sprintf("%s.%s", t.PkgPath(), t.String())
 }
 
-func CheckConfig(v interface{}, workers worker.IWorkers) (map[RequireId]interface{}, error) {
+func CheckConfig(v interface{}, workers IWorkers) (map[RequireId]interface{}, error) {
 
 	value := reflect.ValueOf(v)
 	ws, err := checkConfig(value, workers)
@@ -42,7 +40,7 @@ func CheckConfig(v interface{}, workers worker.IWorkers) (map[RequireId]interfac
 
 }
 
-func checkConfig(v reflect.Value, workers worker.IWorkers) (map[RequireId]interface{}, error) {
+func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, error) {
 	kind := v.Kind()
 	switch kind {
 	case reflect.Ptr:
@@ -91,7 +89,7 @@ func checkConfig(v reflect.Value, workers worker.IWorkers) (map[RequireId]interf
 	return nil, ErrorConfigFieldUnknown
 }
 
-func checkField(f reflect.StructField, v reflect.Value, workers worker.IWorkers) (map[RequireId]interface{}, error) {
+func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[RequireId]interface{}, error) {
 
 	typeName := TypeName(v.Type())
 	switch typeName {

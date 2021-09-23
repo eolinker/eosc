@@ -7,6 +7,7 @@ import (
 type IData interface {
 	UnMarshal(v interface{}) error
 	Marshal() ([]byte, error)
+	Encode() ([]byte, error)
 }
 
 type StoreValue struct {

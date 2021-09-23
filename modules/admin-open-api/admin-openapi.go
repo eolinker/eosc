@@ -56,22 +56,12 @@ func (o *OpenAdmin) all() map[string][]interface{} {
 	professions := o.admin.ListProfessions()
 	data := make(map[string][]interface{})
 	for _, p := range professions {
-		names, err := o.admin.ListEmployeeNames(p.Name)
+		ws, err := o.admin.ListEmployees(p.Name)
 		if err != nil {
 			log.Errorf("read data error	%s	%s", p.Name, err.Error())
 			continue
 		}
-		if _, ok := data[p.Name]; !ok {
-			data[p.Name] = make([]interface{}, 0, len(names))
-		}
-		for _, name := range names {
-			v, err := o.admin.GetEmployee(p.Name, name)
-			if err != nil {
-				log.Errorf("get employee error	%s	%s", p.Name, err.Error())
-				continue
-			}
-			data[p.Name] = append(data[p.Name], v)
-		}
+		data[p.Name] = ws
 	}
 	return data
 }
@@ -98,15 +88,15 @@ func (o *OpenAdmin) getFields(w http.ResponseWriter, r *http.Request, params htt
 }
 
 func (o *OpenAdmin) getRenders(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-
-	profession := params.ByName("profession")
-
-	renders, err := o.admin.Renders(profession)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	writeResult(w, renders)
+	//
+	//profession := params.ByName("profession")
+	//
+	//renders, err := o.admin.Renders(profession)
+	//if err != nil {
+	//	writeResultError(w, 500, err)
+	//	return
+	//}
+	//writeResult(w, renders)
 }
 
 func (o *OpenAdmin) getEmployeesByProfession(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -165,14 +155,14 @@ func (o *OpenAdmin) getDriversItemByProfession(w http.ResponseWriter, r *http.Re
 }
 func (o *OpenAdmin) getRender(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 
-	profession := params.ByName("profession")
-	driver := params.ByName("driver")
-	render, err := o.admin.Render(profession, driver)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	writeResult(w, render)
+	//profession := params.ByName("profession")
+	//driver := params.ByName("driver")
+	////render, err := o.admin.Render(profession, driver)
+	//if err != nil {
+	//	writeResultError(w, 500, err)
+	//	return
+	//}
+	//writeResult(w, render)
 }
 
 func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -181,6 +171,11 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 	name := params.ByName("name")
 
 	idata, err := GetData(r)
+	if err != nil {
+		writeResultError(w, 500, err)
+		return
+	}
+	data, err := idata.Encode()
 	if err != nil {
 		writeResultError(w, 500, err)
 		return
@@ -200,7 +195,7 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 		return
 	}
 
-	winfo, err := o.admin.Update(profession, name, cb.Driver, idata)
+	err = o.admin.Update(profession, name, cb.Driver, data)
 	if err != nil {
 		writeResultError(w, 500, err)
 
@@ -212,7 +207,7 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 		writeResultError(w, 500, err)
 		return
 	}
-	writeResult(w, winfo)
+	writeResult(w, nil)
 }
 
 func (o *OpenAdmin) getProfessions(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -230,9 +225,9 @@ type iOpenAdmin interface {
 	getEmployeeByName(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 
 	//GET /:profession/_render
-	getRenders(w http.ResponseWriter, r *http.Request, params httprouter.Params)
-	//GET /:profession/_render/:driver
-	getRender(w http.ResponseWriter, r *http.Request, params httprouter.Params)
+	//getRenders(w http.ResponseWriter, r *http.Request, params httprouter.Params)
+	////GET /:profession/_render/:driver
+	//getRender(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 
 	//POST /:profession/
 	//POST /:profession/:name
@@ -291,7 +286,7 @@ func (o *OpenAdmin) GenHandler() http.Handler {
 		action := params.ByName("action")
 		switch action {
 		case "_render":
-			openAdmin.getRenders(w, r, params)
+			//openAdmin.getRenders(w, r, params)
 			return
 		case "_driver":
 			openAdmin.getDriversByProfession(w, r, params)
@@ -306,7 +301,7 @@ func (o *OpenAdmin) GenHandler() http.Handler {
 		case "_render":
 			rename(params, "key", "driver")
 
-			openAdmin.getRender(w, r, params)
+			//openAdmin.getRender(w, r, params)
 
 			return
 		case "_driver":

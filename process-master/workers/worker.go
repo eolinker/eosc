@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/eolinker/eosc"
 )
 
 var (
@@ -13,18 +15,8 @@ var (
 	ErrorChangeDriver      = errors.New("try change driver")
 	ErrorInvalidProfession = errors.New("invalid profession")
 	ErrorInvalidDriver     = errors.New("invalid driver")
+	ErrorInvalidCommand    = errors.New("invalid command")
 )
-
-type WorkerData struct {
-	Id         string `json:"id"`
-	Profession string `json:"profession"`
-	Name       string `json:"name"`
-	Driver     string `json:"driver"`
-	CreateTime string `json:"create_time"`
-	UpdateTime string `json:"update_time"`
-	//Sing       string `json:"sing"`
-	Data []byte `json:"data"`
-}
 
 type WorkerAttr map[string]interface{}
 
@@ -56,14 +48,14 @@ func (w *Worker) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 
-	wd := &WorkerData{
+	wd := &eosc.WorkerData{
 		Id:         w.Id,
 		Profession: w.Profession,
 		Name:       w.Name,
 		Driver:     w.Driver,
-		CreateTime: w.UpdateTime,
-		UpdateTime: w.UpdateTime,
-		Data:       data,
+		Create:     w.UpdateTime,
+		Update:     w.UpdateTime,
+		Body:       data,
 	}
 	return json.Marshal(wd)
 }
@@ -71,13 +63,13 @@ func encodeWorker(w *Worker) ([]byte, error) {
 	return w.MarshalJSON()
 }
 func decodeWorker(data []byte) (*Worker, error) {
-	w := new(WorkerData)
+	w := new(eosc.WorkerData)
 	err := json.Unmarshal(data, w)
 	if err != nil {
 		return nil, err
 	}
 	wa := make(WorkerAttr)
-	err = json.Unmarshal(w.Data, &wa)
+	err = json.Unmarshal(w.Body, &wa)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +78,8 @@ func decodeWorker(data []byte) (*Worker, error) {
 		Profession: w.Profession,
 		Name:       w.Name,
 		Driver:     w.Driver,
-		CreateTime: w.CreateTime,
-		UpdateTime: w.UpdateTime,
+		CreateTime: w.Create,
+		UpdateTime: w.Update,
 		Data:       wa,
 	}, nil
 }

@@ -1,0 +1,71 @@
+syntax = "proto3";
+option go_package = "github.com/eolinker/eosc";
+package service;
+
+message ProfessionConfig{
+  string Name = 1;//
+  string LocalName = 2;//
+  string Desc = 3 ;//
+  repeated string Dependencies = 4;
+  repeated string AppendLabels = 5;
+  repeated DriverConfig Drivers = 6;
+}
+
+message ProfessionInfo {
+  string Name = 1;//
+  string LocalName = 2;//
+  string Desc = 3 ;//
+}
+message ProfessionDetail{
+  string Name = 1;
+  string LocalName = 2;
+  string Desc = 3 ;
+  repeated string Dependencies = 4;
+  repeated string AppendLabels = 5;
+  repeated DriverDetail Drivers = 6;
+}
+message DriverInfo{
+  string id = 1;
+  string name = 2;
+  string label = 3;
+  string desc = 4;
+  //  string profession=5;
+}
+message DriverConfig{
+  string id = 1;
+  string name = 2;
+  string label = 3;
+  string desc = 4;
+  map<string, string> params = 5;
+}
+// 驱动详情
+message DriverDetail{
+  string id = 1;
+  string driver = 2; // 驱动名 = driverConfig.name
+  string label = 3;
+  string desc = 4;
+  //  string profession=5;
+  string group = 6;
+  string project = 7;
+  string name = 8; // 插件名
+  map<string, string> params = 9;
+
+}
+message WorkerInfo{
+  string id = 1;
+  string profession = 2;
+  string name = 3;
+  string driver = 4;
+  string create = 5;
+  string update = 6;
+}
+
+message WorkerData{
+  string id = 1;
+  string profession = 2;
+  string name = 3;
+  string driver = 4;
+  string create = 5;
+  string update = 6;
+  bytes body = 7;
+}

@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"testing"
 	"time"
-
-	"github.com/eolinker/eosc/process-worker/worker"
 )
 
 type TestEmployee struct {
@@ -17,7 +15,7 @@ func (t *TestEmployee) Marshal() ([]byte, error) {
 	return nil, nil
 }
 
-func (t *TestEmployee) Worker() (worker.IWorker, error) {
+func (t *TestEmployee) Worker() (IWorker, error) {
 	return nil, nil
 }
 
