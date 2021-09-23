@@ -27,7 +27,7 @@ func (c *ctlServiceClient) Close() error {
 }
 
 func createCtlServiceClient() (ICtiServiceClient, error) {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.process-master.sock", eosc_args.AppName()))
+	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
 	if err != nil {
 		return nil, err
 	}

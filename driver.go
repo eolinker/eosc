@@ -1,6 +1,10 @@
 package eosc
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/eolinker/eosc/process-worker/worker"
+)
 
 type DriverInfo struct {
 	Id         string `json:"id"`
@@ -25,7 +29,7 @@ type IProfessionDriverCheckConfig interface {
 }
 type IProfessionDriver interface {
 	ConfigType() reflect.Type
-	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (IWorker, error)
+	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (worker.IWorker, error)
 }
 
 type IProfessionDriverInfo interface {

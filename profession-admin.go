@@ -132,7 +132,6 @@ func (ps *Professions) DriverInfo(profession, driver string) (DriverDetail, erro
 
 	return DriverDetail{
 		DriverInfo: d.DriverInfo(),
-		Extends:    d.ExtendInfo(),
 	}, nil
 }
 func (ps *Professions) DriversItem(profession string) ([]Item, error) {

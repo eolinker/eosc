@@ -2,6 +2,8 @@ package eosc
 
 import (
 	"strings"
+
+	"github.com/eolinker/eosc/process-worker/worker"
 )
 
 var _ IProfession = (*Profession)(nil)
@@ -21,8 +23,8 @@ type IProfession interface {
 	Dependencies() []string
 	AppendLabels() []string
 
-	CheckerConfig(driver string,cdata IData,workers IWorkers) error
-	ChangeWorker(driver,id,name string, cdata IData, workers IWorkers) error
+	CheckerConfig(driver string, cdata IData, workers worker.IWorkers) error
+	ChangeWorker(driver, id, name string, cdata IData, workers worker.IWorkers) error
 }
 
 type Profession struct {
@@ -87,7 +89,7 @@ func (p *Profession) genInfo(v *StoreValue) interface{} {
 	}
 	return r
 }
-func (p *Profession) setId(name, id string)  {
+func (p *Profession) setId(name, id string) {
 
 	p.data.Set(strings.ToLower(name), id)
 
@@ -101,8 +103,8 @@ func (p *Profession) ids() []string {
 	return res
 }
 func (p *Profession) delId(name string) (string, bool) {
-	id,has:=p.data.Del(name)
-	return id.(string),has
+	id, has := p.data.Del(name)
+	return id.(string), has
 }
 
 func (p *Profession) getDriver(name string) (IProfessionDriverInfo, bool) {

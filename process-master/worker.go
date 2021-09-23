@@ -10,7 +10,6 @@ package process_master
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -22,10 +21,6 @@ import (
 )
 
 type Param struct {
-}
-
-type IWorkerParam interface {
-	Encode() (io.ReadCloser, []*os.File)
 }
 
 type WorkerController struct {

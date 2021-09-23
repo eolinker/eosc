@@ -1,5 +1,9 @@
 package eosc
 
+import (
+	"github.com/eolinker/eosc/process-worker/worker"
+)
+
 var (
 	_ iProfessionsData = (*tProfessionUntyped)(nil)
 	_ IProfessions     = (*Professions)(nil)
@@ -12,22 +16,19 @@ type iProfessionsData interface {
 }
 
 type IProfessions interface {
-
 	Infos() []ProfessionInfo
 }
 
 type Professions struct {
-
 	data    iProfessionsData
 	store   IStore
 	infos   []ProfessionInfo
-	workers IWorkers
+	workers worker.IWorkers
 }
 
 func (ps *Professions) Infos() []ProfessionInfo {
 	return ps.infos
 }
-
 
 type tProfessionUntyped struct {
 	data IUntyped

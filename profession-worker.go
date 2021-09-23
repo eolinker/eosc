@@ -8,15 +8,19 @@
 
 package eosc
 
-import "fmt"
+import (
+	"fmt"
 
-func (p *Profession) checkConfig(driver string, cdata IData, workers IWorkers) (IProfessionDriver, interface{}, map[RequireId]interface{}, error) {
+	"github.com/eolinker/eosc/process-worker/worker"
+)
+
+func (p *Profession) checkConfig(driver string, cdata IData, workers worker.IWorkers) (IProfessionDriver, interface{}, map[RequireId]interface{}, error) {
 	d, has := p.getDriver(driver)
 	if !has {
 		return nil, nil, nil, fmt.Errorf("%s:%w", driver, ErrorDriverNotExist)
 	}
 
-	config := newConfig(d.ConfigType())
+	config := worker.newConfig(d.ConfigType())
 
 	err := cdata.UnMarshal(&config)
 	if err != nil {
@@ -34,13 +38,13 @@ func (p *Profession) checkConfig(driver string, cdata IData, workers IWorkers) (
 	}
 	return d, config, requires, nil
 }
-func (p *Profession) CheckerConfig(driver string, cdata IData, workers IWorkers) error {
+func (p *Profession) CheckerConfig(driver string, cdata IData, workers worker.IWorkers) error {
 
 	_, _, _, err := p.checkConfig(driver, cdata, workers)
 	return err
 }
 
-func (p *Profession) ChangeWorker(driver, id, name string, cdata IData, workers IWorkers) error {
+func (p *Profession) ChangeWorker(driver, id, name string, cdata IData, workers worker.IWorkers) error {
 	d, cf, requires, err := p.checkConfig(driver, cdata, workers)
 	if err != nil {
 		return err

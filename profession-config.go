@@ -2,6 +2,8 @@ package eosc
 
 import (
 	"fmt"
+
+	"github.com/eolinker/eosc/process-worker/worker"
 )
 
 type DriverConfig struct {
@@ -20,7 +22,6 @@ func (dc *DriverConfig) toInfo(professionName string) DriverInfo {
 		Label:      dc.Label,
 		Desc:       dc.Desc,
 		Profession: professionName,
-		Params:     dc.Params,
 	}
 }
 func toInfo(dcs []DriverConfig, professionName string) []DriverInfo {
@@ -98,7 +99,7 @@ func (pcs ProfessionConfigs) Gen(driverRegister IDriverRegister, store IStore) (
 		infos:   infos,
 		store:   store,
 		data:    newTProfessionUntyped(),
-		workers: NewWorkers(),
+		workers: worker.NewWorkers(),
 	}
 	for _, p := range pcs {
 		profession, err := p.create(driverRegister)
@@ -111,7 +112,6 @@ func (pcs ProfessionConfigs) Gen(driverRegister IDriverRegister, store IStore) (
 	store.GetListener().AddListen(ps)
 	return ps, nil
 }
-
 
 func checkProfessions(infos []ProfessionInfo) ([]ProfessionInfo, error) {
 
