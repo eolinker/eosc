@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/eolinker/eosc/service"
+	"github.com/golang/protobuf/proto"
 
-	"github.com/eolinker/eosc/admin"
+	"github.com/eolinker/eosc/service"
 
 	"github.com/eolinker/eosc"
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
@@ -24,43 +24,67 @@ var (
 	CommandDel = "delete"
 )
 
-type baseConfig struct {
-	Id         string `json:"id" yaml:"id"`
-	Name       string `json:"name" yaml:"name"`
-	Profession string `json:"profession" yaml:"profession"`
-	Driver     string `json:"driver" yaml:"driver"`
-	CreateTime string `json:"create_time" yaml:"create_time"`
-	UpdateTime string `json:"update_time" yaml:"update_time"`
-}
-
 type Workers struct {
-	professions         admin.IProfessions
-	data                eosc.IUntyped
+	professions         eosc.IProfessionsData
+	data                ITypedWorkers
 	workerServiceClient service.WorkerServiceClient
 	service             raft_service.IService
 }
 
-func NewWorkers(professions admin.IProfessions, service raft_service.IService) *Workers {
-	return &Workers{professions: professions, data: eosc.NewUntyped(), service: service}
+func NewWorkers(professions eosc.IProfessionsData, service raft_service.IService) *Workers {
+	return &Workers{professions: professions, data: NewTypedWorkers(), service: service}
 }
 
 func (w *Workers) Snapshot() []byte {
-	values := w.data.All()
-	data, _ := json.Marshal(values)
+
+	data, err := w.encode()
+	if err != nil {
+		return nil
+	}
 	return data
 }
+func (w *Workers) encode() ([]byte, error) {
+	values := w.data.All()
 
+	wd := &eosc.WorkersData{
+		Data: make([]*eosc.WorkerData, len(values)),
+	}
+	for i, v := range values {
+
+		wd.Data[i] = v.Org
+	}
+	data, err := proto.Marshal(wd)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+func (w *Workers) decode(data []byte) ([]*eosc.WorkerData, error) {
+	wd := new(eosc.WorkersData)
+	err := proto.Unmarshal(data, wd)
+	if err != nil {
+		return nil, err
+	}
+	return wd.Data, nil
+}
+func (w *Workers) reset(vs []*eosc.WorkerData) {
+	nw := NewTypedWorkers()
+	for _, v := range vs {
+		wv, err := toWorker(v)
+		if err != nil {
+			continue
+		}
+		nw.Set(v.Id, wv)
+	}
+	w.data = nw
+}
 func (w *Workers) ResetHandler(data []byte) error {
 	values := make([]*Worker, 0, 10)
 	err := json.Unmarshal(data, &values)
 	if err != nil {
 		return err
 	}
-	buf := eosc.NewUntyped()
-	for _, v := range values {
-		buf.Set(v.Id, v)
-	}
-	w.data = buf
+
 	return nil
 }
 

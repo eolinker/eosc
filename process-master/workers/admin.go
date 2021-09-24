@@ -7,36 +7,25 @@ import (
 	"github.com/eolinker/eosc/admin"
 )
 
-func (w *Workers) GetWork(id string) (admin.TWorker, error) {
-	if o, b := w.data.Get(id); b {
-		ow, ok := o.(*Worker)
-		if !ok {
-			return nil, ErrorUnknown
-		}
-		p, has := w.professions.GetProfession(ow.Profession)
-		if !has {
-			return nil, ErrorUnknown
-		}
-		return ow.Format(p.AppendAttr()), nil
+func (w *Workers) GetWork(id string) (eosc.TWorker, error) {
+	if ow, b := w.data.Get(id); b {
+		return ow.Format(nil), nil
 	}
 	return nil, ErrorNotExist
 }
 
-func (w *Workers) GetList(profession string) ([]admin.TWorker, error) {
+func (w *Workers) GetList(profession string) ([]eosc.TWorker, error) {
 	p, has := w.professions.GetProfession(profession)
 	if !has {
 		return nil, ErrorInvalidProfession
 	}
 	attrs := p.AppendAttr()
 
-	all := w.data.List()
+	all := w.data.All()
 
-	result := make([]admin.TWorker, 0, len(all))
-	for _, o := range all {
-		ow, ok := o.(*Worker)
-		if !ok {
-			continue
-		}
+	result := make([]eosc.TWorker, 0, len(all))
+	for _, ow := range all {
+
 		if ow.Profession == profession {
 			result = append(result, ow.Format(attrs))
 		}
@@ -44,7 +33,7 @@ func (w *Workers) GetList(profession string) ([]admin.TWorker, error) {
 	return result, nil
 }
 func (w *Workers) Delete(id string) (*eosc.WorkerInfo, error) {
-	o, has := w.data.Get(id)
+	worker, has := w.data.Get(id)
 	if !has {
 		return nil, admin.ErrorWorkerNotExist
 	}
@@ -53,7 +42,6 @@ func (w *Workers) Delete(id string) (*eosc.WorkerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	worker := o.(*Worker)
 	return &eosc.WorkerInfo{
 		Id:         worker.Id,
 		Profession: worker.Profession,
@@ -69,11 +57,7 @@ func (w *Workers) Set(profession, name, driver string, data []byte) error {
 	id := eosc.ToWorkerId(name, profession)
 
 	createTime := eosc.Now()
-	if o, has := w.data.Get(id); has {
-		ow, ok := o.(*Worker)
-		if !ok {
-			return ErrorUnknown
-		}
+	if ow, has := w.data.Get(id); has {
 		if ow.Driver != driver {
 			return ErrorChangeDriver
 		}

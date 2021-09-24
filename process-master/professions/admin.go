@@ -7,29 +7,31 @@ import (
 type Profession struct {
 	drivers    eosc.IUntyped
 	profession *eosc.ProfessionDetail
+	config     *eosc.ProfessionConfig
 	info       *eosc.ProfessionInfo
 }
 
-func NewProfession(profession *eosc.ProfessionConfig) *Profession {
+func NewProfession(config *eosc.ProfessionConfig) *Profession {
 	dm := eosc.NewUntyped()
 
-	for _, d := range profession.Drivers {
+	for _, d := range config.Drivers {
 		dm.Set(d.Name, eosc.ToDriverDetail(d))
 	}
 	return &Profession{
+		config: config,
 		profession: &eosc.ProfessionDetail{
-			Name:         profession.Name,
-			LocalName:    profession.LocalName,
-			Desc:         profession.Desc,
-			Dependencies: profession.Dependencies,
-			AppendLabels: profession.AppendLabels,
-			Drivers:      eosc.ToDriverDetails(profession.Drivers),
+			Name:         config.Name,
+			Label:        config.Label,
+			Desc:         config.Desc,
+			Dependencies: config.Dependencies,
+			AppendLabels: config.AppendLabels,
+			Drivers:      eosc.ToDriverDetails(config.Drivers),
 		},
 		drivers: dm,
 		info: &eosc.ProfessionInfo{
-			Name:      profession.Name,
-			LocalName: profession.LocalName,
-			Desc:      profession.Desc,
+			Name:  config.Name,
+			Label: config.Label,
+			Desc:  config.Desc,
 		},
 	}
 }
@@ -44,7 +46,7 @@ func (p *Profession) Drivers() []*eosc.DriverInfo {
 		}
 		ds = append(ds, &eosc.DriverInfo{
 			Id:    v.Id,
-			Name:  v.Name,
+			Name:  v.Driver,
 			Label: v.Label,
 			Desc:  v.Desc,
 		})

@@ -5,7 +5,7 @@ import "github.com/eolinker/eosc"
 type IWorkers = eosc.IWorkers
 type IWorker = eosc.IWorker
 
-var _ IWorkers = (*WorkManager)(nil)
+var _ IWorkers = (*WorkersData)(nil)
 var _ iWorkData = (*Workers)(nil)
 
 type iWorkData interface {
@@ -14,15 +14,15 @@ type iWorkData interface {
 	Get(id string) (*tWorker, bool)
 }
 
-type WorkManager struct {
+type WorkersData struct {
 	data Workers
 }
 
-func (wm *WorkManager) Set(id string, w IWorker) {
+func (wm *WorkersData) Set(id string, w IWorker) {
 	wm.data.Set(id, w)
 }
 
-func (wm *WorkManager) Del(id string) (IWorker, bool) {
+func (wm *WorkersData) Del(id string) (IWorker, bool) {
 
 	if w, has := wm.data.Del(id); has {
 		return w.worker, true
@@ -30,7 +30,7 @@ func (wm *WorkManager) Del(id string) (IWorker, bool) {
 	return nil, false
 }
 
-func (wm *WorkManager) Get(id string) (IWorker, bool) {
+func (wm *WorkersData) Get(id string) (IWorker, bool) {
 	if w, has := wm.data.Get(id); has {
 		return w.worker, true
 	}
@@ -39,7 +39,7 @@ func (wm *WorkManager) Get(id string) (IWorker, bool) {
 
 func NewWorkers() IWorkers {
 
-	ws := &WorkManager{
+	ws := &WorkersData{
 		//store:       store,
 		data: Workers{data: eosc.NewUntyped()},
 	}

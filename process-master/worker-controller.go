@@ -3,14 +3,15 @@ package process_master
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"sync"
 
-	"github.com/eolinker/eosc/admin"
-	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/log"
+
+	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/traffic"
 )
+
+var _ service.WorkerServiceClient = (*WorkerController)(nil)
 
 type iWorkerClientPoll interface {
 	GetWorkerServiceClient() service.WorkerServiceClient
@@ -19,42 +20,84 @@ type iWorkerClientPoll interface {
 }
 
 type WorkerController struct {
-	locker     sync.Mutex
-	tc         traffic.IController
-	profession admin.IProfessions
+	locker sync.Mutex
+	dms    []eosc.IDataMarshaler
+
+	current *WorkerProcess
+
+	expireWorkers []*WorkerProcess
+
+	isStop bool
 }
 
-func NewWorkerController(tc traffic.IController) *WorkerController {
-	return &WorkerController{tc: tc}
+func NewWorkerController(dms ...eosc.IDataMarshaler) *WorkerController {
+	return &WorkerController{dms: dms}
 }
 func (wc *WorkerController) Stop() {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
+	wc.isStop = true
+	if wc.current != nil {
+		wc.current.Close()
+	}
 
 }
+func (wc *WorkerController) check(w *WorkerProcess) {
+	err := w.cmd.Wait()
+	if err != nil {
+		log.Warn("worker exit:", err)
+	}
+	wc.locker.Lock()
+	defer wc.locker.Unlock()
+	if wc.current == w {
+		err := wc.new()
+		log.Error("worker create:", err)
+	} else {
 
+		for i, v := range wc.expireWorkers {
+			if v == w {
+				wc.expireWorkers = append(wc.expireWorkers[:i], wc.expireWorkers[i+1:]...)
+			}
+		}
+
+	}
+}
 func (wc *WorkerController) Start() {
-
+	wc.locker.Lock()
+	defer wc.locker.Unlock()
+	wc.new()
 }
+func (wc *WorkerController) NewWorker() error {
+	wc.locker.Lock()
+	defer wc.locker.Unlock()
+	return wc.new()
+}
+func (wc *WorkerController) new() error {
 
-func (wc *WorkerController) new() (*exec.Cmd, error) {
-	worker, err := process.Cmd("workers", nil)
-	if err != nil {
+	buf := bytes.NewBuffer(nil)
+	var fileAll []*os.File
+	index := 3
+	for _, dm := range wc.dms {
+		data, files, err := dm.Encode(index)
 
-		return nil, err
-	}
-	data, files, err := wc.tc.Encode(3)
+		if err != nil {
+			return err
+		}
+		index += len(files)
+		fileAll = append(fileAll, files...)
+		buf.Write(data)
 
-	if err != nil {
-		return nil, err
 	}
-	worker.Stdin = bytes.NewBuffer(data)
-	worker.Stdout = os.Stdout
-	worker.Stderr = os.Stderr
-	worker.ExtraFiles = files
-	err = worker.Start()
+
+	workerProcess, err := wc.newWorkerProcess(buf, fileAll)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return worker, nil
+
+	if wc.current != nil {
+		wc.expireWorkers = append(wc.expireWorkers, wc.current)
+	}
+	wc.current = workerProcess
+	go wc.check(wc.current)
+	return nil
 }

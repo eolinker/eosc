@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"strconv"
 
-	admin2 "github.com/eolinker/eosc/admin"
+	"github.com/eolinker/eosc"
 
 	"github.com/eolinker/eosc/process-master/admin"
 	"github.com/eolinker/eosc/process-master/professions"
@@ -69,10 +69,12 @@ type Master struct {
 	httpserver    *http.Server
 
 	admin *admin.Admin
+
+	workerController *WorkerController
 }
 
 type MasterHandler struct {
-	Professions admin2.IProfessions
+	Professions eosc.IProfessionsData
 	//Workers     admin2.IWorkers
 	//RaftService raft_service.IService
 	//RaftServiceHandler raft_service.IRaftServiceHandler
@@ -89,6 +91,7 @@ func (m *Master) start(handler *MasterHandler) error {
 	if handler == nil {
 		handler = new(MasterHandler)
 	}
+
 	handler.initHandler()
 	s := raft_service.NewService()
 
@@ -103,6 +106,8 @@ func (m *Master) start(handler *MasterHandler) error {
 	}
 
 	m.node = node
+
+	m.workerController = NewWorkerController(m.workerTraffic, handler.Professions)
 	return nil
 }
 
