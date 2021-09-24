@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/eolinker/eosc"
+
 	eosc_log "github.com/eolinker/eosc/log"
 )
 

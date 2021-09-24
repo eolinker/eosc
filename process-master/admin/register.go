@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrorDuplicatePath = errors.New("path duplicate")
+	ErrorNotExist      = errors.New("not exits")
 )
 
 type CreateHandler interface {

@@ -69,19 +69,38 @@ func (w *Workers) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	request := &service.WorkerCheckRequest{
-		Cmd:  cmd,
-		Body: body,
-	}
 
-	response, err := w.workerServiceClient.Check(context.TODO(), request)
-	if err != nil {
-		return nil, err
+	switch cmd {
+	case CommandSet:
+		request := &service.WorkerSetRequest{
+
+			Body: body,
+		}
+
+		response, err := w.workerServiceClient.SetCheck(context.TODO(), request)
+		if err != nil {
+			return nil, err
+		}
+		if response.Status != service.WorkerStatusCode_SUCCESS {
+			return nil, errors.New(response.Message)
+		}
+		return body, nil
+	case CommandDel:
+		request := &service.WorkerDeleteRequest{
+			Id: string(body),
+		}
+
+		response, err := w.workerServiceClient.DeleteCheck(context.TODO(), request)
+		if err != nil {
+			return nil, err
+		}
+		if response.Status != service.WorkerStatusCode_SUCCESS {
+			return nil, errors.New(response.Message)
+		}
+		return body, nil
 	}
-	if response.Status != 0 {
-		return nil, errors.New(response.Msg)
-	}
-	return response.Body, nil
+	return nil, ErrorInvalidCommand
+
 }
 
 func (w *Workers) CommitHandler(cmd string, data []byte) error {

@@ -7,22 +7,45 @@ package service;
 message WorkerHelloRequest{
   string hello=1;
 }
+
 message WorkerHelloResponse{
   string hello=1;
 }
-message WorkerCheckRequest {
-  string cmd =1;
-  bytes body = 2;
+
+message WorkerDeleteRequest  {
+  string id=1;
 }
-message WorkerCheckResponse{
-  int32 status=1;
-  string msg=2;
-  bytes body=3;
+
+message WorkerSetRequest{
+  string id=1;
+  string profession=2;
+  string name=3;
+  string driver=4;
+  bytes  body=5;
+
 }
-message WorkerSkillCheck {
-  string p
+enum WorkerStatusCode{
+  SUCCESS=0;
+  FAIL=1;
+  SKILL=2;
 }
+
+message WorkerDeleteResponse{
+  WorkerStatusCode status=1;
+  string message=2;
+}
+
+message WorkerSetResponse{
+  WorkerStatusCode status=1;
+  string message=2;
+}
+
 service WorkerService{
-  rpc check(WorkerCheckRequest)returns(WorkerCheckResponse){};
+  rpc deleteCheck(WorkerDeleteRequest)returns(WorkerDeleteResponse){};
+  rpc setCheck(WorkerSetRequest)returns(WorkerSetResponse){};
+
+  rpc delete(WorkerDeleteRequest)returns(WorkerDeleteResponse){};
+  rpc set(WorkerSetRequest)returns(WorkerSetResponse){};
+
   rpc ping(WorkerHelloRequest)returns(WorkerHelloResponse){}
 }

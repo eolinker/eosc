@@ -9,7 +9,12 @@
 package process_worker
 
 import (
+	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/listener"
 
@@ -30,7 +35,32 @@ type Worker struct {
 }
 
 func (w *Worker) wait() error {
-	return nil
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
+	for {
+		sig := <-sigc
+		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
+		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
+		switch sig {
+		case os.Interrupt, os.Kill:
+			{
+				w.close()
+				return nil
+			}
+		case syscall.SIGQUIT:
+			{
+				w.close()
+				return nil
+			}
+		case syscall.SIGUSR1:
+			{
+
+			}
+		default:
+			continue
+		}
+	}
+
 }
 func NewWorker() *Worker {
 	w := &Worker{}
@@ -39,4 +69,9 @@ func NewWorker() *Worker {
 	w.tf = tf
 
 	return w
+}
+
+func (w *Worker) close() {
+
+	w.tf.Close()
 }

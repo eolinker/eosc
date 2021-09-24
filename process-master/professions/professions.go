@@ -15,19 +15,9 @@ type Professions struct {
 	professions eosc.IUntyped
 }
 
-func (p *Professions) Set(name string, profession *admin.ProfessionInfo) error {
+func (p *Professions) Set(name string, profession *eosc.ProfessionConfig) error {
 	adminProfession := NewProfession(profession)
-	for _, d := range profession.Drivers {
-		adminProfession.SetDriver(d.Name, &eosc.DriverDetail{
-			DriverInfo: eosc.DriverInfo{
-				Id:         d.Id,
-				Name:       d.Name,
-				Label:      d.Label,
-				Desc:       d.Desc,
-				Profession: profession.Name,
-			},
-		})
-	}
+
 	p.professions.Set(name, adminProfession)
 	return nil
 }
@@ -50,15 +40,15 @@ func (p *Professions) List() []admin.IProfession {
 	return ps
 }
 
-func (p *Professions) Infos() []*admin.ProfessionInfo {
+func (p *Professions) Infos() []*eosc.ProfessionInfo {
 	professions := p.professions.List()
-	ps := make([]*admin.ProfessionInfo, 0, len(professions))
+	ps := make([]*eosc.ProfessionInfo, 0, len(professions))
 	for _, p := range professions {
-		v, ok := p.(admin.IProfession)
+		v, ok := p.(*Profession)
 		if !ok {
 			continue
 		}
-		ps = append(ps, v.Info())
+		ps = append(ps, v.info)
 	}
 	return ps
 }
@@ -78,25 +68,7 @@ func (p *Professions) GetProfession(name string) (admin.IProfession, bool) {
 func (p *Professions) Reset(professions []*eosc.ProfessionConfig) {
 	pfs := eosc.NewUntyped()
 	for _, pf := range professions {
-		adminProfession := NewProfession(
-			&admin.ProfessionInfo{
-				Name:         pf.Name,
-				LocalName:    pf.Name,
-				Desc:         pf.Desc,
-				Dependencies: pf.Dependencies,
-				AppendLabels: pf.AppendLabel,
-			})
-		for _, d := range pf.Drivers {
-			adminProfession.SetDriver(d.Name, &eosc.DriverDetail{
-				DriverInfo: eosc.DriverInfo{
-					Id:         d.ID,
-					Name:       d.Name,
-					Label:      d.Label,
-					Desc:       d.Desc,
-					Profession: pf.Name,
-				},
-			})
-		}
+		adminProfession := NewProfession(pf)
 		pfs.Set(pf.Name, adminProfession)
 	}
 	p.professions = pfs

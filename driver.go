@@ -1,21 +1,8 @@
 package eosc
 
-import "reflect"
-
-type DriverInfo struct {
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	Label      string `json:"label"`
-	Desc       string `json:"desc"`
-	Profession string `json:"profession"`
-}
-type DriverDetail struct {
-	DriverInfo
-	Group   string            `json:"group"`
-	Project string            `json:"project"`
-	Param   map[string]string `json:"param"`
-	//	TODO: 待加字段：预期版本、实际版本
-}
+import (
+	"reflect"
+)
 
 type IProfessionDriverFactory interface {
 	Create(profession string, name string, label string, desc string, params map[string]string) (IProfessionDriver, error)
