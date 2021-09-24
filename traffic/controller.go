@@ -20,8 +20,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Traffics []*Out
-
 type IController interface {
 	ITraffic
 	Encode(startIndex int) ([]byte, []*os.File, error)
@@ -115,17 +113,4 @@ func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 		tcp = l
 	}
 	return tcp, nil
-}
-
-func (c *Controller) Close() {
-	list := c.data.List()
-	c.data = eosc.NewUntyped()
-	for _, it := range list {
-		tf, ok := it.(*Out)
-		if !ok {
-			continue
-		}
-		tf.Listener.Close()
-		tf.File.Close()
-	}
 }

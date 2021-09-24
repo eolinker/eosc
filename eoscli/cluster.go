@@ -2,10 +2,7 @@ package eoscli
 
 import (
 	"context"
-	"fmt"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
@@ -23,12 +20,11 @@ func Cluster(x cli.ActionFunc) *cli.Command {
 
 //ClustersFunc 获取集群列表
 func ClustersFunc(c *cli.Context) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
+	client, err := createCtlServiceClient()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	client := service.NewCtiServiceClient(conn)
+	defer client.Close()
 	response, err := client.List(context.Background(), &service.ListRequest{})
 	if err != nil {
 		return err

@@ -160,7 +160,7 @@ func (rc *Node) startRaft() error {
 	err := rc.ReadSnap(rc.snapshotter)
 	if err != nil {
 		return fmt.Errorf("reload snap to service error: %w", err)
-		//log.Info("reload snap to service error:", err)
+		//log.Detail("reload snap to service error:", err)
 	}
 
 	// 节点配置
@@ -194,7 +194,7 @@ func (rc *Node) startRaft() error {
 	err = rc.transport.Start()
 	if err != nil {
 		return fmt.Errorf("transport start error: %w", err)
-		//log.Info("transport start error:", err)
+		//log.Detail("transport start error:", err)
 	}
 	rc.active = true
 	// 与集群中的其他节点建立通信

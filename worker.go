@@ -7,11 +7,8 @@ type IWorker interface {
 	Stop() error
 	CheckSkill(skill string) bool
 }
-
-type tWorker struct {
-	worker IWorker
-}
-
-func newTWorker(worker IWorker) *tWorker {
-	return &tWorker{worker: worker}
+type IWorkers interface {
+	Set(id string, w IWorker)
+	Del(id string) (IWorker, bool)
+	Get(id string) (IWorker, bool)
 }
