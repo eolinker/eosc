@@ -13,12 +13,6 @@ import (
 
 var _ service.WorkerServiceClient = (*WorkerController)(nil)
 
-type iWorkerClientPoll interface {
-	GetWorkerServiceClient() service.WorkerServiceClient
-	Close()
-	Start() error
-}
-
 type WorkerController struct {
 	locker sync.Mutex
 	dms    []eosc.IDataMarshaler

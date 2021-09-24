@@ -37,6 +37,7 @@ type Worker struct {
 	UpdateTime string
 	Data       WorkerAttr
 	Org        *eosc.WorkerData
+	Info       *eosc.WorkerInfo
 }
 
 func (w *Worker) MarshalJSON() ([]byte, error) {
@@ -63,7 +64,7 @@ func (w *Worker) MarshalJSON() ([]byte, error) {
 	return json.Marshal(w.Org)
 }
 
-func decodeWorker(data []byte) (*Worker, error) {
+func DecodeWorker(data []byte) (*Worker, error) {
 	w := new(eosc.WorkerData)
 	err := json.Unmarshal(data, w)
 	if err != nil {
@@ -83,9 +84,17 @@ func decodeWorker(data []byte) (*Worker, error) {
 		UpdateTime: w.Update,
 		Data:       wa,
 		Org:        w,
+		Info: &eosc.WorkerInfo{
+			Id:         w.Id,
+			Profession: w.Profession,
+			Name:       w.Name,
+			Driver:     w.Driver,
+			Create:     w.Create,
+			Update:     w.Update,
+		},
 	}, nil
 }
-func toWorker(wd *eosc.WorkerData) (*Worker, error) {
+func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
 	wa := make(WorkerAttr)
 	err := json.Unmarshal(wd.Body, &wa)
 	if err != nil {

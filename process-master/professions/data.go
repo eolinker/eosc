@@ -2,7 +2,7 @@ package professions
 
 import "github.com/eolinker/eosc"
 
-type untypeProfessionData interface {
+type ITypeProfessionData interface {
 	Set(name string, profession *Profession)
 	List() []*Profession
 	Del(name string) (*Profession, bool)
@@ -22,7 +22,7 @@ func (d *TProfessionData) Data() []*eosc.ProfessionConfig {
 	return rs
 }
 
-func NewProfessionData() untypeProfessionData {
+func NewProfessionData() ITypeProfessionData {
 	return &TProfessionData{
 		data: eosc.NewUntyped(),
 	}

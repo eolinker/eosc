@@ -16,7 +16,7 @@ type IAdminWorker interface {
 	ListEmployees(profession string) ([]interface{}, error)
 	//ListEmployeeNames(profession string) ([]string, error)
 	Update(profession, name, driver string, data []byte) error
-	Delete(profession, name string) (*WorkerInfo, error)
+	Delete(profession, name string) error
 	GetEmployee(profession, name string) (interface{}, error)
 }
 

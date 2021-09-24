@@ -1,12 +1,6 @@
 package professions
 
 import (
-	"os"
-
-	"github.com/eolinker/eosc/utils"
-
-	"github.com/golang/protobuf/proto"
-
 	"github.com/eolinker/eosc"
 )
 
@@ -15,37 +9,7 @@ const (
 )
 
 type Professions struct {
-	data untypeProfessionData
-}
-
-func (p *Professions) Encode(startIndex int) ([]byte, []*os.File, error) {
-
-	data, err := p.encode()
-	if err != nil {
-		return nil, nil, err
-	}
-	return utils.EncodeFrame(data), nil, nil
-}
-
-func (p *Professions) encode() ([]byte, error) {
-	list := p.data.Data()
-	pcd := &eosc.ProfessionConfigData{
-		Data: list,
-	}
-	data, err := proto.Marshal(pcd)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-func (p *Professions) decode(data []byte) ([]*eosc.ProfessionConfig, error) {
-	pcd := new(eosc.ProfessionConfigData)
-	err := proto.Unmarshal(data, pcd)
-	if err != nil {
-		return nil, err
-	}
-	return pcd.Data, nil
-
+	data ITypeProfessionData
 }
 
 func (p *Professions) Set(name string, profession *eosc.ProfessionConfig) error {
@@ -54,19 +18,12 @@ func (p *Professions) Set(name string, profession *eosc.ProfessionConfig) error 
 	p.data.Set(name, adminProfession)
 	return nil
 }
-
+func (p *Professions) All() []*eosc.ProfessionConfig {
+	return p.data.Data()
+}
 func (p *Professions) Delete(name string) error {
 	p.data.Del(name)
 	return nil
-}
-
-func (p *Professions) List() []eosc.IProfessionData {
-	professions := p.data.List()
-	ps := make([]eosc.IProfessionData, 0, len(professions))
-	for _, pv := range professions {
-		ps = append(ps, pv)
-	}
-	return ps
 }
 
 func (p *Professions) Infos() []*eosc.ProfessionInfo {
@@ -91,34 +48,6 @@ func (p *Professions) Reset(professions []*eosc.ProfessionConfig) {
 		pfs.Set(pf.Name, adminProfession)
 	}
 	p.data = pfs
-}
-
-func (p *Professions) ResetHandler(data []byte) error {
-
-	ps, err := p.decode(data)
-	if err != nil {
-		return err
-	}
-	p.Reset(ps)
-	return nil
-}
-
-func (p *Professions) CommitHandler(cmd string, data []byte) error {
-	return nil
-}
-
-func (p *Professions) Snapshot() []byte {
-
-	data, err := p.encode()
-	if err != nil {
-		return nil
-	}
-
-	return data
-}
-
-func (p *Professions) ProcessHandler(cmd string, body []byte) ([]byte, error) {
-	return nil, nil
 }
 
 func NewProfessions() *Professions {

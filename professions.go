@@ -1,10 +1,13 @@
 package eosc
 
 type IProfessionsData interface {
+	Set(name string, profession *ProfessionConfig) error
+	Delete(name string) error
 	GetProfession(name string) (IProfessionData, bool)
-	List() []IProfessionData
+
 	Infos() []*ProfessionInfo
-	IDataMarshaler
+	Reset([]*ProfessionConfig)
+	All() []*ProfessionConfig
 }
 
 type IProfessionData interface {
@@ -19,9 +22,4 @@ type IProfessionData interface {
 type IProfessionDataEdit interface {
 	SetDriver(name string, detail *DriverConfig) error
 	DeleteDriver(name string) error
-}
-
-type IProfessionsDataEdit interface {
-	Set(name string, profession *ProfessionConfig) error
-	Delete(name string) error
 }

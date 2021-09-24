@@ -75,7 +75,7 @@ type Master struct {
 
 type MasterHandler struct {
 	Professions eosc.IProfessionsData
-	//Workers     admin2.IWorkers
+	//WorkersRaft     admin2.IWorkers
 	//RaftService raft_service.IService
 	//RaftServiceHandler raft_service.IRaftServiceHandler
 	//Service            raft.IService
@@ -94,11 +94,14 @@ func (m *Master) start(handler *MasterHandler) error {
 
 	handler.initHandler()
 	s := raft_service.NewService()
+	workersData := NewWorkersData(workers.NewTypedWorkers())
+	professionRaft := NewProfessionRaft(handler.Professions)
 
-	worker := workers.NewWorkers(handler.Professions, s)
+	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
+
+	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s)
 	m.admin = admin.NewAdmin(handler.Professions, worker, "/")
-
-	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker))
+	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
 	node, err := raft.NewNode(s)
 	if err != nil {
 		log.Error(err)
@@ -107,7 +110,7 @@ func (m *Master) start(handler *MasterHandler) error {
 
 	m.node = node
 
-	m.workerController = NewWorkerController(m.workerTraffic, handler.Professions)
+	m.workerController.Start()
 	return nil
 }
 

@@ -22,7 +22,7 @@ func (a *Admin) Update(profession, name, driver string, data []byte) error {
 	return a.workers.Set(profession, name, driver, data)
 }
 
-func (a *Admin) Delete(profession, name string) (*eosc.WorkerInfo, error) {
+func (a *Admin) Delete(profession, name string) error {
 	id := eosc.ToWorkerId(name, profession)
 	return a.workers.Delete(id)
 }

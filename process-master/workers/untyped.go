@@ -7,20 +7,38 @@ type ITypedWorkers interface {
 	Set(id string, w *Worker)
 	Get(id string) (*Worker, bool)
 	Del(id string) (*Worker, bool)
+	Reset(ds []*eosc.WorkerData)
 }
 
 type TypedWorkers struct {
 	data eosc.IUntyped
 }
 
-func NewTypedWorkers() *TypedWorkers {
+func (t *TypedWorkers) Reset(ds []*eosc.WorkerData) {
+	nw := eosc.NewUntyped()
+	for _, v := range ds {
+		wv, err := ToWorker(v)
+		if err != nil {
+			continue
+		}
+		nw.Set(v.Id, wv)
+	}
+	t.data = nw
+}
+
+func NewTypedWorkers() ITypedWorkers {
 	return &TypedWorkers{
 		data: eosc.NewUntyped(),
 	}
 }
 
 func (t *TypedWorkers) All() []*Worker {
-	panic("implement me")
+	vs := t.data.List()
+	rs := make([]*Worker, len(vs))
+	for i, v := range vs {
+		rs[i] = v.(*Worker)
+	}
+	return rs
 }
 
 func (t *TypedWorkers) Set(id string, w *Worker) {
