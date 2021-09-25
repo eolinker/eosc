@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"golang.org/x/time/rate"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -174,7 +175,7 @@ func (rc *Node) startRaft() error {
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 	peersList := rc.peers.GetAllPeers()
-	// 判断是否有日志文件目录
+	// 判断是否有日志文件目录，这里是否需要改动
 	oldWal := wal.Exist(rc.waldir)
 	// 启动node节点
 	if rc.join || oldWal {
@@ -245,7 +246,12 @@ func (rc *Node) serveChannels() {
 			if !ok {
 				//// 此时节点停止
 				rc.stop()
-				rc.clearConfig()
+				// 切换单例集群
+				err = rc.changeSingleCluster()
+				if err != nil {
+					log.Panic(err)
+				}
+				//rc.clearConfig()
 				return
 			}
 			// 必要时生成快照
@@ -270,6 +276,7 @@ func (rc *Node) stop() {
 	if rc.active {
 		rc.transport.Stop()
 		rc.node.Stop()
+		rc.active = false
 	}
 }
 
@@ -415,6 +422,64 @@ func (rc *Node) InitSend() error {
 	if len(str) > 0 {
 		return fmt.Errorf(str)
 	}
+	return nil
+}
+
+// 切换回单例集群
+func (rc *Node) changeSingleCluster() error{
+	node, _ := rc.peers.GetPeerByID(rc.nodeID)
+	rc.peers = NewPeers()
+	rc.peers.SetPeer(rc.nodeID,node)
+	rc.transport =  &rafthttp.Transport{
+		ID: types.ID(rc.nodeID),
+		Raft: rc,
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
+		Logger:             rc.logger,
+		ClusterID:          0x1000,
+		ServerStats:        stats.NewServerStats("", ""),
+		ErrorC:             make(chan error),
+		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
+	}
+	rc.transportHandler = rc.genHandler()
+	rc.stopc = make(chan struct{})
+	// 配置存储
+	rc.writeConfig()
+
+	// 新建快照管理
+	//rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
+	//
+	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
+	//rc.wal = rc.replayWAL()
+	//err := rc.ReadSnap(rc.snapshotter)
+	//if err != nil {
+	//	return fmt.Errorf("reload snap to service error: %w", err)
+	//	//log.Detail("reload snap to service error:", err)
+	//}
+	// 节点配置
+	c := &raft.Config{
+		ID:                        rc.nodeID,
+		ElectionTick:              10,
+		HeartbeatTick:             1,
+		Storage:                   rc.raftStorage,
+		MaxSizePerMsg:             1024 * 1024,
+		MaxInflightMsgs:           256,
+		MaxUncommittedEntriesSize: 1 << 30,
+	}
+	rc.node = raft.RestartNode(c)
+	err := rc.transport.Start()
+	if err != nil {
+		return fmt.Errorf("transport start error: %w", err)
+		//log.Detail("transport start error:", err)
+	}
+	rc.active = true
+	err = rc.transport.Start()
+	if err != nil {
+		return fmt.Errorf("transport start error: %w", err)
+		//log.Detail("transport start error:", err)
+	}
+	rc.active = true
+	// 开始读ready
+	go rc.serveChannels()
 	return nil
 }
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"os"
 	"strconv"
 	"time"
 
@@ -33,6 +35,10 @@ var retryFrequency time.Duration = 2000
 // 已知节点如果还处于非集群模式，会先切换成集群模式
 // 2、也可以用于节点crash后的重启处理
 func JoinCluster(node *Node, broadCastIP string, broadPort int, address string, protocol string) error {
+	// 判断是否已经在一个多节点集群中
+	if node.peers.GetPeerNum() > 1 {
+		return fmt.Errorf("This node has joined the cluster")
+	}
 	msg := JoinRequest{
 		BroadcastIP:   broadCastIP,
 		BroadcastPort: broadPort,
@@ -66,6 +72,23 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, address string, 
 
 // startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
 func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) error {
+	// join的时候先暂停原来活跃节点
+	if rc.IsActive() {
+		rc.stop()
+		// 删除旧的日志文件
+		if fileutil.Exist(rc.waldir) {
+			err := os.Remove(rc.waldir)
+			if err != nil {
+				return fmt.Errorf("eosc: cannot remove old dir for wal (%w)", err)
+			}
+		}
+		if fileutil.Exist(rc.snapdir) {
+			err := os.Remove(rc.snapdir)
+			if err != nil {
+				return fmt.Errorf("eosc: cannot remove old dir for snapshot (%w)", err)
+			}
+		}
+	}
 	rc.nodeID = node.ID
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
@@ -74,7 +97,6 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) error {
 	rc.broadcastIP = node.BroadcastIP
 	rc.broadcastPort = node.BroadcastPort
 	rc.protocol = node.Protocol
-
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
@@ -95,7 +117,8 @@ func NewNode(service IService) (*Node, error) {
 	// 判断是否存在nodeID，若存在，则当作旧节点处理，加入集群
 	cfg := eosc_args.NewConfig(fileName)
 	cfg.ReadFile(fileName)
-	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "0"))
+	// 均已node_id为1启动,作为单例集群
+	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
 	nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
 	logger, _ := zap.NewProduction()
 	rc := &Node{
