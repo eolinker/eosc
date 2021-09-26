@@ -14,8 +14,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/eolinker/eosc/utils"
-
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/listener"
@@ -25,18 +23,18 @@ import (
 
 func Process() {
 
-	worker := NewWorker()
-	listener.SetTraffic(worker.tf)
+	w := NewProcessWorker()
+	listener.SetTraffic(w.tf)
 	loadPluginEnv()
 
-	worker.wait()
+	w.wait()
 }
 
-type Worker struct {
+type ProcessWorker struct {
 	tf traffic.ITraffic
 }
 
-func (w *Worker) wait() error {
+func (w *ProcessWorker) wait() error {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
 	for {
@@ -64,19 +62,27 @@ func (w *Worker) wait() error {
 	}
 
 }
-func NewWorker() *Worker {
-	w := &Worker{}
+func NewProcessWorker() *ProcessWorker {
+	w := &ProcessWorker{}
 	tf := traffic.NewTraffic()
 	tf.Read(os.Stdin)
 	w.tf = tf
-	_, err := utils.ReadFrame(os.Stdin)
+	ps, err := ReadProfessions(os.Stdin)
 	if err != nil {
+		log.Warn("profession configs error:", err)
+		return nil
+	}
+	workersData := ReadWorkers(os.Stdin)
+	wm := NewWorkerManager(ps)
+	err = wm.Init(workersData)
+	if err != nil {
+		log.Warn("worker configs error:", err)
 		return nil
 	}
 	return w
 }
 
-func (w *Worker) close() {
+func (w *ProcessWorker) close() {
 
 	w.tf.Close()
 }

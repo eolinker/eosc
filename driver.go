@@ -14,8 +14,3 @@ type IProfessionDriver interface {
 	ConfigType() reflect.Type
 	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (IWorker, error)
 }
-
-type IProfessionDriverInfo interface {
-	IProfessionDriver
-	DriverInfo() DriverInfo
-}
