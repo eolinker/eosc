@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"os"
 	"strconv"
 	"time"
 
@@ -76,17 +74,9 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) error {
 	if rc.IsActive() {
 		rc.stop()
 		// 删除旧的日志文件
-		if fileutil.Exist(rc.waldir) {
-			err := os.Remove(rc.waldir)
-			if err != nil {
-				return fmt.Errorf("eosc: cannot remove old dir for wal (%w)", err)
-			}
-		}
-		if fileutil.Exist(rc.snapdir) {
-			err := os.Remove(rc.snapdir)
-			if err != nil {
-				return fmt.Errorf("eosc: cannot remove old dir for snapshot (%w)", err)
-			}
+		err := rc.removeWalFile()
+		if err != nil {
+			return err
 		}
 	}
 	rc.nodeID = node.ID
@@ -141,31 +131,23 @@ func NewNode(service IService) (*Node, error) {
 			DialRetryFrequency: rate.Every(2000 * time.Millisecond),
 		},
 	}
-
-	if rc.nodeID != 0 {
-		if rc.nodeKey == "" {
-			rc.nodeKey = uuid.New()
-		}
-		port, _ := strconv.Atoi(cfg.GetDefault(eosc_args.Port, ""))
-		node := &NodeInfo{
-			NodeSecret: &NodeSecret{
-				ID:  rc.nodeID,
-				Key: rc.nodeKey,
-			},
-			BroadcastIP:   cfg.GetDefault(eosc_args.BroadcastIP, ""),
-			BroadcastPort: port,
-			Protocol:      cfg.GetDefault(eosc_args.Protocol, "http"),
-		}
-		peers := map[uint64]*NodeInfo{rc.nodeID: node}
-		err := startRaft(rc, node, peers)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		rc.transport.Raft = rc
-		if rc.transportHandler == nil {
-			rc.transportHandler = rc.genHandler()
-		}
+	if rc.nodeKey == "" {
+		rc.nodeKey = uuid.New()
+	}
+	port, _ := strconv.Atoi(cfg.GetDefault(eosc_args.Port, ""))
+	node := &NodeInfo{
+		NodeSecret: &NodeSecret{
+			ID:  rc.nodeID,
+			Key: rc.nodeKey,
+		},
+		BroadcastIP:   cfg.GetDefault(eosc_args.BroadcastIP, ""),
+		BroadcastPort: port,
+		Protocol:      cfg.GetDefault(eosc_args.Protocol, "http"),
+	}
+	peers := map[uint64]*NodeInfo{rc.nodeID: node}
+	err := startRaft(rc, node, peers)
+	if err != nil {
+		return nil, err
 	}
 	service.SetRaft(rc)
 	return rc, nil

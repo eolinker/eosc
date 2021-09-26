@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"fmt"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"os"
 
 	"go.etcd.io/etcd/server/v3/wal"
@@ -70,4 +72,20 @@ func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 		log.Fatalf("eosc: error loading wal (%v)", err)
 	}
 	return w
+}
+
+func (rc *Node) removeWalFile() error {
+	if fileutil.Exist(rc.waldir) {
+		err := os.RemoveAll(rc.waldir)
+		if err != nil {
+			return fmt.Errorf("eosc: cannot remove old dir for wal (%w)", err)
+		}
+	}
+	if fileutil.Exist(rc.snapdir) {
+		err := os.RemoveAll(rc.snapdir)
+		if err != nil {
+			return fmt.Errorf("eosc: cannot remove old dir for snap (%w)", err)
+		}
+	}
+	return nil
 }

@@ -49,13 +49,21 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
 	}
-	if !rc.isCluster {
-		// 非集群模式，先本节点切换成集群模式
-		err = rc.changeCluster(joinData.Target)
-		if err != nil {
-			writeError(w, "110002", "fail to change cluster", err.Error())
-			return
-		}
+	//if !rc.isCluster {
+	//	// 非集群模式，先本节点切换成集群模式
+	//	err = rc.changeCluster(joinData.Target)
+	//	if err != nil {
+	//		writeError(w, "110002", "fail to change cluster", err.Error())
+	//		return
+	//	}
+	//}
+	// 非集群模式，先本节点切换成集群模式
+	if rc.peers.GetPeerNum() < 2 {
+		err = rc.UpdateHostInfo(joinData.Target)
+	}
+	if err != nil {
+		writeError(w, "110002", "fail to update host Info", err.Error())
+		return
 	}
 	writeSuccessResult(w, "", &JoinResponse{
 		NodeSecret: &NodeSecret{

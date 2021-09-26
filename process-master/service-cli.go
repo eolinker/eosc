@@ -3,7 +3,6 @@ package process_master
 import (
 	"context"
 	"errors"
-
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/raft"
