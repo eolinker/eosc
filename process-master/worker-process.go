@@ -1,7 +1,6 @@
 package process_master
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -57,7 +56,7 @@ func (wc *WorkerController) newWorkerProcess(stdIn io.Reader, extraFiles []*os.F
 }
 
 func createClient(pid int) (service.WorkerServiceClient, *grpc.ClientConn, error) {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.worker-%d.sock", eosc_args.AppName(), pid))
+	conn, err := grpc_unixsocket.Connect(service.WorkerServerAddr(eosc_args.AppName(), pid))
 	if err != nil {
 		return nil, nil, err
 	}

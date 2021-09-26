@@ -14,6 +14,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/service"
+	"google.golang.org/grpc"
+
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/listener"
@@ -23,15 +28,18 @@ import (
 
 func Process() {
 
+	loadPluginEnv()
 	w := NewProcessWorker()
 	listener.SetTraffic(w.tf)
-	loadPluginEnv()
 
 	w.wait()
 }
 
 type ProcessWorker struct {
-	tf traffic.ITraffic
+	tf          traffic.ITraffic
+	professions IProfessions
+	workers     IWorkers
+	srv         *grpc.Server
 }
 
 func (w *ProcessWorker) wait() error {
@@ -72,6 +80,7 @@ func NewProcessWorker() *ProcessWorker {
 		log.Warn("profession configs error:", err)
 		return nil
 	}
+	w.professions = ps
 	workersData := ReadWorkers(os.Stdin)
 	wm := NewWorkerManager(ps)
 	err = wm.Init(workersData)
@@ -79,10 +88,33 @@ func NewProcessWorker() *ProcessWorker {
 		log.Warn("worker configs error:", err)
 		return nil
 	}
+	w.workers = wm
 	return w
 }
 
 func (w *ProcessWorker) close() {
 
 	w.tf.Close()
+}
+
+func (w *ProcessWorker) Start() error {
+	addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+	// 移除unix socket
+	syscall.Unlink(addr)
+
+	log.Info("start Master :", addr)
+	l, err := grpc_unixsocket.Listener(addr)
+	if err != nil {
+		return err
+	}
+
+	grpcServer := grpc.NewServer()
+
+	service.RegisterWorkerServiceServer(grpcServer, NewWorkerServer(w.workers))
+	go func() {
+		grpcServer.Serve(l)
+	}()
+
+	w.srv = grpcServer
+	return nil
 }

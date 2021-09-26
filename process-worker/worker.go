@@ -6,25 +6,38 @@ var _ IWorker = (*Worker)(nil)
 
 type IWorker interface {
 	eosc.IWorker
-	Profession() *Profession
+	GetProfession() *Profession
 }
 type Worker struct {
-	*eosc.WorkerData
+	id         string
+	Profession string
+	Name       string
+	Driver     string
+	body       []byte
 	target     eosc.IWorker
 	profession *Profession
 	driver     eosc.IProfessionDriver
 }
 
-func NewWorker(workerData *eosc.WorkerData, target eosc.IWorker, profession *Profession) *Worker {
-	return &Worker{WorkerData: workerData, target: target, profession: profession}
+func NewWorker(id, professionName, name, driverName string, body []byte, target eosc.IWorker, profession *Profession, driver eosc.IProfessionDriver) *Worker {
+	return &Worker{
+		id:         id,
+		Profession: professionName,
+		Name:       name,
+		Driver:     driverName,
+		target:     target,
+		profession: profession,
+		body:       body,
+		driver:     driver,
+	}
 }
 
-func (w *Worker) Profession() *Profession {
+func (w *Worker) GetProfession() *Profession {
 	return w.profession
 }
 
 func (w *Worker) Id() string {
-	return w.WorkerData.Id
+	return w.id
 }
 
 func (w *Worker) Start() error {

@@ -9,7 +9,6 @@
 package process_master
 
 import (
-	"fmt"
 	"syscall"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -23,7 +22,7 @@ import (
 //startService 开启master
 func (m *Master) startService() error {
 
-	addr := fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName())
+	addr := service.MasterServerAddr(eosc_args.AppName())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
@@ -47,6 +46,6 @@ func (m *Master) startService() error {
 
 func (m *Master) stopService() {
 	m.masterSrv.GracefulStop()
-	addr := fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName())
+	addr := service.MasterServerAddr(eosc_args.AppName())
 	syscall.Unlink(addr)
 }
