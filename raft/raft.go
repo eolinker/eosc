@@ -56,6 +56,7 @@ func JoinCluster(node *Node, broadCastIP string, broadPort int, address string, 
 		Protocol:      protocol,
 	}
 	resp.Peer[nodeInfo.ID] = nodeInfo
+	node.join = true
 	err = startRaft(node, nodeInfo, resp.Peer)
 	if err != nil {
 		return err
@@ -82,7 +83,6 @@ func startRaft(rc *Node, node *NodeInfo, peers map[uint64]*NodeInfo) error {
 	rc.nodeID = node.ID
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
-	rc.join, rc.isCluster = true, true
 	rc.nodeKey = node.Key
 	rc.broadcastIP = node.BroadcastIP
 	rc.broadcastPort = node.BroadcastPort
@@ -112,17 +112,15 @@ func NewNode(service IService) (*Node, error) {
 	nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
 	logger, _ := zap.NewProduction()
 	rc := &Node{
-		nodeID:          uint64(nodeID),
-		nodeKey:         nodeKey,
-		peers:           NewPeers(),
-		service:         service,
-		snapCount:       defaultSnapshotCount,
-		stopc:           make(chan struct{}),
-		logger:          logger,
-		waiter:          wait.New(),
-		lead:            0,
-		active:          false,
-		updateTransport: make(chan bool, 1),
+		nodeID:    uint64(nodeID),
+		nodeKey:   nodeKey,
+		peers:     NewPeers(),
+		service:   service,
+		snapCount: defaultSnapshotCount,
+		stopc:     make(chan struct{}),
+		logger:    logger,
+		waiter:    wait.New(),
+		lead:      0,
 		transport: &rafthttp.Transport{
 			Logger:             logger,
 			ClusterID:          0x1000,
@@ -144,6 +142,7 @@ func NewNode(service IService) (*Node, error) {
 		BroadcastPort: port,
 		Protocol:      cfg.GetDefault(eosc_args.Protocol, "http"),
 	}
+	rc.join, _ = strconv.ParseBool(cfg.GetDefault(eosc_args.IsJoin, "false"))
 	peers := map[uint64]*NodeInfo{rc.nodeID: node}
 	err := startRaft(rc, node, peers)
 	if err != nil {

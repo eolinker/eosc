@@ -107,7 +107,7 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeSuccessResult(w, "", nil)
 		return
 	}
-
+	rc.join = true
 	node := &NodeInfo{
 		NodeSecret: &NodeSecret{
 			ID:  joinData.NodeID,

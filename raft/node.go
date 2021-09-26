@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"golang.org/x/time/rate"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 
@@ -83,7 +84,6 @@ type Node struct {
 	logger           *zap.Logger
 	waiter           wait.Wait
 	active           bool
-	updateTransport  chan bool
 	transportHandler http.Handler
 }
 
@@ -107,8 +107,8 @@ func (rc *Node) readConfig() {
 	nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
 	cfg := eosc_args.NewConfig(nodeName)
 	cfg.ReadFile(nodeName)
-	rc.isCluster, _ = strconv.ParseBool(cfg.GetDefault(eosc_args.IsCluster, "false"))
-	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "0"))
+	rc.join, _ = strconv.ParseBool(cfg.GetDefault(eosc_args.IsJoin, "false"))
+	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
 	rc.nodeID = uint64(nodeID)
 	rc.nodeKey = cfg.GetDefault(eosc_args.NodeKey, "")
 	rc.broadcastIP = cfg.GetDefault(eosc_args.BroadcastIP, "")
@@ -118,7 +118,7 @@ func (rc *Node) readConfig() {
 //writeConfig 将raft节点的运行配置写进文件中
 func (rc *Node) writeConfig() {
 	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	cfg.Set(eosc_args.IsCluster, "true")
+	cfg.Set(eosc_args.IsJoin, strconv.FormatBool(rc.join))
 	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
 	cfg.Set(eosc_args.NodeKey, rc.nodeKey)
 	cfg.Set(eosc_args.BroadcastIP, rc.broadcastIP)
@@ -133,7 +133,7 @@ func (rc *Node) clearConfig() {
 	rc.nodeKey = ""
 	rc.broadcastIP = ""
 	rc.broadcastPort = 0
-	rc.active, rc.join, rc.isCluster = false, false, false
+	rc.active, rc.join = false, false
 	rc.transportHandler = rc.genHandler()
 }
 
@@ -173,11 +173,10 @@ func (rc *Node) startRaft() error {
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 	peersList := rc.peers.GetAllPeers()
-	// 判断是否有日志文件目录，这里是否需要改动
-	oldWal := wal.Exist(rc.waldir)
+
 	// 启动node节点
-	if rc.join || oldWal {
-		// 选择加入集群或已有日志消息（曾经切换过集群模式）
+	if rc.join {
+		// 如果已经加入过集群，则重启节点
 		rc.node = raft.RestartNode(c)
 	} else {
 		// 启动节点时添加peers
@@ -276,7 +275,7 @@ func (rc *Node) stop() {
 		rc.transport.Stop()
 		rc.node.Stop()
 		rc.wal.Close()
-		rc.active = false
+		rc.active, rc.join = false, false
 	}
 }
 
@@ -426,14 +425,15 @@ func (rc *Node) InitSend() error {
 }
 
 // 切换回单例集群
-func (rc *Node) changeSingleCluster() error{
+func (rc *Node) changeSingleCluster() error {
 	node, _ := rc.peers.GetPeerByID(rc.nodeID)
+	rc.join = false
 	rc.peers = NewPeers()
-	rc.peers.SetPeer(rc.nodeID,node)
-	rc.transport =  &rafthttp.Transport{
-		ID: types.ID(rc.nodeID),
-		Raft: rc,
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
+	rc.peers.SetPeer(rc.nodeID, node)
+	rc.transport = &rafthttp.Transport{
+		ID:                 types.ID(rc.nodeID),
+		Raft:               rc,
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
 		Logger:             rc.logger,
 		ClusterID:          0x1000,
 		ServerStats:        stats.NewServerStats("", ""),
@@ -482,7 +482,6 @@ func (rc *Node) changeSingleCluster() error{
 	go rc.serveChannels()
 	return nil
 }
-
 
 func (rc *Node) UpdateHostInfo(addr string) error {
 	u, err := url.Parse(addr)
@@ -608,8 +607,6 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 //	rc.writeConfig()
 //	return nil
 //}
-
-
 
 // 工具方法
 // postMessageToLeader 转发消息，基于json
