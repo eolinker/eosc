@@ -20,14 +20,16 @@ func ToDriverDetails(config []*DriverConfig) []*DriverDetail {
 func ToDriverDetail(config *DriverConfig) *DriverDetail {
 	group, project, name := readDriverId(config.Id)
 	return &DriverDetail{
-		Id:      config.Id,
-		Driver:  config.Name,
-		Label:   config.Label,
-		Desc:    config.Desc,
-		Group:   group,
-		Project: project,
-		Name:    name,
-		Params:  config.Params,
+		Id:     config.Id,
+		Driver: config.Name,
+		Label:  config.Label,
+		Desc:   config.Desc,
+		Plugin: &PluginInfo{
+			Group:   group,
+			Project: project,
+			Name:    name,
+		},
+		Params: config.Params,
 	}
 }
 func readDriverId(id string) (group, project, name string) {

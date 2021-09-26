@@ -3,14 +3,14 @@ package admin
 import (
 	"net/http"
 
-	"github.com/eolinker/eosc/admin"
+	"github.com/eolinker/eosc"
 )
 
 type WorkerInfo map[string]interface{}
 
 type Admin struct {
-	professions admin.IProfessions
-	workers     admin.IWorkers
+	professions eosc.IProfessionsData
+	workers     eosc.IWorkersData
 	handler     http.Handler
 }
 
@@ -22,7 +22,7 @@ func (a *Admin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.handler.ServeHTTP(w, r)
 }
 
-func NewAdmin(professions admin.IProfessions, workers admin.IWorkers, prefix string) *Admin {
+func NewAdmin(professions eosc.IProfessionsData, workers eosc.IWorkersData, prefix string) *Admin {
 	a := &Admin{professions: professions, workers: workers}
 	a.handler = load(a, prefix)
 	return a

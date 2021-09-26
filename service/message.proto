@@ -3,26 +3,29 @@ option go_package = "github.com/eolinker/eosc";
 package service;
 
 message ProfessionConfig{
-  string Name = 1;//
-  string LocalName = 2;//
-  string Desc = 3 ;//
-  repeated string Dependencies = 4;
-  repeated string AppendLabels = 5;
-  repeated DriverConfig Drivers = 6;
+  string name = 1;//
+  string label = 2;//
+  string desc = 3 ;//
+  repeated string dependencies = 4;
+  repeated string appendLabels = 5;
+  repeated DriverConfig drivers = 6;
+}
+message ProfessionConfigData{
+  repeated ProfessionConfig data=1;
 }
 
 message ProfessionInfo {
-  string Name = 1;//
-  string LocalName = 2;//
-  string Desc = 3 ;//
+  string name = 1;//
+  string label = 2;//
+  string desc = 3 ;//
 }
 message ProfessionDetail{
-  string Name = 1;
-  string LocalName = 2;
-  string Desc = 3 ;
-  repeated string Dependencies = 4;
-  repeated string AppendLabels = 5;
-  repeated DriverDetail Drivers = 6;
+  string name = 1;
+  string label = 2;
+  string desc = 3 ;
+  repeated string dependencies = 4;
+  repeated string appendLabels = 5;
+  repeated DriverDetail drivers = 6;
 }
 message DriverInfo{
   string id = 1;
@@ -38,6 +41,11 @@ message DriverConfig{
   string desc = 4;
   map<string, string> params = 5;
 }
+message PluginInfo {
+  string group = 6;
+  string project = 7;
+  string name = 8; // 插件名
+}
 // 驱动详情
 message DriverDetail{
   string id = 1;
@@ -45,12 +53,10 @@ message DriverDetail{
   string label = 3;
   string desc = 4;
   //  string profession=5;
-  string group = 6;
-  string project = 7;
-  string name = 8; // 插件名
-  map<string, string> params = 9;
-
+  map<string, string> params = 5;
+  PluginInfo plugin=6;
 }
+
 message WorkerInfo{
   string id = 1;
   string profession = 2;
@@ -68,4 +74,7 @@ message WorkerData{
   string create = 5;
   string update = 6;
   bytes body = 7;
+}
+message WorkersData{
+  repeated WorkerData data=1;
 }

@@ -70,12 +70,12 @@ func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httpro
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 
-	info, err := o.admin.Delete(profession, name)
+	err := o.admin.Delete(profession, name)
 	if err != nil {
 		writeResultError(w, 404, err)
 		return
 	}
-	writeResult(w, info)
+	writeResult(w, []byte("{}"))
 }
 
 func (o *OpenAdmin) genUrl(url string) string {

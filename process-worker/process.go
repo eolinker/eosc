@@ -14,6 +14,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/listener"
@@ -67,7 +69,10 @@ func NewWorker() *Worker {
 	tf := traffic.NewTraffic()
 	tf.Read(os.Stdin)
 	w.tf = tf
-
+	_, err := utils.ReadFrame(os.Stdin)
+	if err != nil {
+		return nil
+	}
 	return w
 }
 

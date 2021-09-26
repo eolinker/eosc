@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"strconv"
 
-	admin2 "github.com/eolinker/eosc/admin"
+	"github.com/eolinker/eosc"
 
 	"github.com/eolinker/eosc/process-master/admin"
 	"github.com/eolinker/eosc/process-master/professions"
@@ -69,11 +69,13 @@ type Master struct {
 	httpserver    *http.Server
 
 	admin *admin.Admin
+
+	workerController *WorkerController
 }
 
 type MasterHandler struct {
-	Professions admin2.IProfessions
-	//Workers     admin2.IWorkers
+	Professions eosc.IProfessionsData
+	//WorkersRaft     admin2.IWorkers
 	//RaftService raft_service.IService
 	//RaftServiceHandler raft_service.IRaftServiceHandler
 	//Service            raft.IService
@@ -89,13 +91,17 @@ func (m *Master) start(handler *MasterHandler) error {
 	if handler == nil {
 		handler = new(MasterHandler)
 	}
+
 	handler.initHandler()
 	s := raft_service.NewService()
+	workersData := NewWorkersData(workers.NewTypedWorkers())
+	professionRaft := NewProfessionRaft(handler.Professions)
 
-	worker := workers.NewWorkers(handler.Professions, s)
+	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
+
+	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s)
 	m.admin = admin.NewAdmin(handler.Professions, worker, "/")
-
-	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker))
+	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
 	node, err := raft.NewNode(s)
 	if err != nil {
 		log.Error(err)
@@ -103,6 +109,8 @@ func (m *Master) start(handler *MasterHandler) error {
 	}
 
 	m.node = node
+
+	m.workerController.Start()
 	return nil
 }
 
