@@ -22,6 +22,14 @@ type WorkerRequireManager struct {
 	requires  eosc.IUntyped
 }
 
+func NewWorkerRequireManager() *WorkerRequireManager {
+	return &WorkerRequireManager{
+		locker:    sync.Mutex{},
+		requireBy: eosc.NewUntyped(),
+		requires:  eosc.NewUntyped(),
+	}
+}
+
 func (w *WorkerRequireManager) Set(id string, requires map[eosc.RequireId]interface{}) {
 	w.locker.Lock()
 	defer w.locker.Unlock()

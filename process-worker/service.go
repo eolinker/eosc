@@ -16,7 +16,10 @@ type WorkerServer struct {
 func NewWorkerServer(workers IWorkers) *WorkerServer {
 	return &WorkerServer{workers: workers}
 }
+func (ws *WorkerServer) Reset(ctx context.Context, req *service.WorkerResetRequest) (*service.WorkerStatusResponse, error) {
 
+	return nil, nil
+}
 func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerDeleteResponse, error) {
 
 	count := ws.workers.RequiredCount(request.Id)
@@ -66,7 +69,7 @@ func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) 
 
 	err := ws.workers.Set(req.Id, req.Profession, req.Name, req.Driver, req.Body)
 	if err != nil {
-		log.Info("serivce set :", err)
+		log.Info("worker server set:", err)
 		return &service.WorkerSetResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),

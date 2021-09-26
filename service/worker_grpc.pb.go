@@ -23,6 +23,7 @@ type WorkerServiceClient interface {
 	Delete(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerDeleteResponse, error)
 	Set(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerSetResponse, error)
 	Ping(ctx context.Context, in *WorkerHelloRequest, opts ...grpc.CallOption) (*WorkerHelloResponse, error)
+	Reset(ctx context.Context, in *WorkerResetRequest, opts ...grpc.CallOption) (*WorkerStatusResponse, error)
 }
 
 type workerServiceClient struct {
@@ -78,6 +79,15 @@ func (c *workerServiceClient) Ping(ctx context.Context, in *WorkerHelloRequest, 
 	return out, nil
 }
 
+func (c *workerServiceClient) Reset(ctx context.Context, in *WorkerResetRequest, opts ...grpc.CallOption) (*WorkerStatusResponse, error) {
+	out := new(WorkerStatusResponse)
+	err := c.cc.Invoke(ctx, "/service.WorkerService/reset", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
@@ -87,6 +97,7 @@ type WorkerServiceServer interface {
 	Delete(context.Context, *WorkerDeleteRequest) (*WorkerDeleteResponse, error)
 	Set(context.Context, *WorkerSetRequest) (*WorkerSetResponse, error)
 	Ping(context.Context, *WorkerHelloRequest) (*WorkerHelloResponse, error)
+	Reset(context.Context, *WorkerResetRequest) (*WorkerStatusResponse, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -108,6 +119,9 @@ func (UnimplementedWorkerServiceServer) Set(context.Context, *WorkerSetRequest) 
 }
 func (UnimplementedWorkerServiceServer) Ping(context.Context, *WorkerHelloRequest) (*WorkerHelloResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedWorkerServiceServer) Reset(context.Context, *WorkerResetRequest) (*WorkerStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Reset not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 
@@ -212,6 +226,24 @@ func _WorkerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_Reset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkerResetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).Reset(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.WorkerService/reset",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).Reset(ctx, req.(*WorkerResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -238,6 +270,10 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ping",
 			Handler:    _WorkerService_Ping_Handler,
+		},
+		{
+			MethodName: "reset",
+			Handler:    _WorkerService_Reset_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

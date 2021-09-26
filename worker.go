@@ -18,3 +18,7 @@ type IWorkersData interface {
 	Delete(id string) error
 	Set(profession, name, driver string, data []byte) error
 }
+
+type IWorkerResources interface {
+	Ports() []int
+}

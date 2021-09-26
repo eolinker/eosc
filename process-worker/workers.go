@@ -3,9 +3,12 @@ package process_worker
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"sync"
+
+	"github.com/eolinker/eosc/listener"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -44,6 +47,7 @@ type WorkerManager struct {
 	professions    IProfessions
 	data           ITypedWorkers
 	requireManager IWorkerRequireManager
+	portsRequire   listener.IPortsRequire
 }
 
 func (wm *WorkerManager) RequiredCount(id string) int {
@@ -86,10 +90,10 @@ func (wm *WorkerManager) Del(id string) error {
 
 	worker, has := wm.data.Get(id)
 	if !has {
-		return errors.New("not exist")
+		return eosc.ErrorWorkerNotExits
 	}
 	if wm.requireManager.RequireByCount(id) > 0 {
-		return errors.New("required")
+		return eosc.ErrorRequire
 	}
 
 	err := worker.Stop()
@@ -98,6 +102,8 @@ func (wm *WorkerManager) Del(id string) error {
 	}
 	wm.data.Del(id)
 	wm.requireManager.Del(id)
+	wm.portsRequire.Del(id)
+
 	return nil
 }
 
@@ -106,7 +112,13 @@ func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
 }
 
 func NewWorkerManager(professions IProfessions) *WorkerManager {
-	return &WorkerManager{professions: professions, data: NewTypedWorkers()}
+	return &WorkerManager{
+		locker:         sync.Mutex{},
+		professions:    professions,
+		data:           NewTypedWorkers(),
+		requireManager: NewWorkerRequireManager(),
+		portsRequire:   listener.NewPortsRequire(),
+	}
 }
 
 func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
@@ -132,11 +144,11 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 
 	p, has := wm.professions.Get(profession)
 	if !has {
-		return errors.New("profession not exist")
+		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
 	driver, has := p.GetDriver(driverName)
 	if !has {
-		return errors.New("driver not exist")
+		return fmt.Errorf("%s:%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
 	configType := driver.ConfigType()
@@ -151,8 +163,9 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 		return err
 	}
 	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
-		if err := dc.Check(conf, requires); err != nil {
-			return err
+		if e := dc.Check(conf, requires); err != nil {
+
+			return e
 		}
 	}
 	wm.locker.Lock()
@@ -161,11 +174,14 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	// if update
 	o, has := wm.data.Get(id)
 	if has {
-		err := o.Reset(conf, requires)
-		if err != nil {
-			return err
+		e := o.Reset(conf, requires)
+		if e != nil {
+			return e
 		}
 		wm.requireManager.Set(id, requires)
+		if res, ok := o.target.(eosc.IWorkerResources); ok {
+			wm.portsRequire.Set(id, res.Ports())
+		}
 		return nil
 	}
 	// create
@@ -178,9 +194,12 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	if e != nil {
 		return e
 	}
+
 	// store
 	wm.data.Set(id, NewWorker(id, profession, name, driverName, body, w, p, driver))
 	wm.requireManager.Set(id, requires)
-
+	if res, ok := w.(eosc.IWorkerResources); ok {
+		wm.portsRequire.Set(id, res.Ports())
+	}
 	return nil
 }
