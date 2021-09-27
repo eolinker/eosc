@@ -190,20 +190,20 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 		return nil
 	}
 	// create
-	w, err := driver.Create(id, name, conf, requires)
+	worker, err := driver.Create(id, name, conf, requires)
 	if err != nil {
 		return err
 	}
 	// start
-	e := w.Start()
+	e := worker.Start()
 	if e != nil {
 		return e
 	}
 
 	// store
-	wm.data.Set(id, NewWorker(id, profession, name, driverName, body, w, p, driver))
+	wm.data.Set(id, NewWorker(id, profession, name, driverName, body, worker, p, driver))
 	wm.requireManager.Set(id, getIds(requires))
-	if res, ok := w.(eosc.IWorkerResources); ok {
+	if res, ok := worker.(eosc.IWorkerResources); ok {
 		wm.portsRequire.Set(id, res.Ports())
 	}
 	return nil
