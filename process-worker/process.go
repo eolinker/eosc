@@ -72,6 +72,9 @@ func (w *ProcessWorker) wait() {
 	}
 
 }
+
+//NewProcessWorker 创建新的worker进程
+//启动时通过stdin传输配置信息
 func NewProcessWorker() *ProcessWorker {
 	w := &ProcessWorker{}
 	tf := traffic.NewTraffic()
