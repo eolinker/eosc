@@ -47,7 +47,6 @@ type JoinRequest struct {
 type JoinResponse struct {
 	*NodeSecret
 	Peer        map[uint64]*NodeInfo `json:"peer"`
-	InitCluster bool                 `json:"init_cluster"`
 }
 
 type NodeSecret struct {

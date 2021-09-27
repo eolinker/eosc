@@ -24,6 +24,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				// ignore empty messages
 				continue
 			}
+
 			m := &Message{}
 			var err error
 			err = m.Decode(ents[i].Data)
@@ -31,20 +32,13 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				log.Error(err)
 				continue
 			}
+			if m.Type == INIT && m.From == rc.nodeID {
+				continue
+			}
 			err = rc.service.CommitHandler(m.Data)
 			if err != nil {
 				log.Error(err)
 			}
-			if m.Type == INIT && m.From == rc.nodeID {
-				// 释放InitSend方法的等待，仅针对切换集群的对应节点
-				if err != nil {
-					log.Error(err)
-					rc.waiter.Trigger(m.From, err.Error())
-					continue
-				}
-				rc.waiter.Trigger(m.From, "")
-			}
-
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
