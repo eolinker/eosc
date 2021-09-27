@@ -35,29 +35,23 @@ func (h *HttpService) SetHttps(handler fasthttp.RequestHandler, certs map[string
 	defer h.locker.Unlock()
 
 	h.certs = newCerts(certs)
-
+	h.srv.Handler = handler
 	if !h.isTls {
 		// http to https
 		h.isTls = true
 
-		h.srv = &fasthttp.Server{
-			Handler: handler,
-		}
 		if h.last != nil {
 			h.last.Close()
 		}
 		h.last = tls.NewListener(h.inner, &tls.Config{GetCertificate: h.GetCertificate})
-		return
+		go h.srv.Serve(h.last)
 	}
-
-	h.srv.Handler = handler
-
 }
 
 func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
 	h.locker.Lock()
 	defer h.locker.Unlock()
-
+	h.srv.Handler = handler
 	if h.isTls {
 		h.isTls = false
 		if h.last != nil {
@@ -67,10 +61,8 @@ func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
 
 		h.last = newNotClose(h.inner)
 		go h.srv.Serve(h.last)
-		return
-	}
 
-	h.srv.Handler = handler
+	}
 
 }
 
