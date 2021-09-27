@@ -46,7 +46,6 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
 	}
-
 	if !rc.join {
 		err = rc.UpdateHostInfo(joinData.Target)
 		if err != nil {
@@ -116,10 +115,6 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return
 	}
-	//if !rc.join {
-	//	rc.join = true
-	//	rc.writeConfig()
-	//}
 	writeSuccessResult(w, "", nil)
 	return
 }
