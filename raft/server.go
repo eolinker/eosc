@@ -19,11 +19,16 @@ type IService interface {
 
 	// GetSnapshot 生成快照，用于快照文件的生成
 	GetSnapshot() (data []byte, err error)
+
 	SetRaft(raft IRaftSender)
 }
 
 type IRaftSender interface {
 	Send(msg []byte) error
+}
+
+type IRaftService interface {
+	IService
 }
 
 //

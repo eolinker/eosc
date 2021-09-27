@@ -7,11 +7,18 @@ type IWorker interface {
 	Stop() error
 	CheckSkill(skill string) bool
 }
-
-type tWorker struct {
-	worker IWorker
+type IWorkers interface {
+	Get(id string) (IWorker, bool)
 }
 
-func newTWorker(worker IWorker) *tWorker {
-	return &tWorker{worker: worker}
+type TWorker map[string]interface{}
+type IWorkersData interface {
+	GetWork(id string) (TWorker, error)
+	GetList(profession string) ([]TWorker, error)
+	Delete(id string) error
+	Set(profession, name, driver string, data []byte) error
+}
+
+type IWorkerResources interface {
+	Ports() []int
 }

@@ -2,6 +2,7 @@ package raft
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -54,6 +55,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			switch cc.Type {
 			// 新增节点
 			case raftpb.ConfChangeAddNode:
+				fmt.Println("abc", string(cc.Context))
 				if len(cc.Context) > 0 {
 					var info NodeInfo
 					err := json.Unmarshal(cc.Context, &info)

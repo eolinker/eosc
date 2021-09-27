@@ -13,13 +13,13 @@ const Protocol = "PROTOCOL"
 const BroadcastIP = "BROADCAST_IP"
 
 const ClusterAddress = "CLUSTER_ADDRESS"
-const IsCluster = "IS_CLUSTER"
+const IsJoin = "IS_JOIN"
 const PluginPath = "PLUGINS_DIR"
 const NodeID = "NODE_ID"
 const NodeKey = "NODE_KEY"
 
 var envs = []string{
-	IP, Port, Protocol, BroadcastIP, ClusterAddress, PluginPath, IsCluster, NodeID, NodeKey,
+	IP, Port, Protocol, BroadcastIP, ClusterAddress, PluginPath, IsJoin, NodeID, NodeKey,
 }
 var (
 	appName = createApp()

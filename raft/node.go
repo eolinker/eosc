@@ -3,6 +3,7 @@ package raft
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,10 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-basic/uuid"
+
+	"golang.org/x/time/rate"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 
 	"github.com/eolinker/eosc/log"
-	"github.com/go-basic/uuid"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/wait"
@@ -83,9 +87,7 @@ type Node struct {
 	logger           *zap.Logger
 	waiter           wait.Wait
 	active           bool
-	updateTransport  chan bool
 	transportHandler http.Handler
-	transportStart   bool
 }
 
 func (rc *Node) NodeID() uint64 {
@@ -108,10 +110,13 @@ func (rc *Node) readConfig() {
 	nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
 	cfg := eosc_args.NewConfig(nodeName)
 	cfg.ReadFile(nodeName)
-	rc.isCluster, _ = strconv.ParseBool(cfg.GetDefault(eosc_args.IsCluster, "false"))
-	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "0"))
+	rc.join, _ = strconv.ParseBool(cfg.GetDefault(eosc_args.IsJoin, "false"))
+	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
 	rc.nodeID = uint64(nodeID)
 	rc.nodeKey = cfg.GetDefault(eosc_args.NodeKey, "")
+	if rc.nodeKey == "" {
+		rc.nodeKey = uuid.New()
+	}
 	rc.broadcastIP = cfg.GetDefault(eosc_args.BroadcastIP, "")
 	rc.broadcastPort, _ = strconv.Atoi(cfg.GetDefault(eosc_args.Port, "0"))
 }
@@ -119,7 +124,8 @@ func (rc *Node) readConfig() {
 //writeConfig 将raft节点的运行配置写进文件中
 func (rc *Node) writeConfig() {
 	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	cfg.Set(eosc_args.IsCluster, "true")
+	fmt.Println(3, rc.join)
+	cfg.Set(eosc_args.IsJoin, strconv.FormatBool(rc.join))
 	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
 	cfg.Set(eosc_args.NodeKey, rc.nodeKey)
 	cfg.Set(eosc_args.BroadcastIP, rc.broadcastIP)
@@ -127,16 +133,16 @@ func (rc *Node) writeConfig() {
 	cfg.Save()
 }
 
-func (rc *Node) clearConfig() {
-	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	cfg.Save()
-	rc.nodeID = 0
-	rc.nodeKey = ""
-	rc.broadcastIP = ""
-	rc.broadcastPort = 0
-	rc.active, rc.join, rc.isCluster = false, false, false
-	rc.transportHandler = rc.genHandler()
-}
+//func (rc *Node) clearConfig() {
+//	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+//	cfg.Save()
+//	rc.nodeID = 0
+//	rc.nodeKey = ""
+//	rc.broadcastIP = ""
+//	rc.broadcastPort = 0
+//	rc.active, rc.join = false, false
+//	rc.transportHandler = rc.genHandler()
+//}
 
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
@@ -160,7 +166,7 @@ func (rc *Node) startRaft() error {
 	err := rc.ReadSnap(rc.snapshotter)
 	if err != nil {
 		return fmt.Errorf("reload snap to service error: %w", err)
-		//log.Info("reload snap to service error:", err)
+		//log.Detail("reload snap to service error:", err)
 	}
 
 	// 节点配置
@@ -174,11 +180,10 @@ func (rc *Node) startRaft() error {
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 	peersList := rc.peers.GetAllPeers()
-	// 判断是否有日志文件目录
-	oldWal := wal.Exist(rc.waldir)
+
 	// 启动node节点
-	if rc.join || oldWal {
-		// 选择加入集群或已有日志消息（曾经切换过集群模式）
+	if rc.join {
+		// 如果已经加入过集群，则重启节点
 		rc.node = raft.RestartNode(c)
 	} else {
 		// 启动节点时添加peers
@@ -194,8 +199,9 @@ func (rc *Node) startRaft() error {
 	err = rc.transport.Start()
 	if err != nil {
 		return fmt.Errorf("transport start error: %w", err)
-		//log.Info("transport start error:", err)
+		//log.Detail("transport start error:", err)
 	}
+	// 重置为活跃状态
 	rc.active = true
 	// 与集群中的其他节点建立通信
 
@@ -245,7 +251,12 @@ func (rc *Node) serveChannels() {
 			if !ok {
 				//// 此时节点停止
 				rc.stop()
-				rc.clearConfig()
+				// 切换单例集群
+				err = rc.changeSingleCluster()
+				if err != nil {
+					log.Panic(err)
+				}
+				//rc.clearConfig()
 				return
 			}
 			// 必要时生成快照
@@ -270,6 +281,8 @@ func (rc *Node) stop() {
 	if rc.active {
 		rc.transport.Stop()
 		rc.node.Stop()
+		rc.wal.Close()
+		rc.active, rc.join = false, false
 	}
 }
 
@@ -336,9 +349,7 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 	if !rc.active {
 		return fmt.Errorf("current node is leave")
 	}
-	if !rc.isCluster {
-		return fmt.Errorf("current node is not cluster mode")
-	}
+
 	p := rc.transport.Get(types.ID(nodeID))
 	if p != nil {
 		return nil
@@ -353,10 +364,11 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 
 // DeleteConfigChange 客户端发送删除节点的发送处理
 func (rc *Node) DeleteConfigChange() error {
-	if !rc.active {
-		return fmt.Errorf("current node is leave")
-	}
-	if !rc.isCluster {
+	//if !rc.active {
+	//	return fmt.Errorf("current node is leave")
+	//}
+	fmt.Println(rc.join)
+	if !rc.join {
 		return fmt.Errorf("current node is not cluster mode")
 	}
 
@@ -377,71 +389,107 @@ func (rc *Node) Stop() {
 	rc.stop()
 }
 
-// InitSend 切换集群时调用，一般一个集群仅调用一次
-// 将service现有的缓存信息(基于service.GetInit获取)加载到日志中，便于其他节点同步
-// 此时节点刚切换到集群状态，一般会是日志中的第一条信息
-// 并通过rc.waiter等待service.ProcessInit处理完后进行后续操作(同步等待)
-func (rc *Node) InitSend() error {
-	// 集群模式初始化的时候才会调
-	if !rc.isCluster {
-		return fmt.Errorf("need to change cluster mode")
+//// InitSend 切换集群时调用，一般一个集群仅调用一次
+//// 将service现有的缓存信息(基于service.GetInit获取)加载到日志中，便于其他节点同步
+//// 此时节点刚切换到集群状态，一般会是日志中的第一条信息
+//// 并通过rc.waiter等待service.ProcessInit处理完后进行后续操作(同步等待)
+//func (rc *Node) InitSend() error {
+//	// 集群模式初始化的时候才会调
+//	if !rc.isCluster {
+//		return fmt.Errorf("need to change cluster mode")
+//	}
+//	data, err := rc.service.GetInit()
+//	log.Info("nodeID is ", rc.nodeID)
+//	if err != nil {
+//		return err
+//	}
+//	m := &Message{
+//		From: rc.nodeID,
+//		Type: INIT,
+//		Data: data,
+//	}
+//	b, err := m.Encode()
+//	if err != nil {
+//		return err
+//	}
+//	err = rc.node.Propose(context.TODO(), b)
+//	if err != nil {
+//		log.Error(err)
+//		return err
+//	}
+//	// 等待处理完
+//	c := rc.waiter.Register(rc.nodeID)
+//	res := <-c
+//	str, ok := res.(string)
+//	if !ok {
+//		return fmt.Errorf("init send wait channel interface assert error")
+//	}
+//	if len(str) > 0 {
+//		return fmt.Errorf(str)
+//	}
+//	return nil
+//}
+
+// 切换回单例集群
+func (rc *Node) changeSingleCluster() error {
+	node, _ := rc.peers.GetPeerByID(rc.nodeID)
+	rc.join = false
+	rc.peers = NewPeers()
+	rc.peers.SetPeer(rc.nodeID, node)
+	rc.transport = &rafthttp.Transport{
+		ID:                 types.ID(rc.nodeID),
+		Raft:               rc,
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID))),
+		Logger:             rc.logger,
+		ClusterID:          0x1000,
+		ServerStats:        stats.NewServerStats("", ""),
+		ErrorC:             make(chan error),
+		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
 	}
-	data, err := rc.service.GetInit()
-	log.Info("nodeID is ", rc.nodeID)
+	rc.transportHandler = rc.genHandler()
+	rc.stopc = make(chan struct{})
+	// 配置存储
+	rc.writeConfig()
+
+	// 新建快照管理
+	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
+
+	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
+	rc.wal = rc.replayWAL()
+	err := rc.ReadSnap(rc.snapshotter)
 	if err != nil {
-		return err
+		return fmt.Errorf("reload snap to service error: %w", err)
+		//log.Detail("reload snap to service error:", err)
 	}
-	m := &Message{
-		From: rc.nodeID,
-		Type: INIT,
-		Data: data,
+	// 节点配置
+	c := &raft.Config{
+		ID:                        rc.nodeID,
+		ElectionTick:              10,
+		HeartbeatTick:             1,
+		Storage:                   rc.raftStorage,
+		MaxSizePerMsg:             1024 * 1024,
+		MaxInflightMsgs:           256,
+		MaxUncommittedEntriesSize: 1 << 30,
 	}
-	b, err := m.Encode()
+	rc.node = raft.RestartNode(c)
+	err = rc.transport.Start()
 	if err != nil {
-		return err
+		return fmt.Errorf("transport start error: %w", err)
+		//log.Detail("transport start error:", err)
 	}
-	err = rc.node.Propose(context.TODO(), b)
+	rc.active = true
+	err = rc.transport.Start()
 	if err != nil {
-		log.Error(err)
-		return err
+		return fmt.Errorf("transport start error: %w", err)
+		//log.Detail("transport start error:", err)
 	}
-	// 等待处理完
-	c := rc.waiter.Register(rc.nodeID)
-	res := <-c
-	str, ok := res.(string)
-	if !ok {
-		return fmt.Errorf("init send wait channel interface assert error")
-	}
-	if len(str) > 0 {
-		return fmt.Errorf(str)
-	}
+	rc.active = true
+	// 开始读ready
+	go rc.serveChannels()
 	return nil
 }
 
-// changeCluster 切换集群时调用，一般是非集群节点收到其他节点的join请求时触发(rc.joinHandler)
-// 开始运行集群节点,新建日志文件，启动transport和node，
-// 并开始监听node.ready,将现有缓存加入日志中rc.InitSend
-func (rc *Node) changeCluster(addr string) error {
-	log.Info("change cluster mode")
-	rc.nodeID = 1
-	rc.nodeKey = uuid.New()
-	rc.join = true
-	rc.isCluster = true
-
-	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
-	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
-
-	rc.transport.ID = types.ID(rc.nodeID)
-	rc.transport.Raft = rc
-	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
-	rc.transportHandler = rc.genHandler()
-	rc.stopc = make(chan struct{})
-	// 判断快照文件夹是否存在，不存在则创建
-	if !fileutil.Exist(rc.snapdir) {
-		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
-			return fmt.Errorf("eosc: node(%d) cannot create dir for snapshot (%v)", rc.nodeID, err)
-		}
-	}
+func (rc *Node) UpdateHostInfo(addr string) error {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return fmt.Errorf("eosc: fail to parse address,%w", err)
@@ -453,8 +501,7 @@ func (rc *Node) changeCluster(addr string) error {
 		rc.broadcastIP = u.Host[:index]
 		rc.broadcastPort, _ = strconv.Atoi(u.Host[index+1:])
 	}
-
-	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
+	node := &NodeInfo{
 		NodeSecret: &NodeSecret{
 			ID:  rc.nodeID,
 			Key: rc.nodeKey,
@@ -463,59 +510,114 @@ func (rc *Node) changeCluster(addr string) error {
 		BroadcastIP:   rc.broadcastIP,
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
-	})
+	}
+	rc.peers.SetPeer(rc.nodeID, node)
+	rc.join = true
+	// 将自己加入集群日志
 
-	// 新建快照管理
-	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
-
-	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
-	rc.wal = rc.replayWAL()
-	// 节点配置
-	c := &raft.Config{
-		ID:                        rc.nodeID,
-		ElectionTick:              10,
-		HeartbeatTick:             1,
-		Storage:                   rc.raftStorage,
-		MaxSizePerMsg:             1024 * 1024,
-		MaxInflightMsgs:           256,
-		MaxUncommittedEntriesSize: 1 << 30,
-	}
-	// 启动节点时添加peers，一般情况下此时只有自己
-	peers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
-	peerList := rc.peers.GetAllPeers()
-	for id, p := range peerList {
-		peers = append(peers, raft.Peer{ID: id, Context: p.Marshal()})
-	}
-	// 启动node节点,新开一个集群
-	rc.node = raft.StartNode(c, peers)
-	// 通信实例开始运行
-	err = rc.transport.Start()
-	if err != nil {
-		return err
-	}
-	rc.active = true
-	// 与集群中的其他节点建立通信
-	rc.transportStart = true
-	for k, v := range peerList {
-		// transport加入peer列表，节点本身不添加
-		if k != rc.nodeID {
-			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
-		}
-	}
-	// 读ready
-	go rc.serveChannels()
-	log.Info("change cluster mode successfully")
-	go func() {
-		// 开始打包处理初始化信息
-		err = rc.InitSend()
-		if err != nil {
-			log.Error(err)
-			return
-		}
-	}()
+	data, _ := json.Marshal(node)
+	rc.AddNode(node.ID, data)
 	rc.writeConfig()
 	return nil
 }
+
+// changeCluster 切换集群时调用，一般是非集群节点收到其他节点的join请求时触发(rc.joinHandler)
+// 开始运行集群节点,新建日志文件，启动transport和node，
+// 并开始监听node.ready,将现有缓存加入日志中rc.InitSend
+//func (rc *Node) changeCluster(addr string) error {
+//	log.Info("change cluster mode")
+//	rc.nodeID = 1
+//	rc.nodeKey = uuid.New()
+//	rc.join = true
+//	rc.isCluster = true
+//
+//	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
+//	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
+//
+//	rc.transport.ID = types.ID(rc.nodeID)
+//	rc.transport.Raft = rc
+//	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
+//	rc.transportHandler = rc.genHandler()
+//	rc.stopc = make(chan struct{})
+//	// 判断快照文件夹是否存在，不存在则创建
+//	if !fileutil.Exist(rc.snapdir) {
+//		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
+//			return fmt.Errorf("eosc: node(%d) cannot create dir for snapshot (%v)", rc.nodeID, err)
+//		}
+//	}
+//	u, err := url.Parse(addr)
+//	if err != nil {
+//		return fmt.Errorf("eosc: fail to parse address,%w", err)
+//	}
+//	rc.protocol = u.Scheme
+//	rc.broadcastIP = u.Host
+//	index := strings.Index(u.Host, ":")
+//	if index > 0 {
+//		rc.broadcastIP = u.Host[:index]
+//		rc.broadcastPort, _ = strconv.Atoi(u.Host[index+1:])
+//	}
+//
+//	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
+//		NodeSecret: &NodeSecret{
+//			ID:  rc.nodeID,
+//			Key: rc.nodeKey,
+//		},
+//		Protocol:      u.Scheme,
+//		BroadcastIP:   rc.broadcastIP,
+//		BroadcastPort: rc.broadcastPort,
+//		Addr:          addr,
+//	})
+//
+//	// 新建快照管理
+//	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
+//
+//	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
+//	rc.wal = rc.replayWAL()
+//	// 节点配置
+//	c := &raft.Config{
+//		ID:                        rc.nodeID,
+//		ElectionTick:              10,
+//		HeartbeatTick:             1,
+//		Storage:                   rc.raftStorage,
+//		MaxSizePerMsg:             1024 * 1024,
+//		MaxInflightMsgs:           256,
+//		MaxUncommittedEntriesSize: 1 << 30,
+//	}
+//	// 启动节点时添加peers，一般情况下此时只有自己
+//	peers := make([]raft.Peer, 0, rc.peers.GetPeerNum())
+//	peerList := rc.peers.GetAllPeers()
+//	for id, p := range peerList {
+//		peers = append(peers, raft.Peer{ID: id, Context: p.Marshal()})
+//	}
+//	// 启动node节点,新开一个集群
+//	rc.node = raft.StartNode(c, peers)
+//	// 通信实例开始运行
+//	err = rc.transport.Start()
+//	if err != nil {
+//		return err
+//	}
+//	rc.active = true
+//	// 与集群中的其他节点建立通信
+//	for k, v := range peerList {
+//		// transport加入peer列表，节点本身不添加
+//		if k != rc.nodeID {
+//			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
+//		}
+//	}
+//	// 读ready
+//	go rc.serveChannels()
+//	log.Info("change cluster mode successfully")
+//	go func() {
+//		// 开始打包处理初始化信息
+//		err = rc.InitSend()
+//		if err != nil {
+//			log.Error(err)
+//			return
+//		}
+//	}()
+//	rc.writeConfig()
+//	return nil
+//}
 
 // 工具方法
 // postMessageToLeader 转发消息，基于json
