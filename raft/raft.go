@@ -10,7 +10,6 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/pkg/wait"
 	"go.etcd.io/etcd/raft/v3"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -126,7 +125,6 @@ func NewNode(service IService) (*Node, error) {
 		snapCount: defaultSnapshotCount,
 		stopc:     make(chan struct{}),
 		logger:    logger,
-		waiter:    wait.New(),
 		lead:      0,
 		transport: &rafthttp.Transport{
 			Logger:             logger,
@@ -146,8 +144,20 @@ func NewNode(service IService) (*Node, error) {
 	return rc, nil
 }
 
-func (rc *Node) ProcessData(data []byte) error {
+func (rc *Node) ProcessInitData(data []byte) error {
+	m := &Message{
+		From: rc.nodeID,
+		Type: INIT,
+		Data: data,
+	}
+	b, err := m.Encode()
+	if err != nil {
+		return err
+	}
+	return rc.node.Propose(context.TODO(), b)
+}
 
+func (rc *Node) ProcessData(data []byte) error {
 	m := &Message{
 		From: rc.nodeID,
 		Type: PROPOSE,

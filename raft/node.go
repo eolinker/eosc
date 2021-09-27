@@ -22,7 +22,6 @@ import (
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/pkg/wait"
 	"go.etcd.io/etcd/raft/v3"
 
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -60,8 +59,6 @@ type Node struct {
 
 	// 集群相关
 	join bool
-	// 集群模式
-	isCluster bool
 	// peers列表
 	peers *Peers
 
@@ -85,7 +82,6 @@ type Node struct {
 
 	// 日志相关，后续改为eosc_log
 	logger           *zap.Logger
-	waiter           wait.Wait
 	//active           bool
 	transportHandler http.Handler
 }
@@ -316,13 +312,13 @@ func (rc *Node) Send(msg []byte) error {
 	//	return fmt.Errorf("current node is leave")
 	//}
 	// 非集群模式下直接处理
-	if !rc.isCluster {
-		data, err := rc.service.ProcessDataHandler(msg)
-		if err != nil {
-			return err
-		}
-		return rc.service.CommitHandler(data)
-	}
+	//if !rc.isCluster {
+	//	data, err := rc.service.ProcessDataHandler(msg)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	return rc.service.CommitHandler(data)
+	//}
 	// 集群模式下的处理
 	isLeader, err := rc.isLeader()
 	if err != nil {
@@ -393,51 +389,21 @@ func (rc *Node) Stop() {
 	rc.stop()
 }
 
-//// InitSend 切换集群时调用，一般一个集群仅调用一次
-//// 将service现有的缓存信息(基于service.GetInit获取)加载到日志中，便于其他节点同步
-//// 此时节点刚切换到集群状态，一般会是日志中的第一条信息
-//// 并通过rc.waiter等待service.ProcessInit处理完后进行后续操作(同步等待)
-//func (rc *Node) InitSend() error {
-//	// 集群模式初始化的时候才会调
-//	if !rc.isCluster {
-//		return fmt.Errorf("need to change cluster mode")
-//	}
-//	data, err := rc.service.GetInit()
-//	log.Info("nodeID is ", rc.nodeID)
-//	if err != nil {
-//		return err
-//	}
-//	m := &Message{
-//		From: rc.nodeID,
-//		Type: INIT,
-//		Data: data,
-//	}
-//	b, err := m.Encode()
-//	if err != nil {
-//		return err
-//	}
-//	err = rc.node.Propose(context.TODO(), b)
-//	if err != nil {
-//		log.Error(err)
-//		return err
-//	}
-//	// 等待处理完
-//	c := rc.waiter.Register(rc.nodeID)
-//	res := <-c
-//	str, ok := res.(string)
-//	if !ok {
-//		return fmt.Errorf("init send wait channel interface assert error")
-//	}
-//	if len(str) > 0 {
-//		return fmt.Errorf(str)
-//	}00
-//	return nil
-//}
+func (rc *Node) InitSend() error {
+	// 切换回单例集群的时候才会调，join=false
+	if rc.join {
+		return fmt.Errorf("need to change cluster mode")
+	}
+	data, err := rc.service.GetInit()
+	if err != nil {
+		return err
+	}
+	return rc.ProcessInitData(data)
+}
 
 // 切换回单例集群
 func (rc *Node) changeSingleCluster() error {
 	node, _ := rc.peers.GetPeerByID(rc.nodeID)
-	peers := rc.peers.GetAllPeers()
 	rc.join = false
 	rc.peers = NewPeers()
 	rc.peers.SetPeer(rc.nodeID, node)
@@ -455,16 +421,23 @@ func (rc *Node) changeSingleCluster() error {
 	rc.stopc = make(chan struct{})
 	// 配置存储
 	rc.writeConfig()
+	// 删除旧的日志文件
+	err := rc.removeWalFile()
+	if err !=nil {
+		return err
+	}
 
+	// 创建快照文件夹
+	if err = os.Mkdir(rc.snapdir, 0750); err != nil {
+		return fmt.Errorf("eosc: cannot create dir for snapshot (%w)", err)
+	}
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
-
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
 	rc.wal = rc.replayWAL()
-	err := rc.ReadSnap(rc.snapshotter)
+	err = rc.ReadSnap(rc.snapshotter)
 	if err != nil {
 		return fmt.Errorf("reload snap to service error: %w", err)
-		//log.Detail("reload snap to service error:", err)
 	}
 	// 节点配置
 	c := &raft.Config{
@@ -482,11 +455,10 @@ func (rc *Node) changeSingleCluster() error {
 	err = rc.transport.Start()
 	if err != nil {
 		return fmt.Errorf("transport start error: %w", err)
-		//log.Detail("transport start error:", err)
 	}
 	// 开始读ready
 	go rc.serveChannels()
-	return rc.deletePeers(peers)
+	return rc.InitSend()
 }
 
 func (rc *Node) deletePeers(peers map[uint64]*NodeInfo) error {

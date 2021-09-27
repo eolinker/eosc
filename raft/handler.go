@@ -60,7 +60,6 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 			Key: uuid.New(),
 		},
 		Peer:        rc.peers.GetAllPeers(),
-		InitCluster: rc.isCluster,
 	})
 	return
 }
