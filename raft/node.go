@@ -3,6 +3,7 @@ package raft
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -363,10 +364,11 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 
 // DeleteConfigChange 客户端发送删除节点的发送处理
 func (rc *Node) DeleteConfigChange() error {
-	if !rc.active {
-		return fmt.Errorf("current node is leave")
-	}
-	if !rc.isCluster {
+	//if !rc.active {
+	//	return fmt.Errorf("current node is leave")
+	//}
+	fmt.Println(rc.join)
+	if !rc.join {
 		return fmt.Errorf("current node is not cluster mode")
 	}
 
@@ -387,46 +389,46 @@ func (rc *Node) Stop() {
 	rc.stop()
 }
 
-// InitSend 切换集群时调用，一般一个集群仅调用一次
-// 将service现有的缓存信息(基于service.GetInit获取)加载到日志中，便于其他节点同步
-// 此时节点刚切换到集群状态，一般会是日志中的第一条信息
-// 并通过rc.waiter等待service.ProcessInit处理完后进行后续操作(同步等待)
-func (rc *Node) InitSend() error {
-	// 集群模式初始化的时候才会调
-	if !rc.isCluster {
-		return fmt.Errorf("need to change cluster mode")
-	}
-	data, err := rc.service.GetInit()
-	log.Info("nodeID is ", rc.nodeID)
-	if err != nil {
-		return err
-	}
-	m := &Message{
-		From: rc.nodeID,
-		Type: INIT,
-		Data: data,
-	}
-	b, err := m.Encode()
-	if err != nil {
-		return err
-	}
-	err = rc.node.Propose(context.TODO(), b)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	// 等待处理完
-	c := rc.waiter.Register(rc.nodeID)
-	res := <-c
-	str, ok := res.(string)
-	if !ok {
-		return fmt.Errorf("init send wait channel interface assert error")
-	}
-	if len(str) > 0 {
-		return fmt.Errorf(str)
-	}
-	return nil
-}
+//// InitSend 切换集群时调用，一般一个集群仅调用一次
+//// 将service现有的缓存信息(基于service.GetInit获取)加载到日志中，便于其他节点同步
+//// 此时节点刚切换到集群状态，一般会是日志中的第一条信息
+//// 并通过rc.waiter等待service.ProcessInit处理完后进行后续操作(同步等待)
+//func (rc *Node) InitSend() error {
+//	// 集群模式初始化的时候才会调
+//	if !rc.isCluster {
+//		return fmt.Errorf("need to change cluster mode")
+//	}
+//	data, err := rc.service.GetInit()
+//	log.Info("nodeID is ", rc.nodeID)
+//	if err != nil {
+//		return err
+//	}
+//	m := &Message{
+//		From: rc.nodeID,
+//		Type: INIT,
+//		Data: data,
+//	}
+//	b, err := m.Encode()
+//	if err != nil {
+//		return err
+//	}
+//	err = rc.node.Propose(context.TODO(), b)
+//	if err != nil {
+//		log.Error(err)
+//		return err
+//	}
+//	// 等待处理完
+//	c := rc.waiter.Register(rc.nodeID)
+//	res := <-c
+//	str, ok := res.(string)
+//	if !ok {
+//		return fmt.Errorf("init send wait channel interface assert error")
+//	}
+//	if len(str) > 0 {
+//		return fmt.Errorf(str)
+//	}
+//	return nil
+//}
 
 // 切换回单例集群
 func (rc *Node) changeSingleCluster() error {
@@ -499,8 +501,7 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 		rc.broadcastIP = u.Host[:index]
 		rc.broadcastPort, _ = strconv.Atoi(u.Host[index+1:])
 	}
-
-	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
+	node := &NodeInfo{
 		NodeSecret: &NodeSecret{
 			ID:  rc.nodeID,
 			Key: rc.nodeKey,
@@ -509,8 +510,13 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 		BroadcastIP:   rc.broadcastIP,
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
-	})
+	}
+	rc.peers.SetPeer(rc.nodeID, node)
+	rc.join = true
+	// 将自己加入集群日志
 
+	data, _ := json.Marshal(node)
+	rc.AddNode(node.ID, data)
 	rc.writeConfig()
 	return nil
 }

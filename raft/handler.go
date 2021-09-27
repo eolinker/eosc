@@ -47,7 +47,7 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 非集群模式，先本节点切换成集群模式
-	if rc.peers.GetPeerNum() < 2 {
+	if !rc.join {
 		err = rc.UpdateHostInfo(joinData.Target)
 		if err != nil {
 			writeError(w, "110002", "fail to update host Info", err.Error())
@@ -117,10 +117,10 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return
 	}
-	if !rc.join {
-		rc.join = true
-		rc.writeConfig()
-	}
+	//if !rc.join {
+	//	rc.join = true
+	//	rc.writeConfig()
+	//}
 	writeSuccessResult(w, "", nil)
 	return
 }
