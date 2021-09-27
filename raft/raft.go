@@ -69,15 +69,6 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 
 // startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
 func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
-	peers[rc.nodeID] = &NodeInfo{
-		NodeSecret: &NodeSecret{
-			ID:  rc.nodeID,
-			Key: rc.nodeKey,
-		},
-		BroadcastIP:   rc.broadcastIP,
-		BroadcastPort: rc.broadcastPort,
-		Protocol:      rc.protocol,
-	}
 	// join的时候先暂停原来活跃节点
 	if rc.IsActive() {
 		rc.stop()
@@ -95,6 +86,16 @@ func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
 	rc.stopc = make(chan struct{})
+
+	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
+		NodeSecret: &NodeSecret{
+			ID:  rc.nodeID,
+			Key: rc.nodeKey,
+		},
+		BroadcastIP:   rc.broadcastIP,
+		BroadcastPort: rc.broadcastPort,
+		Protocol:      rc.protocol,
+	})
 	for _, p := range peers {
 		rc.peers.SetPeer(p.ID, p)
 	}
@@ -130,7 +131,7 @@ func NewNode(service IService) (*Node, error) {
 	}
 	rc.readConfig()
 
-	err := startRaft(rc, map[uint64]*NodeInfo{})
+	err := startRaft(rc, nil)
 	if err != nil {
 		return nil, err
 	}
