@@ -15,7 +15,7 @@ var _ service.WorkerServiceClient = (*WorkerController)(nil)
 
 type WorkerController struct {
 	locker sync.Mutex
-	dms    []eosc.IDataMarshaler
+	dms    []eosc.IDataMarshaller
 
 	current *WorkerProcess
 
@@ -24,7 +24,7 @@ type WorkerController struct {
 	isStop bool
 }
 
-func NewWorkerController(dms ...eosc.IDataMarshaler) *WorkerController {
+func NewWorkerController(dms ...eosc.IDataMarshaller) *WorkerController {
 	return &WorkerController{dms: dms}
 }
 func (wc *WorkerController) Stop() {
@@ -52,7 +52,9 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 	defer wc.locker.Unlock()
 	if wc.current == w {
 		err := wc.new()
-		log.Error("worker create:", err)
+		if err != nil {
+			log.Error("worker create:", err)
+		}
 	} else {
 
 		for i, v := range wc.expireWorkers {

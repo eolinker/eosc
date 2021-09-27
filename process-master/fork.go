@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eolinker/eosc"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
@@ -50,7 +52,7 @@ func (m *Master) Fork() error {
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
 
-	cmd, err := process.Cmd("process-master", os.Args[1:])
+	cmd, err := process.Cmd(eosc.ProcessMaster, os.Args[1:])
 	if err != nil {
 		return err
 	}

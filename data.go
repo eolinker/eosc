@@ -4,6 +4,6 @@ import (
 	"os"
 )
 
-type IDataMarshaler interface {
+type IDataMarshaller interface {
 	Encode(startIndex int) ([]byte, []*os.File, error)
 }

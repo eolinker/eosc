@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/eolinker/eosc"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/process"
@@ -32,7 +34,7 @@ func (w *WorkerProcess) Close() error {
 }
 
 func (wc *WorkerController) newWorkerProcess(stdIn io.Reader, extraFiles []*os.File) (*WorkerProcess, error) {
-	cmd, err := process.Cmd("worker", nil)
+	cmd, err := process.Cmd(eosc.ProcessWorker, nil)
 	if err != nil {
 		return nil, err
 	}

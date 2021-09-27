@@ -13,6 +13,8 @@ package main
 import (
 	"os"
 
+	"github.com/eolinker/eosc"
+
 	admin_open_api "github.com/eolinker/eosc/modules/admin-open-api"
 	"github.com/eolinker/eosc/process-master/admin"
 
@@ -26,9 +28,9 @@ import (
 
 func init() {
 	admin.Register("/api", admin_open_api.CreateHandler())
-	process.Register("workers", process_worker.Process)
-	process.Register("process-master", process_master.Process)
-	process.Register("helper", helper.Process)
+	process.Register(eosc.ProcessWorker, process_worker.Process)
+	process.Register(eosc.ProcessMaster, process_master.Process)
+	process.Register(eosc.ProcessHelper, helper.Process)
 }
 
 func main() {
