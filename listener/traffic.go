@@ -14,7 +14,7 @@ var (
 func SetTraffic(t traffic.ITraffic) {
 	defaultTraffic = t
 }
-func ListenTcp(ip string, port int) (*net.TCPListener, error) {
+func ListenTcp(ip string, port int) (net.Listener, error) {
 	if defaultTraffic == nil {
 		return nil, errors.New("traffic not init")
 	}

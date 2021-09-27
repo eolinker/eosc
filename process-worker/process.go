@@ -12,9 +12,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
-	"github.com/eolinker/eosc/utils"
+	eosc_args "github.com/eolinker/eosc/eosc-args"
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/service"
+	"google.golang.org/grpc"
 
 	"github.com/eolinker/eosc/log"
 
@@ -25,18 +29,22 @@ import (
 
 func Process() {
 
-	worker := NewWorker()
-	listener.SetTraffic(worker.tf)
 	loadPluginEnv()
+	w := NewProcessWorker()
+	listener.SetTraffic(w.tf)
 
-	worker.wait()
+	w.wait()
 }
 
-type Worker struct {
-	tf traffic.ITraffic
+type ProcessWorker struct {
+	tf          traffic.ITraffic
+	professions IProfessions
+	workers     IWorkers
+	srv         *grpc.Server
+	once        sync.Once
 }
 
-func (w *Worker) wait() error {
+func (w *ProcessWorker) wait() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
 	for {
@@ -47,12 +55,12 @@ func (w *Worker) wait() error {
 		case os.Interrupt, os.Kill:
 			{
 				w.close()
-				return nil
+				return
 			}
 		case syscall.SIGQUIT:
 			{
 				w.close()
-				return nil
+				return
 			}
 		case syscall.SIGUSR1:
 			{
@@ -64,19 +72,59 @@ func (w *Worker) wait() error {
 	}
 
 }
-func NewWorker() *Worker {
-	w := &Worker{}
+func NewProcessWorker() *ProcessWorker {
+	w := &ProcessWorker{}
 	tf := traffic.NewTraffic()
 	tf.Read(os.Stdin)
 	w.tf = tf
-	_, err := utils.ReadFrame(os.Stdin)
+	ps, err := ReadProfessions(os.Stdin)
 	if err != nil {
+		log.Warn("profession configs error:", err)
 		return nil
 	}
+	w.professions = ps
+	workersData := ReadWorkers(os.Stdin)
+	wm := NewWorkerManager(ps)
+	err = wm.Init(workersData)
+	if err != nil {
+		log.Warn("worker configs error:", err)
+		return nil
+	}
+	w.workers = wm
 	return w
 }
 
-func (w *Worker) close() {
+func (w *ProcessWorker) close() {
 
-	w.tf.Close()
+	w.once.Do(func() {
+		w.tf.Close()
+		w.srv.Stop()
+
+		addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+		// 移除unix socket
+		syscall.Unlink(addr)
+	})
+
+}
+
+func (w *ProcessWorker) Start() error {
+	addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+	// 移除unix socket
+	syscall.Unlink(addr)
+
+	log.Info("start Master :", addr)
+	l, err := grpc_unixsocket.Listener(addr)
+	if err != nil {
+		return err
+	}
+
+	grpcServer := grpc.NewServer()
+
+	service.RegisterWorkerServiceServer(grpcServer, NewWorkerServer(w.workers))
+	go func() {
+		grpcServer.Serve(l)
+	}()
+
+	w.srv = grpcServer
+	return nil
 }

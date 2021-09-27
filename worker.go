@@ -8,8 +8,6 @@ type IWorker interface {
 	CheckSkill(skill string) bool
 }
 type IWorkers interface {
-	Set(id string, w IWorker)
-	Del(id string) (IWorker, bool)
 	Get(id string) (IWorker, bool)
 }
 
@@ -19,4 +17,8 @@ type IWorkersData interface {
 	GetList(profession string) ([]TWorker, error)
 	Delete(id string) error
 	Set(profession, name, driver string, data []byte) error
+}
+
+type IWorkerResources interface {
+	Ports() []int
 }

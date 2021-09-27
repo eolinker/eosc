@@ -1,7 +1,6 @@
 package eoscli
 
 import (
-	"fmt"
 	"io"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -27,7 +26,7 @@ func (c *ctlServiceClient) Close() error {
 }
 
 func createCtlServiceClient() (ICtiServiceClient, error) {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
+	conn, err := grpc_unixsocket.Connect(service.MasterServerAddr(eosc_args.AppName()))
 	if err != nil {
 		return nil, err
 	}
