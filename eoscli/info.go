@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
@@ -23,12 +21,11 @@ func Info(x cli.ActionFunc) *cli.Command {
 
 //InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
+	client, err := createCtlServiceClient()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	client := service.NewCtiServiceClient(conn)
+	defer client.Close()
 	response, err := client.Info(context.Background(), &service.InfoRequest{})
 	if err != nil {
 		return err

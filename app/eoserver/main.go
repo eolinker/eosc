@@ -13,19 +13,24 @@ package main
 import (
 	"os"
 
+	"github.com/eolinker/eosc"
+
+	admin_open_api "github.com/eolinker/eosc/modules/admin-open-api"
+	"github.com/eolinker/eosc/process-master/admin"
+
 	"github.com/eolinker/eosc/eoscli"
 	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/master"
 	"github.com/eolinker/eosc/process"
-	"github.com/eolinker/eosc/worker"
+	process_master "github.com/eolinker/eosc/process-master"
+	process_worker "github.com/eolinker/eosc/process-worker"
 )
 
 func init() {
-
-	process.Register("workers", worker.Process)
-	process.Register("master", master.Process)
-	process.Register("helper", helper.Process)
+	admin.Register("/api", admin_open_api.CreateHandler())
+	process.Register(eosc.ProcessWorker, process_worker.Process)
+	process.Register(eosc.ProcessMaster, process_master.Process)
+	process.Register(eosc.ProcessHelper, helper.Process)
 }
 
 func main() {

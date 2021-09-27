@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/utils"
@@ -47,11 +46,6 @@ func Join(x cli.ActionFunc) *cli.Command {
 
 //join 加入集群
 func join(c *cli.Context, cfg *eosc_args.Config) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
-	if err != nil {
-		return fmt.Errorf("join cluster error:%s", err.Error())
-	}
-	defer conn.Close()
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
 	port := eosc_args.GetDefaultArg(cfg, eosc_args.Port, "0")
@@ -94,8 +88,12 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
+	client, err := createCtlServiceClient()
+	if err != nil {
+		return fmt.Errorf("join cluster error:%s", err.Error())
+	}
+	defer client.Close()
 	cfg.Set(eosc_args.ClusterAddress, strings.Join(as, ","))
-	client := service.NewCtiServiceClient(conn)
 	response, err := client.Join(context.Background(), &service.JoinRequest{
 		BroadcastIP:    bIP,
 		BroadcastPort:  int32(bPort),

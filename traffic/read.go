@@ -26,13 +26,7 @@ import (
 	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 )
 
-type Out struct {
-	Addr     net.Addr
-	File     *os.File
-	Listener net.Listener
-}
-
-func Reader(r io.Reader) ([]*net.TCPListener, error) {
+func readListener(r io.Reader) ([]*net.TCPListener, error) {
 
 	frame, err := utils.ReadFrame(r)
 	if err != nil {

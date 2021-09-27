@@ -4,46 +4,27 @@ import (
 	"net/http"
 )
 
-type ProfessionInfo struct {
-	Name         string       `json:"name"`
-	LocalName    string       `json:"local_name"`
-	Desc         string       `json:"desc"`
-	Dependencies []string     `json:"dependencies"`
-	AppendLabels []string     `json:"labels"`
-	Drivers      []DriverInfo `json:"drivers"`
-}
-type ProfessionItem struct {
-}
-type WorkerInfo struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
-	Driver string `json:"driver"`
-	Create string `json:"create_time"`
-	Update string `json:"update_time"`
-}
-
 type Item struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
 }
-
 type IAdmin interface {
+	IAdminWorker
+	IAdminPermission
+}
+type IAdminWorker interface {
 	ListEmployees(profession string) ([]interface{}, error)
-	ListEmployeeNames(profession string) ([]string, error)
-	Update(profession, name, driver string, data IData) (*WorkerInfo, error)
-	Delete(profession, name string) (*WorkerInfo, error)
+	//ListEmployeeNames(profession string) ([]string, error)
+	Update(profession, name, driver string, data []byte) error
+	Delete(profession, name string) error
 	GetEmployee(profession, name string) (interface{}, error)
-	SearchBySkill(profession string, skill []string) ([]WorkerInfo, error)
-	//ExportByProfession(profession string) ([]StoreValue, error)
 }
 
 type IAdminPermission interface {
-	Render(profession, driver string) (*Render, error)
-	Renders(profession string) (map[string]*Render, error)
-	Drivers(profession string) ([]DriverInfo, error)
-	DriverInfo(profession, driver string) (DriverDetail, error)
-	DriversItem(profession string) ([]Item, error)
-	ListProfessions() []ProfessionInfo
+	Drivers(profession string) ([]*DriverInfo, error)
+	DriverInfo(profession, driver string) (*DriverDetail, error)
+	DriversItem(profession string) ([]*Item, error)
+	ListProfessions() []*ProfessionInfo
 }
 
 type IAdminHandler interface {
