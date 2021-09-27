@@ -6,13 +6,15 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/eolinker/eosc"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
 )
 
 func StartMaster(args []string, extra []*os.File) (*exec.Cmd, error) {
 
-	cmd, err := process.Cmd("master", args)
+	cmd, err := process.Cmd(eosc.ProcessMaster, args)
 	if err != nil {
 		log.Error(err)
 		return nil, err

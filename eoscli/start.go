@@ -100,7 +100,7 @@ func StartFunc(c *cli.Context) error {
 	//args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	cmd, err := StartMaster(args, nil)
 	if err != nil {
-		log.Errorf("start master error: %w", err)
+		log.Errorf("start process-master error: %w", err)
 		return err
 	}
 	cfg.Save()

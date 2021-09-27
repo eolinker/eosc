@@ -43,17 +43,14 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	joinData, err := decodeJoinRequest(body)
 	if err != nil {
-		return
-	}
-	if err != nil {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
 	}
-	if !rc.isCluster {
-		// 非集群模式，先本节点切换成集群模式
-		err = rc.changeCluster(joinData.Target)
+
+	if !rc.join {
+		err = rc.UpdateHostInfo(joinData.Target)
 		if err != nil {
-			writeError(w, "110002", "fail to change cluster", err.Error())
+			writeError(w, "110002", "fail to update host Info", err.Error())
 			return
 		}
 	}
@@ -63,7 +60,6 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 			Key: uuid.New(),
 		},
 		Peer:        rc.peers.GetAllPeers(),
-		InitCluster: rc.isCluster,
 	})
 	return
 }
@@ -110,13 +106,20 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 		Addr:          addr,
 		Protocol:      joinData.Protocol,
 	}
-	data, _ := json.Marshal(node)
+	data, err := json.Marshal(node)
+	if err != nil {
+		panic(err)
+	}
 	// 发送新增节点请求
 	err = rc.AddNode(node.ID, data)
 	if err != nil {
 		writeError(w, "110003", "fail to add config error", err.Error())
 		return
 	}
+	//if !rc.join {
+	//	rc.join = true
+	//	rc.writeConfig()
+	//}
 	writeSuccessResult(w, "", nil)
 	return
 }

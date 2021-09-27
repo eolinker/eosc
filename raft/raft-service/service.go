@@ -30,6 +30,15 @@ type Service struct {
 	//processHandlers eosc.IUntyped
 }
 
+func (s *Service) Send(namespace, cmd string, body []byte) error {
+
+	data, err := encodeCmd(namespace, cmd, body)
+	if err != nil {
+		return err
+	}
+	return s.raftNode.Send(data)
+}
+
 func (s *Service) CommitHandler(data []byte) error {
 	cmd, err := unMarshalCmd(data)
 	if err != nil {
@@ -70,6 +79,19 @@ func (s *Service) ProcessHandler(namespace string, command string, processData [
 	return encodeCmd(namespace, command, body)
 
 }
+
+//func RegisterHandlers(s *Service, handlers ...ICreateHandler) {
+//	if handlers != nil {
+//		for _, cf := range handlers {
+//			h, ok := cf.(ICreateHandler)
+//			if !ok {
+//				continue
+//			}
+//			s.SetHandler(h.Namespace(), h.Handler())
+//		}
+//	}
+//}
+
 func (s *Service) SetHandlers(handlers ...ICreateHandler) {
 	if handlers != nil {
 		for _, cf := range handlers {

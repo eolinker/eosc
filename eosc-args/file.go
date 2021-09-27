@@ -2,7 +2,6 @@ package eosc_args
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -70,7 +69,6 @@ func (c *Config) Get(name string) (string, bool) {
 }
 
 func (c *Config) GetDefault(name string, value string) string {
-	fmt.Println(c.args)
 	vl, has := c.args.Get(name)
 	if !has {
 		return value
