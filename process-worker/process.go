@@ -32,7 +32,7 @@ func Process() {
 	loadPluginEnv()
 	w := NewProcessWorker()
 	listener.SetTraffic(w.tf)
-
+	w.Start()
 	w.wait()
 }
 
