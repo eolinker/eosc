@@ -22,10 +22,15 @@ import (
 var (
 	ErrorInvalidListener = errors.New("invalid listener")
 )
+var _ ITraffic = (*Traffic)(nil)
 
 type Traffic struct {
 	locker sync.Mutex
 	data   eosc.IUntyped
+}
+
+func (t *Traffic) remove(name string) {
+	t.data.Del(name)
 }
 
 func NewTraffic() *Traffic {
@@ -44,7 +49,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Debug("traffic listen:", name)
 	if o, has := t.data.Get(name); has {
-		listener, ok := o.(*net.TCPListener)
+		listener, ok := o.(net.Listener)
 		if !ok {
 			return nil, ErrorInvalidListener
 		}
@@ -58,6 +63,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
+	remove(name string)
 }
 
 func (t *Traffic) Read(r io.Reader) {
