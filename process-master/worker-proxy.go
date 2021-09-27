@@ -13,36 +13,42 @@ var (
 )
 
 func (wc *WorkerController) DeleteCheck(ctx context.Context, in *service.WorkerDeleteRequest, opts ...grpc.CallOption) (*service.WorkerDeleteResponse, error) {
-	if wc.current != nil {
-		return wc.current.DeleteCheck(ctx, in, opts...)
+
+	client := wc.current
+	if client != nil {
+		return client.DeleteCheck(ctx, in, opts...)
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) SetCheck(ctx context.Context, in *service.WorkerSetRequest, opts ...grpc.CallOption) (*service.WorkerSetResponse, error) {
-	if wc.current != nil {
-		return wc.current.SetCheck(ctx, in, opts...)
+	client := wc.current
+	if client != nil {
+		return client.SetCheck(ctx, in, opts...)
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) Delete(ctx context.Context, in *service.WorkerDeleteRequest, opts ...grpc.CallOption) (*service.WorkerDeleteResponse, error) {
-	if wc.current != nil {
-		return wc.current.Delete(ctx, in, opts...)
+	client := wc.current
+	if client != nil {
+		return client.Delete(ctx, in, opts...)
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) Set(ctx context.Context, in *service.WorkerSetRequest, opts ...grpc.CallOption) (*service.WorkerSetResponse, error) {
-	if wc.current != nil {
-		return wc.current.Set(ctx, in, opts...)
+	client := wc.current
+	if client != nil {
+		return client.Set(ctx, in, opts...)
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) Ping(ctx context.Context, in *service.WorkerHelloRequest, opts ...grpc.CallOption) (*service.WorkerHelloResponse, error) {
-	if wc.current != nil {
-		return wc.current.Ping(ctx, in, opts...)
+	client := wc.current
+	if client != nil {
+		return client.Ping(ctx, in, opts...)
 	}
 	return nil, ErrClientNotInit
 }

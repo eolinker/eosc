@@ -11,7 +11,7 @@ var (
 )
 
 type IWorkerRequireManager interface {
-	Set(id string, requires map[eosc.RequireId]interface{})
+	Set(id string, requires []string)
 	Del(id string)
 	RequireByCount(requireId string) int
 }
@@ -19,48 +19,43 @@ type IWorkerRequireManager interface {
 type WorkerRequireManager struct {
 	locker    sync.Mutex
 	requireBy eosc.IUntyped
-	requires  eosc.IUntyped
+	workerIds eosc.IUntyped
 }
 
 func NewWorkerRequireManager() *WorkerRequireManager {
 	return &WorkerRequireManager{
 		locker:    sync.Mutex{},
 		requireBy: eosc.NewUntyped(),
-		requires:  eosc.NewUntyped(),
+		workerIds: eosc.NewUntyped(),
 	}
 }
 
-func (w *WorkerRequireManager) Set(id string, requires map[eosc.RequireId]interface{}) {
+func (w *WorkerRequireManager) Set(id string, requiresIds []string) {
 	w.locker.Lock()
 	defer w.locker.Unlock()
 	w.del(id)
-	if len(requires) > 0 {
-		ids := make([]string, len(requires))
-		for rid := range requires {
-			ridStr := string(rid)
-			ids = append(ids, ridStr)
-			d, has := w.requireBy.Get(ridStr)
-			if !has {
-				w.requireBy.Set(ridStr, []string{id})
-				continue
-			} else {
-				w.requireBy.Set(ridStr, append(d.([]string), id))
-			}
+	if len(requiresIds) > 0 {
 
+		for _, rid := range requiresIds {
+			d, has := w.requireBy.Get(rid)
+			if !has {
+				w.requireBy.Set(rid, []string{id})
+			} else {
+				w.requireBy.Set(rid, append(d.([]string), id))
+			}
 		}
-		w.requires.Set(id, ids)
+		w.workerIds.Set(id, requiresIds)
 	}
 }
 
 func (w *WorkerRequireManager) Del(id string) {
 	w.locker.Lock()
-	defer w.locker.Unlock()
-
 	w.del(id)
+	w.locker.Unlock()
 
 }
 func (w *WorkerRequireManager) del(id string) {
-	if r, has := w.requires.Del(id); has {
+	if r, has := w.workerIds.Del(id); has {
 		rs := r.([]string)
 		for _, rid := range rs {
 			w.removeBy(id, rid)
@@ -86,7 +81,10 @@ func (w *WorkerRequireManager) removeBy(id string, requireId string) {
 }
 
 func (w *WorkerRequireManager) RequireByCount(requireId string) int {
-	if rs, has := w.requireBy.Get(requireId); has {
+	w.locker.Lock()
+	rs, has := w.requireBy.Get(requireId)
+	w.locker.Unlock()
+	if has {
 		return len(rs.([]string))
 	}
 	return 0

@@ -22,6 +22,7 @@ type IWorkers interface {
 	Check(id, profession, name, driverName string, body []byte) error
 	Set(id, profession, name, driverName string, body []byte) error
 	RequiredCount(id string) int
+	ResourcesPort() []int32
 }
 
 var _ IWorkers = (*WorkerManager)(nil)
@@ -29,14 +30,14 @@ var _ IWorkers = (*WorkerManager)(nil)
 func ReadWorkers(r io.Reader) []*eosc.WorkerData {
 	frame, err := utils.ReadFrame(r)
 	if err != nil {
-		log.Warn("read  workers frame :", err)
+		log.Warn("read  workerIds frame :", err)
 
 		return nil
 	}
 
 	wd := new(eosc.WorkersData)
 	if e := proto.Unmarshal(frame, wd); e != nil {
-		log.Warn("unmarshal workers data :", e)
+		log.Warn("unmarshal workerIds data :", e)
 		return nil
 	}
 	return wd.Data
@@ -48,6 +49,10 @@ type WorkerManager struct {
 	data           ITypedWorkers
 	requireManager IWorkerRequireManager
 	portsRequire   listener.IPortsRequire
+}
+
+func (wm *WorkerManager) ResourcesPort() []int32 {
+	return wm.portsRequire.All()
 }
 
 func (wm *WorkerManager) RequiredCount(id string) int {
@@ -178,7 +183,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 		if e != nil {
 			return e
 		}
-		wm.requireManager.Set(id, requires)
+		wm.requireManager.Set(id, getIds(requires))
 		if res, ok := o.target.(eosc.IWorkerResources); ok {
 			wm.portsRequire.Set(id, res.Ports())
 		}
@@ -197,9 +202,20 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 
 	// store
 	wm.data.Set(id, NewWorker(id, profession, name, driverName, body, w, p, driver))
-	wm.requireManager.Set(id, requires)
+	wm.requireManager.Set(id, getIds(requires))
 	if res, ok := w.(eosc.IWorkerResources); ok {
 		wm.portsRequire.Set(id, res.Ports())
 	}
 	return nil
+}
+
+func getIds(m map[eosc.RequireId]interface{}) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	rs := make([]string, 0, len(m))
+	for k := range m {
+		rs = append(rs, string(k))
+	}
+	return rs
 }

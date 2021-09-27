@@ -30,9 +30,15 @@ func NewWorkerController(dms ...eosc.IDataMarshaler) *WorkerController {
 func (wc *WorkerController) Stop() {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
+
+	if wc.isStop {
+		return
+	}
 	wc.isStop = true
 	if wc.current != nil {
 		wc.current.Close()
+		wc.expireWorkers = append(wc.expireWorkers, wc.current)
+		wc.current = nil
 	}
 
 }
@@ -40,6 +46,7 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 	err := w.cmd.Wait()
 	if err != nil {
 		log.Warn("worker exit:", err)
+
 	}
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
@@ -53,7 +60,6 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 				wc.expireWorkers = append(wc.expireWorkers[:i], wc.expireWorkers[i+1:]...)
 			}
 		}
-
 	}
 }
 func (wc *WorkerController) Start() {
@@ -94,4 +100,10 @@ func (wc *WorkerController) new() error {
 	wc.current = workerProcess
 	go wc.check(wc.current)
 	return nil
+}
+
+func (wc *WorkerController) getClient() service.WorkerServiceClient {
+	wc.locker.Lock()
+	defer wc.locker.Unlock()
+	return wc.current
 }

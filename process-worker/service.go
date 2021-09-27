@@ -16,21 +16,24 @@ type WorkerServer struct {
 func NewWorkerServer(workers IWorkers) *WorkerServer {
 	return &WorkerServer{workers: workers}
 }
-func (ws *WorkerServer) Reset(ctx context.Context, req *service.WorkerResetRequest) (*service.WorkerStatusResponse, error) {
 
-	return nil, nil
-}
 func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerDeleteResponse, error) {
 
 	count := ws.workers.RequiredCount(request.Id)
 	if count > 0 {
 		return &service.WorkerDeleteResponse{
 			Status:  service.WorkerStatusCode_FAIL,
-			Message: "require by",
+			Message: "requiring",
+			Resource: &service.WorkerResource{
+				Port: ws.workers.ResourcesPort(),
+			},
 		}, nil
 	}
 	return &service.WorkerDeleteResponse{
 		Status: service.WorkerStatusCode_SUCCESS,
+		Resource: &service.WorkerResource{
+			Port: ws.workers.ResourcesPort(),
+		},
 	}, nil
 }
 
@@ -41,11 +44,17 @@ func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequ
 		return &service.WorkerSetResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
+			Resource: &service.WorkerResource{
+				Port: ws.workers.ResourcesPort(),
+			},
 		}, nil
 	}
 	return &service.WorkerSetResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
+		Resource: &service.WorkerResource{
+			Port: ws.workers.ResourcesPort(),
+		},
 	}, nil
 }
 
@@ -57,11 +66,17 @@ func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDelet
 		return &service.WorkerDeleteResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
+			Resource: &service.WorkerResource{
+				Port: ws.workers.ResourcesPort(),
+			},
 		}, nil
 	}
 	return &service.WorkerDeleteResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
+		Resource: &service.WorkerResource{
+			Port: ws.workers.ResourcesPort(),
+		},
 	}, nil
 }
 
@@ -73,16 +88,25 @@ func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) 
 		return &service.WorkerSetResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
+			Resource: &service.WorkerResource{
+				Port: ws.workers.ResourcesPort(),
+			},
 		}, nil
 	}
 	return &service.WorkerSetResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
+		Resource: &service.WorkerResource{
+			Port: ws.workers.ResourcesPort(),
+		},
 	}, nil
 }
 
 func (ws *WorkerServer) Ping(ctx context.Context, request *service.WorkerHelloRequest) (*service.WorkerHelloResponse, error) {
 	return &service.WorkerHelloResponse{
 		Hello: request.Hello,
+		Resource: &service.WorkerResource{
+			Port: ws.workers.ResourcesPort(),
+		},
 	}, nil
 }

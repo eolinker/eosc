@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -40,9 +41,10 @@ type ProcessWorker struct {
 	professions IProfessions
 	workers     IWorkers
 	srv         *grpc.Server
+	once        sync.Once
 }
 
-func (w *ProcessWorker) wait() error {
+func (w *ProcessWorker) wait() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
 	for {
@@ -53,12 +55,12 @@ func (w *ProcessWorker) wait() error {
 		case os.Interrupt, os.Kill:
 			{
 				w.close()
-				return nil
+				return
 			}
 		case syscall.SIGQUIT:
 			{
 				w.close()
-				return nil
+				return
 			}
 		case syscall.SIGUSR1:
 			{
@@ -94,7 +96,15 @@ func NewProcessWorker() *ProcessWorker {
 
 func (w *ProcessWorker) close() {
 
-	w.tf.Close()
+	w.once.Do(func() {
+		w.tf.Close()
+		w.srv.Stop()
+
+		addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+		// 移除unix socket
+		syscall.Unlink(addr)
+	})
+
 }
 
 func (w *ProcessWorker) Start() error {

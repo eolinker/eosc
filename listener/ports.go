@@ -12,7 +12,7 @@ var _ IPortsRequire = (*PortsRequire)(nil)
 type IPortsRequire interface {
 	Set(id string, ports []int)
 	Del(id string)
-	All() []int
+	All() []int32
 }
 
 type PortsRequire struct {
@@ -75,15 +75,16 @@ func (p *PortsRequire) remove(id string, port int) {
 	}
 }
 
-func (p *PortsRequire) All() []int {
+func (p *PortsRequire) All() []int32 {
 	p.locker.Lock()
 	list := p.ports.Keys()
 	p.locker.Unlock()
 
-	rs := make([]int, len(list))
+	rs := make([]int32, len(list))
 
 	for i, pv := range list {
-		rs[i], _ = strconv.Atoi(pv)
+		port, _ := strconv.Atoi(pv)
+		rs[i] = int32(port)
 	}
 	return rs
 }

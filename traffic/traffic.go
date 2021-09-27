@@ -35,7 +35,7 @@ func NewTraffic() *Traffic {
 	}
 }
 
-func (t *Traffic) ListenTcp(ip string, port int) (*net.TCPListener, error) {
+func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 
 	tcpAddr := ResolveTCPAddr(ip, port)
 	t.locker.Lock()
@@ -56,7 +56,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 }
 
 type ITraffic interface {
-	ListenTcp(ip string, port int) (*net.TCPListener, error)
+	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
 }
 

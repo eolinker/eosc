@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-import "message.proto";
-
 option go_package = "github.com/eolinker/eosc/service";
 package service;
 
@@ -12,6 +10,7 @@ message WorkerHelloRequest{
 
 message WorkerHelloResponse{
   string hello=1;
+  WorkerResource resource=3;
 }
 
 message WorkerDeleteRequest  {
@@ -24,29 +23,29 @@ message WorkerSetRequest{
   string name=3;
   string driver=4;
   bytes  body=5;
-
 }
+
 enum WorkerStatusCode{
   SUCCESS=0;
   FAIL=1;
   SKILL=2;
 }
+message WorkerResource{
+  repeated int32 port=1;
+}
 
 message WorkerDeleteResponse{
   WorkerStatusCode status=1;
   string message=2;
+  WorkerResource resource=3;
 }
 
 message WorkerSetResponse{
   WorkerStatusCode status=1;
   string message=2;
+  WorkerResource resource=3;
 }
-message WorkerResetRequest{
-  repeated WorkerData data=1;
-}
-message WorkerStatusResponse{
 
-}
 service WorkerService{
   rpc deleteCheck(WorkerDeleteRequest)returns(WorkerDeleteResponse){};
   rpc setCheck(WorkerSetRequest)returns(WorkerSetResponse){};
@@ -55,5 +54,4 @@ service WorkerService{
   rpc set(WorkerSetRequest)returns(WorkerSetResponse){};
 
   rpc ping(WorkerHelloRequest)returns(WorkerHelloResponse){}
-  rpc reset(WorkerResetRequest)returns(WorkerStatusResponse){}
-}
+ }

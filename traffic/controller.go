@@ -90,7 +90,7 @@ func NewController(r io.Reader) *Controller {
 	return c
 }
 
-func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
+func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
 
 	tcp, err := c.Traffic.ListenTcp(ip, port)
 	if err != nil {
