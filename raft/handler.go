@@ -46,7 +46,7 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "110001", "fail to parse join data", err.Error())
 		return
 	}
-	// 非集群模式，先本节点切换成集群模式
+
 	if !rc.join {
 		err = rc.UpdateHostInfo(joinData.Target)
 		if err != nil {

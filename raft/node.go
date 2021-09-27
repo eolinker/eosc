@@ -86,7 +86,7 @@ type Node struct {
 	// 日志相关，后续改为eosc_log
 	logger           *zap.Logger
 	waiter           wait.Wait
-	active           bool
+	//active           bool
 	transportHandler http.Handler
 }
 
@@ -124,7 +124,6 @@ func (rc *Node) readConfig() {
 //writeConfig 将raft节点的运行配置写进文件中
 func (rc *Node) writeConfig() {
 	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	fmt.Println(3, rc.join)
 	cfg.Set(eosc_args.IsJoin, strconv.FormatBool(rc.join))
 	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
 	cfg.Set(eosc_args.NodeKey, rc.nodeKey)
@@ -202,7 +201,7 @@ func (rc *Node) startRaft() error {
 		//log.Detail("transport start error:", err)
 	}
 	// 重置为活跃状态
-	rc.active = true
+	//rc.active = true
 	// 与集群中的其他节点建立通信
 
 	for k, v := range peersList {
@@ -278,17 +277,25 @@ func (rc *Node) serveChannels() {
 // leave closes http and stops raft.
 func (rc *Node) stop() {
 	close(rc.stopc)
-	if rc.active {
-		rc.transport.Stop()
-		rc.node.Stop()
-		rc.wal.Close()
-		rc.active, rc.join = false, false
-	}
+	//if rc.active {
+	//	rc.transport.Stop()
+	//	rc.node.Stop()
+	//	rc.wal.Close()
+	//	rc.active, rc.join = false, false
+	//}
+	rc.transport.Stop()
+	rc.node.Stop()
+	rc.wal.Close()
+	rc.join = false
 }
 
-func (rc *Node) IsActive() bool {
-	return rc.active
+func (rc *Node) IsJoin() bool {
+	return rc.join
 }
+
+//func (rc *Node) IsActive() bool {
+//	return rc.active
+//}
 
 func (rc *Node) Status() raft.Status {
 	return rc.node.Status()
@@ -305,9 +312,9 @@ func (rc *Node) Status() raft.Status {
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
 func (rc *Node) Send(msg []byte) error {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
-	if !rc.active {
-		return fmt.Errorf("current node is leave")
-	}
+	//if !rc.active {
+	//	return fmt.Errorf("current node is leave")
+	//}
 	// 非集群模式下直接处理
 	if !rc.isCluster {
 		data, err := rc.service.ProcessDataHandler(msg)
@@ -338,7 +345,7 @@ func (rc *Node) Send(msg []byte) error {
 
 // GetPeers 获取集群的peer列表，供API调用
 func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
-	if !rc.active {
+	if !rc.join {
 		return nil, 0, fmt.Errorf("current node is leave")
 	}
 	return rc.peers.GetAllPeers(), rc.peers.Index(), nil
@@ -346,7 +353,7 @@ func (rc *Node) GetPeers() (map[uint64]*NodeInfo, uint64, error) {
 
 // AddNode 客户端发送增加节点的发送处理
 func (rc *Node) AddNode(nodeID uint64, data []byte) error {
-	if !rc.active {
+	if !rc.join {
 		return fmt.Errorf("current node is leave")
 	}
 
@@ -364,10 +371,7 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 
 // DeleteConfigChange 客户端发送删除节点的发送处理
 func (rc *Node) DeleteConfigChange() error {
-	//if !rc.active {
-	//	return fmt.Errorf("current node is leave")
-	//}
-	fmt.Println(rc.join)
+	// 仅有多例集群采用通过该方式
 	if !rc.join {
 		return fmt.Errorf("current node is not cluster mode")
 	}
@@ -426,13 +430,14 @@ func (rc *Node) Stop() {
 //	}
 //	if len(str) > 0 {
 //		return fmt.Errorf(str)
-//	}
+//	}00
 //	return nil
 //}
 
 // 切换回单例集群
 func (rc *Node) changeSingleCluster() error {
 	node, _ := rc.peers.GetPeerByID(rc.nodeID)
+	peers := rc.peers.GetAllPeers()
 	rc.join = false
 	rc.peers = NewPeers()
 	rc.peers.SetPeer(rc.nodeID, node)
@@ -471,21 +476,38 @@ func (rc *Node) changeSingleCluster() error {
 		MaxInflightMsgs:           256,
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
-	rc.node = raft.RestartNode(c)
+	rc.node = raft.StartNode(c, []raft.Peer{
+		{ID: rc.nodeID},
+	})
 	err = rc.transport.Start()
 	if err != nil {
 		return fmt.Errorf("transport start error: %w", err)
 		//log.Detail("transport start error:", err)
 	}
-	rc.active = true
-	err = rc.transport.Start()
-	if err != nil {
-		return fmt.Errorf("transport start error: %w", err)
-		//log.Detail("transport start error:", err)
-	}
-	rc.active = true
 	// 开始读ready
 	go rc.serveChannels()
+	return rc.deletePeers(peers)
+}
+
+func (rc *Node) deletePeers(peers map[uint64]*NodeInfo) error {
+	if rc.join {
+		return fmt.Errorf("current node is cluster mode")
+	}
+	for id, _ := range peers {
+		if id == rc.nodeID {
+			continue
+		}
+		cc := raftpb.ConfChange{
+			Type:   raftpb.ConfChangeRemoveNode,
+			NodeID: id,
+			ID:     id,
+		}
+		err := rc.node.ProposeConfChange(context.TODO(), cc)
+		if err != nil {
+			fmt.Println("dubugz2: ", id, err.Error())
+			return err
+		}
+	}
 	return nil
 }
 
@@ -514,7 +536,6 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 	rc.peers.SetPeer(rc.nodeID, node)
 	rc.join = true
 	// 将自己加入集群日志
-
 	data, _ := json.Marshal(node)
 	rc.AddNode(node.ID, data)
 	rc.writeConfig()

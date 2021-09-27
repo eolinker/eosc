@@ -3,6 +3,7 @@ package process_master
 import (
 	"context"
 	"errors"
+
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc/raft"
@@ -62,15 +63,15 @@ func (m *Master) List(ctx context.Context, request *service.ListRequest) (*servi
 
 //Info 获取节点信息
 func (m *Master) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
-	status := "inactive"
+	status := "single"
 	var term int32 = 0
 	var leaderID int32 = 0
 	raftState := "stand"
 	var nodeID int32 = 0
 	nodeKey := ""
 	addr := ""
-	if m.node.IsActive() {
-		status = "active"
+	if m.node.IsJoin() {
+		status = "cluster"
 		nodeStatus := m.node.Status()
 		term = int32(nodeStatus.Term)
 		leaderID = int32(nodeStatus.Lead)

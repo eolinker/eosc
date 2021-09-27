@@ -30,7 +30,7 @@ var retryFrequency time.Duration = 2000
 // 2、也可以用于节点crash后的重启处理
 func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, protocol string) error {
 	// 判断是否已经在一个多节点集群中
-	if rc.peers.GetPeerNum() > 1 {
+	if rc.peers.GetPeerNum() > 1 || rc.join {
 		return fmt.Errorf("This node has joined the cluster")
 	}
 	msg := JoinRequest{
@@ -52,6 +52,10 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 	rc.broadcastIP = broadCastIP
 	rc.protocol = protocol
 
+	err = rc.joinInit()
+	if err != nil {
+		return err
+	}
 	err = startRaft(rc, resp.Peer)
 	if err != nil {
 		return err
@@ -67,18 +71,21 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 	return nil
 }
 
+// JoinInit 加入集群前的初始化
+func (rc *Node) joinInit() error {
+	// 关闭当前单例集群服务
+	rc.stop()
+	// 删除旧的日志文件
+	err := rc.removeWalFile()
+	if err != nil {
+		return err
+	}
+	rc.join = true
+	return nil
+}
+
 // startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
 func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
-	// join的时候先暂停原来活跃节点
-	if rc.IsActive() {
-		rc.stop()
-		// 删除旧的日志文件
-		err := rc.removeWalFile()
-		if err != nil {
-			return err
-		}
-		rc.join = true
-	}
 	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
 	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
 	rc.transport.ID = types.ID(rc.nodeID)
