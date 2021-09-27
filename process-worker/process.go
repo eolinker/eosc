@@ -15,6 +15,9 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/common/bean"
+
 	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/service"
@@ -78,16 +81,28 @@ func (w *ProcessWorker) wait() {
 func NewProcessWorker() *ProcessWorker {
 	w := &ProcessWorker{}
 	tf := traffic.NewTraffic()
-	tf.Read(os.Stdin)
 	w.tf = tf
-	ps, err := ReadProfessions(os.Stdin)
+	ps := NewProfessions()
+	w.professions = ps
+	wm := NewWorkerManager(w.professions)
+	w.workers = wm
+
+	tf.Read(os.Stdin)
+
+	bean.Injection(&w.tf)
+	bean.Injection(&w.professions)
+	var iWorkers eosc.IWorkers = w.workers
+	bean.Injection(&iWorkers)
+	bean.Check()
+
+	psData, err := ReadProfessionData(os.Stdin)
 	if err != nil {
 		log.Warn("profession configs error:", err)
 		return nil
 	}
-	w.professions = ps
+	ps.init(psData)
 	workersData := ReadWorkers(os.Stdin)
-	wm := NewWorkerManager(ps)
+
 	err = wm.Init(workersData)
 	if err != nil {
 		log.Warn("worker configs error:", err)

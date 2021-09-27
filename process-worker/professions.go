@@ -71,8 +71,12 @@ func (ps *Professions) Sort() []*Profession {
 	return sl
 }
 
-func NewProfessions(configs []*eosc.ProfessionConfig) IProfessions {
+func NewProfessions() *Professions {
 
+	return &Professions{}
+}
+
+func (ps *Professions) init(configs []*eosc.ProfessionConfig) {
 	data := eosc.NewUntyped()
 	for _, c := range configs {
 		p := NewProfession(c)
@@ -80,9 +84,8 @@ func NewProfessions(configs []*eosc.ProfessionConfig) IProfessions {
 		data.Set(c.Name, p)
 	}
 
-	return &Professions{data: data}
+	ps.data = data
 }
-
 func (ps *Professions) Get(name string) (*Profession, bool) {
 	p, b := ps.data.Get(name)
 	if b {
@@ -90,8 +93,7 @@ func (ps *Professions) Get(name string) (*Profession, bool) {
 	}
 	return nil, false
 }
-
-func ReadProfessions(r io.Reader) (IProfessions, error) {
+func ReadProfessionData(r io.Reader) ([]*eosc.ProfessionConfig, error) {
 	frame, err := utils.ReadFrame(r)
 	if err != nil {
 		return nil, err
@@ -101,5 +103,5 @@ func ReadProfessions(r io.Reader) (IProfessions, error) {
 	if e := proto.Unmarshal(frame, pd); e != nil {
 		return nil, e
 	}
-	return NewProfessions(pd.Data), nil
+	return pd.Data, nil
 }
