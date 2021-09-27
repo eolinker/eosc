@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-basic/uuid"
+
 	"golang.org/x/time/rate"
 
 	eosc_args "github.com/eolinker/eosc/eosc-args"
@@ -111,6 +113,9 @@ func (rc *Node) readConfig() {
 	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
 	rc.nodeID = uint64(nodeID)
 	rc.nodeKey = cfg.GetDefault(eosc_args.NodeKey, "")
+	if rc.nodeKey == "" {
+		rc.nodeKey = uuid.New()
+	}
 	rc.broadcastIP = cfg.GetDefault(eosc_args.BroadcastIP, "")
 	rc.broadcastPort, _ = strconv.Atoi(cfg.GetDefault(eosc_args.Port, "0"))
 }
@@ -118,6 +123,7 @@ func (rc *Node) readConfig() {
 //writeConfig 将raft节点的运行配置写进文件中
 func (rc *Node) writeConfig() {
 	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+	fmt.Println(3, rc.join)
 	cfg.Set(eosc_args.IsJoin, strconv.FormatBool(rc.join))
 	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
 	cfg.Set(eosc_args.NodeKey, rc.nodeKey)
@@ -126,16 +132,16 @@ func (rc *Node) writeConfig() {
 	cfg.Save()
 }
 
-func (rc *Node) clearConfig() {
-	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	cfg.Save()
-	rc.nodeID = 0
-	rc.nodeKey = ""
-	rc.broadcastIP = ""
-	rc.broadcastPort = 0
-	rc.active, rc.join = false, false
-	rc.transportHandler = rc.genHandler()
-}
+//func (rc *Node) clearConfig() {
+//	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+//	cfg.Save()
+//	rc.nodeID = 0
+//	rc.nodeKey = ""
+//	rc.broadcastIP = ""
+//	rc.broadcastPort = 0
+//	rc.active, rc.join = false, false
+//	rc.transportHandler = rc.genHandler()
+//}
 
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
@@ -342,9 +348,7 @@ func (rc *Node) AddNode(nodeID uint64, data []byte) error {
 	if !rc.active {
 		return fmt.Errorf("current node is leave")
 	}
-	if !rc.isCluster {
-		return fmt.Errorf("current node is not cluster mode")
-	}
+
 	p := rc.transport.Get(types.ID(nodeID))
 	if p != nil {
 		return nil
@@ -506,6 +510,7 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 		BroadcastPort: rc.broadcastPort,
 		Addr:          addr,
 	})
+
 	rc.writeConfig()
 	return nil
 }
