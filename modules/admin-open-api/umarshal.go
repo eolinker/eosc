@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/eolinker/eosc"
 	"github.com/ghodss/yaml"
 )
 
@@ -17,6 +16,10 @@ var (
 	ErrorUnknownContentType = errors.New("unknown content type")
 )
 
+type IData interface {
+	UnMarshal(v interface{}) error
+	Encode() ([]byte, error)
+}
 type JsonData []byte
 
 func (j JsonData) Encode() ([]byte, error) {
@@ -52,7 +55,7 @@ func (y YamlData) Marshal() ([]byte, error) {
 	return y, nil
 }
 
-func GetData(req *http.Request) (eosc.IData, error) {
+func GetData(req *http.Request) (IData, error) {
 	mediaType, _, err := mime.ParseMediaType(req.Header.Get("content-type"))
 	if err != nil {
 		return nil, err
