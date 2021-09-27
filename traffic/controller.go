@@ -98,7 +98,7 @@ func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
 		return nil, err
 	}
 	if tcp == nil {
-		log.Warn("get listen tcp not exit")
+		log.Warn("get listen tcp not exist")
 		c.locker.Lock()
 		defer c.locker.Unlock()
 		tcpAddr := ResolveTCPAddr(ip, port)

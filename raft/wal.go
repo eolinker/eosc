@@ -1,7 +1,10 @@
 package raft
 
 import (
+	"fmt"
 	"os"
+
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 
 	"go.etcd.io/etcd/server/v3/wal"
 
@@ -21,11 +24,9 @@ func (rc *Node) replayWAL() *wal.WAL {
 	if err != nil {
 		log.Fatalf("eosc: failed to read WAL (%v)", err)
 	}
-
 	// 节点日志缓存初始化
 	rc.raftStorage = NewMemoryStorage()
 	if snapshot != nil {
-
 		err = rc.raftStorage.ApplySnapshot(*snapshot)
 		if err != nil {
 			log.Infof("eosc: failed to apply snapshot for raftStorage (%v)", err)
@@ -69,5 +70,22 @@ func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if err != nil {
 		log.Fatalf("eosc: error loading wal (%v)", err)
 	}
+
 	return w
+}
+
+func (rc *Node) removeWalFile() error {
+	if fileutil.Exist(rc.waldir) {
+		err := os.RemoveAll(rc.waldir)
+		if err != nil {
+			return fmt.Errorf("eosc: cannot remove old dir for wal (%w)", err)
+		}
+	}
+	if fileutil.Exist(rc.snapdir) {
+		err := os.RemoveAll(rc.snapdir)
+		if err != nil {
+			return fmt.Errorf("eosc: cannot remove old dir for snap (%w)", err)
+		}
+	}
+	return nil
 }
