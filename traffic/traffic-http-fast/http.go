@@ -43,7 +43,7 @@ func (h *HttpService) SetHttps(handler fasthttp.RequestHandler, certs map[string
 		if h.last != nil {
 			h.last.Close()
 		}
-		h.last = tls.NewListener(h.inner, &tls.Config{GetCertificate: h.GetCertificate})
+		h.last = tls.NewListener(newNotClose(h.inner), &tls.Config{GetCertificate: h.GetCertificate})
 		go h.srv.Serve(h.last)
 	}
 }
