@@ -66,6 +66,10 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 						// 不存在，新增
 						rc.peers.SetPeer(cc.NodeID, &info)
 					}
+					if rc.peers.GetPeerNum() > 1 && !rc.join {
+						rc.join = true
+						rc.writeConfig()
+					}
 				}
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == rc.nodeID {
@@ -82,7 +86,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 					// 存在，减去
 					rc.peers.DeletePeerByID(cc.NodeID)
 				}
-				if rc.peers.GetPeerNum() < 2 {
+				if rc.peers.GetPeerNum() < 2 && rc.join {
 					rc.join = false
 					rc.writeConfig()
 				}

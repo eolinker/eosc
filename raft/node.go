@@ -272,16 +272,9 @@ func (rc *Node) serveChannels() {
 // leave closes http and stops raft.
 func (rc *Node) stop() {
 	close(rc.stopc)
-	//if rc.active {
-	//	rc.transport.Stop()
-	//	rc.node.Stop()
-	//	rc.wal.Close()
-	//	rc.active, rc.join = false, false
-	//}
 	rc.transport.Stop()
 	rc.node.Stop()
 	rc.wal.Close()
-	rc.join = false
 }
 
 func (rc *Node) IsJoin() bool {
