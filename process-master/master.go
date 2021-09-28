@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc"
 
 	"github.com/eolinker/eosc/process-master/admin"
@@ -39,7 +41,7 @@ import (
 )
 
 func Process() {
-	InitLogTransport()
+	utils.InitLogTransport(eosc.ProcessMaster)
 	file, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())

@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package process_master
+package utils
 
 import (
 	"fmt"
@@ -19,14 +19,14 @@ import (
 	"github.com/eolinker/eosc/log/filelog"
 )
 
-func InitLogTransport() {
+func InitLogTransport(name string) {
 	dir := fmt.Sprintf("/var/log/%s", eosc_args.AppName())
 	if eosc_args.IsDebug() {
 		dir = filepath.Base(".")
 		log.InitDebug(true)
 	}
 	writer := filelog.NewFileWriteByPeriod()
-	writer.Set(dir, "error.log", filelog.PeriodDay, 7*24*time.Hour)
+	writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
 	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
 	formater := &log.LineFormatter{

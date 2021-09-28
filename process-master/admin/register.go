@@ -19,17 +19,17 @@ type CreateHandler interface {
 }
 
 var (
-	createrHandlers = make(map[string]CreateHandler)
+	creatorHandler = make(map[string]CreateHandler)
 )
 
 func Register(myPre string, handler CreateHandler) error {
 	pre := formatPath(myPre)
 
-	_, has := createrHandlers[pre]
+	_, has := creatorHandler[pre]
 	if has {
 		return ErrorDuplicatePath
 	}
-	createrHandlers[pre] = handler
+	creatorHandler[pre] = handler
 	return nil
 }
 
@@ -37,11 +37,11 @@ func load(admin eosc.IAdmin, prefix string) http.Handler {
 
 	mx := http.NewServeMux()
 
-	for p, h := range createrHandlers {
+	for p, h := range creatorHandler {
 		hs := h.Create(admin, prefix)
 		if hs != nil {
 			pre := formatPath(prefix)
-			key := fmt.Sprintf("%s%s", pre, p)
+			key := fmt.Sprintf("%s%s", pre, strings.TrimPrefix(p, "/"))
 			mx.Handle(key, hs)
 		}
 	}

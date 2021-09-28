@@ -15,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/bean"
 
@@ -31,7 +33,7 @@ import (
 )
 
 func Process() {
-
+	utils.InitLogTransport(eosc.ProcessWorker)
 	loadPluginEnv()
 	w := NewProcessWorker()
 	listener.SetTraffic(w.tf)
