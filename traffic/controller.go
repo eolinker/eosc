@@ -24,13 +24,51 @@ type IController interface {
 	ITraffic
 	Encode(startIndex int) ([]byte, []*os.File, error)
 	Close()
+	Reset(ports []int) (isCreate bool, err error)
 }
 
 type Controller struct {
 	Traffic
 }
 
+func (c *Controller) Reset(ports []int) (bool, error) {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	isCreate := false
+	newData := eosc.NewUntyped()
+
+	old := c.data.Clone()
+
+	for _, p := range ports {
+		addr := ResolveTCPAddr("", p)
+		name := toName(addr)
+		if o, has := old.Del(name); has {
+			newData.Set(name, o)
+		} else {
+			l, err := net.ListenTCP("tcp", addr)
+			if err != nil {
+				log.Warn("listen tcp:", err)
+				return false, err
+			}
+			newData.Set(name, l)
+			isCreate = true
+		}
+	}
+	for n, o := range old.All() {
+		l, ok := o.(*net.TCPListener)
+		if !ok {
+			log.Warn("unknown error while try close  listener:", n)
+			continue
+		}
+		if err := l.Close(); err != nil {
+			log.Warn("close listener:", err)
+		}
+	}
+	return isCreate, nil
+}
+
 func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
+
 	ts := c.All()
 	pts := new(PbTraffics)
 	files := make([]*os.File, 0, len(ts))
@@ -63,7 +101,6 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
 func (c *Controller) All() []*net.TCPListener {
 	c.locker.Lock()
 	list := c.data.List()
-	c.data = eosc.NewUntyped()
 	c.locker.Unlock()
 
 	ts := make([]*net.TCPListener, 0, len(list))
@@ -78,7 +115,7 @@ func (c *Controller) All() []*net.TCPListener {
 	return ts
 }
 
-func NewController(r io.Reader) *Controller {
+func NewController(r io.Reader) IController {
 	c := &Controller{
 		Traffic: Traffic{
 			data: eosc.NewUntyped(),

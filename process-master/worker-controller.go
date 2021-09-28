@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/eolinker/eosc/traffic"
+
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc"
@@ -13,19 +15,25 @@ import (
 
 var _ service.WorkerServiceClient = (*WorkerController)(nil)
 
+type WorkerProcessController interface {
+	Stop()
+	NewWorker() error
+	Start()
+}
 type WorkerController struct {
-	locker sync.Mutex
-	dms    []eosc.IDataMarshaller
-
-	current *WorkerProcess
-
-	expireWorkers []*WorkerProcess
-
-	isStop bool
+	locker            sync.Mutex
+	dms               []eosc.IDataMarshaller
+	current           *WorkerProcess
+	expireWorkers     []*WorkerProcess
+	trafficController traffic.IController
+	isStop            bool
 }
 
-func NewWorkerController(dms ...eosc.IDataMarshaller) *WorkerController {
-	return &WorkerController{dms: dms}
+func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
+	return &WorkerController{
+		trafficController: trafficController,
+		dms:               append(dms, trafficController),
+	}
 }
 func (wc *WorkerController) Stop() {
 	wc.locker.Lock()

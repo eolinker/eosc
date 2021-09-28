@@ -57,10 +57,11 @@ func (w *WorkersData) reset(vs []*eosc.WorkerData) {
 }
 
 type WorkersRaft struct {
-	data                *WorkersData
-	professions         eosc.IProfessionsData
-	workerServiceClient service.WorkerServiceClient
-	service             raft_service.IService
+	data                    *WorkersData
+	professions             eosc.IProfessionsData
+	workerServiceClient     service.WorkerServiceClient
+	service                 raft_service.IService
+	workerProcessController WorkerProcessController
 }
 
 func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, workerServiceClient service.WorkerServiceClient, service raft_service.IService) *WorkersRaft {
@@ -155,6 +156,21 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 				return err
 			}
 			w.data.Set(worker.Id, worker)
+			req := &service.WorkerSetRequest{
+				Id:         worker.Id,
+				Profession: worker.Profession,
+				Name:       worker.Name,
+				Driver:     worker.Driver,
+				Body:       worker.Org.Body,
+			}
+			response, err := w.workerServiceClient.Set(context.TODO(), req)
+			if err != nil {
+				return err
+			}
+			if response.Status != service.WorkerStatusCode_SUCCESS {
+				return errors.New(response.Message)
+			}
+
 			return nil
 		}
 	case workers.CommandDel:
