@@ -461,27 +461,6 @@ func (rc *Node) changeSingleCluster() error {
 	return rc.InitSend()
 }
 
-func (rc *Node) deletePeers(peers map[uint64]*NodeInfo) error {
-	if rc.join {
-		return fmt.Errorf("current node is cluster mode")
-	}
-	for id, _ := range peers {
-		if id == rc.nodeID {
-			continue
-		}
-		cc := raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
-			ID:     id,
-		}
-		err := rc.node.ProposeConfChange(context.TODO(), cc)
-		if err != nil {
-			fmt.Println("dubugz2: ", id, err.Error())
-			return err
-		}
-	}
-	return nil
-}
 
 func (rc *Node) UpdateHostInfo(addr string) error {
 	u, err := url.Parse(addr)

@@ -29,7 +29,7 @@ var retryFrequency time.Duration = 2000
 // 2、也可以用于节点crash后的重启处理
 func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, protocol string) error {
 	// 判断是否已经在一个多节点集群中
-	if rc.peers.GetPeerNum() > 1 || rc.join {
+	if rc.peers.GetPeerNum() > 1{
 		return fmt.Errorf("This node has joined the cluster")
 	}
 	msg := JoinRequest{
@@ -39,7 +39,6 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 		Target:        address,
 	}
 	data, _ := json.Marshal(msg)
-
 	resp, err := getNodeInfoRequest(address, data)
 	if err != nil {
 		return err
@@ -79,6 +78,7 @@ func (rc *Node) joinInit() error {
 	if err != nil {
 		return err
 	}
+	rc.peers = NewPeers()
 	rc.join = true
 	return nil
 }
@@ -111,13 +111,6 @@ func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
 
 //NewNode 新建raft节点
 func NewNode(service IService) (*Node, error) {
-	//fileName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
-	//// 判断是否存在nodeID，若存在，则当作旧节点处理，加入集群
-	//cfg := eosc_args.NewConfig(fileName)
-	//cfg.ReadFile(fileName)
-	// 均已node_id为1启动,作为单例集群
-	//nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
-	//nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
 	logger, _ := zap.NewProduction()
 	rc := &Node{
 		peers:     NewPeers(),
