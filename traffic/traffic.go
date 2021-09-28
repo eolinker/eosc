@@ -83,7 +83,7 @@ func (t *Traffic) Read(r io.Reader) {
 
 func (t *Traffic) add(ln *net.TCPListener) {
 	tcpAddr := ln.Addr()
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
+	name := toName(tcpAddr)
 	log.Info("traffic add:", name)
 	t.data.Set(name, ln)
 }
@@ -91,7 +91,6 @@ func (t *Traffic) add(ln *net.TCPListener) {
 func (t *Traffic) Close() {
 	t.locker.Lock()
 	list := t.data.List()
-
 	t.data = eosc.NewUntyped()
 	t.locker.Unlock()
 	for _, it := range list {
@@ -121,4 +120,8 @@ func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
 		Port: port,
 		Zone: "",
 	}
+}
+func toName(addr net.Addr) string {
+	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
+
 }
