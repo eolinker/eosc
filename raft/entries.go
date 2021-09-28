@@ -82,6 +82,10 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 					// 存在，减去
 					rc.peers.DeletePeerByID(cc.NodeID)
 				}
+				if rc.peers.GetPeerNum() < 2 {
+					rc.join = false
+					rc.writeConfig()
+				}
 			}
 		}
 	}
