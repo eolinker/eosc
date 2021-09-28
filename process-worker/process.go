@@ -15,12 +15,12 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/bean"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/service"
 	"google.golang.org/grpc"
@@ -120,7 +120,7 @@ func (w *ProcessWorker) close() {
 		w.tf.Close()
 		w.srv.Stop()
 
-		addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+		addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
 		// 移除unix socket
 		syscall.Unlink(addr)
 	})
@@ -128,7 +128,7 @@ func (w *ProcessWorker) close() {
 }
 
 func (w *ProcessWorker) Start() error {
-	addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+	addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)
 

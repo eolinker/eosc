@@ -17,8 +17,7 @@ import (
 
 	"golang.org/x/time/rate"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
-
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -81,7 +80,7 @@ type Node struct {
 	stopc     chan struct{} // signals proposal channel closed
 
 	// 日志相关，后续改为eosc_log
-	logger           *zap.Logger
+	logger *zap.Logger
 	//active           bool
 	transportHandler http.Handler
 }
@@ -103,33 +102,33 @@ func (rc *Node) Addr() string {
 }
 
 func (rc *Node) readConfig() {
-	nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
-	cfg := eosc_args.NewConfig(nodeName)
+	nodeName := fmt.Sprintf("%s_node.args", env.AppName())
+	cfg := env.NewConfig(nodeName)
 	cfg.ReadFile(nodeName)
-	rc.join, _ = strconv.ParseBool(cfg.GetDefault(eosc_args.IsJoin, "false"))
-	nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
+	rc.join, _ = strconv.ParseBool(cfg.GetDefault(env.IsJoin, "false"))
+	nodeID, _ := strconv.Atoi(cfg.GetDefault(env.NodeID, "1"))
 	rc.nodeID = uint64(nodeID)
-	rc.nodeKey = cfg.GetDefault(eosc_args.NodeKey, "")
+	rc.nodeKey = cfg.GetDefault(env.NodeKey, "")
 	if rc.nodeKey == "" {
 		rc.nodeKey = uuid.New()
 	}
-	rc.broadcastIP = cfg.GetDefault(eosc_args.BroadcastIP, "")
-	rc.broadcastPort, _ = strconv.Atoi(cfg.GetDefault(eosc_args.Port, "0"))
+	rc.broadcastIP = cfg.GetDefault(env.BroadcastIP, "")
+	rc.broadcastPort, _ = strconv.Atoi(cfg.GetDefault(env.Port, "0"))
 }
 
 //writeConfig 将raft节点的运行配置写进文件中
 func (rc *Node) writeConfig() {
-	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
-	cfg.Set(eosc_args.IsJoin, strconv.FormatBool(rc.join))
-	cfg.Set(eosc_args.NodeID, strconv.Itoa(int(rc.nodeID)))
-	cfg.Set(eosc_args.NodeKey, rc.nodeKey)
-	cfg.Set(eosc_args.BroadcastIP, rc.broadcastIP)
-	cfg.Set(eosc_args.Port, strconv.Itoa(rc.broadcastPort))
+	cfg := env.NewConfig(fmt.Sprintf("%s_node.args", env.AppName()))
+	cfg.Set(env.IsJoin, strconv.FormatBool(rc.join))
+	cfg.Set(env.NodeID, strconv.Itoa(int(rc.nodeID)))
+	cfg.Set(env.NodeKey, rc.nodeKey)
+	cfg.Set(env.BroadcastIP, rc.broadcastIP)
+	cfg.Set(env.Port, strconv.Itoa(rc.broadcastPort))
 	cfg.Save()
 }
 
 //func (rc *Node) clearConfig() {
-//	cfg := eosc_args.NewConfig(fmt.Sprintf("%s_node.args", eosc_args.AppName()))
+//	cfg := env.NewConfig(fmt.Sprintf("%s_node.args", env.AppName()))
 //	cfg.Save()
 //	rc.nodeID = 0
 //	rc.nodeKey = ""
@@ -423,7 +422,7 @@ func (rc *Node) changeSingleCluster() error {
 	rc.writeConfig()
 	// 删除旧的日志文件
 	err := rc.removeWalFile()
-	if err !=nil {
+	if err != nil {
 		return err
 	}
 
@@ -460,7 +459,6 @@ func (rc *Node) changeSingleCluster() error {
 	go rc.serveChannels()
 	return rc.InitSend()
 }
-
 
 func (rc *Node) UpdateHostInfo(addr string) error {
 	u, err := url.Parse(addr)

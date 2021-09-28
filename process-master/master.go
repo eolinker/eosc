@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
@@ -26,7 +28,6 @@ import (
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/raft"
@@ -123,8 +124,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 		return err
 	}
 
-	ip := eosc_args.GetDefault(eosc_args.IP, "")
-	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
+	ip := env.GetDefault(env.IP, "")
+	port, _ := strconv.Atoi(env.GetDefault(env.Port, "9400"))
 	// 监听master监听地址，用于接口处理
 	l, err := m.masterTraffic.ListenTcp(ip, port)
 	if err != nil {
@@ -133,7 +134,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 	}
 
 	m.startHttp(l)
-	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 	log.Info("process-master start grpc service")
@@ -235,7 +236,7 @@ func NewMasterHandle(pid *pidfile.PidFile) *Master {
 		UnimplementedMasterServer:     service.UnimplementedMasterServer{},
 		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
 	}
-	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("init traffic from stdin")
 		m.masterTraffic = traffic.NewController(os.Stdin)
 		m.workerTraffic = traffic.NewController(os.Stdin)

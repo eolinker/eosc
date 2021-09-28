@@ -13,15 +13,14 @@ import (
 	"path/filepath"
 	"time"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
-
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
 )
 
 func InitLogTransport(name string) {
-	dir := fmt.Sprintf("/var/log/%s", eosc_args.AppName())
-	if eosc_args.IsDebug() {
+	dir := fmt.Sprintf("/var/log/%s", env.AppName())
+	if env.IsDebug() {
 		dir = filepath.Base(".")
 		log.InitDebug(true)
 	}

@@ -6,9 +6,10 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/process"
 	"google.golang.org/grpc"
@@ -58,7 +59,7 @@ func (wc *WorkerController) newWorkerProcess(stdIn io.Reader, extraFiles []*os.F
 }
 
 func createClient(pid int) (service.WorkerServiceClient, *grpc.ClientConn, error) {
-	conn, err := grpc_unixsocket.Connect(service.WorkerServerAddr(eosc_args.AppName(), pid))
+	conn, err := grpc_unixsocket.Connect(service.WorkerServerAddr(env.AppName(), pid))
 	if err != nil {
 		return nil, nil, err
 	}
