@@ -103,7 +103,7 @@ func (m *Master) start(handler *MasterHandler) error {
 	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
 
 	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s)
-	m.admin = admin.NewAdmin(handler.Professions, worker, "/")
+	m.admin = admin.NewAdmin(handler.Professions, worker)
 	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
 	node, err := raft.NewNode(s)
 	if err != nil {

@@ -255,18 +255,10 @@ type iOpenAdmin interface {
 	export(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 }
 
-func NewOpenAdmin(prefix string, admin eosc.IAdmin) *OpenAdmin {
-	p := strings.TrimSpace(prefix)
-	if len(p) == 0 {
-		p = "/"
-	} else if p[0] != '/' {
-		p = "/" + p
-	}
-	p = strings.TrimSuffix(p, "/")
+func NewOpenAdmin(admin eosc.IAdmin) *OpenAdmin {
 
 	return &OpenAdmin{
-		prefix: p,
-		admin:  admin,
+		admin: admin,
 	}
 }
 

@@ -15,7 +15,7 @@ var (
 )
 
 type CreateHandler interface {
-	Create(admin eosc.IAdmin, prefix string) http.Handler
+	Create(admin eosc.IAdmin, pref string) http.Handler
 }
 
 var (
@@ -24,7 +24,6 @@ var (
 
 func Register(myPre string, handler CreateHandler) error {
 	pre := formatPath(myPre)
-
 	_, has := creatorHandler[pre]
 	if has {
 		return ErrorDuplicatePath
@@ -33,20 +32,20 @@ func Register(myPre string, handler CreateHandler) error {
 	return nil
 }
 
-func load(admin eosc.IAdmin, prefix string) http.Handler {
+func load(admin eosc.IAdmin) http.Handler {
 
 	mx := http.NewServeMux()
-
+	//pre := formatPath(prefix)
 	for p, h := range creatorHandler {
-		hs := h.Create(admin, prefix)
+		hs := h.Create(admin, p)
 		if hs != nil {
-			pre := formatPath(prefix)
-			key := fmt.Sprintf("%s%s", pre, strings.TrimPrefix(p, "/"))
-			mx.Handle(key, hs)
+			mx.Handle(p, hs)
+			mx.Handle(fmt.Sprintf("%s/", p), hs)
 		}
 	}
 	return mx
 }
-func formatPath(p string) string {
-	return fmt.Sprintf("/%s", strings.TrimPrefix(strings.TrimSuffix(p, "/"), "/"))
+func formatPath(pre string) string {
+
+	return fmt.Sprintf("/%s", strings.TrimSuffix(strings.TrimPrefix(pre, "/"), "/"))
 }

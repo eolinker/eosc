@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	admin.Register("/api", admin_open_api.CreateHandler())
+	admin.Register("/api/", admin_open_api.CreateHandler())
 	process.Register(eosc.ProcessWorker, process_worker.Process)
 	process.Register(eosc.ProcessMaster, process_master.Process)
 	process.Register(eosc.ProcessHelper, helper.Process)
