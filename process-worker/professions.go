@@ -39,7 +39,6 @@ func (ps *Professions) Sort() []*Profession {
 	for len(list) > 0 {
 		sc := 0
 		for i, v := range list {
-
 			dependenciesHas := 0
 			for _, dep := range v.Dependencies {
 				if _, has := sm[dep]; !has {
@@ -60,7 +59,7 @@ func (ps *Professions) Sort() []*Profession {
 			// todo profession dependencies error
 			break
 		}
-		tmp := list[:]
+		tmp := list[:0]
 		for _, v := range list {
 			if v != nil {
 				tmp = append(tmp, v)
@@ -80,10 +79,8 @@ func (ps *Professions) init(configs []*eosc.ProfessionConfig) {
 	data := eosc.NewUntyped()
 	for _, c := range configs {
 		p := NewProfession(c)
-
 		data.Set(c.Name, p)
 	}
-
 	ps.data = data
 }
 func (ps *Professions) Get(name string) (*Profession, bool) {
