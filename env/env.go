@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -22,7 +23,8 @@ var envs = []string{
 	IP, Port, Protocol, BroadcastIP, ClusterAddress, PluginPath, IsJoin, NodeID, NodeKey,
 }
 var (
-	appName = createApp()
+	appName    = createApp()
+	envAppName = strings.ToUpper(appName)
 )
 
 func createApp() string {
@@ -58,7 +60,7 @@ func GenEnv(name, value string) string {
 	return fmt.Sprintf("%s=%s", EnvName(name), value)
 }
 func EnvName(name string) string {
-	return fmt.Sprintf("%s_%s", appName, name)
+	return fmt.Sprintf("%s_%s", envAppName, name)
 }
 
 func AppName() string {

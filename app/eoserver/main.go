@@ -13,8 +13,9 @@ package main
 import (
 	"os"
 
-	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/env"
+
+	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/eoscli"
 	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/log"
@@ -34,16 +35,16 @@ func init() {
 
 func main() {
 
+	if process.Run() {
+		log.Close()
+		return
+	}
 	if env.IsDebug() {
 		if process.RunDebug(eosc.ProcessMaster) {
 			log.Info("debug done")
 		} else {
 			log.Error("debug not run")
 		}
-		log.Close()
-		return
-	}
-	if process.Run() {
 		log.Close()
 		return
 	}
