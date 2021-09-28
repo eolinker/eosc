@@ -110,7 +110,7 @@ func (w *WorkersRaft) Set(profession, name, driver string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return w.service.Send(workers.SpaceWorker, name, body)
+	return w.service.Send(workers.SpaceWorker, workers.CommandSet, body)
 }
 
 func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, error) {

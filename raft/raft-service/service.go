@@ -52,7 +52,7 @@ func (s *Service) CommitHandler(data []byte) error {
 }
 
 func (s *Service) ProcessDataHandler(body []byte) (data []byte, err error) {
-	cmd, err := unMarshalCmd(data)
+	cmd, err := unMarshalCmd(body)
 	if err != nil {
 		return nil, err
 	}
