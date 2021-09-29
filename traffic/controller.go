@@ -21,8 +21,8 @@ import (
 )
 
 type IController interface {
+	eosc.IDataMarshaller
 	ITraffic
-	Encode(startIndex int) ([]byte, []*os.File, error)
 	Close()
 	Reset(ports []int) (isCreate bool, err error)
 }
@@ -64,11 +64,12 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 			log.Warn("close listener:", err)
 		}
 	}
+	c.data = newData
 	return isCreate, nil
 }
 
 func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
-
+	log.Debug("traffic controller: encode:")
 	ts := c.All()
 	pts := new(PbTraffics)
 	files := make([]*os.File, 0, len(ts))
@@ -99,6 +100,7 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
 }
 
 func (c *Controller) All() []*net.TCPListener {
+
 	c.locker.Lock()
 	list := c.data.List()
 	c.locker.Unlock()

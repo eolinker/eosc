@@ -27,6 +27,7 @@ type WorkerProcess struct {
 }
 
 func (w *WorkerProcess) Close() error {
+
 	w.cmd.Process.Signal(syscall.SIGQUIT)
 	if w.conn != nil {
 		w.conn.Close()

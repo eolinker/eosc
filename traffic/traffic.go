@@ -41,7 +41,7 @@ func NewTraffic() *Traffic {
 }
 
 func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
-
+	log.Debug("traffic ListenTcp:", ip, ":", port)
 	tcpAddr := ResolveTCPAddr(ip, port)
 	t.locker.Lock()
 	defer t.locker.Unlock()
@@ -51,11 +51,15 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	if o, has := t.data.Get(name); has {
 		listener, ok := o.(net.Listener)
 		if !ok {
+			log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
+
 			return nil, ErrorInvalidListener
 		}
+		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
 
 		return listener, nil
 	}
+	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
 
 	return nil, nil
 }
@@ -67,16 +71,17 @@ type ITraffic interface {
 }
 
 func (t *Traffic) Read(r io.Reader) {
+
 	t.locker.Lock()
 	defer t.locker.Unlock()
 
 	listeners, err := readListener(r)
+	log.Debug("read listeners: ", len(listeners))
 	if err != nil {
 		log.Warn("read listeners:", err)
 		return
 	}
 	for _, ln := range listeners {
-
 		t.add(ln)
 	}
 

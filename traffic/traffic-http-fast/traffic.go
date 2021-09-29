@@ -52,6 +52,7 @@ func (h *HttpTraffic) Get(port int) IService {
 		return srv
 	}
 	listener, err := h.tf.ListenTcp("", port)
+
 	if err != nil {
 		srv = NewHttpService(nil)
 	} else {

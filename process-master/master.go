@@ -113,7 +113,6 @@ func (m *Master) start(handler *MasterHandler) error {
 
 	m.node = node
 
-	//m.workerController.Start()
 	return nil
 }
 
@@ -223,6 +222,7 @@ func (m *Master) close() {
 	if err := m.PID.Remove(); err != nil {
 		log.Warn("remove pid:", err)
 	}
+	m.workerController.Stop()
 
 }
 

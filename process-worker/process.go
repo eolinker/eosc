@@ -9,7 +9,6 @@
 package process_worker
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -27,8 +26,6 @@ import (
 
 	"github.com/eolinker/eosc/log"
 
-	"github.com/eolinker/eosc/listener"
-
 	"github.com/eolinker/eosc/traffic"
 )
 
@@ -43,10 +40,11 @@ func Process() {
 		log.Error("new process worker error: ", err)
 		return
 	}
-	log.Debug("set traffic...")
-	listener.SetTraffic(w.tf)
+
 	w.Start()
+
 	w.wait()
+	log.Info("worker process end")
 }
 
 type ProcessWorker struct {
@@ -63,7 +61,6 @@ func (w *ProcessWorker) wait() {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{

@@ -105,15 +105,15 @@ func (wc *WorkerController) NewWorker() error {
 	return wc.new()
 }
 func (wc *WorkerController) new() error {
-
+	log.Debug("create worker process start")
 	buf := bytes.NewBuffer(nil)
 	var fileAll []*os.File
 	index := 3
 	for _, dm := range wc.dms {
 		data, files, err := dm.Encode(index)
-
+		log.Debugf("encode:data[%d] file[%d]", len(data), len(files))
 		if err != nil {
-
+			log.Warn("create worker process fail:", err)
 			return err
 		}
 		index += len(files)
@@ -127,11 +127,14 @@ func (wc *WorkerController) new() error {
 		return err
 	}
 
-	if wc.current != nil {
-		wc.expireWorkers = append(wc.expireWorkers, wc.current)
-	}
+	old := wc.current
 	wc.current = workerProcess
 	go wc.check(wc.current)
+
+	if old != nil {
+		old.Close()
+	}
+
 	return nil
 }
 

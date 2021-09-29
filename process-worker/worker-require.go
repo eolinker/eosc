@@ -68,7 +68,7 @@ func (w *WorkerRequireManager) removeBy(id string, requireId string) {
 		rs := d.([]string)
 		for i, rid := range rs {
 			if rid == id {
-				rs = append(rs[:i], rs[i+1])
+				rs = append(rs[:i], rs[i+1:]...)
 				break
 			}
 		}
