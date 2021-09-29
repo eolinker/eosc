@@ -201,8 +201,19 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 
 		return
 	}
+	employee, err := o.admin.GetEmployee(profession, name)
+	if err != nil {
 
-	writeResult(w, nil)
+		info := make(map[string]interface{})
+		idata.UnMarshal(&info)
+
+		info["profession"] = profession
+		info["id"] = eosc.ToWorkerId(name, profession)
+		info["create"] = eosc.Now()
+		info["update"] = eosc.Now()
+		employee = info
+	}
+	writeResult(w, employee)
 }
 
 func (o *OpenAdmin) getProfessions(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
