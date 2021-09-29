@@ -23,7 +23,7 @@ func NewTypedWorkers() *TypedWorkers {
 }
 
 func (wd *TypedWorkers) Set(id string, w *Worker) {
-	wd.data.Set(id, wd)
+	wd.data.Set(id, w)
 }
 
 func (wd *TypedWorkers) Del(id string) (*Worker, bool) {

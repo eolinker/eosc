@@ -12,6 +12,7 @@ import (
 var (
 	ErrorDuplicatePath = errors.New("path duplicate")
 	ErrorNotExist      = errors.New("not exits")
+	ErrorNotMatch      = errors.New("not match profession")
 )
 
 type CreateHandler interface {

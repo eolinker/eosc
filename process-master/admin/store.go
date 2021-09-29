@@ -23,12 +23,18 @@ func (a *Admin) Update(profession, name, driver string, data []byte) (interface{
 }
 
 func (a *Admin) Delete(profession, name string) (interface{}, error) {
-	id := eosc.ToWorkerId(name, profession)
+	id, ok := eosc.ToWorkerId(name, profession)
+	if !ok {
+		return nil, fmt.Errorf("%s %w", profession, ErrorNotMatch)
+	}
 	return a.workers.Delete(id)
 }
 
 func (a *Admin) GetEmployee(profession, name string) (interface{}, error) {
-	id := eosc.ToWorkerId(name, profession)
+	id, ok := eosc.ToWorkerId(name, profession)
+	if !ok {
+		return nil, fmt.Errorf("%s %w", profession, ErrorNotMatch)
+	}
 	return a.workers.GetWork(id)
 }
 

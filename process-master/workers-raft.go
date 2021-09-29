@@ -86,8 +86,10 @@ func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
 }
 
 func (w *WorkersRaft) Set(profession, name, driver string, data []byte) (eosc.TWorker, error) {
-	id := eosc.ToWorkerId(name, profession)
-
+	id, ok := eosc.ToWorkerId(name, profession)
+	if !ok {
+		return nil, fmt.Errorf("%s %w", profession, errors.New("not match profession"))
+	}
 	obj, err := w.service.Send(workers.SpaceWorker, workers.CommandSet, w.encodeWorkerSet(&service.WorkerSetRequest{
 		Id:         id,
 		Profession: profession,
@@ -253,7 +255,10 @@ func (w *WorkersRaft) ResetHandler(data []byte) error {
 	}
 
 	w.data.reset(vs)
-
+	err = w.workerProcessController.NewWorker()
+	if err != nil {
+		log.Error("reset handler error: ", err)
+	}
 	return nil
 }
 

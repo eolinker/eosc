@@ -33,9 +33,17 @@ import (
 )
 
 func Process() {
+	log.Debug("worker process start...")
 	utils.InitLogTransport(eosc.ProcessWorker)
+	log.Debug("load plugin env...")
 	loadPluginEnv()
-	w := NewProcessWorker()
+	log.Debug("create worker...")
+	w, err := NewProcessWorker()
+	if err != nil {
+		log.Error("new process worker error: ", err)
+		return
+	}
+	log.Debug("set traffic...")
 	listener.SetTraffic(w.tf)
 	w.Start()
 	w.wait()
@@ -80,7 +88,7 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker() *ProcessWorker {
+func NewProcessWorker() (*ProcessWorker, error) {
 	w := &ProcessWorker{}
 	tf := traffic.NewTraffic()
 	w.tf = tf
@@ -100,7 +108,7 @@ func NewProcessWorker() *ProcessWorker {
 	psData, err := ReadProfessionData(os.Stdin)
 	if err != nil {
 		log.Warn("profession configs error:", err)
-		return nil
+		return nil, err
 	}
 	ps.init(psData)
 	workersData := ReadWorkers(os.Stdin)
@@ -108,10 +116,10 @@ func NewProcessWorker() *ProcessWorker {
 	err = wm.Init(workersData)
 	if err != nil {
 		log.Warn("worker configs error:", err)
-		return nil
+		return nil, err
 	}
 	w.workers = wm
-	return w
+	return w, nil
 }
 
 func (w *ProcessWorker) close() {
@@ -132,7 +140,7 @@ func (w *ProcessWorker) Start() error {
 	// 移除unix socket
 	syscall.Unlink(addr)
 
-	log.Info("start Master :", addr)
+	log.Info("start worker :", addr)
 	l, err := grpc_unixsocket.Listener(addr)
 	if err != nil {
 		return err

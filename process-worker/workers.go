@@ -131,11 +131,13 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
-
+	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
 		for _, wd := range pm[p.Name] {
+			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
 			if err := wm.Set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
-				return err
+				log.Error("init set worker: ", err)
+				continue
 			}
 		}
 	}

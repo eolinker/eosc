@@ -18,7 +18,7 @@ func NewWorkerServer(workers IWorkers) *WorkerServer {
 }
 
 func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerDeleteResponse, error) {
-
+	log.Debug("delete check: ", request.Id)
 	count := ws.workers.RequiredCount(request.Id)
 	if count > 0 {
 		return &service.WorkerDeleteResponse{
@@ -38,7 +38,9 @@ func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.Worker
 }
 
 func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerSetResponse, error) {
+	log.Debug("set check: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", req.Body)
 	err := ws.workers.Check(req.Id, req.Profession, req.Name, req.Driver, req.Body)
+
 	if err != nil {
 		log.Info("serivce set :", err)
 		return &service.WorkerSetResponse{
@@ -59,7 +61,7 @@ func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequ
 }
 
 func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerDeleteResponse, error) {
-
+	log.Debug("delete: ", request.Id)
 	err := ws.workers.Del(request.Id)
 	if err != nil {
 		log.Info("delete fail:", err)
@@ -81,7 +83,7 @@ func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDelet
 }
 
 func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerSetResponse, error) {
-
+	log.Debug("set: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
 	err := ws.workers.Set(req.Id, req.Profession, req.Name, req.Driver, req.Body)
 	if err != nil {
 		log.Info("worker server set:", err)

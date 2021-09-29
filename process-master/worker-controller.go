@@ -2,8 +2,10 @@ package process_master
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/eolinker/eosc/traffic"
 
@@ -80,8 +82,22 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 }
 func (wc *WorkerController) Start() {
 	wc.locker.Lock()
-	defer wc.locker.Unlock()
 	wc.new()
+	wc.locker.Unlock()
+	ticker := time.NewTicker(100 * time.Millisecond)
+
+	for {
+		select {
+		case <-ticker.C:
+			_, err := wc.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
+			if err != nil {
+				log.Debug("work controller ping: ", err)
+				continue
+			}
+			return
+		}
+	}
+
 }
 func (wc *WorkerController) NewWorker() error {
 	wc.locker.Lock()
@@ -121,5 +137,8 @@ func (wc *WorkerController) new() error {
 func (wc *WorkerController) getClient() service.WorkerServiceClient {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
+	if wc.current == nil {
+		return nil
+	}
 	return wc.current
 }
