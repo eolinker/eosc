@@ -158,7 +158,7 @@ func (rc *Node) startRaft() error {
 
 	// 集群模式下启动节点的时候，重新reload快照到service中
 	// TODO 非集群想要切换成集群的时候，要么这里做进一步校验，要么切换前先存好快照和日志
-	err := rc.ReadSnap(rc.snapshotter)
+	err := rc.ReadSnap(rc.snapshotter, true)
 	if err != nil {
 		return fmt.Errorf("reload snap to service error: %w", err)
 		//log.Detail("reload snap to service error:", err)
@@ -418,6 +418,7 @@ func (rc *Node) changeSingleCluster() error {
 	}
 	rc.transportHandler = rc.genHandler()
 	rc.stopc = make(chan struct{})
+
 	// 配置存储
 	rc.writeConfig()
 	// 删除旧的日志文件
@@ -434,7 +435,7 @@ func (rc *Node) changeSingleCluster() error {
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 	// 将日志wal重写入raftNode实例中，读取快照和日志，并初始化raftStorage,此处主要是新建日志文件
 	rc.wal = rc.replayWAL()
-	err = rc.ReadSnap(rc.snapshotter)
+	err = rc.ReadSnap(rc.snapshotter, false)
 	if err != nil {
 		return fmt.Errorf("reload snap to service error: %w", err)
 	}
