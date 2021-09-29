@@ -31,7 +31,6 @@ func (wa WorkerAttr) Get(field string) string {
 type Worker struct {
 	*eosc.WorkerData
 	Data WorkerAttr
-	Info *eosc.WorkerInfo
 }
 
 func (w *Worker) MarshalJSON() ([]byte, error) {
@@ -68,13 +67,13 @@ func ReadTWorker(obj interface{}) (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return wk.Format(nil), nil
+		return wk.Info(), nil
 	case *eosc.WorkerData:
 		wk, err := ToWorker(v)
 		if err != nil {
 			return nil, err
 		}
-		return wk.Format(nil), nil
+		return wk.Info(), nil
 	}
 	return nil, errors.New("unknown type")
 }
@@ -87,18 +86,9 @@ func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
 	return &Worker{
 		WorkerData: wd,
 		Data:       wa,
-		Info: &eosc.WorkerInfo{
-			Id:         wd.Id,
-			Profession: wd.Profession,
-			Name:       wd.Name,
-			Driver:     wd.Driver,
-			Create:     wd.Create,
-			Update:     wd.Update,
-		},
 	}, nil
 }
-
-func (w *Worker) Format(attrs []string) map[string]interface{} {
+func (w *Worker) Info() eosc.TWorker {
 	m := make(map[string]interface{})
 	m["id"] = w.Id
 	m["profession"] = w.Profession
@@ -106,16 +96,29 @@ func (w *Worker) Format(attrs []string) map[string]interface{} {
 	m["driver"] = w.Driver
 	m["create"] = w.Create
 	m["update"] = w.Update
+	return m
+}
+func (w *Worker) Detail() eosc.TWorker {
+	m := w.Info()
+	if w.Data != nil {
+
+		for k, v := range w.Data {
+			m[k] = v
+		}
+
+	}
+	return m
+}
+
+func (w *Worker) Format(attrs []string) eosc.TWorker {
+	m := w.Info()
 	if w.Data != nil {
 		if attrs != nil {
 			for _, f := range attrs {
 				m[f] = w.Data[f]
 			}
-		} else {
-			for k, v := range w.Data {
-				m[k] = v
-			}
 		}
 	}
+
 	return m
 }

@@ -77,6 +77,7 @@ func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	worker, err := workers.ReadTWorker(obj)
 	if err != nil {
 		return nil, err
@@ -258,7 +259,7 @@ func (w *WorkersRaft) ResetHandler(data []byte) error {
 
 func (w *WorkersRaft) GetWork(id string) (eosc.TWorker, error) {
 	if ow, b := w.data.Get(id); b {
-		return ow.Format(nil), nil
+		return ow.Detail(), nil
 	}
 	return nil, workers.ErrorNotExist
 }
@@ -274,7 +275,6 @@ func (w *WorkersRaft) GetList(profession string) ([]eosc.TWorker, error) {
 
 	result := make([]eosc.TWorker, 0, len(all))
 	for _, ow := range all {
-
 		if ow.Profession == profession {
 			result = append(result, ow.Format(attrs))
 		}
