@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/eolinker/eosc/process-master/workers"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/eolinker/eosc/raft"
@@ -161,6 +163,9 @@ func (s *Service) ResetSnap(data []byte) error {
 	err := json.Unmarshal(data, &snaps)
 	if err != nil {
 		return err
+	}
+	if len(snaps) < 1 {
+		snaps[workers.SpaceWorker] = ""
 	}
 	for namespace, value := range snaps {
 		handler, has := s.handlers.Get(namespace)

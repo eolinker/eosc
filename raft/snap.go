@@ -36,10 +36,7 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
 			return err
 		}
 		log.Infof("reset snapshot")
-		err = rc.service.ResetSnap([]byte("{}"))
-		if err != nil {
-			return err
-		}
+		return rc.service.ResetSnap([]byte("{}"))
 	}
 
 	// 快照不为空的话写进service
