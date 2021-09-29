@@ -41,7 +41,7 @@ func (wc *WorkerController) Delete(ctx context.Context, in *service.WorkerDelete
 		if err != nil {
 			return nil, err
 		}
-		wc.checkResources(response.Resource)
+		//wc.checkResources(response.Resource)
 		return response, nil
 	}
 	return nil, ErrClientNotInit
@@ -54,7 +54,7 @@ func (wc *WorkerController) Set(ctx context.Context, in *service.WorkerSetReques
 		if err != nil {
 			return nil, err
 		}
-		wc.checkResources(response.Resource)
+		//wc.checkResources(response.Resource)
 		return response, nil
 	}
 	return nil, ErrClientNotInit

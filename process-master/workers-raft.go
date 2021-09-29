@@ -202,6 +202,7 @@ func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface
 }
 
 func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
+
 	switch cmd {
 	case workers.CommandSet:
 		{
@@ -209,6 +210,8 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 			if err != nil {
 				return err
 			}
+			log.Info("commit worker set:", worker.Id)
+
 			w.data.Set(worker.Id, worker)
 			req := &service.WorkerSetRequest{
 				Id:         worker.Id,
@@ -219,6 +222,7 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 			}
 			response, err := w.workerServiceClient.Set(context.TODO(), req)
 			if err != nil {
+				log.Warn("set worker:", err)
 				return err
 			}
 			if response.Status != service.WorkerStatusCode_SUCCESS {
@@ -229,7 +233,9 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 		}
 	case workers.CommandDel:
 		{
+
 			id := string(data)
+			log.Info("commit worker delete:", id)
 			w.data.Del(id)
 			return nil
 		}

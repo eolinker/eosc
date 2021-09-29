@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ type WorkerController struct {
 	expireWorkers     []*WorkerProcess
 	trafficController traffic.IController
 	isStop            bool
+	checkClose        chan int
 }
 
 func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
@@ -41,6 +43,7 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 	return &WorkerController{
 		trafficController: trafficController,
 		dms:               dmsAll,
+		checkClose:        make(chan int, 0),
 	}
 }
 func (wc *WorkerController) Stop() {
@@ -50,6 +53,7 @@ func (wc *WorkerController) Stop() {
 	if wc.isStop {
 		return
 	}
+	close(wc.checkClose)
 	wc.isStop = true
 	if wc.current != nil {
 		wc.current.Close()
@@ -62,12 +66,10 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 	err := w.cmd.Wait()
 	if err != nil {
 		log.Warn("worker exit:", err)
-
 	}
-	wc.locker.Lock()
-	defer wc.locker.Unlock()
-	if wc.current == w {
-		err := wc.new()
+
+	if wc.getClient() == w {
+		err := wc.NewWorker()
 		if err != nil {
 			log.Error("worker create:", err)
 		}
@@ -81,28 +83,75 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 	}
 }
 func (wc *WorkerController) Start() {
-	wc.locker.Lock()
-	wc.new()
-	wc.locker.Unlock()
-	ticker := time.NewTicker(100 * time.Millisecond)
 
-	for {
-		select {
-		case <-ticker.C:
-			_, err := wc.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
-			if err != nil {
-				log.Debug("work controller ping: ", err)
-				continue
-			}
-			return
+	wc.NewWorker()
+
+	go func() {
+		t := time.NewTicker(time.Second)
+		in := &service.WorkerHelloRequest{
+			Hello: "hello",
 		}
-	}
+		next := time.NewTimer(time.Second * 5)
+		next.Stop()
+		var last []int = nil
+		defer next.Stop()
+		defer t.Stop()
+		for {
+			select {
+			case <-t.C:
+				client := wc.getClient()
+				if client != nil {
+					response, err := client.Ping(context.TODO(), in)
+					if err != nil {
+						log.Info("")
+						return
+					}
+					ports := sortAndSet(response.Resource.Port)
+					if !equal(last, ports) {
+						last = ports
+						next.Reset(time.Second * 5)
+					}
+				}
+			case <-next.C:
+				{
+					isCreate, err := wc.trafficController.Reset(last)
+					if err != nil {
+						return
+					}
+					if isCreate {
+						wc.NewWorker()
+					}
+				}
+			case <-wc.checkClose:
+				return
+			}
+		}
 
+	}()
 }
 func (wc *WorkerController) NewWorker() error {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
-	return wc.new()
+	err := wc.new()
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
+			if err != nil {
+				//log.Debug("work controller ping: ", err)
+				continue
+			}
+
+			return nil
+		}
+	}
+	return nil
 }
 func (wc *WorkerController) new() error {
 	log.Debug("create worker process start")
@@ -138,11 +187,40 @@ func (wc *WorkerController) new() error {
 	return nil
 }
 
-func (wc *WorkerController) getClient() service.WorkerServiceClient {
+func (wc *WorkerController) getClient() *WorkerProcess {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
 	if wc.current == nil {
 		return nil
 	}
 	return wc.current
+}
+
+func equal(v1, v2 []int) bool {
+	if len(v1) != len(v2) {
+		return false
+	}
+
+	for i, v := range v1 {
+		if v != v2[i] {
+			return false
+		}
+	}
+	return true
+}
+func sortAndSet(vs []int32) []int {
+	if len(vs) == 0 {
+		return nil
+	}
+
+	m := make(map[int]int)
+	for _, v := range vs {
+		m[int(v)] = 1
+	}
+	rs := make([]int, 0, len(m))
+	for v := range m {
+		rs = append(rs, v)
+	}
+	sort.Ints(rs)
+	return rs
 }
