@@ -67,8 +67,8 @@ type WorkersRaft struct {
 	workerProcessController WorkerProcessController
 }
 
-func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, workerServiceClient service.WorkerServiceClient, service raft_service.IService) *WorkersRaft {
-	return &WorkersRaft{data: workerData, professions: professions, workerServiceClient: workerServiceClient, service: service}
+func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, workerServiceClient service.WorkerServiceClient, service raft_service.IService, workerController WorkerProcessController) *WorkersRaft {
+	return &WorkersRaft{data: workerData, professions: professions, workerServiceClient: workerServiceClient, service: service, workerProcessController: workerController}
 }
 
 func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
