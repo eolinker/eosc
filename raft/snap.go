@@ -45,6 +45,11 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		err = rc.service.ResetSnap([]byte(""))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
