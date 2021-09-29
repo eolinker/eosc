@@ -76,6 +76,7 @@ func (t *Traffic) Read(r io.Reader) {
 		return
 	}
 	for _, ln := range listeners {
+
 		t.add(ln)
 	}
 

@@ -113,6 +113,7 @@ func (wc *WorkerController) new() error {
 		data, files, err := dm.Encode(index)
 
 		if err != nil {
+
 			return err
 		}
 		index += len(files)
