@@ -110,7 +110,11 @@ func (wm *WorkerManager) Del(id string) error {
 }
 
 func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
-	return wm.data.Get(id)
+	w, has := wm.data.Get(id)
+	if has {
+		return w.target, true
+	}
+	return nil, false
 }
 
 func NewWorkerManager(professions IProfessions) *WorkerManager {
@@ -164,7 +168,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 	requires, err := eosc.CheckConfig(conf, wm)
 	if err != nil {
-		v, has := wm.Get("baidu@service")
+		v, has := wm.data.Get("baidu@service")
 		log.Debug("check:baidu@service:", has, ":", v)
 		return err
 	}
