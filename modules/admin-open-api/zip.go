@@ -2,6 +2,7 @@ package admin_open_api
 
 import (
 	"archive/zip"
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -10,20 +11,15 @@ import (
 )
 
 type ZipFile struct {
-	data []byte
+	bytes.Buffer
 }
 
-func (f *ZipFile) Write(p []byte) (n int, err error) {
-	if f.data == nil {
-		f.data = p
-	} else {
-		f.data = append(f.data, p...)
-	}
-	return len(p), nil
+func NewZipFile() *ZipFile {
+	return &ZipFile{}
 }
 
 func (f *ZipFile) Export() []byte {
-	return f.data
+	return f.Bytes()
 }
 
 type File struct {
@@ -55,25 +51,6 @@ func (f *File) Sys() interface{} {
 	return nil
 }
 
-//func getDir(path string) string {
-//	return subString(path, 0, strings.LastIndex(path, "/"))
-//}
-//
-//func subString(str string, start, end int) string {
-//	rs := []rune(str)
-//	length := len(rs)
-//
-//	if start < 0 || start > length {
-//		panic("start is wrong")
-//	}
-//
-//	if end < start || end > length {
-//		panic("end is wrong")
-//	}
-//
-//	return string(rs[start:end])
-//}
-
 func CompressFile(data map[string][]byte) ([]byte, error) {
 	file, err := Compress(data)
 	if err != nil {
@@ -87,7 +64,7 @@ func CompressFile(data map[string][]byte) ([]byte, error) {
 //files 文件数组，可以是不同dir下的文件或者文件夹
 //dest 压缩文件存放地址
 func Compress(data map[string][]byte) (*ZipFile, error) {
-	file := &ZipFile{}
+	file := NewZipFile()
 	w := zip.NewWriter(file)
 	defer w.Close()
 	for k, v := range data {
