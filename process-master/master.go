@@ -10,7 +10,6 @@ package process_master
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -175,7 +174,7 @@ func (m *Master) Wait() error {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
+		//fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
@@ -189,6 +188,7 @@ func (m *Master) Wait() error {
 			}
 		case syscall.SIGUSR1:
 			{
+				m.node.Stop()
 				log.Info("try fork new")
 				err := m.Fork() //传子进程需要的内容
 				if err != nil {

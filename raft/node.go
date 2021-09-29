@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-basic/uuid"
@@ -35,7 +36,7 @@ import (
 type Node struct {
 	// 节点ID
 	nodeID uint64
-
+	once   sync.Once
 	// eosc 服务相关
 	service IService
 
@@ -271,10 +272,12 @@ func (rc *Node) serveChannels() {
 // 停止服务相关(暂时不直接关闭程序)
 // leave closes http and stops raft.
 func (rc *Node) stop() {
-	close(rc.stopc)
-	rc.transport.Stop()
-	rc.node.Stop()
-	rc.wal.Close()
+	rc.once.Do(func() {
+		close(rc.stopc)
+		rc.transport.Stop()
+		rc.node.Stop()
+		rc.wal.Close()
+	})
 }
 
 func (rc *Node) IsJoin() bool {
