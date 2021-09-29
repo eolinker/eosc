@@ -69,7 +69,7 @@ func (wm *WorkerManager) Check(id, profession, name, driverName string, body []b
 	}
 
 	configType := driver.ConfigType()
-	conf := reflect.New(configType).Interface()
+	conf := reflect.New(configType.Elem()).Interface()
 
 	err := json.Unmarshal(body, conf)
 	if err != nil {
@@ -146,6 +146,7 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
 
 func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byte) error {
 
+	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
@@ -156,7 +157,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 
 	configType := driver.ConfigType()
-	conf := reflect.New(configType).Interface()
+	conf := reflect.New(configType.Elem()).Interface()
 
 	err := json.Unmarshal(body, conf)
 	if err != nil {
@@ -164,6 +165,8 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 	requires, err := eosc.CheckConfig(conf, wm)
 	if err != nil {
+		v, has := wm.Get("baidu@service")
+		log.Debug("check:baidu@service:", has, ":", v)
 		return err
 	}
 	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {

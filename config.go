@@ -20,7 +20,7 @@ func TypeNameOf(v interface{}) string {
 
 func TypeName(t reflect.Type) string {
 	if t.Kind() == reflect.Ptr {
-		return TypeName(t.Elem())
+		return fmt.Sprint("*", TypeName(t.Elem()))
 	}
 	return fmt.Sprintf("%s.%s", t.PkgPath(), t.String())
 }
