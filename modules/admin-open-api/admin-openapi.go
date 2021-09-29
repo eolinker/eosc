@@ -201,12 +201,7 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 
 		return
 	}
-	// 将数据写到文件中
-	_, err = export(o.all(), "runtime_config", "")
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
+
 	writeResult(w, nil)
 }
 

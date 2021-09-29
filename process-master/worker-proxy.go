@@ -14,7 +14,7 @@ var (
 
 func (wc *WorkerController) DeleteCheck(ctx context.Context, in *service.WorkerDeleteRequest, opts ...grpc.CallOption) (*service.WorkerDeleteResponse, error) {
 
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
 		return client.DeleteCheck(ctx, in, opts...)
 	}
@@ -22,7 +22,7 @@ func (wc *WorkerController) DeleteCheck(ctx context.Context, in *service.WorkerD
 }
 
 func (wc *WorkerController) SetCheck(ctx context.Context, in *service.WorkerSetRequest, opts ...grpc.CallOption) (*service.WorkerSetResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
 		response, err := client.SetCheck(ctx, in, opts...)
 		if err != nil {
@@ -48,7 +48,7 @@ func (wc *WorkerController) Delete(ctx context.Context, in *service.WorkerDelete
 }
 
 func (wc *WorkerController) Set(ctx context.Context, in *service.WorkerSetRequest, opts ...grpc.CallOption) (*service.WorkerSetResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
 		response, err := client.Set(ctx, in, opts...)
 		if err != nil {
@@ -61,7 +61,7 @@ func (wc *WorkerController) Set(ctx context.Context, in *service.WorkerSetReques
 }
 
 func (wc *WorkerController) Ping(ctx context.Context, in *service.WorkerHelloRequest, opts ...grpc.CallOption) (*service.WorkerHelloResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
 		response, err := client.Ping(ctx, in, opts...)
 		if err != nil {

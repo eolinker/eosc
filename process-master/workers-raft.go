@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+
+	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/process-master/workers"
@@ -89,10 +92,10 @@ func (w *WorkersRaft) Set(profession, name, driver string, data []byte) error {
 	} else {
 		pf, b := w.professions.GetProfession(profession)
 		if !b {
-			return workers.ErrorInvalidProfession
+			return eosc.ErrorProfessionNotExist
 		}
 		if !pf.HasDriver(driver) {
-			return workers.ErrorInvalidDriver
+			return eosc.ErrorDriverNotExist
 		}
 	}
 
@@ -106,19 +109,36 @@ func (w *WorkersRaft) Set(profession, name, driver string, data []byte) error {
 		Body:       data,
 	}
 
-	body, err := json.Marshal(d)
-	if err != nil {
-		return err
-	}
-	return w.service.Send(workers.SpaceWorker, workers.CommandSet, body)
+	return w.service.Send(workers.SpaceWorker, workers.CommandSet, w.encodeWorker(d))
 }
-
+func (w *WorkersRaft) encodeWorker(body *eosc.WorkerData) []byte {
+	data, _ := json.Marshal(body)
+	return data
+}
+func (w *WorkersRaft) decodeWorker(data []byte) (*eosc.WorkerData, error) {
+	body := new(eosc.WorkerData)
+	err := json.Unmarshal(data, body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
 func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, error) {
 
 	switch cmd {
 	case workers.CommandSet:
+		workerData, err := w.decodeWorker(body)
+		if err != nil {
+			log.Warn("decode woker data:", err)
+			return nil, fmt.Errorf("decode woker data:%w", err)
+		}
+
 		request := &service.WorkerSetRequest{
-			Body: body,
+			Id:         workerData.Id,
+			Name:       workerData.Name,
+			Profession: workerData.Profession,
+			Driver:     workerData.Driver,
+			Body:       body,
 		}
 
 		response, err := w.workerServiceClient.SetCheck(context.TODO(), request)

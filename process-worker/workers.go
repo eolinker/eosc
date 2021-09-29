@@ -2,7 +2,6 @@ package process_worker
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -62,11 +61,11 @@ func (wm *WorkerManager) RequiredCount(id string) int {
 func (wm *WorkerManager) Check(id, profession, name, driverName string, body []byte) error {
 	p, has := wm.professions.Get(profession)
 	if !has {
-		return errors.New("profession not exist")
+		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
 	driver, has := p.GetDriver(driverName)
 	if !has {
-		return errors.New("driver not exist")
+		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
 	configType := driver.ConfigType()
@@ -153,7 +152,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 	driver, has := p.GetDriver(driverName)
 	if !has {
-		return fmt.Errorf("%s:%w", driverName, eosc.ErrorDriverNotExist)
+		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
 	configType := driver.ConfigType()

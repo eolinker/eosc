@@ -30,9 +30,15 @@ type WorkerController struct {
 }
 
 func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
+	dmsAll := make([]eosc.IDataMarshaller, 0, len(dms)+1)
+	dmsAll = append(dmsAll, trafficController)
+	for _, v := range dms {
+		dmsAll = append(dmsAll, v)
+	}
+
 	return &WorkerController{
 		trafficController: trafficController,
-		dms:               append(dms, trafficController),
+		dms:               dmsAll,
 	}
 }
 func (wc *WorkerController) Stop() {
