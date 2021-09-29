@@ -45,7 +45,7 @@ func (w *Worker) Start() error {
 }
 
 func (w *Worker) Reset(conf interface{}, workers map[eosc.RequireId]interface{}) error {
-	return w.target.Start()
+	return w.target.Reset(conf, workers)
 }
 
 func (w *Worker) Stop() error {
