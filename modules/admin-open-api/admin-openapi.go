@@ -3,7 +3,6 @@ package admin_open_api
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -29,24 +28,20 @@ type OpenAdmin struct {
 
 func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	data := o.all()
+	if len(data) < 1 {
+		writeResultError(w, 500, errors.New("no data"))
+		return
+	}
 	id := time.Now().Format("2006-01-02 150405")
-	dir, err := export(data, "export", id)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	zipName := fmt.Sprintf("%s/%s.zip", dir, id)
+
+	exportData := getExportData(data)
 	fileName := fmt.Sprintf("export_%s.zip", id)
-	err = CompressFile(dir, zipName)
+	content, err := CompressFile(exportData)
 	if err != nil {
 		writeResultError(w, 500, err)
 		return
 	}
-	content, err := ioutil.ReadFile(zipName)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
+
 	w.Header().Add("Content-Type", "application/octet-stream")
 	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 	w.Write(content)
