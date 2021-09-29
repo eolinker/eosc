@@ -36,13 +36,15 @@ func (h *HttpService) SetHttps(handler fasthttp.RequestHandler, certs map[string
 
 	h.certs = newCerts(certs)
 	h.srv.Handler = handler
-	if !h.isTls {
+
+	if h.inner != nil && !h.isTls {
 		// http to https
 		h.isTls = true
 
 		if h.last != nil {
 			h.last.Close()
 		}
+
 		h.last = tls.NewListener(newNotClose(h.inner), &tls.Config{GetCertificate: h.GetCertificate})
 		go h.srv.Serve(h.last)
 	}
@@ -52,7 +54,7 @@ func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
 	h.locker.Lock()
 	defer h.locker.Unlock()
 	h.srv.Handler = handler
-	if h.isTls {
+	if h.inner != nil && h.isTls {
 		h.isTls = false
 		if h.last != nil {
 			h.last.Close()
@@ -61,7 +63,6 @@ func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
 
 		h.last = newNotClose(h.inner)
 		go h.srv.Serve(h.last)
-
 	}
 
 }
@@ -83,10 +84,11 @@ func (h *HttpService) ShutDown() {
 	h.locker.Lock()
 	defer h.locker.Unlock()
 	h.srv.Shutdown()
-	h.last.Close()
-	h.last = nil
-	h.inner.Close()
-
+	if h.inner != nil {
+		h.last.Close()
+		h.last = nil
+		h.inner.Close()
+	}
 }
 
 func NewHttpService(listener net.Listener) *HttpService {
