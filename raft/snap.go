@@ -1,7 +1,10 @@
 package raft
 
 import (
+	"encoding/json"
+
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/process-master/workers"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -36,7 +39,11 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
 			return err
 		}
 		log.Infof("reset snapshot")
-		return rc.service.ResetSnap([]byte("{}"))
+		snaps := map[string]string{
+			workers.SpaceWorker: "",
+		}
+		data, _ := json.Marshal(snaps)
+		return rc.service.ResetSnap(data)
 	}
 
 	// 快照不为空的话写进service

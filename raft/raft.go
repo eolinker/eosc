@@ -29,7 +29,7 @@ var retryFrequency time.Duration = 2000
 // 2、也可以用于节点crash后的重启处理
 func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, protocol string) error {
 	// 判断是否已经在一个多节点集群中
-	if rc.peers.GetPeerNum() > 1{
+	if rc.peers.GetPeerNum() > 1 {
 		return fmt.Errorf("This node has joined the cluster")
 	}
 	msg := JoinRequest{
@@ -54,8 +54,10 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 	if err != nil {
 		return err
 	}
+	defer rc.writeConfig()
 	err = startRaft(rc, resp.Peer)
 	if err != nil {
+		rc.join = false
 		return err
 	}
 
@@ -64,6 +66,7 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 	data, _ = json.Marshal(msg)
 	err = joinClusterRequest(address, data)
 	if err != nil {
+		rc.join = false
 		return err
 	}
 	return nil
@@ -105,7 +108,6 @@ func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
 	for _, p := range peers {
 		rc.peers.SetPeer(p.ID, p)
 	}
-	rc.writeConfig()
 	return rc.startRaft()
 }
 
@@ -128,7 +130,7 @@ func NewNode(service IService) (*Node, error) {
 		},
 	}
 	rc.readConfig()
-
+	defer rc.writeConfig()
 	err := startRaft(rc, nil)
 	if err != nil {
 		return nil, err
