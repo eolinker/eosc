@@ -39,7 +39,7 @@ func (w *WorkersData) encode() ([]byte, error) {
 	}
 	for i, v := range values {
 
-		wd.Data[i] = v.Org
+		wd.Data[i] = v.WorkerData
 	}
 	data, err := proto.Marshal(wd)
 	if err != nil {
@@ -71,99 +71,130 @@ func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, 
 	return &WorkersRaft{data: workerData, professions: professions, workerServiceClient: workerServiceClient, service: service}
 }
 
-func (w *WorkersRaft) Delete(id string) error {
+func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
 
-	err := w.service.Send(workers.SpaceWorker, workers.CommandSet, []byte(id))
+	obj, err := w.service.Send(workers.SpaceWorker, workers.CommandSet, []byte(id))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	worker, err := workers.ReadTWorker(obj)
+	if err != nil {
+		return nil, err
+	}
+	return worker, nil
 }
 
-func (w *WorkersRaft) Set(profession, name, driver string, data []byte) error {
+func (w *WorkersRaft) Set(profession, name, driver string, data []byte) (eosc.TWorker, error) {
 	id := eosc.ToWorkerId(name, profession)
 
-	createTime := eosc.Now()
-	if ow, has := w.data.Get(id); has {
-		if ow.Driver != driver {
-			return workers.ErrorChangeDriver
-		}
-		createTime = ow.CreateTime
-	} else {
-		pf, b := w.professions.GetProfession(profession)
-		if !b {
-			return eosc.ErrorProfessionNotExist
-		}
-		if !pf.HasDriver(driver) {
-			return eosc.ErrorDriverNotExist
-		}
-	}
-
-	d := &eosc.WorkerData{
+	obj, err := w.service.Send(workers.SpaceWorker, workers.CommandSet, w.encodeWorkerSet(&service.WorkerSetRequest{
 		Id:         id,
 		Profession: profession,
 		Name:       name,
 		Driver:     driver,
-		Create:     createTime,
-		Update:     eosc.Now(),
 		Body:       data,
+	}))
+	if err != nil {
+		return nil, err
 	}
-
-	return w.service.Send(workers.SpaceWorker, workers.CommandSet, w.encodeWorker(d))
+	worker, err := workers.ReadTWorker(obj)
+	if err != nil {
+		return nil, err
+	}
+	return worker, nil
 }
-func (w *WorkersRaft) encodeWorker(body *eosc.WorkerData) []byte {
+func (w *WorkersRaft) encodeWorkerSet(body *service.WorkerSetRequest) []byte {
 	data, _ := json.Marshal(body)
 	return data
 }
-func (w *WorkersRaft) decodeWorker(data []byte) (*eosc.WorkerData, error) {
-	body := new(eosc.WorkerData)
+func (w *WorkersRaft) decodeWorkerSet(data []byte) (*service.WorkerSetRequest, error) {
+	body := new(service.WorkerSetRequest)
 	err := json.Unmarshal(data, body)
 	if err != nil {
 		return nil, err
 	}
 	return body, nil
 }
-func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, error) {
+func (w *WorkersRaft) processHandlerWorkerSet(body []byte) (*eosc.WorkerData, error) {
+	// reuest
+	request, err := w.decodeWorkerSet(body)
+	if err != nil {
+		log.Warn("decode woker data:", err)
+		return nil, fmt.Errorf("decode woker data:%w", err)
+	}
+
+	ow, has := w.data.Get(request.Id)
+	if has {
+		// can not change driver
+		if ow.Driver != request.Driver {
+			return nil, workers.ErrorChangeDriver
+		}
+	} else {
+		pf, b := w.professions.GetProfession(request.Profession)
+		if !b {
+			return nil, eosc.ErrorProfessionNotExist
+		}
+		if !pf.HasDriver(request.Driver) {
+			return nil, eosc.ErrorDriverNotExist
+		}
+	}
+
+	// check on process worker
+	response, err := w.workerServiceClient.SetCheck(context.TODO(), request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Status != service.WorkerStatusCode_SUCCESS {
+		return nil, errors.New(response.Message)
+	}
+
+	createTime := eosc.Now()
+	if has {
+		createTime = ow.WorkerData.Create
+	}
+	return &eosc.WorkerData{
+		Id:         request.Id,
+		Name:       request.Name,
+		Profession: request.Profession,
+		Driver:     request.Driver,
+		Create:     createTime,
+		Update:     eosc.Now(),
+		Body:       request.Body,
+	}, nil
+}
+func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error) {
 
 	switch cmd {
 	case workers.CommandSet:
-		workerData, err := w.decodeWorker(body)
+		workerData, err := w.processHandlerWorkerSet(body)
 		if err != nil {
-			log.Warn("decode woker data:", err)
-			return nil, fmt.Errorf("decode woker data:%w", err)
+			return nil, nil, err
 		}
-
-		request := &service.WorkerSetRequest{
-			Id:         workerData.Id,
-			Name:       workerData.Name,
-			Profession: workerData.Profession,
-			Driver:     workerData.Driver,
-			Body:       body,
-		}
-
-		response, err := w.workerServiceClient.SetCheck(context.TODO(), request)
+		data, err := workers.EncodeWorkerData(workerData)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if response.Status != service.WorkerStatusCode_SUCCESS {
-			return nil, errors.New(response.Message)
-		}
-		return body, nil
+		return data, workerData, err
 	case workers.CommandDel:
 		request := &service.WorkerDeleteRequest{
 			Id: string(body),
 		}
-
+		ow, has := w.data.Get(request.Id)
+		if !has {
+			return nil, nil, workers.ErrorNotExist
+		}
 		response, err := w.workerServiceClient.DeleteCheck(context.TODO(), request)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if response.Status != service.WorkerStatusCode_SUCCESS {
-			return nil, errors.New(response.Message)
+			return nil, nil, errors.New(response.Message)
 		}
-		return body, nil
+
+		return body, ow.WorkerData, nil
 	}
-	return nil, workers.ErrorInvalidCommand
+	return nil, nil, workers.ErrorInvalidCommand
 
 }
 
@@ -181,7 +212,7 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 				Profession: worker.Profession,
 				Name:       worker.Name,
 				Driver:     worker.Driver,
-				Body:       worker.Org.Body,
+				Body:       worker.Body,
 			}
 			response, err := w.workerServiceClient.Set(context.TODO(), req)
 			if err != nil {

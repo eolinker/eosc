@@ -298,7 +298,7 @@ func (rc *Node) Status() raft.Status {
 // 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *Node) Send(msg []byte) error {
+func (rc *Node) Send(msg []byte) (interface{}, error) {
 	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
 	//if !rc.active {
 	//	return fmt.Errorf("current node is leave")
@@ -314,17 +314,21 @@ func (rc *Node) Send(msg []byte) error {
 	// 集群模式下的处理
 	isLeader, err := rc.isLeader()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	log.Infof("msg:leader is node(%d)", rc.lead)
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		data, err := rc.service.ProcessDataHandler(msg)
+		obj, data, err := rc.service.ProcessDataHandler(msg)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return rc.ProcessData(data)
+		err = rc.ProcessData(data)
+		if err != nil {
+			return nil, err
+		}
+		return obj, nil
 	} else {
 
 		return rc.postMessageToLeader(msg)
@@ -584,35 +588,34 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 
 // 工具方法
 // postMessageToLeader 转发消息，基于json
-func (rc *Node) postMessageToLeader(body []byte) error {
+func (rc *Node) postMessageToLeader(body []byte) ([]byte, error) {
 	leader, err := rc.getLeader()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// 转给leader
 	b, err := encodeProposeMsg(rc.nodeID, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp, err := http.Post(fmt.Sprintf("%s/raft/node/propose", leader.Addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	res, err := decodeResponse(content)
-	if err != nil {
-		return err
+	if resp.StatusCode != 200 {
+		res, err := decodeResponse(content)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf(res.Msg)
 	}
-	if res.Code == "000000" {
-		return nil
-	} else {
-		msg := res.Msg
-		return fmt.Errorf(msg)
-	}
+	return content, nil
+
 }
 
 // getLeader 获取leader地址以及判断当前节点是不是leader

@@ -58,7 +58,7 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 			ID:  rc.peers.Index() + 1,
 			Key: uuid.New(),
 		},
-		Peer:        rc.peers.GetAllPeers(),
+		Peer: rc.peers.GetAllPeers(),
 	})
 	return
 }
@@ -122,6 +122,9 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 // proposeHandler 其他节点转发到leader的propose处理，由rc.Send触发
 func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 	// 只有leader才会收到该消息
+
+	defer r.Body.Close()
+
 	isLeader, err := rc.isLeader()
 	if err != nil {
 		return
@@ -136,24 +139,26 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "120002", "fail to read body", err.Error())
 		return
 	}
-	defer r.Body.Close()
 
 	msg, err := decodeProposeMsg(b)
 	if err != nil {
+		w.WriteHeader(503)
 		writeError(w, "120003", "fail to parse propose message", err.Error())
 		return
 	}
-	data, err := rc.service.ProcessDataHandler(msg.Body)
+	obj, data, err := rc.service.ProcessDataHandler(msg.Body)
 	if err != nil {
+		w.WriteHeader(503)
 		writeError(w, "120004", "fail to send propose message", err.Error())
 		return
 	}
 	err = rc.ProcessData(data)
 	if err != nil {
+		w.WriteHeader(503)
 		writeError(w, "120005", "fail to send propose message", err.Error())
 		return
 	}
-	writeSuccessResult(w, "", nil)
+	writeTo(w, obj)
 }
 
 func encodeProposeMsg(from uint64, data []byte) ([]byte, error) {

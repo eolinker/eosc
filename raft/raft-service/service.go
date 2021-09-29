@@ -30,11 +30,11 @@ type Service struct {
 	//processHandlers eosc.IUntyped
 }
 
-func (s *Service) Send(namespace, cmd string, body []byte) error {
+func (s *Service) Send(namespace, cmd string, body []byte) (interface{}, error) {
 
 	data, err := encodeCmd(namespace, cmd, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return s.raftNode.Send(data)
 }
@@ -51,10 +51,10 @@ func (s *Service) CommitHandler(data []byte) error {
 
 }
 
-func (s *Service) ProcessDataHandler(body []byte) (data []byte, err error) {
-	cmd, err := unMarshalCmd(body)
+func (s *Service) ProcessDataHandler(inBody []byte) (object interface{}, data []byte, err error) {
+	cmd, err := unMarshalCmd(inBody)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return s.ProcessHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
 }
@@ -63,20 +63,24 @@ func (s *Service) SetRaft(raft raft.IRaftSender) {
 	s.raftNode = raft
 }
 
-func (s *Service) ProcessHandler(namespace string, command string, processData []byte) ([]byte, error) {
+func (s *Service) ProcessHandler(namespace string, command string, processData []byte) (interface{}, []byte, error) {
 	v, has := s.handlers.Get(namespace)
 	if !has {
-		return nil, ErrInvalidNamespace
+		return nil, nil, ErrInvalidNamespace
 	}
 	f, ok := v.(IRaftServiceHandler)
 	if !ok {
-		return nil, ErrInvalidCommitHandler
+		return nil, nil, ErrInvalidCommitHandler
 	}
-	body, err := f.ProcessHandler(command, processData)
+	body, obj, err := f.ProcessHandler(command, processData)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return encodeCmd(namespace, command, body)
+	cmd, err := encodeCmd(namespace, command, body)
+	if err != nil {
+		return nil, nil, err
+	}
+	return obj, cmd, err
 
 }
 

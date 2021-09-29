@@ -79,7 +79,7 @@ func (p *ProfessionRaft) Snapshot() []byte {
 	return data
 }
 
-func (p *ProfessionRaft) ProcessHandler(cmd string, body []byte) ([]byte, error) {
+func (p *ProfessionRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error) {
 	// todo
-	return nil, nil
+	return nil, nil, nil
 }

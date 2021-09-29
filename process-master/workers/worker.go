@@ -29,15 +29,9 @@ func (wa WorkerAttr) Get(field string) string {
 }
 
 type Worker struct {
-	Id         string
-	Profession string
-	Name       string
-	Driver     string
-	CreateTime string
-	UpdateTime string
-	Data       WorkerAttr
-	Org        *eosc.WorkerData
-	Info       *eosc.WorkerInfo
+	*eosc.WorkerData
+	Data WorkerAttr
+	Info *eosc.WorkerInfo
 }
 
 func (w *Worker) MarshalJSON() ([]byte, error) {
@@ -46,53 +40,43 @@ func (w *Worker) MarshalJSON() ([]byte, error) {
 		return nil, ErrorInvalidWorkerData
 	}
 
-	//data, err := json.Marshal(w.Data)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//wd := &eosc.WorkerData{
-	//	Id:         w.Id,
-	//	Profession: w.Profession,
-	//	Name:       w.Name,
-	//	Driver:     w.Driver,
-	//	Create:     w.UpdateTime,
-	//	Update:     w.UpdateTime,
-	//	Body:       data,
-	//
-	//}
-	return json.Marshal(w.Org)
+	return EncodeWorkerData(w.WorkerData)
 }
-
+func EncodeWorkerData(wd *eosc.WorkerData) ([]byte, error) {
+	return json.Marshal(wd)
+}
+func DecodeWorkerData(data []byte) (*eosc.WorkerData, error) {
+	wd := new(eosc.WorkerData)
+	err := json.Unmarshal(data, wd)
+	if err != nil {
+		return nil, err
+	}
+	return wd, nil
+}
 func DecodeWorker(data []byte) (*Worker, error) {
-	w := new(eosc.WorkerData)
-	err := json.Unmarshal(data, w)
+
+	wd, err := DecodeWorkerData(data)
 	if err != nil {
 		return nil, err
 	}
-	wa := make(WorkerAttr)
-	err = json.Unmarshal(w.Body, &wa)
-	if err != nil {
-		return nil, err
+	return ToWorker(wd)
+}
+func ReadTWorker(obj interface{}) (map[string]interface{}, error) {
+	switch v := obj.(type) {
+	case []byte:
+		wk, err := DecodeWorker(v)
+		if err != nil {
+			return nil, err
+		}
+		return wk.Format(nil), nil
+	case *eosc.WorkerData:
+		wk, err := ToWorker(v)
+		if err != nil {
+			return nil, err
+		}
+		return wk.Format(nil), nil
 	}
-	return &Worker{
-		Id:         w.Id,
-		Profession: w.Profession,
-		Name:       w.Name,
-		Driver:     w.Driver,
-		CreateTime: w.Create,
-		UpdateTime: w.Update,
-		Data:       wa,
-		Org:        w,
-		Info: &eosc.WorkerInfo{
-			Id:         w.Id,
-			Profession: w.Profession,
-			Name:       w.Name,
-			Driver:     w.Driver,
-			Create:     w.Create,
-			Update:     w.Update,
-		},
-	}, nil
+	return nil, errors.New("unknown type")
 }
 func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
 	wa := make(WorkerAttr)
@@ -101,24 +85,27 @@ func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
 		return nil, err
 	}
 	return &Worker{
-		Id:         wd.Id,
-		Profession: wd.Profession,
-		Name:       wd.Name,
-		Driver:     wd.Driver,
-		CreateTime: wd.Create,
-		UpdateTime: wd.Update,
+		WorkerData: wd,
 		Data:       wa,
-		Org:        wd,
+		Info: &eosc.WorkerInfo{
+			Id:         wd.Id,
+			Profession: wd.Profession,
+			Name:       wd.Name,
+			Driver:     wd.Driver,
+			Create:     wd.Create,
+			Update:     wd.Update,
+		},
 	}, nil
 }
+
 func (w *Worker) Format(attrs []string) map[string]interface{} {
 	m := make(map[string]interface{})
 	m["id"] = w.Id
 	m["profession"] = w.Profession
 	m["name"] = w.Name
 	m["driver"] = w.Driver
-	m["create"] = w.CreateTime
-	m["update"] = w.UpdateTime
+	m["create"] = w.Create
+	m["update"] = w.Update
 	if w.Data != nil {
 		if attrs != nil {
 			for _, f := range attrs {

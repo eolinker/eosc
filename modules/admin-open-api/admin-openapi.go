@@ -65,12 +65,12 @@ func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httpro
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 
-	err := o.admin.Delete(profession, name)
+	obj, err := o.admin.Delete(profession, name)
 	if err != nil {
 		writeResultError(w, 404, err)
 		return
 	}
-	writeResult(w, []byte("{}"))
+	writeResult(w, obj)
 }
 
 func (o *OpenAdmin) genUrl(url string) string {
@@ -190,25 +190,14 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 		return
 	}
 
-	err = o.admin.Update(profession, name, cb.Driver, data)
+	obj, err := o.admin.Update(profession, name, cb.Driver, data)
 	if err != nil {
 		writeResultError(w, 500, err)
 
 		return
 	}
-	employee, err := o.admin.GetEmployee(profession, name)
-	if err != nil {
 
-		info := make(map[string]interface{})
-		idata.UnMarshal(&info)
-
-		info["profession"] = profession
-		info["id"] = eosc.ToWorkerId(name, profession)
-		info["create"] = eosc.Now()
-		info["update"] = eosc.Now()
-		employee = info
-	}
-	writeResult(w, employee)
+	writeResult(w, obj)
 }
 
 func (o *OpenAdmin) getProfessions(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

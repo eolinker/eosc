@@ -18,11 +18,11 @@ func (a *Admin) ListEmployees(profession string) ([]interface{}, error) {
 	return vs, nil
 }
 
-func (a *Admin) Update(profession, name, driver string, data []byte) error {
+func (a *Admin) Update(profession, name, driver string, data []byte) (interface{}, error) {
 	return a.workers.Set(profession, name, driver, data)
 }
 
-func (a *Admin) Delete(profession, name string) error {
+func (a *Admin) Delete(profession, name string) (interface{}, error) {
 	id := eosc.ToWorkerId(name, profession)
 	return a.workers.Delete(id)
 }
