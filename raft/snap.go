@@ -30,23 +30,23 @@ func (rc *Node) loadSnapshot() *raftpb.Snapshot {
 func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
 	// 读取快照的所有内容
 	snapshot, err := snapshotter.Load()
-	// 快照不存在
-	if err == snap.ErrNoSnapshot {
-		return nil
-	}
 	if err != nil {
-		return err
+		// 快照不存在
+		if err != snap.ErrNoSnapshot {
+			return err
+		}
+		log.Infof("reset snapshot")
+		err = rc.service.ResetSnap([]byte(""))
+		if err != nil {
+			return err
+		}
 	}
+
 	// 快照不为空的话写进service
 	if snapshot != nil {
 		// 将快照内容缓存到service中
 		log.Infof("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
 		err = rc.service.ResetSnap(snapshot.Data)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = rc.service.ResetSnap([]byte(""))
 		if err != nil {
 			return err
 		}
