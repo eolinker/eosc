@@ -68,9 +68,7 @@ func (wm *WorkerManager) Check(id, profession, name, driverName string, body []b
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	configType := driver.ConfigType()
-	conf := reflect.New(configType.Elem()).Interface()
-
+	conf := newConfig(driver.ConfigType())
 	err := json.Unmarshal(body, conf)
 	if err != nil {
 		return err
@@ -156,8 +154,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	configType := driver.ConfigType()
-	conf := reflect.New(configType.Elem()).Interface()
+	conf := newConfig(driver.ConfigType())
 
 	err := json.Unmarshal(body, conf)
 	if err != nil {
@@ -220,4 +217,10 @@ func getIds(m map[eosc.RequireId]interface{}) []string {
 		rs = append(rs, string(k))
 	}
 	return rs
+}
+func newConfig(t reflect.Type) interface{} {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return reflect.New(t).Interface()
 }
