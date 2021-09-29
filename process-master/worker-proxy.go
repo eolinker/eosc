@@ -28,7 +28,7 @@ func (wc *WorkerController) SetCheck(ctx context.Context, in *service.WorkerSetR
 		if err != nil {
 			return nil, err
 		}
-		wc.checkResources(response.Resource)
+		//wc.checkResources(response.Resource)
 		return response, nil
 	}
 	return nil, ErrClientNotInit
@@ -67,7 +67,7 @@ func (wc *WorkerController) Ping(ctx context.Context, in *service.WorkerHelloReq
 		if err != nil {
 			return nil, err
 		}
-		wc.checkResources(response.Resource)
+		//wc.checkResources(response.Resource)
 		return response, nil
 	}
 	return nil, ErrClientNotInit

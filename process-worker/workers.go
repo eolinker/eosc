@@ -112,7 +112,7 @@ func (wm *WorkerManager) Del(id string) error {
 func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
 	w, has := wm.data.Get(id)
 	if has {
-		return w.target, true
+		return w.IWorker, true
 	}
 	return nil, false
 }
@@ -189,7 +189,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 			return e
 		}
 		wm.requireManager.Set(id, getIds(requires))
-		if res, ok := o.target.(eosc.IWorkerResources); ok {
+		if res, ok := o.IWorker.(eosc.IWorkerResources); ok {
 			wm.portsRequire.Set(id, res.Ports())
 		}
 		return nil
