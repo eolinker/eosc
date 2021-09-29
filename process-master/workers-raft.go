@@ -73,7 +73,7 @@ func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, 
 
 func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
 
-	obj, err := w.service.Send(workers.SpaceWorker, workers.CommandSet, []byte(id))
+	obj, err := w.service.Send(workers.SpaceWorker, workers.CommandDel, []byte(id))
 	if err != nil {
 		return nil, err
 	}
