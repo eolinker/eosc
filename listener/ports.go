@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/eolinker/eosc/log"
+
 	"github.com/eolinker/eosc"
 )
 
@@ -81,7 +83,7 @@ func (p *PortsRequire) All() []int32 {
 	p.locker.Unlock()
 
 	rs := make([]int32, len(list))
-
+	log.Debug("port require all: ", list)
 	for i, pv := range list {
 		port, _ := strconv.Atoi(pv)
 		rs[i] = int32(port)

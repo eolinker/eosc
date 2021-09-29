@@ -38,7 +38,7 @@ func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.Worker
 }
 
 func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerSetResponse, error) {
-	log.Debug("set check: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", req.Body)
+	log.Debug("set check: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
 	err := ws.workers.Check(req.Id, req.Profession, req.Name, req.Driver, req.Body)
 
 	if err != nil {
