@@ -15,15 +15,16 @@ type TypedWorkers struct {
 }
 
 func (t *TypedWorkers) Reset(ds []*eosc.WorkerData) {
-	nw := eosc.NewUntyped()
+	for _, key := range t.data.Keys() {
+		t.data.Del(key)
+	}
 	for _, v := range ds {
 		wv, err := ToWorker(v)
 		if err != nil {
 			continue
 		}
-		nw.Set(v.Id, wv)
+		t.data.Set(v.Id, wv)
 	}
-	t.data = nw
 }
 
 func NewTypedWorkers() ITypedWorkers {
