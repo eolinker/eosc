@@ -272,12 +272,12 @@ func (rc *Node) serveChannels() {
 // 停止服务相关(暂时不直接关闭程序)
 // leave closes http and stops raft.
 func (rc *Node) stop() {
-	rc.once.Do(func() {
-		close(rc.stopc)
-		rc.transport.Stop()
-		rc.node.Stop()
-		rc.wal.Close()
-	})
+	//rc.once.Do(func() {
+	close(rc.stopc)
+	//})
+	rc.transport.Stop()
+	rc.node.Stop()
+	rc.wal.Close()
 }
 
 func (rc *Node) IsJoin() bool {
