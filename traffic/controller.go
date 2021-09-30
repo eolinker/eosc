@@ -55,13 +55,15 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 		}
 	}
 	for n, o := range old.All() {
+
 		l, ok := o.(*net.TCPListener)
 		if !ok {
 			log.Warn("unknown error while try close  listener:", n)
 			continue
 		}
+		log.Debug("close old address: ", l.Addr())
 		if err := l.Close(); err != nil {
-			log.Warn("close listener:", err)
+			log.Warn("close listener:", err, " ", l.Addr())
 		}
 	}
 	c.data = newData

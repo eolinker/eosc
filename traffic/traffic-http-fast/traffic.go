@@ -3,6 +3,7 @@ package traffic_http_fast
 import (
 	"sync"
 
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/traffic"
 )
 
@@ -25,6 +26,7 @@ func (h *HttpTraffic) ShutDown(port int) {
 	defer h.locker.Unlock()
 
 	if s, has := h.srvs[port]; has {
+		log.Debug("http traffic shutdown,port is ", port)
 		s.ShutDown()
 		delete(h.srvs, port)
 	}

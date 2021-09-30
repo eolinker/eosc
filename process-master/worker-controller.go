@@ -103,8 +103,7 @@ func (wc *WorkerController) Start() {
 				if client != nil {
 					response, err := client.Ping(context.TODO(), in)
 					if err != nil {
-						log.Info("")
-						return
+						continue
 					}
 					ports := sortAndSet(response.Resource.Port)
 					if !equal(last, ports) {
@@ -116,7 +115,7 @@ func (wc *WorkerController) Start() {
 				{
 					isCreate, err := wc.trafficController.Reset(last)
 					if err != nil {
-						return
+						continue
 					}
 					if isCreate {
 						wc.NewWorker()

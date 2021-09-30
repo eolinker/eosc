@@ -73,8 +73,11 @@ func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
 		h.certs = nil
 
 		h.last = newNotClose(h.inner)
+		log.Debug("open a new connect, addr is ", h.last.Addr())
+
 		go h.srv.Serve(h.last)
 	}
+	log.Debug("update http status successful...")
 }
 
 //GetCertificate 获取证书配置
@@ -95,6 +98,7 @@ func (h *HttpService) ShutDown() {
 	defer h.locker.Unlock()
 	h.srv.Shutdown()
 	if h.inner != nil {
+		log.Debug("http service shutdown,inner addr is ", h.last.Addr())
 		h.last.Close()
 		h.last = nil
 		h.inner.Close()

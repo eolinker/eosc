@@ -88,11 +88,11 @@ func Run() bool {
 	if runIdx > 0 {
 		ph, exists := processHandlers[os.Args[0]]
 		if exists {
-			defer func() {
-				if v := recover(); v != nil {
-					log.Error("Run recover: ", os.Args[0], " ", v)
-				}
-			}()
+			//defer func() {
+			//	if v := recover(); v != nil {
+			//		log.Error("Run recover: ", os.Args[0], " ", v)
+			//	}
+			//}()
 			ph()
 			return true
 		}

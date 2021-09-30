@@ -73,19 +73,19 @@ func (wc *WorkerController) Ping(ctx context.Context, in *service.WorkerHelloReq
 	return nil, ErrClientNotInit
 }
 
-func (wc *WorkerController) checkResources(res *service.WorkerResource) {
-	if res == nil {
-		return
-	}
-	ports := make([]int, len(res.Port))
-	for i, v := range res.Port {
-		ports[i] = int(v)
-	}
-	isCreate, err := wc.trafficController.Reset(ports)
-	if err != nil {
-		return
-	}
-	if isCreate {
-		wc.NewWorker()
-	}
-}
+//func (wc *WorkerController) checkResources(res *service.WorkerResource) {
+//	if res == nil {
+//		return
+//	}
+//	ports := make([]int, len(res.Port))
+//	for i, v := range res.Port {
+//		ports[i] = int(v)
+//	}
+//	isCreate, err := wc.trafficController.Reset(ports)
+//	if err != nil {
+//		return
+//	}
+//	if isCreate {
+//		wc.NewWorker()
+//	}
+//}

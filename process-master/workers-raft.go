@@ -125,7 +125,7 @@ func (w *WorkersRaft) processHandlerWorkerSet(body []byte) (*eosc.WorkerData, er
 		log.Warn("decode woker data:", err)
 		return nil, fmt.Errorf("decode woker data:%w", err)
 	}
-
+	log.Info("process worker set: ", request.Id)
 	ow, has := w.data.Get(request.Id)
 	if has {
 		// can not change driver
@@ -172,6 +172,7 @@ func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface
 	case workers.CommandSet:
 		workerData, err := w.processHandlerWorkerSet(body)
 		if err != nil {
+			log.Info("process command set error: ", err)
 			return nil, nil, err
 		}
 		data, err := workers.EncodeWorkerData(workerData)
@@ -183,6 +184,7 @@ func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface
 		request := &service.WorkerDeleteRequest{
 			Id: string(body),
 		}
+		log.Info("process command delete: ", request.Id)
 		ow, has := w.data.Get(request.Id)
 		if !has {
 			return nil, nil, workers.ErrorNotExist
