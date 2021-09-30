@@ -2,7 +2,6 @@ package raft
 
 import (
 	"encoding/json"
-
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process-master/workers"
 	"go.etcd.io/etcd/raft/v3"
