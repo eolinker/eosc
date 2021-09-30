@@ -9,7 +9,7 @@ type IService interface {
 	// ProcessHandler 节点propose信息前的处理,leader发起或者未启用集群时使用
 	//ProcessHandler(body interface{}) (data []byte, err error)
 	// ProcessHandler 转发到leader时的处理
-	ProcessDataHandler(body []byte) (data []byte, err error)
+	ProcessDataHandler(body []byte) (object interface{}, data []byte, err error)
 
 	// GetInit 集群初始化时的将service缓存中的信息进行打包处理,只会在切换集群模式的时候调用一次
 	GetInit() (data []byte, err error)
@@ -24,7 +24,7 @@ type IService interface {
 }
 
 type IRaftSender interface {
-	Send(msg []byte) error
+	Send(msg []byte) (interface{}, error)
 }
 
 type IRaftService interface {

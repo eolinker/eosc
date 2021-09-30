@@ -2,8 +2,6 @@ package raft
 
 import (
 	"encoding/json"
-	"fmt"
-
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
@@ -24,7 +22,6 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				// ignore empty messages
 				continue
 			}
-
 			m := &Message{}
 			var err error
 			err = m.Decode(ents[i].Data)
@@ -32,9 +29,9 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				log.Error(err)
 				continue
 			}
-			if m.Type == INIT && m.From == rc.nodeID {
-				continue
-			}
+			//if m.Type == INIT && m.From == rc.nodeID {
+			//	continue
+			//}
 			err = rc.service.CommitHandler(m.Data)
 			if err != nil {
 				log.Error(err)
@@ -49,7 +46,6 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			switch cc.Type {
 			// 新增节点
 			case raftpb.ConfChangeAddNode:
-				fmt.Println("abc", string(cc.Context))
 				if len(cc.Context) > 0 {
 					var info NodeInfo
 					err := json.Unmarshal(cc.Context, &info)
@@ -70,6 +66,10 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 						// 不存在，新增
 						rc.peers.SetPeer(cc.NodeID, &info)
 					}
+					if rc.peers.GetPeerNum() > 1 && !rc.join {
+						rc.join = true
+						rc.writeConfig()
+					}
 				}
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == rc.nodeID {
@@ -85,6 +85,10 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				if ok {
 					// 存在，减去
 					rc.peers.DeletePeerByID(cc.NodeID)
+				}
+				if rc.peers.GetPeerNum() < 2 && rc.join {
+					rc.join = false
+					rc.writeConfig()
 				}
 			}
 		}

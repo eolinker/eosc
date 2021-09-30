@@ -41,7 +41,7 @@ func NewTraffic() *Traffic {
 }
 
 func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
-
+	log.Debug("traffic ListenTcp:", ip, ":", port)
 	tcpAddr := ResolveTCPAddr(ip, port)
 	t.locker.Lock()
 	defer t.locker.Unlock()
@@ -51,11 +51,15 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	if o, has := t.data.Get(name); has {
 		listener, ok := o.(net.Listener)
 		if !ok {
+			log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
+
 			return nil, ErrorInvalidListener
 		}
+		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
 
 		return listener, nil
 	}
+	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
 
 	return nil, nil
 }
@@ -67,10 +71,12 @@ type ITraffic interface {
 }
 
 func (t *Traffic) Read(r io.Reader) {
+
 	t.locker.Lock()
 	defer t.locker.Unlock()
 
 	listeners, err := readListener(r)
+	log.Debug("read listeners: ", len(listeners))
 	if err != nil {
 		log.Warn("read listeners:", err)
 		return
@@ -83,7 +89,7 @@ func (t *Traffic) Read(r io.Reader) {
 
 func (t *Traffic) add(ln *net.TCPListener) {
 	tcpAddr := ln.Addr()
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
+	name := toName(tcpAddr)
 	log.Info("traffic add:", name)
 	t.data.Set(name, ln)
 }
@@ -91,7 +97,6 @@ func (t *Traffic) add(ln *net.TCPListener) {
 func (t *Traffic) Close() {
 	t.locker.Lock()
 	list := t.data.List()
-
 	t.data = eosc.NewUntyped()
 	t.locker.Unlock()
 	for _, it := range list {
@@ -121,4 +126,8 @@ func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
 		Port: port,
 		Zone: "",
 	}
+}
+func toName(addr net.Addr) string {
+	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
+
 }

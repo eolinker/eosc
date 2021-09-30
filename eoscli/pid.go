@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
 )
 
 var errPidNotFound = errors.New("pid not found")
@@ -44,7 +44,7 @@ func ClearPid() {
 }
 
 func getPidFile() string {
-	abs, _ := filepath.Abs(fmt.Sprintf("%s.pid", eosc_args.AppName()))
+	abs, _ := filepath.Abs(fmt.Sprintf("%s.pid", env.AppName()))
 	return abs
 }
 

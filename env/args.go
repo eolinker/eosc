@@ -1,4 +1,4 @@
-package eosc_args
+package env
 
 func GetDefaultArg(cfg *Config, name string, value string) string {
 	vl, has := GetEnv(name)

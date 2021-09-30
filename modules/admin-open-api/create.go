@@ -9,8 +9,9 @@ import (
 type createHandler struct {
 }
 
-func (c *createHandler) Create(admin eosc.IAdmin, prefix string) http.Handler {
-	a := NewOpenAdmin(prefix, admin)
+func (c *createHandler) Create(admin eosc.IAdmin, pref string) http.Handler {
+	a := NewOpenAdmin(admin)
+	a.prefix = pref
 	return a.GenHandler()
 
 }

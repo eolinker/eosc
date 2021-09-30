@@ -15,8 +15,8 @@ type TWorker map[string]interface{}
 type IWorkersData interface {
 	GetWork(id string) (TWorker, error)
 	GetList(profession string) ([]TWorker, error)
-	Delete(id string) error
-	Set(profession, name, driver string, data []byte) error
+	Delete(id string) (TWorker, error)
+	Set(profession, name, driver string, data []byte) (TWorker, error)
 }
 
 type IWorkerResources interface {

@@ -2,7 +2,6 @@ package process_worker
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -62,16 +61,14 @@ func (wm *WorkerManager) RequiredCount(id string) int {
 func (wm *WorkerManager) Check(id, profession, name, driverName string, body []byte) error {
 	p, has := wm.professions.Get(profession)
 	if !has {
-		return errors.New("profession not exist")
+		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
 	driver, has := p.GetDriver(driverName)
 	if !has {
-		return errors.New("driver not exist")
+		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	configType := driver.ConfigType()
-	conf := reflect.New(configType).Interface()
-
+	conf := newConfig(driver.ConfigType())
 	err := json.Unmarshal(body, conf)
 	if err != nil {
 		return err
@@ -113,7 +110,11 @@ func (wm *WorkerManager) Del(id string) error {
 }
 
 func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
-	return wm.data.Get(id)
+	w, has := wm.data.Get(id)
+	if has {
+		return w.IWorker, true
+	}
+	return nil, false
 }
 
 func NewWorkerManager(professions IProfessions) *WorkerManager {
@@ -134,11 +135,13 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
-
+	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
 		for _, wd := range pm[p.Name] {
+			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
 			if err := wm.Set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
-				return err
+				log.Error("init set worker: ", err)
+				continue
 			}
 		}
 	}
@@ -147,17 +150,17 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
 
 func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byte) error {
 
+	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
 	driver, has := p.GetDriver(driverName)
 	if !has {
-		return fmt.Errorf("%s:%w", driverName, eosc.ErrorDriverNotExist)
+		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	configType := driver.ConfigType()
-	conf := reflect.New(configType).Interface()
+	conf := newConfig(driver.ConfigType())
 
 	err := json.Unmarshal(body, conf)
 	if err != nil {
@@ -165,6 +168,8 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 	requires, err := eosc.CheckConfig(conf, wm)
 	if err != nil {
+		v, has := wm.data.Get("baidu@service")
+		log.Debug("check:baidu@service:", has, ":", v)
 		return err
 	}
 	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
@@ -184,7 +189,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 			return e
 		}
 		wm.requireManager.Set(id, getIds(requires))
-		if res, ok := o.target.(eosc.IWorkerResources); ok {
+		if res, ok := o.IWorker.(eosc.IWorkerResources); ok {
 			wm.portsRequire.Set(id, res.Ports())
 		}
 		return nil
@@ -218,4 +223,10 @@ func getIds(m map[eosc.RequireId]interface{}) []string {
 		rs = append(rs, string(k))
 	}
 	return rs
+}
+func newConfig(t reflect.Type) interface{} {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return reflect.New(t).Interface()
 }

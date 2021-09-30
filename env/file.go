@@ -1,4 +1,4 @@
-package eosc_args
+package env
 
 import (
 	"bytes"

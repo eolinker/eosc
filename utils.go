@@ -51,6 +51,14 @@ func readDriverId(id string) (group, project, name string) {
 	return
 }
 
-func ToWorkerId(name, profession string) string {
-	return fmt.Sprintf("%s@%s", name, profession)
+func ToWorkerId(value, profession string) (string, bool) {
+	value = strings.ToLower(value)
+	index := strings.Index(value, "@")
+	if index < 0 {
+		return fmt.Sprintf("%s@%s", value, profession), true
+	}
+	if profession != value[index+1:] {
+		return "", false
+	}
+	return value, true
 }

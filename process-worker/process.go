@@ -9,34 +9,42 @@
 package process_worker
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
+	"github.com/eolinker/eosc/env"
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/bean"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/service"
 	"google.golang.org/grpc"
 
 	"github.com/eolinker/eosc/log"
 
-	"github.com/eolinker/eosc/listener"
-
 	"github.com/eolinker/eosc/traffic"
 )
 
 func Process() {
-
+	log.Debug("worker process start...")
+	utils.InitLogTransport(eosc.ProcessWorker)
+	log.Debug("load plugin env...")
 	loadPluginEnv()
-	w := NewProcessWorker()
-	listener.SetTraffic(w.tf)
+	log.Debug("create worker...")
+	w, err := NewProcessWorker()
+	if err != nil {
+		log.Error("new process worker error: ", err)
+		return
+	}
+
 	w.Start()
+
 	w.wait()
+	log.Info("worker process end")
 }
 
 type ProcessWorker struct {
@@ -53,7 +61,6 @@ func (w *ProcessWorker) wait() {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
@@ -78,7 +85,7 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker() *ProcessWorker {
+func NewProcessWorker() (*ProcessWorker, error) {
 	w := &ProcessWorker{}
 	tf := traffic.NewTraffic()
 	w.tf = tf
@@ -98,7 +105,7 @@ func NewProcessWorker() *ProcessWorker {
 	psData, err := ReadProfessionData(os.Stdin)
 	if err != nil {
 		log.Warn("profession configs error:", err)
-		return nil
+		return nil, err
 	}
 	ps.init(psData)
 	workersData := ReadWorkers(os.Stdin)
@@ -106,10 +113,10 @@ func NewProcessWorker() *ProcessWorker {
 	err = wm.Init(workersData)
 	if err != nil {
 		log.Warn("worker configs error:", err)
-		return nil
+		return nil, err
 	}
 	w.workers = wm
-	return w
+	return w, nil
 }
 
 func (w *ProcessWorker) close() {
@@ -118,7 +125,7 @@ func (w *ProcessWorker) close() {
 		w.tf.Close()
 		w.srv.Stop()
 
-		addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+		addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
 		// 移除unix socket
 		syscall.Unlink(addr)
 	})
@@ -126,11 +133,11 @@ func (w *ProcessWorker) close() {
 }
 
 func (w *ProcessWorker) Start() error {
-	addr := service.WorkerServerAddr(eosc_args.AppName(), os.Getpid())
+	addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
-	log.Info("start Master :", addr)
+	log.Info("start worker :", addr)
 	l, err := grpc_unixsocket.Listener(addr)
 	if err != nil {
 		return err

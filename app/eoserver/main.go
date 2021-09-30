@@ -13,21 +13,21 @@ package main
 import (
 	"os"
 
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc"
-
-	admin_open_api "github.com/eolinker/eosc/modules/admin-open-api"
-	"github.com/eolinker/eosc/process-master/admin"
-
 	"github.com/eolinker/eosc/eoscli"
 	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/log"
+	admin_open_api "github.com/eolinker/eosc/modules/admin-open-api"
 	"github.com/eolinker/eosc/process"
 	process_master "github.com/eolinker/eosc/process-master"
+	"github.com/eolinker/eosc/process-master/admin"
 	process_worker "github.com/eolinker/eosc/process-worker"
 )
 
 func init() {
-	admin.Register("/api", admin_open_api.CreateHandler())
+	admin.Register("/api/", admin_open_api.CreateHandler())
 	process.Register(eosc.ProcessWorker, process_worker.Process)
 	process.Register(eosc.ProcessMaster, process_master.Process)
 	process.Register(eosc.ProcessHelper, helper.Process)
@@ -36,6 +36,15 @@ func init() {
 func main() {
 
 	if process.Run() {
+		log.Close()
+		return
+	}
+	if env.IsDebug() {
+		if process.RunDebug(eosc.ProcessMaster) {
+			log.Info("debug done")
+		} else {
+			log.Error("debug not run")
+		}
 		log.Close()
 		return
 	}

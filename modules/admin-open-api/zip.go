@@ -2,105 +2,98 @@ package admin_open_api
 
 import (
 	"archive/zip"
+	"bytes"
+	"fmt"
 	"io"
+	"io/fs"
 	"log"
-	"os"
-	"strings"
+	"time"
 )
 
-func getDir(path string) string {
-	return subString(path, 0, strings.LastIndex(path, "/"))
+type ZipFile struct {
+	bytes.Buffer
 }
 
-func subString(str string, start, end int) string {
-	rs := []rune(str)
-	length := len(rs)
-
-	if start < 0 || start > length {
-		panic("start is wrong")
-	}
-
-	if end < start || end > length {
-		panic("end is wrong")
-	}
-
-	return string(rs[start:end])
+func NewZipFile() *ZipFile {
+	return &ZipFile{}
 }
 
-func CompressFile(dir string, fileName string) error {
-	f1, err := os.Open(dir)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	defer f1.Close()
+func (f *ZipFile) Export() []byte {
+	return f.Bytes()
+}
 
-	var files = []*os.File{f1}
-	err = Compress(files, fileName)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+type File struct {
+	name string
+	data []byte
+}
+
+func (f *File) Name() string {
+	return f.name
+}
+
+func (f *File) Size() int64 {
+	return int64(len(f.data))
+}
+
+func (f *File) Mode() fs.FileMode {
+	return 0644
+}
+
+func (f *File) ModTime() time.Time {
+	return time.Time{}
+}
+
+func (f *File) IsDir() bool {
+	return false
+}
+
+func (f *File) Sys() interface{} {
 	return nil
+}
+
+func CompressFile(data map[string][]byte) ([]byte, error) {
+	file, err := Compress(data)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return file.Export(), nil
 }
 
 //压缩文件
 //files 文件数组，可以是不同dir下的文件或者文件夹
 //dest 压缩文件存放地址
-func Compress(files []*os.File, dest string) error {
-	d, _ := os.Create(dest)
-	defer d.Close()
-	w := zip.NewWriter(d)
+func Compress(data map[string][]byte) (*ZipFile, error) {
+	file := NewZipFile()
+	w := zip.NewWriter(file)
 	defer w.Close()
-	for _, file := range files {
-		err := compress(file, "", w)
+	for k, v := range data {
+		err := compress(k, v, w)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return file, nil
 }
 
-func compress(file *os.File, prefix string, zw *zip.Writer) error {
-	info, err := file.Stat()
+func compress(name string, data []byte, zw *zip.Writer) error {
+
+	f := &File{
+		name: fmt.Sprintf("%s.yml", name),
+		data: data,
+	}
+	header, err := zip.FileInfoHeader(f)
 	if err != nil {
 		return err
 	}
-	if info.IsDir() {
-		//if prefix == "" {
-		//	prefix = info.Name()
-		//} else {
-		//	prefix = prefix + "/" + info.Name()
-		//}
-		fileInfos, err := file.Readdir(-1)
-		if err != nil {
-			return err
-		}
-		for _, fi := range fileInfos {
-			f, err := os.Open(file.Name() + "/" + fi.Name())
-			if err != nil {
-				return err
-			}
-			err = compress(f, prefix, zw)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		header, err := zip.FileInfoHeader(info)
-		//header.Name = prefix + "/" + header.Name
-		if err != nil {
-			return err
-		}
-		writer, err := zw.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(writer, file)
-		file.Close()
-		if err != nil {
-			return err
-		}
+
+	writer, err := zw.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(writer, string(data))
+	if err != nil {
+		return err
 	}
 	return nil
 }

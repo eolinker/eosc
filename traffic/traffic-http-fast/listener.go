@@ -3,6 +3,8 @@ package traffic_http_fast
 import (
 	"net"
 	"syscall"
+
+	"github.com/eolinker/eosc/log"
 )
 
 type listenerNotClose struct {
@@ -12,10 +14,20 @@ type listenerNotClose struct {
 }
 
 func (l *listenerNotClose) Accept() (net.Conn, error) {
+	log.Debug("accept:start")
 	if l.inner == nil {
+		log.Debug("accept:nil")
 		return nil, syscall.EINVAL
 	}
-	return l.inner.Accept()
+	accept, err := l.inner.Accept()
+	if err != nil {
+		log.Debug("accept: error")
+
+		return nil, err
+	}
+	log.Debug("accept: done")
+
+	return accept, nil
 }
 
 func (l *listenerNotClose) Addr() net.Addr {
@@ -29,5 +41,6 @@ func (l *listenerNotClose) Close() error {
 }
 
 func newNotClose(inner net.Listener) *listenerNotClose {
+	log.Debug("new not close listener:", inner.Addr())
 	return &listenerNotClose{inner: inner, addr: inner.Addr()}
 }

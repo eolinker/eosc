@@ -14,7 +14,7 @@ var (
 
 func (wc *WorkerController) DeleteCheck(ctx context.Context, in *service.WorkerDeleteRequest, opts ...grpc.CallOption) (*service.WorkerDeleteResponse, error) {
 
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
 		return client.DeleteCheck(ctx, in, opts...)
 	}
@@ -22,33 +22,70 @@ func (wc *WorkerController) DeleteCheck(ctx context.Context, in *service.WorkerD
 }
 
 func (wc *WorkerController) SetCheck(ctx context.Context, in *service.WorkerSetRequest, opts ...grpc.CallOption) (*service.WorkerSetResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
-		return client.SetCheck(ctx, in, opts...)
+		response, err := client.SetCheck(ctx, in, opts...)
+		if err != nil {
+			return nil, err
+		}
+		//wc.checkResources(response.Resource)
+		return response, nil
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) Delete(ctx context.Context, in *service.WorkerDeleteRequest, opts ...grpc.CallOption) (*service.WorkerDeleteResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
-		return client.Delete(ctx, in, opts...)
+		response, err := client.Delete(ctx, in, opts...)
+		if err != nil {
+			return nil, err
+		}
+		//wc.checkResources(response.Resource)
+		return response, nil
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) Set(ctx context.Context, in *service.WorkerSetRequest, opts ...grpc.CallOption) (*service.WorkerSetResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
-		return client.Set(ctx, in, opts...)
+		response, err := client.Set(ctx, in, opts...)
+		if err != nil {
+			return nil, err
+		}
+		//wc.checkResources(response.Resource)
+		return response, nil
 	}
 	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerController) Ping(ctx context.Context, in *service.WorkerHelloRequest, opts ...grpc.CallOption) (*service.WorkerHelloResponse, error) {
-	client := wc.current
+	client := wc.getClient()
 	if client != nil {
-		return client.Ping(ctx, in, opts...)
+		response, err := client.Ping(ctx, in, opts...)
+		if err != nil {
+			return nil, err
+		}
+		//wc.checkResources(response.Resource)
+		return response, nil
 	}
 	return nil, ErrClientNotInit
 }
+
+//func (wc *WorkerController) checkResources(res *service.WorkerResource) {
+//	if res == nil {
+//		return
+//	}
+//	ports := make([]int, len(res.Port))
+//	for i, v := range res.Port {
+//		ports[i] = int(v)
+//	}
+//	isCreate, err := wc.trafficController.Reset(ports)
+//	if err != nil {
+//		return
+//	}
+//	if isCreate {
+//		wc.NewWorker()
+//	}
+//}
