@@ -327,13 +327,16 @@ func (rc *Node) Send(msg []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = rc.ProcessData(data)
-		if err != nil {
+
+		if err := rc.ProcessData(data); err != nil {
+			return nil, err
+		}
+
+		if err := rc.service.CommitHandler(data); err != nil {
 			return nil, err
 		}
 		return obj, nil
 	} else {
-
 		return rc.postMessageToLeader(msg)
 	}
 }

@@ -2,6 +2,7 @@ package raft
 
 import (
 	"encoding/json"
+
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
@@ -32,6 +33,9 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			//if m.Type == INIT && m.From == rc.nodeID {
 			//	continue
 			//}
+			if m.Type == PROPOSE && m.From == rc.nodeID {
+				continue
+			}
 			err = rc.service.CommitHandler(m.Data)
 			if err != nil {
 				log.Error(err)
