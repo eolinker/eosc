@@ -14,8 +14,10 @@ import (
 // 日志提交处理
 func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 	if len(ents) == 0 {
+		rc.walIndex = 0
 		return true
 	}
+	isInit := false
 	for i := range ents {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
@@ -30,13 +32,15 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				log.Error(err)
 				continue
 			}
-			//if m.Type == INIT && m.From == rc.nodeID {
-			//	continue
-			//}
 
-			if ents[i].Index > rc.walIndex && m.Type == PROPOSE && m.From == rc.nodeID {
-				continue
+			if m.Type == PROPOSE && m.From == rc.nodeID {
+				if ents[i].Index > rc.walIndex {
+					continue
+				} else {
+					isInit = true
+				}
 			}
+
 			err = rc.service.CommitHandler(m.Data)
 			if err != nil {
 				log.Error(err)
@@ -100,6 +104,10 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 	}
 	// after commit, update appliedIndex
 	rc.appliedIndex = ents[len(ents)-1].Index
+	if isInit {
+		// 避免加入其他集群导致的问题
+		rc.walIndex = 0
+	}
 	return true
 }
 
