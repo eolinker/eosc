@@ -73,6 +73,7 @@ type Node struct {
 	// 日志与内存
 	raftStorage  *MemoryStorage
 	wal          *wal.WAL
+	walIndex     uint64
 	waldir       string // path to WAL directory
 	appliedIndex uint64
 

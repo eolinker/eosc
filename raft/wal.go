@@ -41,6 +41,12 @@ func (rc *Node) replayWAL() *wal.WAL {
 	if err != nil {
 		log.Infof("eosc: failed to append ents for raftStorage (%v)", err)
 	}
+	if l := len(ents); l > 0 {
+		rc.walIndex = ents[l-1].Index
+	} else {
+		rc.walIndex = 0
+	}
+
 	return w
 }
 
