@@ -34,7 +34,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 			//	continue
 			//}
 
-			if rc.walIndex > ents[i].Index && m.Type == PROPOSE && m.From == rc.nodeID {
+			if ents[i].Index > rc.walIndex && m.Type == PROPOSE && m.From == rc.nodeID {
 				continue
 			}
 			err = rc.service.CommitHandler(m.Data)
