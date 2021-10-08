@@ -6,27 +6,55 @@ import (
 	"time"
 )
 
-type TestEmployee struct {
+type TestWorker struct {
 	WorkerInfo
 	skill map[string]bool
 }
 
-func (t *TestEmployee) Marshal() ([]byte, error) {
-	return nil, nil
+func (t *TestWorker) Id() string {
+	return t.WorkerInfo.Id
 }
 
-func (t *TestEmployee) Worker() (IWorker, error) {
-	return nil, nil
+func (t *TestWorker) Start() error {
+	return nil
 }
 
-func (t *TestEmployee) CheckSkill(skill string) bool {
+func (t *TestWorker) Reset(conf interface{}, workers map[RequireId]interface{}) error {
+	return nil
+}
+
+func (t *TestWorker) Stop() error {
+	return nil
+}
+
+func (t *TestWorker) CheckSkill(skill string) bool {
 	return t.skill[skill]
 }
 
-func (t *TestEmployee) Info() WorkerInfo {
+func (t *TestWorker) Info() WorkerInfo {
 	return WorkerInfo{}
 }
 
+type TestWorkers struct {
+	data IUntyped
+}
+
+func (t *TestWorkers) Get(id string) (IWorker, bool) {
+	d, has := t.data.Get(id)
+	if has {
+		w, ok := d.(*TestWorker)
+		if ok {
+			return w, true
+		}
+	}
+	return nil, false
+}
+func (t *TestWorkers) Set(id string, w *TestWorker) {
+	t.data.Set(id, w)
+}
+func NewTestWorkers() *TestWorkers {
+	return &TestWorkers{data: NewUntyped()}
+}
 func TestCheckConfig(t *testing.T) {
 	type args struct {
 		v interface{}
@@ -38,8 +66,8 @@ func TestCheckConfig(t *testing.T) {
 		app       http.Handler
 		//Next *TestConfig `json:"next"`
 	}
-
-	globalIEmployees.Set("001", &TestEmployee{WorkerInfo: WorkerInfo{
+	workers := NewTestWorkers()
+	workers.Set("001", &TestWorker{WorkerInfo: WorkerInfo{
 		Id:     "001",
 		Name:   "test",
 		Driver: "test",
@@ -50,7 +78,7 @@ func TestCheckConfig(t *testing.T) {
 	},
 	})
 
-	globalIEmployees.Set("002", &TestEmployee{WorkerInfo: WorkerInfo{
+	workers.Set("002", &TestWorker{WorkerInfo: WorkerInfo{
 		Id:     "002",
 		Name:   "test",
 		Driver: "test",
@@ -78,7 +106,7 @@ func TestCheckConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := CheckConfig(tt.args.v); (err != nil) != tt.wantErr {
+			if _, err := CheckConfig(tt.args.v, workers); (err != nil) != tt.wantErr {
 				t.Errorf("CheckConfig() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
 				t.Logf("CheckConfig() error = %v", err)
