@@ -133,7 +133,8 @@ func (wc *WorkerController) Start() {
 				return
 			case <-wc.restartChan:
 				log.Debug("restart worker...")
-				next.Reset(time.Second * 1)
+				return
+				//next.Reset(time.Second * 1)
 			}
 		}
 
@@ -141,7 +142,9 @@ func (wc *WorkerController) Start() {
 }
 
 func (wc *WorkerController) Restart() {
+	wc.trafficController.Reset(nil)
 	wc.restartChan <- true
+	wc.Start()
 }
 func (wc *WorkerController) NewWorker() error {
 	wc.locker.Lock()
