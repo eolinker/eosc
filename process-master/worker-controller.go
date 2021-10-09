@@ -22,6 +22,7 @@ type WorkerProcessController interface {
 	Stop()
 	NewWorker() error
 	Start()
+	Restart()
 }
 type WorkerController struct {
 	locker            sync.Mutex
@@ -31,6 +32,7 @@ type WorkerController struct {
 	trafficController traffic.IController
 	isStop            bool
 	checkClose        chan int
+	restartChan       chan bool
 }
 
 func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
@@ -43,9 +45,11 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 	return &WorkerController{
 		trafficController: trafficController,
 		dms:               dmsAll,
-		checkClose:        make(chan int, 0),
+		checkClose:        make(chan int, 1),
+		restartChan:       make(chan bool, 1),
 	}
 }
+
 func (wc *WorkerController) Stop() {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
@@ -54,13 +58,13 @@ func (wc *WorkerController) Stop() {
 		return
 	}
 	close(wc.checkClose)
+	close(wc.restartChan)
 	wc.isStop = true
 	if wc.current != nil {
 		wc.current.Close()
 		wc.expireWorkers = append(wc.expireWorkers, wc.current)
 		wc.current = nil
 	}
-
 }
 func (wc *WorkerController) check(w *WorkerProcess) {
 	err := w.cmd.Wait()
@@ -103,10 +107,13 @@ func (wc *WorkerController) Start() {
 				if client != nil {
 					response, err := client.Ping(context.TODO(), in)
 					if err != nil {
+						log.Debug("ping worker controller error: ", err)
 						continue
 					}
 					ports := sortAndSet(response.Resource.Port)
+
 					if !equal(last, ports) {
+						log.Debug("sort ports: ", ports, "last ports: ", last)
 						last = ports
 						next.Reset(time.Second * 5)
 					}
@@ -115,6 +122,7 @@ func (wc *WorkerController) Start() {
 				{
 					isCreate, err := wc.trafficController.Reset(last)
 					if err != nil {
+						log.Debug("reset ports error: ", err, " last ports: ", last, " isCreate: ", isCreate)
 						continue
 					}
 					if isCreate {
@@ -123,10 +131,20 @@ func (wc *WorkerController) Start() {
 				}
 			case <-wc.checkClose:
 				return
+			case <-wc.restartChan:
+				log.Debug("restart worker...")
+				return
+				//next.Reset(time.Second * 1)
 			}
 		}
 
 	}()
+}
+
+func (wc *WorkerController) Restart() {
+	wc.trafficController.Reset(nil)
+	wc.restartChan <- true
+	wc.Start()
 }
 func (wc *WorkerController) NewWorker() error {
 	wc.locker.Lock()

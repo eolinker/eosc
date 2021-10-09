@@ -30,9 +30,10 @@ import (
 )
 
 func Process() {
-	log.Debug("worker process start...")
+
 	utils.InitLogTransport(eosc.ProcessWorker)
-	log.Debug("load plugin env...")
+	//log.Debug("load plugin env...")
+	log.Info("worker process start...")
 	loadPluginEnv()
 	log.Debug("create worker...")
 	w, err := NewProcessWorker()

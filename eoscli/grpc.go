@@ -25,8 +25,8 @@ func (c *ctlServiceClient) Close() error {
 	return c.conn.Close()
 }
 
-func createCtlServiceClient() (ICtiServiceClient, error) {
-	conn, err := grpc_unixsocket.Connect(service.MasterServerAddr(env.AppName()))
+func createCtlServiceClient(pid int) (ICtiServiceClient, error) {
+	conn, err := grpc_unixsocket.Connect(service.MasterServerAddr(env.AppName(), pid))
 	if err != nil {
 		return nil, err
 	}

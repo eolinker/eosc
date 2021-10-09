@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/eolinker/eosc/log"
+
 	"github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc"
@@ -28,7 +30,10 @@ type WorkerProcess struct {
 
 func (w *WorkerProcess) Close() error {
 
-	w.cmd.Process.Signal(syscall.SIGQUIT)
+	err := w.cmd.Process.Signal(syscall.SIGQUIT)
+	if err != nil {
+		log.Error("worker process close error: ", err)
+	}
 	if w.conn != nil {
 		w.conn.Close()
 	}

@@ -73,6 +73,7 @@ type Node struct {
 	// 日志与内存
 	raftStorage  *MemoryStorage
 	wal          *wal.WAL
+	walIndex     uint64
 	waldir       string // path to WAL directory
 	appliedIndex uint64
 
@@ -273,11 +274,15 @@ func (rc *Node) serveChannels() {
 // leave closes http and stops raft.
 func (rc *Node) stop() {
 	//rc.once.Do(func() {
-	close(rc.stopc)
-	//})
-	rc.transport.Stop()
-	rc.node.Stop()
-	rc.wal.Close()
+	if rc.stopc != nil {
+		close(rc.stopc)
+		rc.stopc = nil
+		//})
+		rc.transport.Stop()
+		rc.node.Stop()
+		rc.wal.Close()
+
+	}
 }
 
 func (rc *Node) IsJoin() bool {
@@ -327,13 +332,16 @@ func (rc *Node) Send(msg []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = rc.ProcessData(data)
-		if err != nil {
+
+		if err := rc.ProcessData(data); err != nil {
+			return nil, err
+		}
+
+		if err := rc.service.CommitHandler(data); err != nil {
 			return nil, err
 		}
 		return obj, nil
 	} else {
-
 		return rc.postMessageToLeader(msg)
 	}
 }

@@ -118,7 +118,6 @@ func NewNode(service IService) (*Node, error) {
 		peers:     NewPeers(),
 		service:   service,
 		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
 		logger:    logger,
 		lead:      0,
 		transport: &rafthttp.Transport{

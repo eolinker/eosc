@@ -158,6 +158,12 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "120005", "fail to send propose message", err.Error())
 		return
 	}
+	err = rc.service.CommitHandler(data)
+	if err != nil {
+		w.WriteHeader(503)
+		writeError(w, "120005", "fail to commit message", err.Error())
+		return
+	}
 	writeTo(w, obj)
 }
 
