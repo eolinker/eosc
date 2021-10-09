@@ -45,10 +45,11 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 	return &WorkerController{
 		trafficController: trafficController,
 		dms:               dmsAll,
-		checkClose:        make(chan int, 0),
-		restartChan:       make(chan bool, 0),
+		checkClose:        make(chan int, 1),
+		restartChan:       make(chan bool, 1),
 	}
 }
+
 func (wc *WorkerController) Stop() {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
@@ -64,7 +65,6 @@ func (wc *WorkerController) Stop() {
 		wc.expireWorkers = append(wc.expireWorkers, wc.current)
 		wc.current = nil
 	}
-
 }
 func (wc *WorkerController) check(w *WorkerProcess) {
 	err := w.cmd.Wait()
@@ -134,7 +134,6 @@ func (wc *WorkerController) Start() {
 			case <-wc.restartChan:
 				log.Debug("restart worker...")
 				next.Reset(time.Second * 1)
-				return
 			}
 		}
 
