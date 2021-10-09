@@ -263,10 +263,10 @@ func (w *WorkersRaft) ResetHandler(data []byte) error {
 	}
 
 	w.data.reset(vs)
-	err = w.workerProcessController.NewWorker()
-	if err != nil {
-		log.Error("reset handler error: ", err)
-	}
+	w.workerProcessController.Restart()
+	//if err != nil {
+	//	log.Error("reset handler error: ", err)
+	//}
 	return nil
 }
 

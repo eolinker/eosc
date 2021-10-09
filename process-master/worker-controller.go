@@ -22,6 +22,7 @@ type WorkerProcessController interface {
 	Stop()
 	NewWorker() error
 	Start()
+	Restart()
 }
 type WorkerController struct {
 	locker            sync.Mutex
@@ -31,6 +32,7 @@ type WorkerController struct {
 	trafficController traffic.IController
 	isStop            bool
 	checkClose        chan int
+	restartChan       chan bool
 }
 
 func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
@@ -44,6 +46,7 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 		trafficController: trafficController,
 		dms:               dmsAll,
 		checkClose:        make(chan int, 0),
+		restartChan:       make(chan bool, 0),
 	}
 }
 func (wc *WorkerController) Stop() {
@@ -54,6 +57,7 @@ func (wc *WorkerController) Stop() {
 		return
 	}
 	close(wc.checkClose)
+	close(wc.restartChan)
 	wc.isStop = true
 	if wc.current != nil {
 		wc.current.Close()
@@ -126,10 +130,17 @@ func (wc *WorkerController) Start() {
 				}
 			case <-wc.checkClose:
 				return
+			case <-wc.restartChan:
+				next.Reset(time.Second * 1)
+				return
 			}
 		}
 
 	}()
+}
+
+func (wc *WorkerController) Restart() {
+	wc.restartChan <- true
 }
 func (wc *WorkerController) NewWorker() error {
 	wc.locker.Lock()
