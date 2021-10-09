@@ -20,7 +20,11 @@ func Cluster(x cli.ActionFunc) *cli.Command {
 
 //ClustersFunc 获取集群列表
 func ClustersFunc(c *cli.Context) error {
-	client, err := createCtlServiceClient()
+	pid, err := readPid()
+	if err != nil {
+		return err
+	}
+	client, err := createCtlServiceClient(pid)
 	if err != nil {
 		return err
 	}

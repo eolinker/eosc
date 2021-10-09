@@ -88,7 +88,11 @@ func join(c *cli.Context, cfg *env.Config) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
-	client, err := createCtlServiceClient()
+	pid, err := readPid()
+	if err != nil {
+		return err
+	}
+	client, err := createCtlServiceClient(pid)
 	if err != nil {
 		return fmt.Errorf("join cluster error:%s", err.Error())
 	}

@@ -21,7 +21,11 @@ func Info(x cli.ActionFunc) *cli.Command {
 
 //InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
-	client, err := createCtlServiceClient()
+	pid, err := readPid()
+	if err != nil {
+		return err
+	}
+	client, err := createCtlServiceClient(pid)
 	if err != nil {
 		return err
 	}

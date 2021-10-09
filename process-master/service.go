@@ -9,6 +9,7 @@
 package process_master
 
 import (
+	"os"
 	"syscall"
 
 	"github.com/eolinker/eosc/env"
@@ -23,13 +24,14 @@ import (
 //startService 开启master
 func (m *Master) startService() error {
 
-	addr := service.MasterServerAddr(env.AppName())
+	addr := service.MasterServerAddr(env.AppName(), os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)
 
 	log.Info("start Master :", addr)
 	l, err := grpc_unixsocket.Listener(addr)
 	if err != nil {
+		log.Error("start service error: ", err)
 		return err
 	}
 
@@ -38,15 +40,18 @@ func (m *Master) startService() error {
 	service.RegisterCtiServiceServer(grpcServer, m)
 	service.RegisterMasterServer(grpcServer, m)
 	go func() {
-		grpcServer.Serve(l)
+		err := grpcServer.Serve(l)
+		if err != nil {
+			log.Error("listen serve error: ", err)
+		}
 	}()
-
+	log.Info("start service successful")
 	m.masterSrv = grpcServer
 	return nil
 }
 
 func (m *Master) stopService() {
 	m.masterSrv.GracefulStop()
-	addr := service.MasterServerAddr(env.AppName())
-	syscall.Unlink(addr)
+	//addr := service.MasterServerAddr(env.AppName())
+	//syscall.Unlink(addr)
 }
