@@ -111,8 +111,9 @@ func (wc *WorkerController) Start() {
 						continue
 					}
 					ports := sortAndSet(response.Resource.Port)
-					log.Debug("sort ports: ", ports, "last ports: ", last)
+
 					if !equal(last, ports) {
+						log.Debug("sort ports: ", ports, "last ports: ", last)
 						last = ports
 						next.Reset(time.Second * 5)
 					}
@@ -131,6 +132,7 @@ func (wc *WorkerController) Start() {
 			case <-wc.checkClose:
 				return
 			case <-wc.restartChan:
+				log.Debug("restart worker...")
 				next.Reset(time.Second * 1)
 				return
 			}
