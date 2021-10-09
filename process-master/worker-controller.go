@@ -117,6 +117,7 @@ func (wc *WorkerController) Start() {
 				{
 					isCreate, err := wc.trafficController.Reset(last)
 					if err != nil {
+						log.Debug("reset ports error: ", err, " last ports: ", last, " isCreate: ", isCreate)
 						continue
 					}
 					if isCreate {
