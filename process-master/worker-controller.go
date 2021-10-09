@@ -103,9 +103,11 @@ func (wc *WorkerController) Start() {
 				if client != nil {
 					response, err := client.Ping(context.TODO(), in)
 					if err != nil {
+						log.Debug("ping worker controller error: ", err)
 						continue
 					}
 					ports := sortAndSet(response.Resource.Port)
+					log.Debug("sort ports: ", ports, "last ports: ", last)
 					if !equal(last, ports) {
 						last = ports
 						next.Reset(time.Second * 5)
