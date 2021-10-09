@@ -85,6 +85,7 @@ type Node struct {
 	logger *zap.Logger
 	//active           bool
 	transportHandler http.Handler
+	isActive         bool
 }
 
 func (rc *Node) NodeID() uint64 {
@@ -274,11 +275,14 @@ func (rc *Node) serveChannels() {
 // leave closes http and stops raft.
 func (rc *Node) stop() {
 	//rc.once.Do(func() {
-	close(rc.stopc)
-	//})
-	rc.transport.Stop()
-	rc.node.Stop()
-	rc.wal.Close()
+	if rc.isActive {
+		close(rc.stopc)
+		//})
+		rc.transport.Stop()
+		rc.node.Stop()
+		rc.wal.Close()
+	}
+	rc.isActive = false
 }
 
 func (rc *Node) IsJoin() bool {
@@ -421,6 +425,7 @@ func (rc *Node) changeSingleCluster() error {
 		DialRetryFrequency: rate.Every(2000 * time.Millisecond),
 	}
 	rc.transportHandler = rc.genHandler()
+	rc.isActive = true
 	rc.stopc = make(chan struct{})
 
 	// 配置存储

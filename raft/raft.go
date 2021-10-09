@@ -94,6 +94,7 @@ func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))
 	rc.transportHandler = rc.genHandler()
+	rc.isActive = true
 	rc.stopc = make(chan struct{})
 
 	rc.peers.SetPeer(rc.nodeID, &NodeInfo{
@@ -118,7 +119,6 @@ func NewNode(service IService) (*Node, error) {
 		peers:     NewPeers(),
 		service:   service,
 		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
 		logger:    logger,
 		lead:      0,
 		transport: &rafthttp.Transport{
