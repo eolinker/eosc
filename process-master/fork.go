@@ -43,12 +43,12 @@ func (m *Master) Fork() error {
 	if err != nil {
 		return err
 	}
-
+	m.masterTraffic.Close()
 	dataWorkerTraffic, filesWorker, err := m.workerTraffic.Encode(len(filesMaster) + 3)
 	if err != nil {
 		return err
 	}
-
+	m.workerTraffic.Close()
 	data := make([]byte, len(dataMasterTraffic)+len(dataWorkerTraffic))
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)

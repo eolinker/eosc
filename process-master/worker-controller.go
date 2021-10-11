@@ -185,7 +185,6 @@ func (wc *WorkerController) new() error {
 		index += len(files)
 		fileAll = append(fileAll, files...)
 		buf.Write(data)
-
 	}
 
 	workerProcess, err := wc.newWorkerProcess(buf, fileAll)

@@ -81,7 +81,7 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
 		if err != nil {
 			continue
 		}
-		ln.Close()
+		//ln.Close()
 		addr := ln.Addr()
 		pt := &PbTraffic{
 			FD:      uint64(i + startIndex),

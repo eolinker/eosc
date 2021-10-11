@@ -100,11 +100,14 @@ func (t *Traffic) Close() {
 	t.data = eosc.NewUntyped()
 	t.locker.Unlock()
 	for _, it := range list {
-		tf, ok := it.(*net.TCPListener)
+		tf, ok := it.(io.Closer)
 		if !ok {
 			continue
 		}
-		tf.Close()
+		err := tf.Close()
+		if err != nil {
+			log.Info("close traffic listener:", err)
+		}
 	}
 }
 
