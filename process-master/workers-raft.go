@@ -242,7 +242,7 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 			req := &service.WorkerDeleteRequest{
 				Id: id,
 			}
-			response, err := w.workerServiceClient.DeleteCheck(context.TODO(), req)
+			response, err := w.workerServiceClient.Delete(context.TODO(), req)
 			if err != nil {
 				log.Warn("delete worker:", err)
 				return err
