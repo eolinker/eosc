@@ -13,9 +13,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/eolinker/eosc/log"
-
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,29 +27,30 @@ type IController interface {
 }
 
 type Controller struct {
-	Traffic
+	*Traffic
 }
 
 func (c *Controller) Reset(ports []int) (bool, error) {
 	c.locker.Lock()
 	defer c.locker.Unlock()
 	isCreate := false
-	newData := eosc.NewUntyped()
+	newData := NewTraffic()
 
 	old := c.data.Clone()
 
 	for _, p := range ports {
 		addr := ResolveTCPAddr("", p)
-		name := toName(addr)
+		name := addrToName(addr)
 		if o, has := old.Del(name); has {
-			newData.Set(name, o)
+			ln := o.(*tListener)
+			newData.add(ln.Listener)
 		} else {
 			l, err := net.ListenTCP("tcp", addr)
 			if err != nil {
 				log.Warn("listen tcp:", err)
 				return false, err
 			}
-			newData.Set(name, l)
+			newData.add(l)
 			isCreate = true
 		}
 	}
@@ -66,7 +66,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 			log.Warn("close listener:", err, " ", l.Addr())
 		}
 	}
-	c.data = newData
+	c.Traffic = newData
 	return isCreate, nil
 }
 
@@ -121,9 +121,7 @@ func (c *Controller) All() []*net.TCPListener {
 
 func NewController(r io.Reader) IController {
 	c := &Controller{
-		Traffic: Traffic{
-			data: eosc.NewUntyped(),
-		},
+		Traffic: NewTraffic(),
 	}
 	if r != nil {
 		c.Read(r)

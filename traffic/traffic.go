@@ -49,7 +49,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Debug("traffic listen:", name)
 	if o, has := t.data.Get(name); has {
-		listener, ok := o.(net.Listener)
+		listener, ok := o.(*tListener)
 		if !ok {
 			log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
 
@@ -84,14 +84,13 @@ func (t *Traffic) Read(r io.Reader) {
 	for _, ln := range listeners {
 		t.add(ln)
 	}
-
 }
 
-func (t *Traffic) add(ln *net.TCPListener) {
-	tcpAddr := ln.Addr()
-	name := toName(tcpAddr)
+func (t *Traffic) add(ln net.Listener) {
+
+	name := toName(ln)
 	log.Info("traffic add:", name)
-	t.data.Set(name, ln)
+	t.data.Set(name, newTTcpListener(ln, t))
 }
 
 func (t *Traffic) Close() {
@@ -130,7 +129,12 @@ func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
 		Zone: "",
 	}
 }
-func toName(addr net.Addr) string {
+func toName(ln net.Listener) string {
+	addr := ln.Addr()
+	return addrToName(addr)
+}
+
+func addrToName(addr net.Addr) string {
 	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
 
 }

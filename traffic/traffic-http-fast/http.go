@@ -102,6 +102,7 @@ func (h *HttpService) ShutDown() {
 		h.last.Close()
 		h.last = nil
 		h.inner.Close()
+		h.inner = nil
 	}
 }
 
