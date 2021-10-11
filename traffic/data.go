@@ -19,7 +19,7 @@ func (t *tTrafficData) remove(name string) {
 func (t *tTrafficData) Del(name string) (net.Listener, bool) {
 	d, has := t.data.Del(name)
 	if has {
-		return d.(tListener).Listener, has
+		return d.(*tListener).Listener, has
 	}
 	return nil, false
 }
