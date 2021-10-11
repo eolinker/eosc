@@ -14,18 +14,12 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/bean"
 
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	"github.com/eolinker/eosc/service"
-	"google.golang.org/grpc"
-
 	"github.com/eolinker/eosc/log"
-
 	"github.com/eolinker/eosc/traffic"
 )
 
@@ -52,8 +46,9 @@ type ProcessWorker struct {
 	tf          traffic.ITraffic
 	professions IProfessions
 	workers     IWorkers
-	srv         *grpc.Server
-	once        sync.Once
+
+	once         sync.Once
+	workerServer *WorkerServer
 }
 
 func (w *ProcessWorker) wait() {
@@ -87,7 +82,14 @@ func (w *ProcessWorker) wait() {
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
 func NewProcessWorker() (*ProcessWorker, error) {
-	w := &ProcessWorker{}
+	workerServer, err := NewWorkerServer()
+	if err != nil {
+		return nil, err
+	}
+	w := &ProcessWorker{
+		workerServer: workerServer,
+	}
+
 	tf := traffic.NewTraffic()
 	w.tf = tf
 	ps := NewProfessions()
@@ -124,33 +126,15 @@ func (w *ProcessWorker) close() {
 
 	w.once.Do(func() {
 		w.tf.Close()
-		w.srv.Stop()
+		w.workerServer.Stop()
 
-		addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
-		// 移除unix socket
-		syscall.Unlink(addr)
 	})
 
 }
 
 func (w *ProcessWorker) Start() error {
-	addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
-	// 移除unix socket
-	syscall.Unlink(addr)
 
-	log.Info("start worker :", addr)
-	l, err := grpc_unixsocket.Listener(addr)
-	if err != nil {
-		return err
-	}
+	w.workerServer.SetWorkers(w.workers)
 
-	grpcServer := grpc.NewServer()
-
-	service.RegisterWorkerServiceServer(grpcServer, NewWorkerServer(w.workers))
-	go func() {
-		grpcServer.Serve(l)
-	}()
-
-	w.srv = grpcServer
 	return nil
 }
