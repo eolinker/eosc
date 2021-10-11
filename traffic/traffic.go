@@ -83,11 +83,7 @@ func (t *Traffic) Close() {
 	t.data = newTTrafficData()
 	t.locker.Unlock()
 	for _, it := range list {
-		tf, ok := it.(io.Closer)
-		if !ok {
-			continue
-		}
-		err := tf.Close()
+		err := it.Close()
 		if err != nil {
 			log.Info("close traffic listener:", err)
 		}

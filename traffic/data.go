@@ -55,16 +55,21 @@ func (t *tTrafficData) get(name string) (net.Listener, bool) {
 	return nil, false
 
 }
-func (t *tTrafficData) All() map[string]net.Listener {
+func (t *tTrafficData) All() map[string]*tListener {
 	all := t.data.All()
-	res := make(map[string]net.Listener)
+	res := make(map[string]*tListener)
 	for n, v := range all {
-		res[n] = v.(*tListener).Listener
+		res[n] = v.(*tListener)
 	}
 	return res
 }
-func (t *tTrafficData) list() []interface{} {
-	return t.data.List()
+func (t *tTrafficData) list() []*tListener {
+	ls := t.data.List()
+	rs := make([]*tListener, len(ls))
+	for i, v := range ls {
+		rs[i] = v.(*tListener)
+	}
+	return rs
 }
 func (t *tTrafficData) clone() *tTrafficData {
 	return &tTrafficData{

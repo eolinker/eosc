@@ -38,11 +38,7 @@ func (c *Controller) Close() {
 	c.data = newTTrafficData()
 	c.locker.Unlock()
 	for _, it := range list {
-		tf, ok := it.(io.Closer)
-		if !ok {
-			continue
-		}
-		err := tf.Close()
+		err := it.Close()
 		if err != nil {
 			log.Info("close traffic listener:", err)
 		}
@@ -124,26 +120,13 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
 
 }
 
-func (c *Controller) All() []*net.TCPListener {
+func (c *Controller) All() []*tListener {
 
 	c.locker.Lock()
 	list := c.data.list()
 	c.locker.Unlock()
 
-	ts := make([]*net.TCPListener, 0, len(list))
-	for _, it := range list {
-		tl, ok := it.(*tListener)
-		if !ok {
-			continue
-		}
-		tf, ok := tl.Listener.(*net.TCPListener)
-		if !ok {
-			continue
-		}
-		ts = append(ts, tf)
-	}
-
-	return ts
+	return list
 }
 
 func NewController(r io.Reader) IController {

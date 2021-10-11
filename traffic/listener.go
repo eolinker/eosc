@@ -1,10 +1,16 @@
 package traffic
 
 import (
+	"errors"
 	"net"
+	"os"
 	"sync"
 
 	"github.com/eolinker/eosc/log"
+)
+
+var (
+	ErrorNotTcpListener = errors.New("not tcp listener")
 )
 
 type iRemove interface {
@@ -12,9 +18,11 @@ type iRemove interface {
 }
 
 type tListener struct {
-	once sync.Once
 	net.Listener
-	parent iRemove
+	once      sync.Once
+	parent    iRemove
+	file      *os.File
+	fileError error
 }
 
 func newTTcpListener(listener net.Listener, parent iRemove) *tListener {
@@ -33,8 +41,22 @@ func (t *tListener) Close() error {
 		if err != nil {
 			log.Warn("close listener:", err)
 		}
-
+		if t.file != nil {
+			t.file.Close()
+		}
 	})
 	log.Debug("tListener close done")
 	return nil
+}
+
+func (t *tListener) File() (*os.File, error) {
+	if t.file == nil && t.fileError == nil {
+		if tcp, ok := t.Listener.(*net.TCPListener); ok {
+
+			t.file, t.fileError = tcp.File()
+		} else {
+			t.fileError = ErrorNotTcpListener
+		}
+	}
+	return t.file, t.fileError
 }

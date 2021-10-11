@@ -91,11 +91,11 @@ func (wc *WorkerController) Start() {
 	wc.NewWorker()
 
 	go func() {
-		t := time.NewTicker(time.Second)
+		t := time.NewTicker(time.Second / 4)
 		in := &service.WorkerHelloRequest{
 			Hello: "hello",
 		}
-		next := time.NewTimer(time.Second * 5)
+		next := time.NewTimer(time.Second)
 		next.Stop()
 		var last []int = nil
 		defer next.Stop()
@@ -115,7 +115,7 @@ func (wc *WorkerController) Start() {
 					if !equal(last, ports) {
 						log.Debug("sort ports: ", ports, "last ports: ", last)
 						last = ports
-						next.Reset(time.Second * 5)
+						next.Reset(time.Second)
 					}
 				}
 			case <-next.C:
