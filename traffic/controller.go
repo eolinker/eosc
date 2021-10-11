@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -27,23 +28,41 @@ type IController interface {
 }
 
 type Controller struct {
-	*Traffic
+	locker sync.Mutex
+	data   *tTrafficData
+}
+
+func (c *Controller) Close() {
+	c.locker.Lock()
+	list := c.data.list()
+	c.data = newTTrafficData()
+	c.locker.Unlock()
+	for _, it := range list {
+		tf, ok := it.(io.Closer)
+		if !ok {
+			continue
+		}
+		err := tf.Close()
+		if err != nil {
+			log.Info("close traffic listener:", err)
+		}
+	}
 }
 
 func (c *Controller) Reset(ports []int) (bool, error) {
 	c.locker.Lock()
 	defer c.locker.Unlock()
-	isCreate := false
-	newData := NewTraffic()
 
-	old := c.data.Clone()
+	isCreate := false
+	newData := newTTrafficData()
+
+	old := c.data.clone()
 
 	for _, p := range ports {
 		addr := ResolveTCPAddr("", p)
 		name := addrToName(addr)
 		if o, has := old.Del(name); has {
-			ln := o.(*tListener)
-			newData.add(ln.Listener)
+			newData.add(o)
 		} else {
 			l, err := net.ListenTCP("tcp", addr)
 			if err != nil {
@@ -54,19 +73,19 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 			isCreate = true
 		}
 	}
-	for n, o := range old.All() {
+	for _, o := range old.All() {
 
-		l, ok := o.(*net.TCPListener)
-		if !ok {
-			log.Warn("unknown error while try close  listener:", n)
-			continue
-		}
-		log.Debug("close old address: ", l.Addr())
-		if err := l.Close(); err != nil {
-			log.Warn("close listener:", err, " ", l.Addr())
+		//l, ok := o.(*net.TCPListener)
+		//if !ok {
+		//	log.Warn("unknown error while try close  listener:", n)
+		//	continue
+		//}
+		log.Debug("close old address: ", o.Addr())
+		if err := o.Close(); err != nil {
+			log.Warn("close listener:", err, " ", o.Addr())
 		}
 	}
-	c.Traffic = newData
+	c.data = newData
 	return isCreate, nil
 }
 
@@ -104,7 +123,7 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
 func (c *Controller) All() []*net.TCPListener {
 
 	c.locker.Lock()
-	list := c.data.List()
+	list := c.data.list()
 	c.locker.Unlock()
 
 	ts := make([]*net.TCPListener, 0, len(list))
@@ -121,26 +140,27 @@ func (c *Controller) All() []*net.TCPListener {
 
 func NewController(r io.Reader) IController {
 	c := &Controller{
-		Traffic: NewTraffic(),
+		data: newTTrafficData(),
 	}
 	if r != nil {
-		c.Read(r)
+		c.data.Read(r)
 	}
 	return c
 }
 
 func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
-
-	tcp, err := c.Traffic.ListenTcp(ip, port)
-	if err != nil {
-		log.Warn("get listen tcp from traffic :", err)
-		return nil, err
-	}
-	if tcp == nil {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	tcpAddr := ResolveTCPAddr(ip, port)
+	tcp, has := c.data.get(addrToName(tcpAddr))
+	//if err != nil {
+	//	log.Warn("get listen tcp from traffic :", err)
+	//	return nil, err
+	//}
+	if !has {
 		log.Warn("get listen tcp not exist")
-		c.locker.Lock()
-		defer c.locker.Unlock()
-		tcpAddr := ResolveTCPAddr(ip, port)
+
+		//tcpAddr := ResolveTCPAddr(ip, port)
 
 		l, err := net.ListenTCP("tcp", tcpAddr)
 		if err != nil {
@@ -148,7 +168,7 @@ func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
 			return nil, err
 		}
 
-		c.Traffic.add(l)
+		c.data.add(l)
 		tcp = l
 	}
 	return tcp, nil

@@ -15,7 +15,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 )
 
@@ -26,18 +25,26 @@ var _ ITraffic = (*Traffic)(nil)
 
 type Traffic struct {
 	locker sync.Mutex
-	data   eosc.IUntyped
+	data   *tTrafficData
 }
 
 func (t *Traffic) remove(name string) {
-	t.data.Del(name)
+	t.data.remove(name)
 }
 
 func NewTraffic() *Traffic {
 	return &Traffic{
-		data:   eosc.NewUntyped(),
+		data:   newTTrafficData(),
 		locker: sync.Mutex{},
 	}
+}
+func (t *Traffic) Read(in io.Reader) error {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+	data := newTTrafficData()
+	data.Read(in)
+	t.data = data
+	return nil
 }
 
 func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
@@ -48,7 +55,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 
 	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Debug("traffic listen:", name)
-	if o, has := t.data.Get(name); has {
+	if o, has := t.data.get(name); has {
 		listener, ok := o.(*tListener)
 		if !ok {
 			log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
@@ -67,36 +74,18 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
-	remove(name string)
-}
-
-func (t *Traffic) Read(r io.Reader) {
-
-	t.locker.Lock()
-	defer t.locker.Unlock()
-
-	listeners, err := readListener(r)
-	log.Debug("read listeners: ", len(listeners))
-	if err != nil {
-		log.Warn("read listeners:", err)
-		return
-	}
-	for _, ln := range listeners {
-		t.add(ln)
-	}
+	//remove(name string)
 }
 
 func (t *Traffic) add(ln net.Listener) {
 
-	name := toName(ln)
-	log.Info("traffic add:", name)
-	t.data.Set(name, newTTcpListener(ln, t))
+	t.data.add(ln)
 }
 
 func (t *Traffic) Close() {
 	t.locker.Lock()
-	list := t.data.List()
-	t.data = eosc.NewUntyped()
+	list := t.data.list()
+	t.data = newTTrafficData()
 	t.locker.Unlock()
 	for _, it := range list {
 		tf, ok := it.(io.Closer)

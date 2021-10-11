@@ -153,6 +153,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
+
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
 	driver, has := p.GetDriver(driverName)
@@ -168,13 +169,10 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 	requires, err := eosc.CheckConfig(conf, wm)
 	if err != nil {
-		v, has := wm.data.Get("baidu@service")
-		log.Debug("check:baidu@service:", has, ":", v)
 		return err
 	}
 	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
 		if e := dc.Check(conf, requires); err != nil {
-
 			return e
 		}
 	}
