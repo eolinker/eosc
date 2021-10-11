@@ -28,10 +28,6 @@ type Traffic struct {
 	data   *tTrafficData
 }
 
-func (t *Traffic) remove(name string) {
-	t.data.remove(name)
-}
-
 func NewTraffic() *Traffic {
 	return &Traffic{
 		data:   newTTrafficData(),
@@ -74,7 +70,6 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
-	//remove(name string)
 }
 
 func (t *Traffic) add(ln net.Listener) {

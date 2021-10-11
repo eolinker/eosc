@@ -13,6 +13,7 @@ type tTrafficData struct {
 }
 
 func (t *tTrafficData) remove(name string) {
+	log.Debug("remove traffic data:", name)
 	t.data.Del(name)
 }
 func (t *tTrafficData) Del(name string) (net.Listener, bool) {

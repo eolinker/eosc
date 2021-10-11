@@ -29,7 +29,10 @@ func (t *tListener) Close() error {
 		name := toName(t.Listener)
 		log.Info("shutdown listener:", name)
 		t.parent.remove(name)
-		t.Listener.Close()
+		err := t.Listener.Close()
+		if err != nil {
+			log.Warn("close listener:", err)
+		}
 
 	})
 	log.Debug("tListener close done")

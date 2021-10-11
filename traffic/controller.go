@@ -62,8 +62,10 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 		addr := ResolveTCPAddr("", p)
 		name := addrToName(addr)
 		if o, has := old.Del(name); has {
+			log.Debug("move traffic:", name)
 			newData.add(o)
 		} else {
+			log.Debug("create traffic:", name)
 			l, err := net.ListenTCP("tcp", addr)
 			if err != nil {
 				log.Warn("listen tcp:", err)
@@ -73,17 +75,19 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 			isCreate = true
 		}
 	}
-	for _, o := range old.All() {
+	for n, o := range old.All() {
 
 		//l, ok := o.(*net.TCPListener)
 		//if !ok {
 		//	log.Warn("unknown error while try close  listener:", n)
 		//	continue
 		//}
-		log.Debug("close old address: ", o.Addr())
+		log.Debug("close old : ", n)
 		if err := o.Close(); err != nil {
 			log.Warn("close listener:", err, " ", o.Addr())
 		}
+
+		log.Debug("close old done:", n)
 	}
 	c.data = newData
 	return isCreate, nil
