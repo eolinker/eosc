@@ -23,11 +23,15 @@ func newTTcpListener(listener net.Listener, parent iRemove) *tListener {
 }
 
 func (t *tListener) Close() error {
+	log.Debug("tListener close try")
 	t.once.Do(func() {
+
 		name := toName(t.Listener)
 		log.Info("shutdown listener:", name)
 		t.parent.remove(name)
-	})
+		t.Listener.Close()
 
+	})
+	log.Debug("tListener close done")
 	return nil
 }
