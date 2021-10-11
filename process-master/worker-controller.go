@@ -120,6 +120,7 @@ func (wc *WorkerController) Start() {
 				}
 			case <-next.C:
 				{
+					log.Debug("reset traffic:", last)
 					isCreate, err := wc.trafficController.Reset(last)
 					if err != nil {
 						log.Debug("reset ports error: ", err, " last ports: ", last, " isCreate: ", isCreate)

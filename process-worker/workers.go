@@ -195,11 +195,13 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	// create
 	worker, err := driver.Create(id, name, conf, requires)
 	if err != nil {
+		log.Warn("workers set worker create:", err)
 		return err
 	}
 	// start
 	e := worker.Start()
 	if e != nil {
+		log.Warn("workers set worker start:", e)
 		return e
 	}
 
@@ -209,6 +211,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	if res, ok := worker.(eosc.IWorkerResources); ok {
 		wm.portsRequire.Set(id, res.Ports())
 	}
+	log.Debug("workers set worker done:", id)
 	return nil
 }
 

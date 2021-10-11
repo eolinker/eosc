@@ -128,7 +128,11 @@ func (c *Controller) All() []*net.TCPListener {
 
 	ts := make([]*net.TCPListener, 0, len(list))
 	for _, it := range list {
-		tf, ok := it.(*net.TCPListener)
+		tl, ok := it.(*tListener)
+		if !ok {
+			continue
+		}
+		tf, ok := tl.Listener.(*net.TCPListener)
 		if !ok {
 			continue
 		}

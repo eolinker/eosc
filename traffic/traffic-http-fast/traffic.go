@@ -53,6 +53,7 @@ func (h *HttpTraffic) Get(port int) IService {
 	if has {
 		return srv
 	}
+	log.Debug("http traffic get:", port)
 	listener, err := h.tf.ListenTcp("", port)
 
 	if err != nil {

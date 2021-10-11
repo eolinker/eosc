@@ -48,7 +48,7 @@ func (t *Traffic) Read(in io.Reader) error {
 }
 
 func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
-	log.Debug("traffic ListenTcp:", ip, ":", port)
+	log.Debug("traffic try ListenTcp:", ip, ":", port)
 	tcpAddr := ResolveTCPAddr(ip, port)
 	t.locker.Lock()
 	defer t.locker.Unlock()
