@@ -21,7 +21,7 @@ var _ service.WorkerServiceClient = (*WorkerController)(nil)
 type WorkerProcessController interface {
 	Stop()
 	NewWorker() error
-	Start()
+	Start([]int)
 	Restart()
 }
 type WorkerController struct {
