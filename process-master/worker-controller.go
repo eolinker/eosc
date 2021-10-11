@@ -32,7 +32,7 @@ type WorkerController struct {
 	trafficController traffic.IController
 	isStop            bool
 	checkClose        chan int
-	restartChan       chan bool
+	restartChan       chan chan []int
 }
 
 func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
@@ -46,7 +46,7 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 		trafficController: trafficController,
 		dms:               dmsAll,
 		checkClose:        make(chan int, 1),
-		restartChan:       make(chan bool, 1),
+		restartChan:       make(chan chan []int, 1),
 	}
 }
 
@@ -86,7 +86,7 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 		}
 	}
 }
-func (wc *WorkerController) Start() {
+func (wc *WorkerController) Start(initPorts []int) {
 
 	wc.NewWorker()
 
@@ -97,7 +97,7 @@ func (wc *WorkerController) Start() {
 		}
 		next := time.NewTimer(time.Second)
 		next.Stop()
-		var last []int = nil
+		var last = initPorts
 		defer next.Stop()
 		defer t.Stop()
 		for {
@@ -132,8 +132,12 @@ func (wc *WorkerController) Start() {
 				}
 			case <-wc.checkClose:
 				return
-			case <-wc.restartChan:
-				log.Debug("restart worker...")
+			case cback, ok := <-wc.restartChan:
+				if ok {
+					cback <- last
+					close(cback)
+				}
+
 				return
 				//next.Reset(time.Second * 1)
 			}
@@ -144,8 +148,12 @@ func (wc *WorkerController) Start() {
 
 func (wc *WorkerController) Restart() {
 	//wc.trafficController.Reset(nil)
-	wc.restartChan <- true
-	wc.Start()
+	cback := make(chan []int, 1)
+	wc.restartChan <- cback
+
+	last := <-cback
+	wc.Start(last)
+
 }
 func (wc *WorkerController) NewWorker() error {
 	wc.locker.Lock()
