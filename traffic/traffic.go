@@ -28,6 +28,33 @@ type Traffic struct {
 	data   *tTrafficData
 }
 
+func (t *Traffic) Expire(ports []int) {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+
+	newData := newTTrafficData()
+
+	old := t.data.clone()
+
+	for _, p := range ports {
+		addr := ResolveTCPAddr("", p)
+		name := addrToName(addr)
+		if o, has := old.Del(name); has {
+			log.Debug("move traffic:", name)
+			newData.add(o)
+		}
+	}
+	for n, o := range old.All() {
+
+		log.Debug("close old : ", n)
+		if err := o.Close(); err != nil {
+			log.Warn("close listener:", err, " ", o.Addr())
+		}
+		log.Debug("close old done:", n)
+	}
+
+}
+
 func NewTraffic() *Traffic {
 	return &Traffic{
 		data:   newTTrafficData(),
@@ -70,6 +97,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
+	Expire([]int)
 }
 
 func (t *Traffic) add(ln net.Listener) {

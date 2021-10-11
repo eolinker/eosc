@@ -32,6 +32,10 @@ type Controller struct {
 	data   *tTrafficData
 }
 
+func (c *Controller) Expire(ports []int) {
+	c.Reset(ports)
+}
+
 func (c *Controller) Close() {
 	c.locker.Lock()
 	list := c.data.list()
@@ -144,10 +148,7 @@ func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
 	defer c.locker.Unlock()
 	tcpAddr := ResolveTCPAddr(ip, port)
 	tcp, has := c.data.get(addrToName(tcpAddr))
-	//if err != nil {
-	//	log.Warn("get listen tcp from traffic :", err)
-	//	return nil, err
-	//}
+
 	if !has {
 		log.Warn("get listen tcp not exist")
 

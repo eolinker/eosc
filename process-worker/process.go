@@ -118,7 +118,14 @@ func NewProcessWorker() (*ProcessWorker, error) {
 		log.Warn("worker configs error:", err)
 		return nil, err
 	}
+
 	w.workers = wm
+	ports32 := wm.portsRequire.All()
+	ports := make([]int, len(ports32))
+	for i, v := range ports32 {
+		ports[i] = int(v)
+	}
+	w.tf.Expire(ports)
 	return w, nil
 }
 

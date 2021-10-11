@@ -145,6 +145,7 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
 			}
 		}
 	}
+
 	return nil
 }
 
