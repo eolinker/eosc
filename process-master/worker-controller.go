@@ -142,7 +142,7 @@ func (wc *WorkerController) Start() {
 }
 
 func (wc *WorkerController) Restart() {
-	wc.trafficController.Reset(nil)
+	//wc.trafficController.Reset(nil)
 	wc.restartChan <- true
 	wc.Start()
 }
