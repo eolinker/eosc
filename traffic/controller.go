@@ -42,10 +42,7 @@ func (c *Controller) Close() {
 	c.data = newTTrafficData()
 	c.locker.Unlock()
 	for _, it := range list {
-		err := it.Close()
-		if err != nil {
-			log.Info("close traffic listener:", err)
-		}
+		it.shutdown()
 	}
 }
 
@@ -83,10 +80,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 		//	continue
 		//}
 		log.Debug("close old : ", n)
-		if err := o.Close(); err != nil {
-			log.Warn("close listener:", err, " ", o.Addr())
-		}
-
+		o.shutdown()
 		log.Debug("close old done:", n)
 	}
 	c.data = newData
