@@ -44,18 +44,23 @@ func newTTcpListener(listener *net.TCPListener) *tListener {
 	log.Debug("new tcp listener...", eosc.TypeNameOf(listener), " ", addrToName(addr))
 	return &tListener{listener: listener, addr: addr, name: addrToName(addr)}
 }
+func (t *tListener) shutdown() {
+
+	log.Info("shutdown listener:", t.name)
+	if t.parent != nil {
+		t.parent.remove(t.name)
+	}
+
+	if t.file != nil {
+		t.file.Close()
+	}
+	t.Close()
+
+	log.Debug("tListener close done")
+}
 func (t *tListener) Close() error {
 	log.Debug("tListener close try")
 	t.once.Do(func() {
-
-		log.Info("shutdown listener:", t.name)
-		if t.parent != nil {
-			t.parent.remove(t.name)
-		}
-
-		if t.file != nil {
-			t.file.Close()
-		}
 		if t.listener != nil {
 			err := t.listener.Close()
 			if err != nil {
@@ -64,7 +69,6 @@ func (t *tListener) Close() error {
 			t.listener = nil
 		}
 	})
-	log.Debug("tListener close done")
 	return nil
 }
 
@@ -74,12 +78,14 @@ func (t *tListener) File() (*os.File, error) {
 
 		t.file, t.fileError = t.listener.File()
 		log.Debug("get tcp file...", t.name)
-		err := t.listener.Close()
-		if err != nil {
-			log.Error("tcp listener close error: ", err)
-		}
-		log.Debug("listener is closed...", t.name)
-		t.listener = nil
+		//tcp := t.listener
+		//t.listener = nil
+		//err := tcp.Close()
+		//if err != nil {
+		//	log.Error("tcp listener close error: ", err)
+		//}
+		//log.Debug("listener is closed...", t.name)
+
 		//} else {
 		//	t.fileError = ErrorNotTcpListener
 		//}
