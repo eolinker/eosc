@@ -28,21 +28,21 @@ func UnixConnect(ctx context.Context, addr string) (net.Conn, error) {
 		log.Debug("ResolveUnixAddr:", addr, ":", err)
 		return nil, err
 	}
-	var lastErr error
-	t := time.NewTimer(time.Millisecond)
+
+	t := time.NewTicker(time.Millisecond)
+	defer t.Stop()
 	for {
+		conn, err := net.DialUnix("unix", nil, unixAddress)
+		if err == nil {
+			log.Info("dail unix:", err)
+			return conn, nil
+		}
+
 		select {
 		case <-ctx.Done():
-			t.Stop()
-			return nil, lastErr
+			return nil, err
 		case <-t.C:
-			conn, err := net.DialUnix("unix", nil, unixAddress)
-			if err != nil {
-				lastErr = err
-				log.Info("dail unix:", err)
-				continue
-			}
-			return conn, err
+
 		}
 	}
 
