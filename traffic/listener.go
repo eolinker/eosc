@@ -24,6 +24,7 @@ type tListener struct {
 	file      *os.File
 	fileError error
 	addr      net.Addr
+	name      string
 }
 
 func (t *tListener) Addr() net.Addr {
@@ -31,16 +32,16 @@ func (t *tListener) Addr() net.Addr {
 }
 
 func newTTcpListener(listener net.Listener, parent iRemove) *tListener {
+	addr := listener.Addr()
 
-	return &tListener{Listener: listener, parent: parent, addr: listener.Addr()}
+	return &tListener{Listener: listener, parent: parent, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) Close() error {
 	log.Debug("tListener close try")
 	t.once.Do(func() {
 
-		name := toName(t.Listener)
-		log.Info("shutdown listener:", name)
-		t.parent.remove(name)
+		log.Info("shutdown listener:", t.name)
+		t.parent.remove(t.name)
 
 		if t.file != nil {
 			t.file.Close()
