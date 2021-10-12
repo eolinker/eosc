@@ -34,10 +34,9 @@ func UnixConnect(ctx context.Context, addr string) (net.Conn, error) {
 	for {
 		conn, err := net.DialUnix("unix", nil, unixAddress)
 		if err == nil {
-			log.Info("dail unix:", err)
 			return conn, nil
 		}
-
+		log.Info("dail unix:", err)
 		select {
 		case <-ctx.Done():
 			return nil, err
