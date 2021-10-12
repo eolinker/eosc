@@ -20,7 +20,7 @@ import (
 )
 
 func UnixConnect(ctx context.Context, addr string) (net.Conn, error) {
-
+	log.Debug("UnixConnect:", addr)
 	unixAddress, err := net.ResolveUnixAddr("unix", addr)
 	if err != nil {
 		log.Debug("ResolveUnixAddr:", addr, ":", err)
@@ -35,6 +35,7 @@ func UnixConnect(ctx context.Context, addr string) (net.Conn, error) {
 func Connect(addr string) (*grpc.ClientConn, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithContextDialer(UnixConnect))
 	if err != nil {
+
 		return nil, fmt.Errorf("did not connect: %w", err)
 	}
 	return conn, nil

@@ -29,7 +29,6 @@ func newTTcpListener(listener net.Listener, parent iRemove) *tListener {
 
 	return &tListener{Listener: listener, parent: parent}
 }
-
 func (t *tListener) Close() error {
 	log.Debug("tListener close try")
 	t.once.Do(func() {
@@ -37,12 +36,15 @@ func (t *tListener) Close() error {
 		name := toName(t.Listener)
 		log.Info("shutdown listener:", name)
 		t.parent.remove(name)
-		err := t.Listener.Close()
-		if err != nil {
-			log.Warn("close listener:", err)
-		}
+
 		if t.file != nil {
 			t.file.Close()
+		}
+		if t.Listener != nil {
+			err := t.Listener.Close()
+			if err != nil {
+				log.Warn("close listener:", err)
+			}
 		}
 	})
 	log.Debug("tListener close done")
@@ -54,6 +56,8 @@ func (t *tListener) File() (*os.File, error) {
 		if tcp, ok := t.Listener.(*net.TCPListener); ok {
 
 			t.file, t.fileError = tcp.File()
+			t.Listener.Close()
+			t.Listener = nil
 		} else {
 			t.fileError = ErrorNotTcpListener
 		}

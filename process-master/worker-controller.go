@@ -170,14 +170,14 @@ func (wc *WorkerController) NewWorker() error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	defer utils.Timeout("wait worker process start:")()
-	wc.current.createClient()
+
 	for {
 		select {
 		case <-ticker.C:
-
+			wc.current.createClient()
 			_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 			if err != nil {
-				//log.Debug("work controller ping: ", err)
+				log.Debug("work controller ping: ", err)
 				continue
 			}
 

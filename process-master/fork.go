@@ -46,7 +46,6 @@ func (m *Master) Fork() error {
 	if err != nil {
 		return err
 	}
-	//m.workerTraffic.Close()
 	data := make([]byte, len(dataMasterTraffic)+len(dataWorkerTraffic))
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
