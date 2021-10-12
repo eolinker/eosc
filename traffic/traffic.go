@@ -73,10 +73,10 @@ func (t *Traffic) Read(in io.Reader) error {
 func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	log.Debug("traffic try ListenTcp:", ip, ":", port)
 	tcpAddr := ResolveTCPAddr(ip, port)
+	name := addrToName(tcpAddr)
 	t.locker.Lock()
 	defer t.locker.Unlock()
 
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Debug("traffic listen:", name)
 	if o, has := t.data.get(name); has {
 

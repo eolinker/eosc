@@ -143,9 +143,9 @@ func NewController(r io.Reader) IController {
 }
 
 func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
+	tcpAddr := ResolveTCPAddr(ip, port)
 	c.locker.Lock()
 	defer c.locker.Unlock()
-	tcpAddr := ResolveTCPAddr(ip, port)
 	tcp, has := c.data.get(addrToName(tcpAddr))
 	if !has {
 		log.Warn("get listen tcp not exist")

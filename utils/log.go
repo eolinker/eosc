@@ -10,6 +10,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -24,6 +25,7 @@ func InitLogTransport(name string) {
 		dir = filepath.Base(".")
 		log.InitDebug(true)
 	}
+
 	writer := filelog.NewFileWriteByPeriod()
 	writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
 	writer.Open()
@@ -34,4 +36,5 @@ func InitLogTransport(name string) {
 	}
 	transport.SetFormatter(formater)
 	log.Reset(transport)
+	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
 }
