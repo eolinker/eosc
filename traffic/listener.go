@@ -27,21 +27,29 @@ type tListener struct {
 	name      string
 }
 
+func (t *tListener) Accept() (net.Conn, error) {
+	if t.Listener != nil {
+		return t.Listener.Accept()
+	}
+	return nil, ErrorInvalidListener
+}
 func (t *tListener) Addr() net.Addr {
 	return t.addr
 }
 
-func newTTcpListener(listener net.Listener, parent iRemove) *tListener {
+func newTTcpListener(listener net.Listener) *tListener {
 	addr := listener.Addr()
 
-	return &tListener{Listener: listener, parent: parent, addr: addr, name: addrToName(addr)}
+	return &tListener{Listener: listener, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) Close() error {
 	log.Debug("tListener close try")
 	t.once.Do(func() {
 
 		log.Info("shutdown listener:", t.name)
-		t.parent.remove(t.name)
+		if t.parent != nil {
+			t.parent.remove(t.name)
+		}
 
 		if t.file != nil {
 			t.file.Close()

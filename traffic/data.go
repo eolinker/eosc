@@ -2,7 +2,6 @@ package traffic
 
 import (
 	"io"
-	"net"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -16,10 +15,10 @@ func (t *tTrafficData) remove(name string) {
 	log.Debug("remove traffic data:", name)
 	t.data.Del(name)
 }
-func (t *tTrafficData) Del(name string) (net.Listener, bool) {
+func (t *tTrafficData) Del(name string) (*tListener, bool) {
 	d, has := t.data.Del(name)
 	if has {
-		return d.(*tListener).Listener, has
+		return d.(*tListener), has
 	}
 	return nil, false
 }
@@ -38,16 +37,17 @@ func (t *tTrafficData) Read(r io.Reader) {
 		return
 	}
 	for _, ln := range listeners {
-		t.add(ln)
+		t.add(newTTcpListener(ln))
 	}
 }
-func (t *tTrafficData) add(ln net.Listener) {
-	name := toName(ln)
-	log.Info("traffic add:", name)
-	t.data.Set(name, newTTcpListener(ln, t))
+func (t *tTrafficData) add(ln *tListener) {
+
+	log.Info("traffic add:", ln.name)
+	t.data.Set(ln.name, ln)
+	ln.parent = t
 }
 
-func (t *tTrafficData) get(name string) (net.Listener, bool) {
+func (t *tTrafficData) get(name string) (*tListener, bool) {
 	d, has := t.data.Get(name)
 	if has {
 		return d.(*tListener), has

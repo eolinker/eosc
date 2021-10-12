@@ -71,7 +71,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 				log.Warn("listen tcp:", err)
 				return false, err
 			}
-			newData.add(l)
+			newData.add(newTTcpListener(l))
 			isCreate = true
 		}
 	}
@@ -147,7 +147,6 @@ func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
 	defer c.locker.Unlock()
 	tcpAddr := ResolveTCPAddr(ip, port)
 	tcp, has := c.data.get(addrToName(tcpAddr))
-
 	if !has {
 		log.Warn("get listen tcp not exist")
 
@@ -158,9 +157,9 @@ func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
 			log.Warn("listen tcp:", err)
 			return nil, err
 		}
-
-		c.data.add(l)
-		tcp = l
+		ln := newTTcpListener(l)
+		c.data.add(ln)
+		tcp = ln
 	}
 	return tcp, nil
 }

@@ -79,15 +79,15 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Debug("traffic listen:", name)
 	if o, has := t.data.get(name); has {
-		listener, ok := o.(*tListener)
-		if !ok {
-			log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
 
-			return nil, ErrorInvalidListener
-		}
+		//if !ok {
+		//	log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
+		//
+		//	return nil, ErrorInvalidListener
+		//}
 		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
 
-		return listener, nil
+		return o, nil
 	}
 	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
 
@@ -98,11 +98,6 @@ type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
 	Expire([]int)
-}
-
-func (t *Traffic) add(ln net.Listener) {
-
-	t.data.add(ln)
 }
 
 func (t *Traffic) Close() {
