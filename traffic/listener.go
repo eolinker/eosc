@@ -23,11 +23,16 @@ type tListener struct {
 	parent    iRemove
 	file      *os.File
 	fileError error
+	addr      net.Addr
+}
+
+func (t *tListener) Addr() net.Addr {
+	return t.addr
 }
 
 func newTTcpListener(listener net.Listener, parent iRemove) *tListener {
 
-	return &tListener{Listener: listener, parent: parent}
+	return &tListener{Listener: listener, parent: parent, addr: listener.Addr()}
 }
 func (t *tListener) Close() error {
 	log.Debug("tListener close try")
