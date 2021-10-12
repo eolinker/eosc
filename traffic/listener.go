@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/eolinker/eosc"
+
 	"github.com/eolinker/eosc/log"
 )
 
@@ -18,7 +20,7 @@ type iRemove interface {
 }
 
 type tListener struct {
-	listener  net.Listener
+	listener  *net.TCPListener
 	once      sync.Once
 	parent    iRemove
 	file      *os.File
@@ -37,9 +39,9 @@ func (t *tListener) Addr() net.Addr {
 	return t.addr
 }
 
-func newTTcpListener(listener net.Listener) *tListener {
+func newTTcpListener(listener *net.TCPListener) *tListener {
 	addr := listener.Addr()
-
+	log.Debug("new tcp listener...", eosc.TypeNameOf(listener), " ", addrToName(addr))
 	return &tListener{listener: listener, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) Close() error {
@@ -68,14 +70,19 @@ func (t *tListener) Close() error {
 
 func (t *tListener) File() (*os.File, error) {
 	if t.file == nil && t.fileError == nil {
-		if tcp, ok := t.listener.(*net.TCPListener); ok {
+		//if tcp, ok := t.listener.(*net.TCPListener); ok {
 
-			t.file, t.fileError = tcp.File()
-			t.listener.Close()
-			t.listener = nil
-		} else {
-			t.fileError = ErrorNotTcpListener
+		t.file, t.fileError = t.listener.File()
+		log.Debug("get tcp file...", t.name)
+		err := t.listener.Close()
+		if err != nil {
+			log.Error("tcp listener close error: ", err)
 		}
+		log.Debug("listener is closed...", t.name)
+		t.listener = nil
+		//} else {
+		//	t.fileError = ErrorNotTcpListener
+		//}
 	}
 	return t.file, t.fileError
 }
