@@ -13,7 +13,7 @@ import (
 func Start(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "start",
-		Usage: "start goku server",
+		Usage: fmt.Sprintf("start %s server", env.AppName()),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "admin-ip",

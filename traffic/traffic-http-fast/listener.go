@@ -21,7 +21,7 @@ func (l *listenerNotClose) Accept() (net.Conn, error) {
 	}
 	accept, err := l.inner.Accept()
 	if err != nil {
-		log.Debug("accept: error")
+		log.Debug("accept: error: ", err)
 
 		return nil, err
 	}
