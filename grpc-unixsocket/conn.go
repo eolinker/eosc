@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/eolinker/eosc/utils"
 
@@ -21,16 +22,30 @@ import (
 
 func UnixConnect(ctx context.Context, addr string) (net.Conn, error) {
 	log.Debug("UnixConnect:", addr)
+
 	unixAddress, err := net.ResolveUnixAddr("unix", addr)
 	if err != nil {
 		log.Debug("ResolveUnixAddr:", addr, ":", err)
 		return nil, err
 	}
-	conn, err := net.DialUnix("unix", nil, unixAddress)
-	if err != nil {
-		log.Info("dail unix:", err)
+	var lastErr error
+	t := time.NewTimer(time.Millisecond)
+	for {
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return nil, lastErr
+		case <-t.C:
+			conn, err := net.DialUnix("unix", nil, unixAddress)
+			if err != nil {
+				lastErr = err
+				log.Info("dail unix:", err)
+				continue
+			}
+			return conn, err
+		}
 	}
-	return conn, err
+
 }
 func Connect(addr string) (*grpc.ClientConn, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithContextDialer(UnixConnect))
