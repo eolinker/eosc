@@ -18,7 +18,7 @@ type iRemove interface {
 }
 
 type tListener struct {
-	net.Listener
+	listener  net.Listener
 	once      sync.Once
 	parent    iRemove
 	file      *os.File
@@ -28,8 +28,8 @@ type tListener struct {
 }
 
 func (t *tListener) Accept() (net.Conn, error) {
-	if t.Listener != nil {
-		return t.Listener.Accept()
+	if t.listener != nil {
+		return t.listener.Accept()
 	}
 	return nil, ErrorInvalidListener
 }
@@ -40,7 +40,7 @@ func (t *tListener) Addr() net.Addr {
 func newTTcpListener(listener net.Listener) *tListener {
 	addr := listener.Addr()
 
-	return &tListener{Listener: listener, addr: addr, name: addrToName(addr)}
+	return &tListener{listener: listener, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) Close() error {
 	log.Debug("tListener close try")
@@ -54,11 +54,12 @@ func (t *tListener) Close() error {
 		if t.file != nil {
 			t.file.Close()
 		}
-		if t.Listener != nil {
-			err := t.Listener.Close()
+		if t.listener != nil {
+			err := t.listener.Close()
 			if err != nil {
 				log.Warn("close listener:", err)
 			}
+			t.listener = nil
 		}
 	})
 	log.Debug("tListener close done")
@@ -67,11 +68,11 @@ func (t *tListener) Close() error {
 
 func (t *tListener) File() (*os.File, error) {
 	if t.file == nil && t.fileError == nil {
-		if tcp, ok := t.Listener.(*net.TCPListener); ok {
+		if tcp, ok := t.listener.(*net.TCPListener); ok {
 
 			t.file, t.fileError = tcp.File()
-			t.Listener.Close()
-			t.Listener = nil
+			t.listener.Close()
+			t.listener = nil
 		} else {
 			t.fileError = ErrorNotTcpListener
 		}
