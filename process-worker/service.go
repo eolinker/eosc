@@ -5,6 +5,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc/env"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 
@@ -21,6 +23,7 @@ type WorkerServer struct {
 }
 
 func (ws *WorkerServer) SetWorkers(workers IWorkers) {
+	log.Debug("set IWorkers")
 	ws.workers = workers
 }
 func (ws *WorkerServer) Stop() {
@@ -30,7 +33,7 @@ func (ws *WorkerServer) Stop() {
 	syscall.Unlink(addr)
 }
 func NewWorkerServer() (*WorkerServer, error) {
-
+	defer utils.Timeout("NewWorkerServer")()
 	addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)

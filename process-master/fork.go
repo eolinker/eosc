@@ -37,18 +37,16 @@ func (m *Master) Fork() error {
 	}
 	runningMasterForked = true
 
-	// 子进程的环境变量加入MASTER_CONTINUE字段，用于新的Master启动后给父Master传送中断信号
-	env := append(os.Environ(), env.GenEnv("MASTER_CONTINUE", "1"))
 	dataMasterTraffic, filesMaster, err := m.masterTraffic.Encode(3)
 	if err != nil {
 		return err
 	}
-	m.masterTraffic.Close()
+	//m.masterTraffic.Close()
 	dataWorkerTraffic, filesWorker, err := m.workerTraffic.Encode(len(filesMaster) + 3)
 	if err != nil {
 		return err
 	}
-	m.workerTraffic.Close()
+	//m.workerTraffic.Close()
 	data := make([]byte, len(dataMasterTraffic)+len(dataWorkerTraffic))
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
@@ -64,7 +62,8 @@ func (m *Master) Fork() error {
 		Setsid: true,
 	}
 	cmd.ExtraFiles = append(filesMaster, filesWorker...)
-	cmd.Env = env
+	// 子进程的环境变量加入MASTER_CONTINUE字段，用于新的Master启动后给父Master传送中断信号
+	cmd.Env = append(os.Environ(), env.GenEnv("MASTER_CONTINUE", "1"))
 
 	err = cmd.Start()
 	if err != nil {

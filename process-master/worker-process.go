@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 
 	"github.com/eolinker/eosc/log"
@@ -26,6 +27,7 @@ type WorkerProcess struct {
 	service.WorkerServiceClient
 	cmd  *exec.Cmd
 	conn *grpc.ClientConn
+	once sync.Once
 }
 
 func (w *WorkerProcess) Close() error {
@@ -40,7 +42,19 @@ func (w *WorkerProcess) Close() error {
 	return nil
 }
 
-func (wc *WorkerController) newWorkerProcess(stdIn io.Reader, extraFiles []*os.File) (*WorkerProcess, error) {
+func (w *WorkerProcess) createClient() {
+	w.once.Do(func() {
+		client, conn, err := createClient(w.cmd.Process.Pid)
+		if err != nil {
+			log.Warn("create client :", err)
+			return
+		}
+		w.conn = conn
+		w.WorkerServiceClient = client
+	})
+}
+
+func newWorkerProcess(stdIn io.Reader, extraFiles []*os.File) (*WorkerProcess, error) {
 	cmd, err := process.Cmd(eosc.ProcessWorker, nil)
 	if err != nil {
 		return nil, err
@@ -53,14 +67,9 @@ func (wc *WorkerController) newWorkerProcess(stdIn io.Reader, extraFiles []*os.F
 	if err != nil {
 		return nil, err
 	}
-	client, conn, err := createClient(cmd.Process.Pid)
-	if err != nil {
-		return nil, err
-	}
+
 	return &WorkerProcess{
-		cmd:                 cmd,
-		conn:                conn,
-		WorkerServiceClient: client,
+		cmd: cmd,
 	}, nil
 }
 

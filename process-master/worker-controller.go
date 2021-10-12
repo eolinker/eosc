@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc/traffic"
 
 	"github.com/eolinker/eosc/log"
@@ -156,18 +158,23 @@ func (wc *WorkerController) Restart() {
 
 }
 func (wc *WorkerController) NewWorker() error {
+
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
 	err := wc.new()
 	if err != nil {
+		log.Warn("new worker:", err)
 		return err
 	}
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
+	defer utils.Timeout("wait worker process start:")()
+	wc.current.createClient()
 	for {
 		select {
 		case <-ticker.C:
+
 			_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 			if err != nil {
 				//log.Debug("work controller ping: ", err)
@@ -196,8 +203,9 @@ func (wc *WorkerController) new() error {
 		buf.Write(data)
 	}
 
-	workerProcess, err := wc.newWorkerProcess(buf, fileAll)
+	workerProcess, err := newWorkerProcess(buf, fileAll)
 	if err != nil {
+		log.Warn("new worker process:", err)
 		return err
 	}
 
@@ -218,6 +226,7 @@ func (wc *WorkerController) getClient() *WorkerProcess {
 	if wc.current == nil {
 		return nil
 	}
+	wc.current.createClient()
 	return wc.current
 }
 

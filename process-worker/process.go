@@ -24,7 +24,6 @@ import (
 )
 
 func Process() {
-
 	utils.InitLogTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")
