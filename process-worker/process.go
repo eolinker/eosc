@@ -119,12 +119,12 @@ func NewProcessWorker() (*ProcessWorker, error) {
 	}
 
 	w.workers = wm
-	ports32 := wm.portsRequire.All()
-	ports := make([]int, len(ports32))
-	for i, v := range ports32 {
-		ports[i] = int(v)
-	}
-	w.tf.Expire(ports)
+	//ports32 := wm.portsRequire.All()
+	//ports := make([]int, len(ports32))
+	//for i, v := range ports32 {
+	//	ports[i] = int(v)
+	//}
+	//w.tf.Expire(ports)
 	return w, nil
 }
 
@@ -139,7 +139,7 @@ func (w *ProcessWorker) close() {
 }
 
 func (w *ProcessWorker) Start() error {
-
+	w.workerServer.SetTraffic(w.tf)
 	w.workerServer.SetWorkers(w.workers)
 
 	return nil

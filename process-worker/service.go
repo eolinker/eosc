@@ -5,6 +5,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/eolinker/eosc/traffic"
+
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc/env"
@@ -20,6 +22,12 @@ type WorkerServer struct {
 	service.UnimplementedWorkerServiceServer
 	*grpc.Server
 	workers IWorkers
+	tf      traffic.ITraffic
+}
+
+func (ws *WorkerServer) SetTraffic(tf traffic.ITraffic) {
+	log.Debug("set traffic")
+	ws.tf = tf
 }
 
 func (ws *WorkerServer) SetWorkers(workers IWorkers) {
@@ -142,7 +150,7 @@ func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDelet
 }
 
 func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerSetResponse, error) {
-	log.Debug("set: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
+	log.Debug("worker server set: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
 	if ws.workers == nil {
 		return &service.WorkerSetResponse{
 			Status:   service.WorkerStatusCode_FAIL,
@@ -152,7 +160,7 @@ func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) 
 	}
 	err := ws.workers.Set(req.Id, req.Profession, req.Name, req.Driver, req.Body)
 	if err != nil {
-		log.Info("worker server set:", err)
+		log.Info("worker server set error:", err)
 		return &service.WorkerSetResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
@@ -184,4 +192,26 @@ func (ws *WorkerServer) Ping(ctx context.Context, request *service.WorkerHelloRe
 			Port: ws.workers.ResourcesPort(),
 		},
 	}, nil
+}
+
+func (ws *WorkerServer) Refresh(ctx context.Context, request *service.WorkerRefreshRequest) (*service.WorkerRefreshResponse, error) {
+	if ws.tf == nil {
+		return &service.WorkerRefreshResponse{
+			Status:  service.WorkerStatusCode_FAIL,
+			Message: "Initializing",
+		}, nil
+	}
+	ws.tf.Expire(int32ToInt(request.Ports))
+	return &service.WorkerRefreshResponse{
+		Status:  service.WorkerStatusCode_SUCCESS,
+		Message: "",
+	}, nil
+}
+
+func int32ToInt(vs []int32) []int {
+	rs := make([]int, len(vs))
+	for i, v := range vs {
+		rs[i] = int(v)
+	}
+	return rs
 }

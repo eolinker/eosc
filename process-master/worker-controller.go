@@ -23,7 +23,7 @@ var _ service.WorkerServiceClient = (*WorkerController)(nil)
 type WorkerProcessController interface {
 	Stop()
 	NewWorker() error
-	Start([]int)
+	Start()
 	Restart()
 }
 type WorkerController struct {
@@ -34,7 +34,8 @@ type WorkerController struct {
 	trafficController traffic.IController
 	isStop            bool
 	checkClose        chan int
-	restartChan       chan chan []int
+	portsChan         chan []int32
+	localPorts        []int32
 }
 
 func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
@@ -48,7 +49,7 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 		trafficController: trafficController,
 		dms:               dmsAll,
 		checkClose:        make(chan int, 1),
-		restartChan:       make(chan chan []int, 1),
+		portsChan:         make(chan []int32, 1),
 	}
 }
 
@@ -60,7 +61,7 @@ func (wc *WorkerController) Stop() {
 		return
 	}
 	close(wc.checkClose)
-	close(wc.restartChan)
+	close(wc.portsChan)
 	wc.isStop = true
 	if wc.current != nil {
 		wc.current.Close()
@@ -88,60 +89,54 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 		}
 	}
 }
-func (wc *WorkerController) Start(initPorts []int) {
+func (wc *WorkerController) Start() {
 
 	wc.NewWorker()
 
 	go func() {
-		t := time.NewTicker(time.Second / 4)
-		in := &service.WorkerHelloRequest{
-			Hello: "hello",
-		}
+
 		next := time.NewTimer(time.Second)
 		next.Stop()
-		var last = initPorts
 		defer next.Stop()
-		defer t.Stop()
 		for {
 			select {
-			case <-t.C:
-				client := wc.getClient()
-				if client != nil {
-					response, err := client.Ping(context.TODO(), in)
-					if err != nil {
-						log.Debug("ping worker controller error: ", err)
-						continue
-					}
-					ports := sortAndSet(response.Resource.Port)
-
-					if !equal(last, ports) {
-						log.Debug("sort ports: ", ports, "last ports: ", last)
-						last = ports
-						next.Reset(time.Second)
-					}
-				}
 			case <-next.C:
 				{
-					log.Debug("reset traffic:", last)
-					isCreate, err := wc.trafficController.Reset(last)
+					response, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 					if err != nil {
-						log.Debug("reset ports error: ", err, " last ports: ", last, " isCreate: ", isCreate)
 						continue
 					}
+					ps, psInt := sortAndSet(response.Resource.Port)
+					if equal(ps, wc.localPorts) {
+						continue
+					}
+					log.Debug("reset traffic:", ps)
+					isCreate, err := wc.trafficController.Reset(psInt)
+					if err != nil {
+						log.Debug("reset ports error: ", err, " last ports: ", ps, " isCreate: ", isCreate)
+						continue
+					}
+					wc.localPorts = ps
 					if isCreate {
 						wc.NewWorker()
+					} else {
+						in := &service.WorkerRefreshRequest{
+							Ports: wc.localPorts,
+						}
+						_, err := wc.Refresh(context.TODO(), in)
+						if err != nil {
+							log.Debug("ping worker controller error: ", err)
+							continue
+						}
 					}
 				}
 			case <-wc.checkClose:
 				return
-			case cback, ok := <-wc.restartChan:
+			case _, ok := <-wc.portsChan:
 				if ok {
-					cback <- last
-					close(cback)
+					//last = ports
+					next.Reset(time.Second)
 				}
-
-				return
-				//next.Reset(time.Second * 1)
 			}
 		}
 
@@ -149,12 +144,7 @@ func (wc *WorkerController) Start(initPorts []int) {
 }
 
 func (wc *WorkerController) Restart() {
-	//wc.trafficController.Reset(nil)
-	cback := make(chan []int, 1)
-	wc.restartChan <- cback
-
-	last := <-cback
-	wc.Start(last)
+	wc.NewWorker()
 
 }
 func (wc *WorkerController) NewWorker() error {
@@ -175,12 +165,14 @@ func (wc *WorkerController) NewWorker() error {
 		_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 		if err == nil {
 			log.Debug("work controller ping: ", err)
+			wc.portsChan <- []int32{}
 			return nil
 		}
 		<-ticker.C
 	}
 
 }
+
 func (wc *WorkerController) new() error {
 	log.Debug("create worker process start")
 	buf := bytes.NewBuffer(nil)
@@ -225,7 +217,7 @@ func (wc *WorkerController) getClient() *WorkerProcess {
 	return wc.current
 }
 
-func equal(v1, v2 []int) bool {
+func equal(v1, v2 []int32) bool {
 	if len(v1) != len(v2) {
 		return false
 	}
@@ -237,19 +229,37 @@ func equal(v1, v2 []int) bool {
 	}
 	return true
 }
-func sortAndSet(vs []int32) []int {
+
+type int32Slice []int32
+
+func (x int32Slice) Len() int {
+	return len(x)
+}
+
+func (x int32Slice) Less(i, j int) bool {
+	return x[i] < x[j]
+}
+
+func (x int32Slice) Swap(i, j int) {
+	x[i], x[j] = x[j], x[i]
+}
+
+func sortAndSet(vs []int32) ([]int32, []int) {
 	if len(vs) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	m := make(map[int]int)
+	m := make(map[int32]int32)
 	for _, v := range vs {
-		m[int(v)] = 1
+		m[v] = 1
 	}
-	rs := make([]int, 0, len(m))
+	rs := make([]int32, 0, len(m))
+	rsInt := make([]int, 0, len(m))
 	for v := range m {
 		rs = append(rs, v)
+		rsInt = append(rsInt, int(v))
 	}
-	sort.Ints(rs)
-	return rs
+	sort.Sort(int32Slice(rs))
+	sort.Ints(rsInt)
+	return rs, rsInt
 }

@@ -47,9 +47,10 @@ func (t *Traffic) Expire(ports []int) {
 	for n, o := range old.All() {
 
 		log.Debug("close old : ", n)
-		if err := o.Close(); err != nil {
-			log.Warn("close listener:", err, " ", o.Addr())
-		}
+		o.shutdown()
+		//if err := o.shutdown(); err != nil {
+		//	log.Warn("close listener:", err, " ", o.Addr())
+		//}
 		log.Debug("close old done:", n)
 	}
 
