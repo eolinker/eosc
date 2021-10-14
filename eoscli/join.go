@@ -48,6 +48,7 @@ func Join(x cli.ActionFunc) *cli.Command {
 func join(c *cli.Context, cfg *env.Config) error {
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
+
 	port := env.GetDefaultArg(cfg, env.Port, "0")
 	bPort, _ := strconv.Atoi(port)
 	if !utils.ValidAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
@@ -61,6 +62,7 @@ func join(c *cli.Context, cfg *env.Config) error {
 			return fmt.Errorf("start error: invalid ip %s\n", addr)
 		}
 	}
+	log.Info("ip:", bIP)
 	cfg.Set(env.BroadcastIP, bIP)
 	addr := c.StringSlice("addr")
 	if len(addr) < 1 {

@@ -22,12 +22,14 @@ type HttpTraffic struct {
 }
 
 func (h *HttpTraffic) ShutDown(port int) {
+
 	h.locker.Lock()
 	defer h.locker.Unlock()
 
 	if s, has := h.srvs[port]; has {
 		log.Debug("http traffic shutdown,port is ", port)
 		s.ShutDown()
+
 		delete(h.srvs, port)
 	}
 	return
@@ -53,6 +55,7 @@ func (h *HttpTraffic) Get(port int) IService {
 	if has {
 		return srv
 	}
+	log.Debug("http traffic get:", port)
 	listener, err := h.tf.ListenTcp("", port)
 
 	if err != nil {

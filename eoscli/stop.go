@@ -1,6 +1,9 @@
 package eoscli
 
 import (
+	"fmt"
+
+	"github.com/eolinker/eosc/env"
 	"github.com/urfave/cli/v2"
 )
 
@@ -9,7 +12,7 @@ var CmdStop = "stop"
 func Stop(stop cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:   "stop",
-		Usage:  "stop eosc server",
+		Usage:  fmt.Sprintf("stop %s server", env.AppName()),
 		Action: stop,
 	}
 }

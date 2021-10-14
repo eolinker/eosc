@@ -239,6 +239,17 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 			id := string(data)
 			log.Info("commit worker delete:", id)
 			w.data.Del(id)
+			req := &service.WorkerDeleteRequest{
+				Id: id,
+			}
+			response, err := w.workerServiceClient.Delete(context.TODO(), req)
+			if err != nil {
+				log.Warn("delete worker:", err)
+				return err
+			}
+			if response.Status != service.WorkerStatusCode_SUCCESS {
+				return errors.New(response.Message)
+			}
 			return nil
 		}
 	default:

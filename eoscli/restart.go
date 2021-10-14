@@ -1,8 +1,6 @@
 package eoscli
 
-import (
-	"github.com/urfave/cli/v2"
-)
+import "github.com/urfave/cli/v2"
 
 func Restart(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{

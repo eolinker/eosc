@@ -28,11 +28,22 @@ type ProposeMsg struct {
 	Body []byte `json:"body"`
 }
 
-type GetNodeInfoRequest struct {
+type PostNodeRequest struct {
 	BroadcastIP   string `json:"broadcast_ip"`
 	BroadcastPort int    `json:"broadcast_port"`
 	Protocol      string `json:"protocol"`
 	Target        string `json:"target"`
+}
+
+type SNRequest struct {
+	BroadcastIP   string `json:"broadcast_ip"`
+	BroadcastPort int    `json:"broadcast_port"`
+	Protocol      string `json:"protocol"`
+	Target        string `json:"target"`
+}
+
+type SNResponse struct {
+	SN string `json:"lastSN"`
 }
 
 type JoinRequest struct {
@@ -46,7 +57,7 @@ type JoinRequest struct {
 
 type JoinResponse struct {
 	*NodeSecret
-	Peer        map[uint64]*NodeInfo `json:"peer"`
+	Peer map[uint64]*NodeInfo `json:"peer"`
 }
 
 type NodeSecret struct {

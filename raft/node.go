@@ -45,6 +45,8 @@ type Node struct {
 
 	nodeKey string
 
+	lastSN string
+
 	broadcastIP string
 
 	broadcastPort int
@@ -116,6 +118,10 @@ func (rc *Node) readConfig() {
 	}
 	rc.broadcastIP = cfg.GetDefault(env.BroadcastIP, "")
 	rc.broadcastPort, _ = strconv.Atoi(cfg.GetDefault(env.Port, "0"))
+	rc.protocol = cfg.GetDefault(env.Protocol, "http")
+	if rc.protocol == "" {
+		rc.protocol = "http"
+	}
 }
 
 //writeConfig 将raft节点的运行配置写进文件中
@@ -125,6 +131,7 @@ func (rc *Node) writeConfig() {
 	cfg.Set(env.NodeID, strconv.Itoa(int(rc.nodeID)))
 	cfg.Set(env.NodeKey, rc.nodeKey)
 	cfg.Set(env.BroadcastIP, rc.broadcastIP)
+	cfg.Set(env.Protocol, rc.protocol)
 	cfg.Set(env.Port, strconv.Itoa(rc.broadcastPort))
 	cfg.Save()
 }
@@ -204,6 +211,7 @@ func (rc *Node) startRaft() error {
 	for k, v := range peersList {
 		// transport加入peer列表，节点本身不添加
 		if k != rc.nodeID {
+			log.Debug("add peer to node: ", v.Addr)
 			rc.transport.AddPeer(types.ID(k), []string{v.Addr})
 		}
 	}

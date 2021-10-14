@@ -145,6 +145,7 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -153,6 +154,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
+
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
 	driver, has := p.GetDriver(driverName)
@@ -168,13 +170,10 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	}
 	requires, err := eosc.CheckConfig(conf, wm)
 	if err != nil {
-		v, has := wm.data.Get("baidu@service")
-		log.Debug("check:baidu@service:", has, ":", v)
 		return err
 	}
 	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
 		if e := dc.Check(conf, requires); err != nil {
-
 			return e
 		}
 	}
@@ -197,11 +196,13 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	// create
 	worker, err := driver.Create(id, name, conf, requires)
 	if err != nil {
+		log.Warn("workers set worker create:", err)
 		return err
 	}
 	// start
 	e := worker.Start()
 	if e != nil {
+		log.Warn("workers set worker start:", e)
 		return e
 	}
 
@@ -211,6 +212,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	if res, ok := worker.(eosc.IWorkerResources); ok {
 		wm.portsRequire.Set(id, res.Ports())
 	}
+	log.Debug("workers set worker done:", id)
 	return nil
 }
 

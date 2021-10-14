@@ -96,12 +96,17 @@ func (h *HttpService) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 func (h *HttpService) ShutDown() {
 	h.locker.Lock()
 	defer h.locker.Unlock()
-	h.srv.Shutdown()
+
 	if h.inner != nil {
 		log.Debug("http service shutdown,inner addr is ", h.last.Addr())
 		h.last.Close()
 		h.last = nil
 		h.inner.Close()
+		h.inner = nil
+
+		h.srv.Shutdown()
+		h.srv = nil
+		log.Debug("http service shutdown done")
 	}
 }
 
