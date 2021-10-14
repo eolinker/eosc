@@ -2,12 +2,21 @@ package eosc
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 )
 
 func Now() string {
 	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+func GetRealIP(r *http.Request) string {
+	realIP := r.Header.Get("X-Real-IP")
+	if realIP == "" {
+		realIP = r.RemoteAddr
+	}
+	return realIP
 }
 
 func ToDriverDetails(config []*DriverConfig) []*DriverDetail {

@@ -45,6 +45,8 @@ type Node struct {
 
 	nodeKey string
 
+	lastSN string
+
 	broadcastIP string
 
 	broadcastPort int

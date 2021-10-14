@@ -1,10 +1,17 @@
 package raft
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/eolinker/eosc"
 
 	"github.com/go-basic/uuid"
 
@@ -26,7 +33,9 @@ func (rc *Node) genHandler() http.Handler {
 	// 其他节点加入集群的处理
 	sm.HandleFunc("/raft/node/join", rc.joinHandler)
 
-	sm.HandleFunc("/raft/node/info", rc.getNodeInfo)
+	sm.HandleFunc("/raft/node/join/try", rc.joinTry)
+
+	sm.HandleFunc("/raft/node/join/callback", rc.joinCallback)
 	// 其他节点转发到leader的处理
 	sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
 
@@ -34,24 +43,40 @@ func (rc *Node) genHandler() http.Handler {
 	return sm
 }
 
-//getNodeInfo 获取集群信息
-func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return
-	}
-	defer r.Body.Close()
-	joinData, err := decodeJoinRequest(body)
-	if err != nil {
-		writeError(w, "110001", "fail to parse join data", err.Error())
-		return
-	}
+//joinCallback 分配节点信息
+func (rc *Node) joinCallback(w http.ResponseWriter, r *http.Request) {
+	writeSuccessResult(w, "", &SNResponse{
+		SN: rc.lastSN,
+	})
+	return
+}
+
+//assignNodeInfo 分配节点信息
+func (rc *Node) joinTryPost(w http.ResponseWriter, r *http.Request) {
 	if !rc.join {
-		err = rc.UpdateHostInfo(joinData.Target)
-		if err != nil {
-			writeError(w, "110002", "fail to update host Info", err.Error())
-			return
-		}
+		msg := "invalid operation"
+		writeError(w, "110005", msg, msg)
+		return
+	}
+	ip := r.URL.Query().Get("broadcast_ip")
+	port := r.URL.Query().Get("broadcast_port")
+	protocol := r.URL.Query().Get("protocol")
+	address := r.URL.Query().Get("address")
+	p, _ := strconv.Atoi(port)
+	addr := fmt.Sprintf("%s://%s", protocol, ip)
+	if p > 0 {
+		addr = fmt.Sprintf("%s:%d", addr, p)
+	}
+	callbackSN, err := callbackSNRequest(addr)
+	if err != nil {
+		writeError(w, "110006", "fail to callback sn", err.Error())
+		return
+	}
+	sn := buildSN(ip, port, protocol, address, strconv.Itoa(os.Getpid()), eosc.GetRealIP(r), rc.nodeKey)
+	if callbackSN != sn {
+		msg := fmt.Sprintf("invalid sn,callback sn is %s,record sn is %s", callbackSN, sn)
+		writeError(w, "110007", msg, msg)
+		return
 	}
 	writeSuccessResult(w, "", &JoinResponse{
 		NodeSecret: &NodeSecret{
@@ -61,6 +86,51 @@ func (rc *Node) getNodeInfo(w http.ResponseWriter, r *http.Request) {
 		Peer: rc.peers.GetAllPeers(),
 	})
 	return
+}
+
+//buildSN 生成sn码
+func buildSN(args ...string) string {
+	builder := strings.Builder{}
+	for _, a := range args {
+		builder.WriteString(a)
+	}
+	h := md5.New()
+	h.Write([]byte(builder.String()))
+	return hex.EncodeToString(h.Sum(nil)) // 输出加密结果
+}
+
+//joinTryGet 获取校验码
+func (rc *Node) joinTryGet(w http.ResponseWriter, r *http.Request) {
+	ip := r.URL.Query().Get("broadcast_ip")
+	port := r.URL.Query().Get("broadcast_port")
+	protocol := r.URL.Query().Get("protocol")
+	address := r.URL.Query().Get("address")
+
+	if !rc.join {
+		err := rc.UpdateHostInfo(address)
+		if err != nil {
+			writeError(w, "110002", "fail to update host Info", err.Error())
+			return
+		}
+	}
+
+	writeSuccessResult(w, "", &SNResponse{
+		SN: buildSN(ip, port, protocol, address, strconv.Itoa(os.Getpid()), eosc.GetRealIP(r), rc.nodeKey),
+	})
+	return
+}
+
+func (rc *Node) joinTry(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		rc.joinTryGet(w, r)
+	case http.MethodPost:
+		rc.joinTryPost(w, r)
+	default:
+		w.Write([]byte("invalid method type"))
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		return
+	}
 }
 
 // joinHandler 收到其他节点加入集群的处理
@@ -195,6 +265,24 @@ func decodeResponse(data []byte) (*Response, error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+func decodeSNRequest(data []byte) (*SNRequest, error) {
+	snRequest := new(SNRequest)
+	err := json.Unmarshal(data, snRequest)
+	if err != nil {
+		return nil, err
+	}
+	return snRequest, nil
+}
+
+func decodeSNResponse(data []byte) (*SNResponse, error) {
+	snRequest := new(SNResponse)
+	err := json.Unmarshal(data, snRequest)
+	if err != nil {
+		return nil, err
+	}
+	return snRequest, nil
 }
 
 func decodeJoinRequest(data []byte) (*JoinRequest, error) {

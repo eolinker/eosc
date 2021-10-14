@@ -2,7 +2,6 @@ package raft
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -32,14 +31,8 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 	if rc.peers.GetPeerNum() > 1 {
 		return fmt.Errorf("This node has joined the cluster")
 	}
-	msg := JoinRequest{
-		BroadcastIP:   broadCastIP,
-		BroadcastPort: broadPort,
-		Protocol:      protocol,
-		Target:        address,
-	}
-	data, _ := json.Marshal(msg)
-	resp, err := getNodeInfoRequest(address, data)
+
+	resp, err := getNodeInfoRequest(rc, broadCastIP, broadPort, protocol, address)
 	if err != nil {
 		return err
 	}
@@ -61,10 +54,7 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 		return err
 	}
 
-	msg.NodeID = resp.ID
-	msg.NodeKey = resp.Key
-	data, _ = json.Marshal(msg)
-	err = joinClusterRequest(address, data)
+	err = joinClusterRequest(resp.ID, resp.Key, broadCastIP, broadPort, protocol, address)
 	if err != nil {
 		rc.join = false
 		return err
