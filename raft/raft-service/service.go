@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/golang/protobuf/proto"
+
+	"github.com/eolinker/eosc/raft"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 )
@@ -12,63 +16,144 @@ import (
 var (
 	ErrInvalidNamespace     = errors.New("invalid namespace")
 	ErrInvalidCommitHandler = errors.New("invalid commit handler")
-	ErrInvalidKey           = errors.New("invalid key")
-	commandSet              = "set"
-	commandDel              = "delete"
+	ErrInvalidCommand       = errors.New("invalid command")
+)
+
+const (
+	CommandInit     = "init"
+	SystemNamespace = "__system"
 )
 
 type Service struct {
-	store           eosc.IStore
-	commitHandlers  eosc.IUntyped
-	processHandlers eosc.IUntyped
+	handlers eosc.IUntyped
+	raftNode raft.IRaftSender
+	//processHandlers eosc.IUntyped
 }
 
-func NewService(store eosc.IStore) *Service {
-	return &Service{
-		store:           store,
-		commitHandlers:  eosc.NewUntyped(),
-		processHandlers: eosc.NewUntyped(),
+func (s *Service) Send(namespace, cmd string, body []byte) (interface{}, error) {
+
+	data, err := encodeCmd(namespace, cmd, body)
+	if err != nil {
+		return nil, err
+	}
+	return s.raftNode.Send(data)
+}
+
+func (s *Service) CommitHandler(data []byte) error {
+	cmd, err := unMarshalCmd(data)
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	return s.commitHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
+
+}
+
+func (s *Service) ProcessDataHandler(inBody []byte) (object interface{}, data []byte, err error) {
+	cmd, err := unMarshalCmd(inBody)
+	if err != nil {
+		return nil, nil, err
+	}
+	return s.ProcessHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
+}
+
+func (s *Service) SetRaft(raft raft.IRaftSender) {
+	s.raftNode = raft
+}
+
+func (s *Service) ProcessHandler(namespace string, command string, processData []byte) (interface{}, []byte, error) {
+	v, has := s.handlers.Get(namespace)
+	if !has {
+		return nil, nil, ErrInvalidNamespace
+	}
+	f, ok := v.(IRaftServiceHandler)
+	if !ok {
+		return nil, nil, ErrInvalidCommitHandler
+	}
+	body, obj, err := f.ProcessHandler(command, processData)
+	if err != nil {
+		return nil, nil, err
+	}
+	cmd, err := encodeCmd(namespace, command, body)
+	if err != nil {
+		return nil, nil, err
+	}
+	return obj, cmd, err
+
+}
+
+//func RegisterHandlers(s *Service, handlers ...ICreateHandler) {
+//	if handlers != nil {
+//		for _, cf := range handlers {
+//			h, ok := cf.(ICreateHandler)
+//			if !ok {
+//				continue
+//			}
+//			s.SetHandler(h.Namespace(), h.Handler())
+//		}
+//	}
+//}
+
+func (s *Service) SetHandlers(handlers ...ICreateHandler) {
+	if handlers != nil {
+		for _, cf := range handlers {
+			h, ok := cf.(ICreateHandler)
+			if !ok {
+				continue
+			}
+			s.SetHandler(h.Namespace(), h.Handler())
+		}
 	}
 }
 
-func (s *Service) CommitHandlerSet(namespace string, handler ICommitHandler) {
-	s.commitHandlers.Set(namespace, handler)
-}
-
-func (s *Service) ProcessHandlerSet(namespace string, handler IProcessHandler) {
-	s.processHandlers.Set(namespace, handler)
-}
-
-func (s *Service) CommitHandler(namespace string, data []byte) error {
-	if namespace == "init" {
-		return s.ResetSnap(data)
+func NewService() *Service {
+	s := &Service{
+		handlers: eosc.NewUntyped(),
 	}
-	v, has := s.commitHandlers.Get(namespace)
+	return s
+}
+
+func (s *Service) SetHandler(namespace string, handler IRaftServiceHandler) {
+	s.handlers.Set(namespace, handler)
+}
+
+func (s *Service) commitHandler(namespace string, cmd string, data []byte) error {
+	if namespace == SystemNamespace {
+		switch cmd {
+		case CommandInit:
+			return s.ResetSnap(data)
+		}
+		return ErrInvalidCommand
+	}
+
+	v, has := s.handlers.Get(namespace)
 	if !has {
 		return ErrInvalidNamespace
 	}
-	f, ok := v.(ICommitHandler)
+	f, ok := v.(IRaftServiceHandler)
 	if !ok {
 		return ErrInvalidCommitHandler
 	}
-	return f.CommitHandler(data)
+
+	return f.CommitHandler(cmd, data)
+
 }
 
-func (s *Service) ProcessHandler(namespace string, propose []byte) (string, []byte, error) {
-	v, has := s.processHandlers.Get(namespace)
-	if !has {
-		return "", nil, ErrInvalidNamespace
-	}
-	f, ok := v.(IProcessHandler)
-	if !ok {
-		return "", nil, ErrInvalidCommitHandler
-	}
-	return f.ProcessHandler(propose)
-}
+func (s *Service) GetInit() ([]byte, error) {
 
-func (s *Service) GetInit() (string, []byte, error) {
 	data, err := s.GetSnapshot()
-	return "init", data, err
+	if err != nil {
+		return nil, err
+	}
+	cmd := &Commend{
+		Namespace: SystemNamespace,
+		Cmd:       CommandInit,
+		Body:      data,
+	}
+	return proto.Marshal(cmd)
+
 }
 
 func (s *Service) ResetSnap(data []byte) error {
@@ -77,23 +162,24 @@ func (s *Service) ResetSnap(data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	for namespace, value := range snaps {
-		handler, has := s.commitHandlers.Get(namespace)
+		handler, has := s.handlers.Get(namespace)
 		if !has {
 			log.Warnf("reset snap %s:%w", namespace, ErrInvalidNamespace)
 			continue
 		}
-		h, ok := handler.(ICommitHandler)
+		h, ok := handler.(IRaftServiceHandler)
 		if !ok {
 			log.Warnf("reset snap %s:%w", namespace, ErrInvalidCommitHandler)
 			continue
 		}
-		data, err := base64.StdEncoding.DecodeString(value)
+		d, err := base64.StdEncoding.DecodeString(value)
 		if err != nil {
 			log.Errorf("reset snap %s:%w", namespace, err)
 			continue
 		}
-		err = h.ResetHandler(data)
+		err = h.ResetHandler(d)
 		if err != nil {
 			log.Errorf("reset snap %s:%w", namespace, err)
 			continue
@@ -104,8 +190,8 @@ func (s *Service) ResetSnap(data []byte) error {
 
 func (s *Service) GetSnapshot() ([]byte, error) {
 	snapshots := make(map[string]string)
-	for namespace, handler := range s.commitHandlers.All() {
-		h, ok := handler.(ICommitHandler)
+	for namespace, handler := range s.handlers.All() {
+		h, ok := handler.(IRaftServiceHandler)
 		if !ok {
 			continue
 		}

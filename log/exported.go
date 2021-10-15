@@ -21,7 +21,7 @@ func init() {
 	lineFormatter = &LineFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 	}
-	stdoutTransport = NewTransport(os.Stdout, InfoLevel)
+	stdoutTransport = NewTransport(os.Stderr, InfoLevel)
 	stdoutTransport.SetFormatter(lineFormatter)
 	transport = NewComplex()
 	logger = NewLogger(transport, false, "")
@@ -56,6 +56,9 @@ func Close() {
 	if transport != nil {
 		transport.Close()
 	}
+}
+func SetPrefix(prefix string) {
+	logger.SetPrefix(prefix)
 }
 
 //WithFields 写域

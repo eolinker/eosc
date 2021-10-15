@@ -1,20 +1,39 @@
 package eoscli
 
 import (
+	"context"
+
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
 
-func Leave(leave cli.ActionFunc) *cli.Command {
+var CmdLeave = "leave"
+
+func Leave(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
-		Name:  "leave",
-		Usage: "leave the cluster",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "id",
-				Usage:    "id of node",
-				Required: true,
-			},
-		},
-		Action: leave,
+		Name:   CmdLeave,
+		Usage:  "leave the cluster",
+		Flags:  []cli.Flag{},
+		Action: x,
 	}
+}
+
+//LeaveFunc 离开集群
+func LeaveFunc(c *cli.Context) error {
+	pid, err := readPid()
+	if err != nil {
+		return err
+	}
+	client, err := createCtlServiceClient(pid)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	response, err := client.Leave(context.Background(), &service.LeaveRequest{})
+	if err != nil {
+		return err
+	}
+	log.Infof("leave successful! node id is: %d", response.Secret.NodeID)
+	return nil
 }

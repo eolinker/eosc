@@ -11,12 +11,14 @@ package process
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strconv"
+
+	"github.com/eolinker/eosc/env"
+
+	"github.com/eolinker/eosc/log"
 )
 
 const (
@@ -29,7 +31,7 @@ var (
 	ErrorProcessHandlerConflict = errors.New("process handler name conflict")
 	runIdx                      = 0
 	path                        = ""
-	appName                     = ""
+	appName                     = env.AppName()
 )
 
 func init() {
@@ -40,9 +42,7 @@ func init() {
 	} else {
 		path = p
 	}
-	appName = filepath.Base(path)
-	log.Printf("app = %s\n", appName)
-	log.Println(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
+	log.Debug(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
 	idx, err := strconv.Atoi(os.Getenv(EnvDaemonName))
 	if err != nil {
 		os.Setenv(EnvDaemonName, "1")
@@ -73,70 +73,42 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 		copy(argsChild[1:], args)
 	}
 
-	cmd := exec.Command(path, argsChild...)
+	cmd := exec.Command(path)
 	if cmd == nil {
 		return nil, errors.New("not supper os:" + runtime.GOOS)
 	}
 	cmd.Path = path
 	cmd.Args = argsChild
-	return cmd, nil
-}
 
-func Stop(name string) error {
-	path := fmt.Sprintf("%s.%s.pid", AppName(), name)
-	log.Printf("app %s is stopping,please wait...\n", toKey(name))
-	pid, err := GetPidByFile(path)
-	if err != nil {
-		return err
-	}
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return err
-	}
-	return p.Signal(os.Interrupt)
+	return cmd, nil
 }
 
 // run process
 func Run() bool {
+	if runIdx > 0 {
+		ph, exists := processHandlers[os.Args[0]]
+		if exists {
+			//defer func() {
+			//	if v := recover(); v != nil {
+			//		log.Error("Run recover: ", os.Args[0], " ", v)
+			//	}
+			//}()
+			ph()
+			return true
+		}
+	}
 
-	//if runIdx == 0 {
-	//	//log.Printf("daemon:%d\n", runIdx)
-	//	//daemon(runIdx + 1)
-	//	return false
-	//}
+	return false
+}
+func RunDebug(name string) bool {
 
-	log.Printf("run try %s", os.Args[0])
-	ph, exists := processHandlers[os.Args[0]]
+	ph, exists := processHandlers[toKey(name)]
 	if exists {
 		ph()
 		return true
 	}
 	return false
 }
-
-func daemon(idx int) {
-
-	log.Println("call daemon:", idx, " for ", os.Args)
-	cmd := &exec.Cmd{
-		Path:   os.Args[0],
-		Args:   os.Args, //注意,此处是包含程序名的
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		Env:    os.Environ(), //父进程中的所有环境变量
-	}
-	//为子进程设置特殊的环境变量标识
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%d", EnvDaemonName, idx))
-	if err := cmd.Start(); err != nil {
-		panic(err)
-	}
-	return
-}
-
 func toKey(name string) string {
 	return fmt.Sprintf("%s: %s", appName, name)
-}
-
-func AppName() string {
-	return appName
 }

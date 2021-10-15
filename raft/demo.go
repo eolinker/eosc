@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Demo Service
+// Demo service
 type service struct {
 	store map[string]string
 	mutex sync.RWMutex

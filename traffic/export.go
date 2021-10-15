@@ -8,19 +8,3 @@
 
 package traffic
 
-var (
-	controller = NewController()
-)
-
-//Listener 设置默认监听器
-func Listener(network string, addr string) error {
-	return controller.Listener(network, addr)
-}
-
-func All() Traffics {
-	return controller.All()
-}
-
-func Close() {
-	controller.Close()
-}

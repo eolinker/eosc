@@ -4,77 +4,141 @@
  * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
  * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
  * Vestibulum commodo. Ut rhoncus gravida arcu.
- *
  */
-/*
 
-io 通信控制模块
-管理所有的需要热重启的监听管理（端口监听）， 只允许master执行新增， 序列化成描述信息+文件描述符列表，在fork worker时传递给worker，
-worker只允许使用传入进来的端口
-
- */
 package traffic
 
 import (
+	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/utils"
-	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 	"io"
-	"log"
 	"net"
-	"os"
+	"sync"
+
+	"github.com/eolinker/eosc/log"
 )
 
-type TrafficIn struct {
-	Addr net.Addr
-	Listener net.Listener
-	File *os.File
+var (
+	ErrorInvalidListener = errors.New("invalid listener")
+)
+var _ ITraffic = (*Traffic)(nil)
+
+type Traffic struct {
+	locker sync.Mutex
+	data   *tTrafficData
 }
-type TrafficOut struct {
-	Addr net.Addr
-	File *os.File
-}
 
-func Reader(r io.Reader,start int)([]*TrafficIn,error) {
+func (t *Traffic) Expire(ports []int) {
+	t.locker.Lock()
+	defer t.locker.Unlock()
 
-	frame, err := utils.ReadFrame(r)
-	if err != nil {
-		return nil, err
-	}
-	log.Println("readed frame:",len(frame))
+	newData := newTTrafficData()
 
-	pts:=new(PbTraffics)
-	err = proto.Unmarshal(frame, pts)
-	if err != nil {
-		return nil,err
-	}
-	log.Println("triv:",pts)
-	tfs:=make([]*TrafficIn,0,len(pts.GetTraffic()))
-	for _,pt:=range pts.GetTraffic(){
-		name:=fmt.Sprintf("%s:/%s",pt.Network,pt.Addr)
+	old := t.data.clone()
 
-		addr, err := net.ResolveTCPAddr(pt.GetNetwork(), pt.GetAddr())
-		if err != nil {
-			return nil, err
+	for _, p := range ports {
+		addr := ResolveTCPAddr("", p)
+		name := addrToName(addr)
+		if o, has := old.Del(name); has {
+			log.Debug("move traffic:", name)
+			newData.add(o)
 		}
-		f:=os.NewFile(uintptr(uint64(start)+pt.GetFD()),name)
-		switch pt.Network{
-		//case "udp","udp4","udp8":
+	}
+	for n, o := range old.All() {
+
+		log.Debug("close old : ", n)
+		o.shutdown()
+		//if err := o.shutdown(); err != nil {
+		//	log.Warn("close listener:", err, " ", o.Addr())
+		//}
+		log.Debug("close old done:", n)
+	}
+
+}
+
+func NewTraffic() *Traffic {
+	return &Traffic{
+		data:   newTTrafficData(),
+		locker: sync.Mutex{},
+	}
+}
+func (t *Traffic) Read(in io.Reader) error {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+	data := newTTrafficData()
+	data.Read(in)
+	t.data = data
+	return nil
+}
+
+func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
+	log.Debug("traffic try ListenTcp:", ip, ":", port)
+	tcpAddr := ResolveTCPAddr(ip, port)
+	name := addrToName(tcpAddr)
+	t.locker.Lock()
+	defer t.locker.Unlock()
+
+	log.Debug("traffic listen:", name)
+	if o, has := t.data.get(name); has {
+
+		//if !ok {
+		//	log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
 		//
-		//	c,err:=net.FilePacketConn(f)
-		case "tcp","tcp4","tcp6":
-			l,err:= net.FileListener(f)
-			if err!= nil{
-				log.Println("error to read listener:",err)
-				return nil, err
-			}
-			tfs = append(tfs, &TrafficIn{
-				Addr: addr,
-				Listener: l,
-				File: f,
-			})
+		//	return nil, ErrorInvalidListener
+		//}
+		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
+
+		return o, nil
+	}
+	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
+
+	return nil, nil
+}
+
+type ITraffic interface {
+	ListenTcp(ip string, port int) (net.Listener, error)
+	Close()
+	Expire([]int)
+}
+
+func (t *Traffic) Close() {
+	t.locker.Lock()
+	list := t.data.list()
+	t.data = newTTrafficData()
+	t.locker.Unlock()
+	for _, it := range list {
+		err := it.Close()
+		if err != nil {
+			log.Info("close traffic listener:", err)
 		}
 	}
+}
 
-	return tfs, nil
+func resolve(value string) net.IP {
+	ip := net.ParseIP(value)
+	if ip == nil {
+		return net.IPv6zero
+	}
+	if ip.Equal(net.IPv4zero) {
+		return net.IPv6zero
+	}
+	return ip
+}
+
+func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
+
+	return &net.TCPAddr{
+		IP:   resolve(ip),
+		Port: port,
+		Zone: "",
+	}
+}
+func toName(ln net.Listener) string {
+	addr := ln.Addr()
+	return addrToName(addr)
+}
+
+func addrToName(addr net.Addr) string {
+	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
+
 }

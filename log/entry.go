@@ -57,6 +57,7 @@ type Entry struct {
 	Message string
 	Err     string
 }
+
 func (entry *Entry) HasCaller() (has bool) {
 	return entry.Caller != nil
 }
@@ -65,11 +66,11 @@ type EntryBuilder struct {
 	logger *Logger
 	// Contains all the fields set by the user.
 	Data Fields
-
 	// Time at which the log entry was created
-	Time time.Time
-
-	err string
+	Time      time.Time
+	prefix    string
+	hasPrefix bool
+	err       string
 }
 
 func (builder *EntryBuilder) Logln(level Level, args ...interface{}) {
@@ -86,7 +87,7 @@ func (builder *EntryBuilder) Log(level Level, args ...interface{}) {
 
 func (builder *EntryBuilder) Logf(level Level, format string, args ...interface{}) {
 	if builder.logger.IsLevelEnabled(level) {
-		builder.log(level, fmt.Sprintf(format,args...))
+		builder.log(level, fmt.Sprintf(format, args...))
 	}
 }
 
@@ -94,10 +95,12 @@ func (builder *EntryBuilder) Logf(level Level, format string, args ...interface{
 func (builder *EntryBuilder) WithError(err error) Builder {
 	return builder.WithField(ErrorKey, err)
 }
+
 // Add a single field to the Entry.
 func (builder *EntryBuilder) WithField(key string, value interface{}) Builder {
 	return builder.WithFields(Fields{key: value})
 }
+
 // Add a map of fields to the Entry.
 func (builder *EntryBuilder) WithFields(fields Fields) Builder {
 	data := make(Fields, len(builder.Data)+len(fields))
@@ -119,10 +122,8 @@ func (builder *EntryBuilder) WithFields(fields Fields) Builder {
 			data[k] = v
 		}
 	}
-	return &EntryBuilder{logger: builder.logger, Time: builder.Time,Data:data}
+	return &EntryBuilder{logger: builder.logger, Time: builder.Time, Data: data}
 }
-
-
 
 // getCaller retrieves the name of the first non-logrus calling function
 func getCaller(packageName string) *runtime.Frame {
@@ -140,14 +141,14 @@ func getCaller(packageName string) *runtime.Frame {
 
 	// Restrict the lookback frames to avoid runaway lookups
 	pcs := make([]uintptr, maximumCallerDepth)
- 	depth := runtime.Callers(minimumCallerDepth, pcs)
+	depth := runtime.Callers(minimumCallerDepth, pcs)
 	frames := runtime.CallersFrames(pcs[:depth])
 
 	for f, again := frames.Next(); again; f, again = frames.Next() {
 		pkg := getPackageName(f.Function)
 
 		// If the caller isn't part of this package, we're done
-		if pkg != thisPackageName && pkg!= packageName {
+		if pkg != thisPackageName && pkg != packageName {
 			return &f
 		}
 	}
@@ -158,8 +159,11 @@ func getCaller(packageName string) *runtime.Frame {
 
 // This function is not declared with a pointer value because otherwise
 // race conditions will occur when using multiple goroutines
-func (builder *EntryBuilder) log(level Level, msg string) error{
-
+func (builder *EntryBuilder) log(level Level, msg string) error {
+	defer builder.logger.pool.Put(builder)
+	if builder.hasPrefix {
+		msg = fmt.Sprint(builder.prefix, msg)
+	}
 	entry := &Entry{
 		Data:    builder.Data,
 		Time:    builder.Time,
@@ -173,15 +177,14 @@ func (builder *EntryBuilder) log(level Level, msg string) error{
 		entry.Caller = getCaller(builder.logger.packageName)
 	}
 	return builder.logger.Transport(entry)
+
 }
-
-
 
 // Sprintlnn => Sprint no newline. This is to get the behavior of how
 // fmt.Sprintln where spaces are always added between operands, regardless of
 // their type. Instead of vendoring the Sprintln implementation to spare a
 // string allocation, we do the simplest thing.
-func  sprintlnn(args ...interface{}) string {
+func sprintlnn(args ...interface{}) string {
 	msg := fmt.Sprintln(args...)
 	return msg[:len(msg)-1]
 }

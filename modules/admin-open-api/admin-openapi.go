@@ -3,10 +3,11 @@ package admin_open_api
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/eolinker/eosc/process-master/admin"
 
 	"github.com/eolinker/eosc/log"
 
@@ -16,6 +17,10 @@ import (
 
 var _ iOpenAdmin = (*OpenAdmin)(nil)
 
+func CreateHandler() admin.CreateHandler {
+	return new(createHandler)
+}
+
 type OpenAdmin struct {
 	prefix string
 	admin  eosc.IAdmin
@@ -23,24 +28,20 @@ type OpenAdmin struct {
 
 func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	data := o.all()
+	if len(data) < 1 {
+		writeResultError(w, 500, errors.New("no data"))
+		return
+	}
 	id := time.Now().Format("2006-01-02 150405")
-	dir, err := export(data, "export", id)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	zipName := fmt.Sprintf("%s/%s.zip", dir, id)
+
+	exportData := getExportData(data)
 	fileName := fmt.Sprintf("export_%s.zip", id)
-	err = CompressFile(dir, zipName)
+	content, err := CompressFile(exportData)
 	if err != nil {
 		writeResultError(w, 500, err)
 		return
 	}
-	content, err := ioutil.ReadFile(zipName)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
+
 	w.Header().Add("Content-Type", "application/octet-stream")
 	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 	w.Write(content)
@@ -50,22 +51,12 @@ func (o *OpenAdmin) all() map[string][]interface{} {
 	professions := o.admin.ListProfessions()
 	data := make(map[string][]interface{})
 	for _, p := range professions {
-		names, err := o.admin.ListEmployeeNames(p.Name)
+		ws, err := o.admin.ListEmployees(p.Name)
 		if err != nil {
 			log.Errorf("read data error	%s	%s", p.Name, err.Error())
 			continue
 		}
-		if _, ok := data[p.Name]; !ok {
-			data[p.Name] = make([]interface{}, 0, len(names))
-		}
-		for _, name := range names {
-			v, err := o.admin.GetEmployee(p.Name, name)
-			if err != nil {
-				log.Errorf("get employee error	%s	%s", p.Name, err.Error())
-				continue
-			}
-			data[p.Name] = append(data[p.Name], v)
-		}
+		data[p.Name] = ws
 	}
 	return data
 }
@@ -74,12 +65,12 @@ func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httpro
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 
-	info, err := o.admin.Delete(profession, name)
+	obj, err := o.admin.Delete(profession, name)
 	if err != nil {
 		writeResultError(w, 404, err)
 		return
 	}
-	writeResult(w, info)
+	writeResult(w, obj)
 }
 
 func (o *OpenAdmin) genUrl(url string) string {
@@ -92,15 +83,15 @@ func (o *OpenAdmin) getFields(w http.ResponseWriter, r *http.Request, params htt
 }
 
 func (o *OpenAdmin) getRenders(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-
-	profession := params.ByName("profession")
-
-	renders, err := o.admin.Renders(profession)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	writeResult(w, renders)
+	//
+	//profession := params.ByName("profession")
+	//
+	//renders, err := o.admin.Renders(profession)
+	//if err != nil {
+	//	writeResultError(w, 500, err)
+	//	return
+	//}
+	//writeResult(w, renders)
 }
 
 func (o *OpenAdmin) getEmployeesByProfession(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -159,14 +150,14 @@ func (o *OpenAdmin) getDriversItemByProfession(w http.ResponseWriter, r *http.Re
 }
 func (o *OpenAdmin) getRender(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 
-	profession := params.ByName("profession")
-	driver := params.ByName("driver")
-	render, err := o.admin.Render(profession, driver)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	writeResult(w, render)
+	//profession := params.ByName("profession")
+	//driver := params.ByName("driver")
+	////render, err := o.admin.Render(profession, driver)
+	//if err != nil {
+	//	writeResultError(w, 500, err)
+	//	return
+	//}
+	//writeResult(w, render)
 }
 
 func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -175,6 +166,11 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 	name := params.ByName("name")
 
 	idata, err := GetData(r)
+	if err != nil {
+		writeResultError(w, 500, err)
+		return
+	}
+	data, err := idata.Encode()
 	if err != nil {
 		writeResultError(w, 500, err)
 		return
@@ -194,19 +190,14 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 		return
 	}
 
-	winfo, err := o.admin.Update(profession, name, cb.Driver, idata)
+	obj, err := o.admin.Update(profession, name, cb.Driver, data)
 	if err != nil {
 		writeResultError(w, 500, err)
 
 		return
 	}
-	// 将数据写到文件中
-	_, err = export(o.all(), "runtime_config", "")
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	writeResult(w, winfo)
+
+	writeResult(w, obj)
 }
 
 func (o *OpenAdmin) getProfessions(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -224,9 +215,9 @@ type iOpenAdmin interface {
 	getEmployeeByName(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 
 	//GET /:profession/_render
-	getRenders(w http.ResponseWriter, r *http.Request, params httprouter.Params)
-	//GET /:profession/_render/:driver
-	getRender(w http.ResponseWriter, r *http.Request, params httprouter.Params)
+	//getRenders(w http.ResponseWriter, r *http.Request, params httprouter.Params)
+	////GET /:profession/_render/:driver
+	//getRender(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 
 	//POST /:profession/
 	//POST /:profession/:name
@@ -254,78 +245,70 @@ type iOpenAdmin interface {
 	export(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 }
 
-func NewOpenAdmin(prefix string, admin eosc.IAdmin) *OpenAdmin {
-	p := strings.TrimSpace(prefix)
-	if len(p) == 0 {
-		p = "/"
-	} else if p[0] != '/' {
-		p = "/" + p
-	}
-	p = strings.TrimSuffix(p, "/")
+func NewOpenAdmin(admin eosc.IAdmin) *OpenAdmin {
 
 	return &OpenAdmin{
-		prefix: p,
-		admin:  admin,
+		admin: admin,
 	}
 }
 
-func (o *OpenAdmin) GenHandler() (http.Handler, error) {
-	var admin iOpenAdmin = o
+func (o *OpenAdmin) GenHandler() http.Handler {
+	var openAdmin iOpenAdmin = o
 	router := httprouter.New()
-	router.GET(admin.genUrl("/"), admin.getProfessions)
-	router.GET(admin.genUrl("/:profession"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	router.GET(openAdmin.genUrl("/"), openAdmin.getProfessions)
+	router.GET(openAdmin.genUrl("/:profession"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		switch params.ByName("profession") {
 		case "_export":
-			admin.export(w, r, params)
+			openAdmin.export(w, r, params)
 		default:
-			admin.getEmployeesByProfession(w, r, params)
+			openAdmin.getEmployeesByProfession(w, r, params)
 		}
 	})
-	router.GET(admin.genUrl("/:profession/:action"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	router.GET(openAdmin.genUrl("/:profession/:action"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		action := params.ByName("action")
 		switch action {
 		case "_render":
-			admin.getRenders(w, r, params)
+			//openAdmin.getRenders(w, r, params)
 			return
 		case "_driver":
-			admin.getDriversByProfession(w, r, params)
+			openAdmin.getDriversByProfession(w, r, params)
 		default:
 			rename(params, "action", "name")
-			admin.getEmployeeByName(w, r, params)
+			openAdmin.getEmployeeByName(w, r, params)
 		}
 	})
-	router.GET(admin.genUrl("/:profession/:action/:key"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	router.GET(openAdmin.genUrl("/:profession/:action/:key"), func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		action := params.ByName("action")
 		switch action {
 		case "_render":
 			rename(params, "key", "driver")
 
-			admin.getRender(w, r, params)
+			//openAdmin.getRender(w, r, params)
 
 			return
 		case "_driver":
 			key := params.ByName("key")
 			if strings.ToLower(key) == "item" {
-				admin.getDriversItemByProfession(w, r, params)
+				openAdmin.getDriversItemByProfession(w, r, params)
 			} else {
 				rename(params, "key", "driver")
-				admin.getDriverInfo(w, r, params)
+				openAdmin.getDriverInfo(w, r, params)
 			}
 			return
 		default:
 
 			rename(params, "action", "name")
 			rename(params, "key", "fieldName")
-			admin.getFields(w, r, params)
+			openAdmin.getFields(w, r, params)
 		}
 
 	})
 
-	router.POST(admin.genUrl("/:profession"), admin.Save)
-	router.POST(admin.genUrl("/:profession/:name"), admin.Save)
-	router.PUT(admin.genUrl("/:profession/:name"), admin.Save)
-	router.DELETE(admin.genUrl("/:profession/:name"), admin.delete)
-	return router, nil
+	router.POST(openAdmin.genUrl("/:profession"), openAdmin.Save)
+	router.POST(openAdmin.genUrl("/:profession/:name"), openAdmin.Save)
+	router.PUT(openAdmin.genUrl("/:profession/:name"), openAdmin.Save)
+	router.DELETE(openAdmin.genUrl("/:profession/:name"), openAdmin.delete)
+	return router
 }
 
 func rename(ps httprouter.Params, source, target string) {

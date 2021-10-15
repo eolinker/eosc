@@ -9,117 +9,151 @@
 package traffic
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
 )
 
-var (
-	ErrorInvalidFiles = errors.New("invalid files")
-)
-
-type Traffics []*TrafficOut
-
-//IController 端口管理器接口
 type IController interface {
-	Listener(network string, addr string) error
-	All() Traffics
+	eosc.IDataMarshaller
+	ITraffic
 	Close()
+	Reset(ports []int) (isCreate bool, err error)
 }
 
 type Controller struct {
-	data eosc.IUntyped
+	locker sync.Mutex
+	data   *tTrafficData
 }
 
-func (c *Controller) All() Traffics {
-	list := c.data.List()
-	ts := make(Traffics, 0, len(list))
+func (c *Controller) Expire(ports []int) {
+	c.Reset(ports)
+}
+
+func (c *Controller) Close() {
+	c.locker.Lock()
+	list := c.data.list()
+	c.data = newTTrafficData()
+	c.locker.Unlock()
 	for _, it := range list {
-		tf, ok := it.(*TrafficOut)
-		if !ok {
-			continue
+		it.shutdown()
+	}
+}
+
+func (c *Controller) Reset(ports []int) (bool, error) {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+
+	isCreate := false
+	newData := newTTrafficData()
+
+	old := c.data.clone()
+
+	for _, p := range ports {
+		addr := ResolveTCPAddr("", p)
+		name := addrToName(addr)
+		if o, has := old.Del(name); has {
+			log.Debug("move traffic:", name)
+			newData.add(o)
+		} else {
+			log.Debug("create traffic:", name)
+			l, err := net.ListenTCP("tcp", addr)
+			if err != nil {
+				log.Warn("listen tcp:", err)
+				return false, err
+			}
+			newData.add(newTTcpListener(l))
+			isCreate = true
 		}
-		ts = append(ts, tf)
 	}
-	return ts
+	for n, o := range old.All() {
+
+		//l, ok := o.(*net.TCPListener)
+		//if !ok {
+		//	log.Warn("unknown error while try close  listener:", n)
+		//	continue
+		//}
+		log.Debug("close old : ", n)
+		o.shutdown()
+		log.Debug("close old done:", n)
+	}
+	c.data = newData
+	return isCreate, nil
 }
 
-//NewController 新建端口管理器（流量入口）
-func NewController() *Controller {
-	return &Controller{
-		data: eosc.NewUntyped(),
-	}
-}
-
-func (ts Traffics) WriteTo(w io.Writer) ([]*os.File, error) {
-
+func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
+	log.Debug("traffic controller: encode:")
+	ts := c.All()
 	pts := new(PbTraffics)
 	files := make([]*os.File, 0, len(ts))
 	pts.Traffic = make([]*PbTraffic, 0, len(ts))
-	for i, it := range ts {
-
+	for i, ln := range ts {
+		file, err := ln.File()
+		if err != nil {
+			continue
+		}
+		addr := ln.Addr()
 		pt := &PbTraffic{
-			FD:      uint64(i),
-			Addr:    it.Addr.String(),
-			Network: it.Addr.Network(),
+			FD:      uint64(i + startIndex),
+			Addr:    addr.String(),
+			Network: addr.Network(),
 		}
 		pts.Traffic = append(pts.Traffic, pt)
-		files = append(files, it.File)
+		files = append(files, file)
 	}
 
 	data, err := proto.Marshal(pts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	fmt.Println(data)
-	err = utils.WriteFrame(w, data)
-	if err != nil {
-		return nil, err
-	}
-	return files, nil
+
+	return utils.EncodeFrame(data), files, nil
+
 }
 
-//Listener 设置端口监听器，如果地址已经被监听，则报错
-func (c *Controller) Listener(network string, addr string) error {
-	tcpAddr, err := net.ResolveTCPAddr(network, addr)
-	if err != nil {
-		return err
-	}
+func (c *Controller) All() []*tListener {
 
-	l, err := net.ListenTCP(network, tcpAddr)
-	if err != nil {
-		return err
-	}
-	file, err := l.File()
-	if err != nil {
-		return err
-	}
-	tf := &TrafficOut{
-		Addr: tcpAddr,
-		File: file,
-	}
+	c.locker.Lock()
+	list := c.data.list()
+	c.locker.Unlock()
 
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
-	c.data.Set(name, tf)
-	return nil
+	return list
 }
 
-//Close 关闭文件监听
-func (c *Controller) Close() {
-	list := c.data.List()
-	c.data = eosc.NewUntyped()
+func NewController(r io.Reader) IController {
+	c := &Controller{
+		data: newTTrafficData(),
+	}
+	if r != nil {
+		c.data.Read(r)
+	}
+	return c
+}
 
-	for _, it := range list {
-		tf, ok := it.(*TrafficOut)
-		if !ok {
-			continue
+func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
+	tcpAddr := ResolveTCPAddr(ip, port)
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	tcp, has := c.data.get(addrToName(tcpAddr))
+	if !has {
+		log.Warn("get listen tcp not exist")
+
+		//tcpAddr := ResolveTCPAddr(ip, port)
+
+		l, err := net.ListenTCP("tcp", tcpAddr)
+		if err != nil {
+			log.Warn("listen tcp:", err)
+			return nil, err
 		}
-		tf.File.Close()
+		ln := newTTcpListener(l)
+		c.data.add(ln)
+		tcp = ln
 	}
+	return tcp, nil
 }
