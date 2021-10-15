@@ -14,7 +14,7 @@ import (
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/utils"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type WorkersData struct {
