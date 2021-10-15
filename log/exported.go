@@ -57,6 +57,9 @@ func Close() {
 		transport.Close()
 	}
 }
+func SetPrefix(prefix string) {
+	logger.SetPrefix(prefix)
+}
 
 //WithFields 写域
 func WithFields(fields Fields) Builder {

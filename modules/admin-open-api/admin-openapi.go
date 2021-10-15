@@ -3,7 +3,6 @@ package admin_open_api
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -29,24 +28,20 @@ type OpenAdmin struct {
 
 func (o *OpenAdmin) export(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	data := o.all()
+	if len(data) < 1 {
+		writeResultError(w, 500, errors.New("no data"))
+		return
+	}
 	id := time.Now().Format("2006-01-02 150405")
-	dir, err := export(data, "export", id)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	zipName := fmt.Sprintf("%s/%s.zip", dir, id)
+
+	exportData := getExportData(data)
 	fileName := fmt.Sprintf("export_%s.zip", id)
-	err = CompressFile(dir, zipName)
+	content, err := CompressFile(exportData)
 	if err != nil {
 		writeResultError(w, 500, err)
 		return
 	}
-	content, err := ioutil.ReadFile(zipName)
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
+
 	w.Header().Add("Content-Type", "application/octet-stream")
 	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
 	w.Write(content)
@@ -70,12 +65,12 @@ func (o *OpenAdmin) delete(w http.ResponseWriter, r *http.Request, params httpro
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 
-	err := o.admin.Delete(profession, name)
+	obj, err := o.admin.Delete(profession, name)
 	if err != nil {
 		writeResultError(w, 404, err)
 		return
 	}
-	writeResult(w, []byte("{}"))
+	writeResult(w, obj)
 }
 
 func (o *OpenAdmin) genUrl(url string) string {
@@ -195,19 +190,14 @@ func (o *OpenAdmin) Save(w http.ResponseWriter, r *http.Request, params httprout
 		return
 	}
 
-	err = o.admin.Update(profession, name, cb.Driver, data)
+	obj, err := o.admin.Update(profession, name, cb.Driver, data)
 	if err != nil {
 		writeResultError(w, 500, err)
 
 		return
 	}
-	// 将数据写到文件中
-	_, err = export(o.all(), "runtime_config", "")
-	if err != nil {
-		writeResultError(w, 500, err)
-		return
-	}
-	writeResult(w, nil)
+
+	writeResult(w, obj)
 }
 
 func (o *OpenAdmin) getProfessions(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -255,18 +245,10 @@ type iOpenAdmin interface {
 	export(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 }
 
-func NewOpenAdmin(prefix string, admin eosc.IAdmin) *OpenAdmin {
-	p := strings.TrimSpace(prefix)
-	if len(p) == 0 {
-		p = "/"
-	} else if p[0] != '/' {
-		p = "/" + p
-	}
-	p = strings.TrimSuffix(p, "/")
+func NewOpenAdmin(admin eosc.IAdmin) *OpenAdmin {
 
 	return &OpenAdmin{
-		prefix: p,
-		admin:  admin,
+		admin: admin,
 	}
 }
 

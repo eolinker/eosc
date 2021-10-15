@@ -9,7 +9,7 @@ import (
 
 	"github.com/eolinker/eosc"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	env "github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
@@ -22,7 +22,7 @@ func StartMaster(args []string, extra []*os.File) (*exec.Cmd, error) {
 		log.Error(err)
 		return nil, err
 	}
-	if eosc_args.IsDebug() {
+	if env.IsDebug() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}

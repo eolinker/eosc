@@ -9,8 +9,6 @@
 package admin_open_api
 
 type baseConfig struct {
-	Id string `json:"id" yaml:"id"`
-	Name string `json:"name" yaml:"id"`
+	Name   string `json:"name" yaml:"id"`
 	Driver string `json:"driver" yaml:"driver"`
 }
-

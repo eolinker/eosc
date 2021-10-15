@@ -16,7 +16,7 @@ import (
 	"runtime"
 	"strconv"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc/log"
 )
@@ -31,7 +31,7 @@ var (
 	ErrorProcessHandlerConflict = errors.New("process handler name conflict")
 	runIdx                      = 0
 	path                        = ""
-	appName                     = eosc_args.AppName()
+	appName                     = env.AppName()
 )
 
 func init() {
@@ -88,6 +88,11 @@ func Run() bool {
 	if runIdx > 0 {
 		ph, exists := processHandlers[os.Args[0]]
 		if exists {
+			//defer func() {
+			//	if v := recover(); v != nil {
+			//		log.Error("Run recover: ", os.Args[0], " ", v)
+			//	}
+			//}()
 			ph()
 			return true
 		}
@@ -95,7 +100,15 @@ func Run() bool {
 
 	return false
 }
+func RunDebug(name string) bool {
 
+	ph, exists := processHandlers[toKey(name)]
+	if exists {
+		ph()
+		return true
+	}
+	return false
+}
 func toKey(name string) string {
 	return fmt.Sprintf("%s: %s", appName, name)
 }

@@ -31,6 +31,15 @@ func writeError(w http.ResponseWriter, code string, msg, errInfo string) {
 		Msg:  msg,
 		Err:  errInfo,
 	}
-	data, _ := json.Marshal(result)
+	writeTo(w, result)
+}
+
+func writeTo(w http.ResponseWriter, obj interface{}) {
+	if data, ok := obj.([]byte); ok {
+		w.Write(data)
+		return
+	}
+	data, _ := json.Marshal(obj)
 	w.Write(data)
+
 }

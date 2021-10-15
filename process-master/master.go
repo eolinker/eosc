@@ -10,10 +10,13 @@ package process_master
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
+
+	"github.com/eolinker/eosc/env"
+
+	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
 
@@ -24,7 +27,6 @@ import (
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/raft"
@@ -39,7 +41,7 @@ import (
 )
 
 func Process() {
-	InitLogTransport()
+	utils.InitLogTransport(eosc.ProcessMaster)
 	file, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
@@ -98,9 +100,9 @@ func (m *Master) start(handler *MasterHandler) error {
 	professionRaft := NewProfessionRaft(handler.Professions)
 
 	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
-
-	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s)
-	m.admin = admin.NewAdmin(handler.Professions, worker, "/")
+	m.workerController.Start()
+	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s, m.workerController)
+	m.admin = admin.NewAdmin(handler.Professions, worker)
 	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
 	node, err := raft.NewNode(s)
 	if err != nil {
@@ -110,7 +112,6 @@ func (m *Master) start(handler *MasterHandler) error {
 
 	m.node = node
 
-	m.workerController.Start()
 	return nil
 }
 
@@ -121,8 +122,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 		return err
 	}
 
-	ip := eosc_args.GetDefault(eosc_args.IP, "")
-	port, _ := strconv.Atoi(eosc_args.GetDefault(eosc_args.Port, "9400"))
+	ip := env.GetDefault(env.IP, "")
+	port, _ := strconv.Atoi(env.GetDefault(env.Port, "9400"))
 	// 监听master监听地址，用于接口处理
 	l, err := m.masterTraffic.ListenTcp(ip, port)
 	if err != nil {
@@ -131,7 +132,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 	}
 
 	m.startHttp(l)
-	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 	log.Info("process-master start grpc service")
@@ -173,7 +174,7 @@ func (m *Master) Wait() error {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-		fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
+		//fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
@@ -187,6 +188,7 @@ func (m *Master) Wait() error {
 			}
 		case syscall.SIGUSR1:
 			{
+				m.node.Stop()
 				log.Info("try fork new")
 				err := m.Fork() //传子进程需要的内容
 				if err != nil {
@@ -220,6 +222,7 @@ func (m *Master) close() {
 	if err := m.PID.Remove(); err != nil {
 		log.Warn("remove pid:", err)
 	}
+	m.workerController.Stop()
 
 }
 
@@ -233,7 +236,7 @@ func NewMasterHandle(pid *pidfile.PidFile) *Master {
 		UnimplementedMasterServer:     service.UnimplementedMasterServer{},
 		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
 	}
-	if _, has := eosc_args.GetEnv("MASTER_CONTINUE"); has {
+	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("init traffic from stdin")
 		m.masterTraffic = traffic.NewController(os.Stdin)
 		m.workerTraffic = traffic.NewController(os.Stdin)

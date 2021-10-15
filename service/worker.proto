@@ -46,6 +46,15 @@ message WorkerSetResponse{
   WorkerResource resource=3;
 }
 
+message WorkerRefreshRequest{
+  repeated int32 ports =1;
+}
+
+message WorkerRefreshResponse{
+  WorkerStatusCode status=1;
+  string message=2;
+}
+
 service WorkerService{
   rpc deleteCheck(WorkerDeleteRequest)returns(WorkerDeleteResponse){};
   rpc setCheck(WorkerSetRequest)returns(WorkerSetResponse){};
@@ -53,5 +62,7 @@ service WorkerService{
   rpc delete(WorkerDeleteRequest)returns(WorkerDeleteResponse){};
   rpc set(WorkerSetRequest)returns(WorkerSetResponse){};
 
-  rpc ping(WorkerHelloRequest)returns(WorkerHelloResponse){}
+  rpc ping(WorkerHelloRequest)returns(WorkerHelloResponse){};
+  rpc refresh(WorkerRefreshRequest)returns(WorkerRefreshResponse){};
+
  }

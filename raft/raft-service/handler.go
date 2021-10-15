@@ -3,7 +3,7 @@ package raft_service
 import "github.com/golang/protobuf/proto"
 
 type IService interface {
-	Send(namespace, cmd string, body []byte) error
+	Send(namespace, cmd string, body []byte) (interface{}, error)
 }
 
 type IRaftServiceHandler interface {
@@ -14,7 +14,7 @@ type IRaftServiceHandler interface {
 	// Snapshot 获取快照
 	Snapshot() []byte
 	// ProcessHandler 节点propose信息前的处理
-	ProcessHandler(cmd string, body []byte) ([]byte, error)
+	ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error)
 }
 
 func unMarshalCmd(data []byte) (*Commend, error) {

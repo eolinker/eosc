@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/utils"
@@ -45,13 +45,14 @@ func Join(x cli.ActionFunc) *cli.Command {
 }
 
 //join 加入集群
-func join(c *cli.Context, cfg *eosc_args.Config) error {
+func join(c *cli.Context, cfg *env.Config) error {
 	// 执行join操作
 	bIP := c.String("broadcast-ip")
-	port := eosc_args.GetDefaultArg(cfg, eosc_args.Port, "0")
+
+	port := env.GetDefaultArg(cfg, env.Port, "0")
 	bPort, _ := strconv.Atoi(port)
 	if !utils.ValidAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
-		ipStr, has := eosc_args.GetArg(cfg, eosc_args.BroadcastIP)
+		ipStr, has := env.GetArg(cfg, env.BroadcastIP)
 		if !has {
 			return errors.New("start node error: missing broadcast ip")
 		}
@@ -61,10 +62,11 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 			return fmt.Errorf("start error: invalid ip %s\n", addr)
 		}
 	}
-	cfg.Set(eosc_args.BroadcastIP, bIP)
+	log.Info("ip:", bIP)
+	cfg.Set(env.BroadcastIP, bIP)
 	addr := c.StringSlice("addr")
 	if len(addr) < 1 {
-		addrStr, has := eosc_args.GetArg(cfg, eosc_args.ClusterAddress)
+		addrStr, has := env.GetArg(cfg, env.ClusterAddress)
 		if !has {
 			return errors.New("start node error: empty cluster address list")
 		}
@@ -88,16 +90,20 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
-	client, err := createCtlServiceClient()
+	pid, err := readPid()
+	if err != nil {
+		return err
+	}
+	client, err := createCtlServiceClient(pid)
 	if err != nil {
 		return fmt.Errorf("join cluster error:%s", err.Error())
 	}
 	defer client.Close()
-	cfg.Set(eosc_args.ClusterAddress, strings.Join(as, ","))
+	cfg.Set(env.ClusterAddress, strings.Join(as, ","))
 	response, err := client.Join(context.Background(), &service.JoinRequest{
 		BroadcastIP:    bIP,
 		BroadcastPort:  int32(bPort),
-		Protocol:       eosc_args.GetDefault(eosc_args.Protocol, "http"),
+		Protocol:       env.GetDefault(env.Protocol, "http"),
 		ClusterAddress: as,
 	})
 	if err != nil {
@@ -109,8 +115,8 @@ func join(c *cli.Context, cfg *eosc_args.Config) error {
 
 //JoinFunc 加入集群
 func JoinFunc(c *cli.Context) error {
-	argName := fmt.Sprintf("%s.args", eosc_args.AppName())
-	cfg := eosc_args.NewConfig(argName)
+	argName := fmt.Sprintf("%s.args", env.AppName())
+	cfg := env.NewConfig(argName)
 	cfg.ReadFile(argName)
 	err := join(c, cfg)
 	if err != nil {

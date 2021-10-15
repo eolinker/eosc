@@ -41,6 +41,9 @@ func (p *PortsRequire) Set(id string, ports []int) {
 
 	p.workers.Set(id, ports)
 
+	for _, port := range ports {
+		p.add(id, port)
+	}
 }
 
 func (p *PortsRequire) Del(id string) {
@@ -57,6 +60,27 @@ func (p *PortsRequire) del(id string) {
 		}
 	}
 }
+func (p *PortsRequire) add(id string, port int) {
+	pv := strconv.Itoa(port)
+
+	ids, has := p.ports.Get(pv)
+	if !has {
+		p.ports.Set(pv, []string{id})
+		return
+	}
+
+	idsv := ids.([]string)
+
+	for _, idv := range idsv {
+		if idv == id {
+			return
+		}
+	}
+
+	idsv = append(idsv, id)
+	p.ports.Set(pv, idsv)
+
+}
 func (p *PortsRequire) remove(id string, port int) {
 	pv := strconv.Itoa(port)
 
@@ -69,7 +93,11 @@ func (p *PortsRequire) remove(id string, port int) {
 	for i, idv := range idsv {
 		if idv == id {
 			idsv = append(idsv[:i], idsv[i+1:]...)
-			p.ports.Set(pv, idsv)
+			if len(idsv) > 0 {
+				p.ports.Set(pv, idsv)
+			} else {
+				p.ports.Del(pv)
+			}
 			return
 		}
 	}
@@ -81,7 +109,6 @@ func (p *PortsRequire) All() []int32 {
 	p.locker.Unlock()
 
 	rs := make([]int32, len(list))
-
 	for i, pv := range list {
 		port, _ := strconv.Atoi(pv)
 		rs[i] = int32(port)

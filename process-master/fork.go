@@ -15,9 +15,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/process"
@@ -36,18 +37,15 @@ func (m *Master) Fork() error {
 	}
 	runningMasterForked = true
 
-	// 子进程的环境变量加入MASTER_CONTINUE字段，用于新的Master启动后给父Master传送中断信号
-	env := append(os.Environ(), eosc_args.GenEnv("MASTER_CONTINUE", "1"))
 	dataMasterTraffic, filesMaster, err := m.masterTraffic.Encode(3)
 	if err != nil {
 		return err
 	}
-
+	//m.masterTraffic.Close()
 	dataWorkerTraffic, filesWorker, err := m.workerTraffic.Encode(len(filesMaster) + 3)
 	if err != nil {
 		return err
 	}
-
 	data := make([]byte, len(dataMasterTraffic)+len(dataWorkerTraffic))
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
@@ -63,14 +61,15 @@ func (m *Master) Fork() error {
 		Setsid: true,
 	}
 	cmd.ExtraFiles = append(filesMaster, filesWorker...)
-	cmd.Env = env
+	// 子进程的环境变量加入MASTER_CONTINUE字段，用于新的Master启动后给父Master传送中断信号
+	cmd.Env = append(os.Environ(), env.GenEnv("MASTER_CONTINUE", "1"))
 
 	err = cmd.Start()
 	if err != nil {
 		log.Fatalf("Restart: Failed to launch, error: %v", err)
 		return err
 	}
-
+	log.Debug("fork new process: ", cmd.String())
 	// check cmd
 	go m.waitFork(cmd.Process.Pid)
 

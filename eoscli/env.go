@@ -3,7 +3,8 @@ package eoscli
 import (
 	"fmt"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -17,8 +18,8 @@ func Env(x cli.ActionFunc) *cli.Command {
 }
 
 func EnvFunc(c *cli.Context) error {
-	for _, name := range eosc_args.Envs() {
-		fmt.Println(eosc_args.GenEnv(name, eosc_args.GetDefault(name, "")))
+	for _, name := range env.Envs() {
+		fmt.Println(env.GenEnv(name, env.GetDefault(name, "")))
 	}
 	return nil
 }

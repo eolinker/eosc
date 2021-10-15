@@ -19,6 +19,7 @@ func writeResultError(w http.ResponseWriter, status int, err error) {
 func writeResult(w http.ResponseWriter, v interface{}) {
 	if v == nil {
 		w.Write([]byte("{}"))
+		return
 	}
 	data, err := json.Marshal(v)
 	if err != nil {

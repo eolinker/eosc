@@ -22,8 +22,8 @@ func (a *Admin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.handler.ServeHTTP(w, r)
 }
 
-func NewAdmin(professions eosc.IProfessionsData, workers eosc.IWorkersData, prefix string) *Admin {
+func NewAdmin(professions eosc.IProfessionsData, workers eosc.IWorkersData) *Admin {
 	a := &Admin{professions: professions, workers: workers}
-	a.handler = load(a, prefix)
+	a.handler = load(a)
 	return a
 }

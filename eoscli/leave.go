@@ -21,7 +21,11 @@ func Leave(x cli.ActionFunc) *cli.Command {
 
 //LeaveFunc 离开集群
 func LeaveFunc(c *cli.Context) error {
-	client, err := createCtlServiceClient()
+	pid, err := readPid()
+	if err != nil {
+		return err
+	}
+	client, err := createCtlServiceClient(pid)
 	if err != nil {
 		return err
 	}

@@ -12,41 +12,41 @@ import (
 var (
 	ErrorDuplicatePath = errors.New("path duplicate")
 	ErrorNotExist      = errors.New("not exits")
+	ErrorNotMatch      = errors.New("not match profession")
 )
 
 type CreateHandler interface {
-	Create(admin eosc.IAdmin, prefix string) http.Handler
+	Create(admin eosc.IAdmin, pref string) http.Handler
 }
 
 var (
-	createrHandlers = make(map[string]CreateHandler)
+	creatorHandler = make(map[string]CreateHandler)
 )
 
 func Register(myPre string, handler CreateHandler) error {
 	pre := formatPath(myPre)
-
-	_, has := createrHandlers[pre]
+	_, has := creatorHandler[pre]
 	if has {
 		return ErrorDuplicatePath
 	}
-	createrHandlers[pre] = handler
+	creatorHandler[pre] = handler
 	return nil
 }
 
-func load(admin eosc.IAdmin, prefix string) http.Handler {
+func load(admin eosc.IAdmin) http.Handler {
 
 	mx := http.NewServeMux()
-
-	for p, h := range createrHandlers {
-		hs := h.Create(admin, prefix)
+	//pre := formatPath(prefix)
+	for p, h := range creatorHandler {
+		hs := h.Create(admin, p)
 		if hs != nil {
-			pre := formatPath(prefix)
-			key := fmt.Sprintf("%s%s", pre, p)
-			mx.Handle(key, hs)
+			mx.Handle(p, hs)
+			mx.Handle(fmt.Sprintf("%s/", p), hs)
 		}
 	}
 	return mx
 }
-func formatPath(p string) string {
-	return fmt.Sprintf("/%s", strings.TrimPrefix(strings.TrimSuffix(p, "/"), "/"))
+func formatPath(pre string) string {
+
+	return fmt.Sprintf("/%s", strings.TrimSuffix(strings.TrimPrefix(pre, "/"), "/"))
 }

@@ -2,7 +2,6 @@ package raft
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -29,18 +28,11 @@ var retryFrequency time.Duration = 2000
 // 2、也可以用于节点crash后的重启处理
 func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, protocol string) error {
 	// 判断是否已经在一个多节点集群中
-	if rc.peers.GetPeerNum() > 1 || rc.join {
+	if rc.peers.GetPeerNum() > 1 {
 		return fmt.Errorf("This node has joined the cluster")
 	}
-	msg := JoinRequest{
-		BroadcastIP:   broadCastIP,
-		BroadcastPort: broadPort,
-		Protocol:      protocol,
-		Target:        address,
-	}
-	data, _ := json.Marshal(msg)
 
-	resp, err := getNodeInfoRequest(address, data)
+	resp, err := getNodeInfoRequest(rc, broadCastIP, broadPort, protocol, address)
 	if err != nil {
 		return err
 	}
@@ -55,16 +47,16 @@ func JoinCluster(rc *Node, broadCastIP string, broadPort int, address string, pr
 	if err != nil {
 		return err
 	}
+	defer rc.writeConfig()
 	err = startRaft(rc, resp.Peer)
 	if err != nil {
+		rc.join = false
 		return err
 	}
 
-	msg.NodeID = resp.ID
-	msg.NodeKey = resp.Key
-	data, _ = json.Marshal(msg)
-	err = joinClusterRequest(address, data)
+	err = joinClusterRequest(resp.ID, resp.Key, broadCastIP, broadPort, protocol, address)
 	if err != nil {
+		rc.join = false
 		return err
 	}
 	return nil
@@ -79,6 +71,7 @@ func (rc *Node) joinInit() error {
 	if err != nil {
 		return err
 	}
+	rc.peers = NewPeers()
 	rc.join = true
 	return nil
 }
@@ -105,25 +98,16 @@ func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
 	for _, p := range peers {
 		rc.peers.SetPeer(p.ID, p)
 	}
-	rc.writeConfig()
 	return rc.startRaft()
 }
 
 //NewNode 新建raft节点
 func NewNode(service IService) (*Node, error) {
-	//fileName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
-	//// 判断是否存在nodeID，若存在，则当作旧节点处理，加入集群
-	//cfg := eosc_args.NewConfig(fileName)
-	//cfg.ReadFile(fileName)
-	// 均已node_id为1启动,作为单例集群
-	//nodeID, _ := strconv.Atoi(cfg.GetDefault(eosc_args.NodeID, "1"))
-	//nodeKey := cfg.GetDefault(eosc_args.NodeKey, "")
 	logger, _ := zap.NewProduction()
 	rc := &Node{
 		peers:     NewPeers(),
 		service:   service,
 		snapCount: defaultSnapshotCount,
-		stopc:     make(chan struct{}),
 		logger:    logger,
 		lead:      0,
 		transport: &rafthttp.Transport{
@@ -135,7 +119,7 @@ func NewNode(service IService) (*Node, error) {
 		},
 	}
 	rc.readConfig()
-
+	defer rc.writeConfig()
 	err := startRaft(rc, nil)
 	if err != nil {
 		return nil, err

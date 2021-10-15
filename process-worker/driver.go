@@ -12,7 +12,7 @@ type TypedDrivers struct {
 }
 
 func NewTypedDrivers() *TypedDrivers {
-	return &TypedDrivers{}
+	return &TypedDrivers{data: eosc.NewUntyped()}
 }
 
 func (t *TypedDrivers) Get(name string) (eosc.IProfessionDriver, bool) {

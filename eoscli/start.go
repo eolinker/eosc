@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
 	"github.com/urfave/cli/v2"
@@ -13,7 +13,7 @@ import (
 func Start(x cli.ActionFunc) *cli.Command {
 	return &cli.Command{
 		Name:  "start",
-		Usage: "start goku server",
+		Usage: fmt.Sprintf("start %s server", env.AppName()),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "admin-ip",
@@ -64,7 +64,7 @@ func Start(x cli.ActionFunc) *cli.Command {
 func StartFunc(c *cli.Context) error {
 	// 判断程序是否存在
 	if CheckPIDFILEAlreadyExists() {
-		return fmt.Errorf("the app %s is running", eosc_args.AppName())
+		return fmt.Errorf("the app %s is running", env.AppName())
 	}
 	ClearPid()
 	args := make([]string, 0, 20)
@@ -73,9 +73,9 @@ func StartFunc(c *cli.Context) error {
 
 	// 从文件中读取cli运行配置
 	// 读取存在顺序，若值相同，后读取的会全量覆盖相关配置
-	argsName := fmt.Sprintf("%s.args", eosc_args.AppName())
-	//nodeName := fmt.Sprintf("%s_node.args", eosc_args.AppName())
-	cfg := eosc_args.NewConfig(argsName)
+	argsName := fmt.Sprintf("%s.args", env.AppName())
+	//nodeName := fmt.Sprintf("%s_node.args", env.AppName())
+	cfg := env.NewConfig(argsName)
 	cfg.ReadFile(argsName)
 
 	err := utils.IsListen(fmt.Sprintf("%s:%d", ip, port))
@@ -83,19 +83,19 @@ func StartFunc(c *cli.Context) error {
 		return err
 	}
 
-	cfg.Set(eosc_args.IP, ip)
-	cfg.Set(eosc_args.Port, strconv.Itoa(port))
+	cfg.Set(env.IP, ip)
+	cfg.Set(env.Port, strconv.Itoa(port))
 
 	protocol := c.String("protocol")
 	if protocol == "" {
-		protocol = eosc_args.GetDefaultArg(cfg, eosc_args.Protocol, "http")
+		protocol = env.GetDefaultArg(cfg, env.Protocol, "http")
 	}
-	cfg.Set(eosc_args.Protocol, protocol)
+	cfg.Set(env.Protocol, protocol)
 
 	// 设置环境变量
-	eosc_args.SetEnv(eosc_args.IP, ip)
-	eosc_args.SetEnv(eosc_args.Port, strconv.Itoa(port))
-	eosc_args.SetEnv(eosc_args.Protocol, protocol)
+	env.SetEnv(env.IP, ip)
+	env.SetEnv(env.Port, strconv.Itoa(port))
+	env.SetEnv(env.Protocol, protocol)
 
 	//args = append(args, "start", fmt.Sprintf("--ip=%s", ip), fmt.Sprintf("--port=%d", port))
 	cmd, err := StartMaster(args, nil)
@@ -105,7 +105,7 @@ func StartFunc(c *cli.Context) error {
 	}
 	cfg.Save()
 
-	if eosc_args.IsDebug() {
+	if env.IsDebug() {
 		return cmd.Wait()
 	}
 	return nil

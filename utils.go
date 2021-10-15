@@ -2,12 +2,21 @@ package eosc
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 )
 
 func Now() string {
 	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+func GetRealIP(r *http.Request) string {
+	realIP := r.Header.Get("X-Real-IP")
+	if realIP == "" {
+		realIP = r.RemoteAddr
+	}
+	return realIP
 }
 
 func ToDriverDetails(config []*DriverConfig) []*DriverDetail {
@@ -51,6 +60,14 @@ func readDriverId(id string) (group, project, name string) {
 	return
 }
 
-func ToWorkerId(name, profession string) string {
-	return fmt.Sprintf("%s@%s", name, profession)
+func ToWorkerId(value, profession string) (string, bool) {
+	value = strings.ToLower(value)
+	index := strings.Index(value, "@")
+	if index < 0 {
+		return fmt.Sprintf("%s@%s", value, profession), true
+	}
+	if profession != value[index+1:] {
+		return "", false
+	}
+	return value, true
 }

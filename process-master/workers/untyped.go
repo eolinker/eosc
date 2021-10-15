@@ -1,6 +1,9 @@
 package workers
 
-import "github.com/eolinker/eosc"
+import (
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
+)
 
 type ITypedWorkers interface {
 	All() []*Worker
@@ -16,7 +19,9 @@ type TypedWorkers struct {
 
 func (t *TypedWorkers) Reset(ds []*eosc.WorkerData) {
 	nw := eosc.NewUntyped()
+	log.Debug("reset worker data len: ", len(ds))
 	for _, v := range ds {
+		log.Debug("reset worker data detail: ", *v)
 		wv, err := ToWorker(v)
 		if err != nil {
 			continue
