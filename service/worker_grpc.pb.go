@@ -277,5 +277,5 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "service/worker.proto",
+	Metadata: "worker.proto",
 }
