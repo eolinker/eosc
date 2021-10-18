@@ -23,7 +23,7 @@ import (
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
-	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func readListener(r io.Reader) ([]*net.TCPListener, error) {

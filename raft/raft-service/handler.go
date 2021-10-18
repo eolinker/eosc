@@ -1,6 +1,6 @@
 package raft_service
 
-import "github.com/golang/protobuf/proto"
+import "google.golang.org/protobuf/proto"
 
 type IService interface {
 	Send(namespace, cmd string, body []byte) (interface{}, error)
