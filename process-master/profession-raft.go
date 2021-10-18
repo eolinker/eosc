@@ -5,7 +5,7 @@ import (
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/utils"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type ProfessionRaft struct {
