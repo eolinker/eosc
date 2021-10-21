@@ -77,7 +77,7 @@ func (wm *WorkerManager) Check(id, profession, name, driverName string, body []b
 	if err != nil {
 		return err
 	}
-	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
+	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
 		if err := dc.Check(conf, requires); err != nil {
 			return err
 		}
@@ -172,7 +172,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	if err != nil {
 		return err
 	}
-	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
+	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
 		if e := dc.Check(conf, requires); err != nil {
 			return e
 		}

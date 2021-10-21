@@ -17,10 +17,10 @@ type Worker struct {
 	body       []byte
 
 	profession *Profession
-	driver     eosc.IProfessionDriver
+	driver     eosc.IExtenderDriver
 }
 
-func NewWorker(id, professionName, name, driverName string, body []byte, target eosc.IWorker, profession *Profession, driver eosc.IProfessionDriver) *Worker {
+func NewWorker(id, professionName, name, driverName string, body []byte, target eosc.IWorker, profession *Profession, driver eosc.IExtenderDriver) *Worker {
 	return &Worker{
 		IWorker:    target,
 		id:         id,

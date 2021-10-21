@@ -23,13 +23,14 @@ import (
 	"github.com/eolinker/eosc/traffic"
 )
 
-func Process() {
+func Process(register eosc.IExtenderRegister) {
 	utils.InitLogTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")
-	loadPluginEnv()
+
+	loadPluginEnv(register)
 	log.Debug("create worker...")
-	w, err := NewProcessWorker()
+	w, err := NewProcessWorker(register)
 	if err != nil {
 		log.Error("new process worker error: ", err)
 		return
@@ -80,7 +81,7 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker() (*ProcessWorker, error) {
+func NewProcessWorker(extends eosc.IExtenderRegister) (*ProcessWorker, error) {
 	workerServer, err := NewWorkerServer()
 	if err != nil {
 		return nil, err
@@ -109,7 +110,7 @@ func NewProcessWorker() (*ProcessWorker, error) {
 		log.Warn("profession configs error:", err)
 		return nil, err
 	}
-	ps.init(psData)
+	ps.init(psData, extends)
 	workersData := ReadWorkers(os.Stdin)
 
 	err = wm.Init(workersData)
