@@ -10,11 +10,11 @@ import (
 
 var CmdCluster = "clusters"
 
-func Cluster(x cli.ActionFunc) *cli.Command {
+func Cluster() *cli.Command {
 	return &cli.Command{
 		Name:   CmdCluster,
 		Usage:  "list the clusters",
-		Action: x,
+		Action: ClustersFunc,
 	}
 }
 

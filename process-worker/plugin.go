@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"plugin"
 
+	"github.com/eolinker/eosc"
+
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 )
@@ -37,7 +39,7 @@ func LoadPlugins(dir string) {
 	}
 }
 
-func loadPluginEnv() {
+func loadPluginEnv(register eosc.IExtenderRegister) {
 	dir := env.GetDefault("plugin_dir", "plugins")
 	LoadPlugins(dir)
 }

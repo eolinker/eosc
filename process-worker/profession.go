@@ -8,22 +8,22 @@ import (
 var _ IProfession = (*Profession)(nil)
 
 type IProfession interface {
-	GetDriver(name string) (eosc.IProfessionDriver, bool)
+	GetDriver(name string) (eosc.IExtenderDriver, bool)
 }
 type Profession struct {
 	*eosc.ProfessionConfig
 
-	drivers ITypedDrivers
+	drivers ITypedProfessionDrivers
 }
 
-func (p *Profession) GetDriver(name string) (eosc.IProfessionDriver, bool) {
+func (p *Profession) GetDriver(name string) (eosc.IExtenderDriver, bool) {
 	return p.drivers.Get(name)
 }
 
-func NewProfession(c *eosc.ProfessionConfig) *Profession {
-	ds := NewTypedDrivers()
+func NewProfession(c *eosc.ProfessionConfig, extends eosc.IExtenderRegister) *Profession {
+	ds := NewProfessionDrivers()
 	for _, d := range c.Drivers {
-		df, b := eosc.DefaultProfessionDriverRegister.GetProfessionDriver(d.Id)
+		df, b := extends.GetExtender(d.Id)
 		if !b {
 			log.Warn("driver not exist:", d.Id)
 			continue

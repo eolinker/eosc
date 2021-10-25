@@ -10,12 +10,12 @@ import (
 
 var CmdLeave = "leave"
 
-func Leave(x cli.ActionFunc) *cli.Command {
+func Leave() *cli.Command {
 	return &cli.Command{
 		Name:   CmdLeave,
 		Usage:  "leave the cluster",
 		Flags:  []cli.Flag{},
-		Action: x,
+		Action: LeaveFunc,
 	}
 }
 

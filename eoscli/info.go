@@ -11,11 +11,11 @@ import (
 
 var CmdInfo = "info"
 
-func Info(x cli.ActionFunc) *cli.Command {
+func Info() *cli.Command {
 	return &cli.Command{
 		Name:   CmdInfo,
 		Usage:  "display information of the node",
-		Action: x,
+		Action: InfoFunc,
 	}
 }
 

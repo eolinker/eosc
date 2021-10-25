@@ -4,13 +4,13 @@ import (
 	"reflect"
 )
 
-type IProfessionDriverFactory interface {
-	Create(profession string, name string, label string, desc string, params map[string]string) (IProfessionDriver, error)
+type IExtenderDriverFactory interface {
+	Create(profession string, name string, label string, desc string, params map[string]string) (IExtenderDriver, error)
 }
-type IProfessionDriverCheckConfig interface {
+type IExtenderConfigChecker interface {
 	Check(v interface{}, workers map[RequireId]interface{}) error
 }
-type IProfessionDriver interface {
+type IExtenderDriver interface {
 	ConfigType() reflect.Type
 	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (IWorker, error)
 }
