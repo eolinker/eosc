@@ -35,6 +35,7 @@ func createApp() string {
 	if err := os.Setenv("APP", app); err != nil {
 		panic(err)
 	}
+	tryReadEnv(app)
 	return app
 }
 func Envs() []string {
