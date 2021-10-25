@@ -33,12 +33,22 @@ var (
 
 func init() {
 
-	socketSocketDirValue = GetDefault(envConfigName, fmt.Sprintf("/tmp/%s", appName))
+	socketSocketDirValue = GetDefault(envSocketDirName, fmt.Sprintf("/tmp/%s", appName))
 	configPath = GetDefault(envConfigName, fmt.Sprintf("/etc/%s/config.yml", appName))
 	dataDirPath = GetDefault(envDataDirName, fmt.Sprintf("/var/lib/%s", appName))
 	pidFilePath = GetDefault(envPidFileName, fmt.Sprintf("/var/run/%s", appName))
 	logDirPath = GetDefault(envLogDirName, fmt.Sprintf("/var/log/%s", appName))
 	extendsBaseDir = GetDefault(envExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
+}
+func GetConfig() map[string]string {
+	return map[string]string{
+		envSocketDirName:  socketSocketDirValue,
+		envConfigName:     configPath,
+		envDataDirName:    dataDirPath,
+		envPidFileName:    pidFilePath,
+		envLogDirName:     logDirPath,
+		envExtendsDirName: extendsBaseDir,
+	}
 }
 func tryReadEnv(name string) {
 	envValues := map[string]string{
@@ -49,11 +59,17 @@ func tryReadEnv(name string) {
 		envLogDirName:     fmt.Sprintf("/var/log/%s", name),
 		envExtendsDirName: fmt.Sprintf("/var/lib/%s/extends", name),
 	}
+	en := strings.ToUpper(name)
 	path := ""
 	flag.StringVar(&path, "env", "", "env")
 	flag.Parse()
 	if path == "" {
-		path = GetDefault(configNameForEnv, fmt.Sprintf("/etc/%s/%s.yaml", appName, appName))
+
+		path = os.Getenv(createEnvName(en, configNameForEnv))
+		if path == "" {
+			path = fmt.Sprintf("/etc/%s/%s.yaml", name, name)
+		}
+
 	}
 	m, err := read(path)
 	if err != nil {
@@ -63,10 +79,12 @@ func tryReadEnv(name string) {
 	for k, nv := range m {
 		key := strings.ToUpper(k)
 		if _, has := envValues[key]; has {
-			SetEnv(k, nv)
+			os.Setenv(fmt.Sprintf("%s_%s", en, key), nv)
+
 		}
 	}
 }
+
 func read(path string) (map[string]string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {

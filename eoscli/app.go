@@ -16,6 +16,22 @@ func NewApp() *App {
 		Name:     env.AppName(),
 		Usage:    fmt.Sprintf("%s controller", env.AppName()),
 		Commands: make([]*cli.Command, 0, 6),
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "env",
+				Aliases:     nil,
+				Usage:       "",
+				EnvVars:     nil,
+				FilePath:    "",
+				Required:    false,
+				Hidden:      false,
+				TakesFile:   false,
+				Value:       "",
+				DefaultText: "",
+				Destination: nil,
+				HasBeenSet:  false,
+			},
+		},
 	}}
 }
 

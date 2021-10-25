@@ -61,9 +61,12 @@ func GenEnv(name, value string) string {
 	return fmt.Sprintf("%s=%s", EnvName(name), value)
 }
 func EnvName(name string) string {
-	return fmt.Sprintf("%s_%s", envAppName, name)
+	return createEnvName(envAppName, name)
 }
+func createEnvName(envName, name string) string {
+	return fmt.Sprintf("%s_%s", envName, name)
 
+}
 func AppName() string {
 	return appName
 }
