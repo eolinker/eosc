@@ -2,12 +2,12 @@ package eoscli
 
 import "github.com/urfave/cli/v2"
 
-func Restart(x cli.ActionFunc) *cli.Command {
+func Restart() *cli.Command {
 	return &cli.Command{
 		Name:  "restart",
 		Usage: "restart goku server",
 
-		Action: x,
+		Action: RestartFunc,
 	}
 }
 

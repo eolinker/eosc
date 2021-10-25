@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Start(x cli.ActionFunc) *cli.Command {
+func Start() *cli.Command {
 	return &cli.Command{
 		Name:  "start",
 		Usage: fmt.Sprintf("start %s server", env.AppName()),
@@ -56,7 +56,7 @@ func Start(x cli.ActionFunc) *cli.Command {
 				Usage:   "eosc",
 			},
 		},
-		Action: x,
+		Action: StartFunc,
 	}
 }
 

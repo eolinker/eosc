@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 /*
  * Copyright (c) 2021. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
@@ -29,7 +30,7 @@ import (
 func init() {
 	admin.Register("/api/", admin_open_api.CreateHandler())
 	process.Register(eosc.ProcessWorker, func() {
-		process_worker.Process(eosc.NewExtenderRegister())
+		process_worker.Process(nil)
 	})
 	process.Register(eosc.ProcessMaster, process_master.Process)
 	process.Register(eosc.ProcessHelper, helper.Process)
@@ -51,16 +52,7 @@ func main() {
 		return
 	}
 	app := eoscli.NewApp()
-	app.AppendCommand(
-		eoscli.Start(eoscli.StartFunc),
-		eoscli.Join(eoscli.JoinFunc),
-		eoscli.Stop(eoscli.StopFunc),
-		eoscli.Info(eoscli.InfoFunc),
-		eoscli.Leave(eoscli.LeaveFunc),
-		eoscli.Cluster(eoscli.ClustersFunc),
-		eoscli.Restart(eoscli.RestartFunc),
-		eoscli.Env(eoscli.EnvFunc),
-	)
+	app.Default()
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err)

@@ -24,6 +24,10 @@ import (
 )
 
 func Process(register eosc.IExtenderRegister) {
+	if register == nil {
+		register = eosc.NewExtenderRegister()
+	}
+
 	utils.InitLogTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")

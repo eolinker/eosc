@@ -17,7 +17,7 @@ import (
 
 var CmdJoin = "join"
 
-func Join(x cli.ActionFunc) *cli.Command {
+func Join() *cli.Command {
 	return &cli.Command{
 		Name:  CmdJoin,
 		Usage: "join the cluster",
@@ -40,7 +40,7 @@ func Join(x cli.ActionFunc) *cli.Command {
 				Required: true,
 			},
 		},
-		Action: x,
+		Action: JoinFunc,
 	}
 }
 

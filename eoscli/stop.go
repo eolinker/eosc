@@ -9,11 +9,11 @@ import (
 
 var CmdStop = "stop"
 
-func Stop(stop cli.ActionFunc) *cli.Command {
+func Stop() *cli.Command {
 	return &cli.Command{
 		Name:   "stop",
 		Usage:  fmt.Sprintf("stop %s server", env.AppName()),
-		Action: stop,
+		Action: StopFunc,
 	}
 }
 
