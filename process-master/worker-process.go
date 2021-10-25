@@ -9,8 +9,6 @@ import (
 
 	"github.com/eolinker/eosc/log"
 
-	"github.com/eolinker/eosc/env"
-
 	"github.com/eolinker/eosc"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
@@ -74,7 +72,7 @@ func newWorkerProcess(stdIn io.Reader, extraFiles []*os.File) (*WorkerProcess, e
 }
 
 func createClient(pid int) (service.WorkerServiceClient, *grpc.ClientConn, error) {
-	conn, err := grpc_unixsocket.Connect(service.WorkerServerAddr(env.AppName(), pid))
+	conn, err := grpc_unixsocket.Connect(service.WorkerServerAddr(pid))
 	if err != nil {
 		return nil, nil, err
 	}

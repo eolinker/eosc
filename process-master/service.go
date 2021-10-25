@@ -12,8 +12,6 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/eolinker/eosc/env"
-
 	"github.com/eolinker/eosc/service"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
@@ -24,7 +22,7 @@ import (
 //startService 开启master
 func (m *Master) startService() error {
 
-	addr := service.MasterServerAddr(env.AppName(), os.Getpid())
+	addr := service.MasterServerAddr(os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)
 

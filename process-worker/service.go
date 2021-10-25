@@ -9,7 +9,6 @@ import (
 
 	"github.com/eolinker/eosc/utils"
 
-	"github.com/eolinker/eosc/env"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 
 	"google.golang.org/grpc"
@@ -36,13 +35,13 @@ func (ws *WorkerServer) SetWorkers(workers IWorkers) {
 }
 func (ws *WorkerServer) Stop() {
 	ws.Server.Stop()
-	addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
+	addr := service.WorkerServerAddr(os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)
 }
 func NewWorkerServer() (*WorkerServer, error) {
 	defer utils.Timeout("NewWorkerServer")()
-	addr := service.WorkerServerAddr(env.AppName(), os.Getpid())
+	addr := service.WorkerServerAddr(os.Getpid())
 	// 移除unix socket
 	syscall.Unlink(addr)
 	log.Info("start worker :", addr)
