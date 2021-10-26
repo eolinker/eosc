@@ -445,7 +445,7 @@ func (rc *Node) changeSingleCluster() error {
 
 	// 创建快照文件夹
 	if err = os.Mkdir(rc.snapdir, 0750); err != nil {
-		return fmt.Errorf("eosc: cannot create dir for snapshot (%w)", err)
+		return fmt.Errorf("raft:cannot create dir for snapshot (%w)", err)
 	}
 	// 新建快照管理
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)

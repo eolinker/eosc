@@ -147,11 +147,11 @@ func Exist() bool {
 
 func getPath() string {
 	name := env.AppName()
-	path, _ := filepath.Abs(fmt.Sprintf("%s.pid", name))
+	path, _ := filepath.Abs(fmt.Sprintf("%s/%s.pid", env.PidFileDir(), name))
 	return path
 }
 func getOldPath() string {
 	name := env.AppName()
-	path, _ := filepath.Abs(fmt.Sprintf("%s.old.pid", name))
+	path, _ := filepath.Abs(fmt.Sprintf("%s/%s.old.pid", env.PidFileDir(), name))
 	return path
 }

@@ -20,7 +20,7 @@ import (
 )
 
 func InitLogTransport(name string) {
-	dir := fmt.Sprintf("/var/log/%s", env.AppName())
+	dir := env.LogDir()
 	if env.IsDebug() {
 		dir = filepath.Base(".")
 		log.InitDebug(true)
