@@ -2,6 +2,7 @@ package eoscli
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 )
@@ -16,5 +17,7 @@ func Plugin() *cli.Command {
 
 func PluginFunc(c *cli.Context) error {
 	fmt.Println(c.Args())
+	runtime.Version()
+
 	return nil
 }

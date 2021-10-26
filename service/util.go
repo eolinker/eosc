@@ -1,11 +1,15 @@
 package service
 
-import "fmt"
+import (
+	"github.com/eolinker/eosc/env"
+)
 
-func MasterServerAddr(app string, pid int) string {
-	return fmt.Sprintf("/tmp/%s.master-%d.sock", app, pid)
+func MasterServerAddr(pid int) string {
+
+	return env.SocketAddr("master", pid)
 }
 
-func WorkerServerAddr(app string, pid int) string {
-	return fmt.Sprintf("/tmp/%s.worker-%d.sock", app, pid)
+func WorkerServerAddr(pid int) string {
+
+	return env.SocketAddr("worker", pid)
 }
