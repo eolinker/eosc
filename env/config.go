@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	ConfigName     = "CONFIG"
-	DataDirName    = "DATA_DIR"
-	PidFileName    = "PID_FILE"
-	SocketDirName  = "SOCKET_DIR"
-	LogDirName     = "LOG_DIR"
-	ExtendsDirName = "EXTENDS_DIR"
+	configName     = "CONFIG"
+	dataDirName    = "DATA_DIR"
+	pidFileName    = "PID_FILE"
+	socketDirName  = "SOCKET_DIR"
+	logDirName     = "LOG_DIR"
+	extendsDirName = "EXTENDS_DIR"
 
 	configNameForEnv = "ENV"
 )
@@ -32,21 +32,21 @@ var (
 )
 
 func init() {
-	socketSocketDirValue = GetDefault(ConfigName, fmt.Sprintf("/tmp/%s", appName))
-	configPath = GetDefault(ConfigName, fmt.Sprintf("/etc/%s/config.yml", appName))
-	dataDirPath = GetDefault(DataDirName, fmt.Sprintf("/var/lib/%s", appName))
-	pidFilePath = GetDefault(PidFileName, fmt.Sprintf("/var/run/%s", appName))
-	logDirPath = GetDefault(LogDirName, fmt.Sprintf("/var/log/%s", appName))
-	extendsBaseDir = GetDefault(ExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
+	socketSocketDirValue = GetDefault(configName, fmt.Sprintf("/tmp/%s", appName))
+	configPath = GetDefault(configName, fmt.Sprintf("/etc/%s/config.yml", appName))
+	dataDirPath = GetDefault(dataDirName, fmt.Sprintf("/var/lib/%s", appName))
+	pidFilePath = GetDefault(pidFileName, fmt.Sprintf("/var/run/%s", appName))
+	logDirPath = GetDefault(logDirName, fmt.Sprintf("/var/log/%s", appName))
+	extendsBaseDir = GetDefault(extendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
 }
 func tryReadEnv(name string) {
 	envValues := map[string]string{
-		ConfigName:     fmt.Sprintf("/etc/%s/config.yml", name),
-		DataDirName:    fmt.Sprintf("/var/lib/%s", name),
-		PidFileName:    fmt.Sprintf("/var/run/%s", name),
-		SocketDirName:  fmt.Sprintf("/tmp/%s", name),
-		LogDirName:     fmt.Sprintf("/var/log/%s", name),
-		ExtendsDirName: fmt.Sprintf("/var/lib/%s/extends", name),
+		configName:     fmt.Sprintf("/etc/%s/config.yml", name),
+		dataDirName:    fmt.Sprintf("/var/lib/%s", name),
+		pidFileName:    fmt.Sprintf("/var/run/%s", name),
+		socketDirName:  fmt.Sprintf("/tmp/%s", name),
+		logDirName:     fmt.Sprintf("/var/log/%s", name),
+		extendsDirName: fmt.Sprintf("/var/lib/%s/extends", name),
 	}
 	path := ""
 	flag.StringVar(&path, "env", "", "env")
@@ -88,4 +88,24 @@ func SocketAddr(name string, pid int) string {
 	os.MkdirAll(socketSocketDirValue, os.FileMode(0755))
 
 	return fmt.Sprintf("%s/%s.%s-%d.sock", socketSocketDirValue, appName, name, pid)
+}
+
+func ConfigPath() string {
+	return configPath
+}
+
+func DataDirPath() string {
+	return dataDirPath
+}
+
+func PidFilePath() string {
+	return pidFilePath
+}
+
+func LogDirPath() string {
+	return logDirPath
+}
+
+func ExtendsBaseDir() string {
+	return extendsBaseDir
 }

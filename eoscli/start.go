@@ -35,7 +35,7 @@ func Start() *cli.Command {
 //StartFunc 开启节点
 func StartFunc(c *cli.Context) error {
 
-	pidDir, _ := env.GetEnv(env.PidFileName)
+	pidDir := env.PidFilePath()
 	// 判断程序是否存在
 	if CheckPIDFILEAlreadyExists(pidDir) {
 		return fmt.Errorf("the app %s is running", env.AppName())

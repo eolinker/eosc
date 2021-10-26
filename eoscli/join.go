@@ -90,7 +90,7 @@ func join(c *cli.Context, cfg *env.Config) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
-	pid, err := readPid()
+	pid, err := readPid(env.PidFilePath())
 	if err != nil {
 		return err
 	}

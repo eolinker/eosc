@@ -44,8 +44,8 @@ type CertificateDir struct {
 var defaultPath = "/etc/%s/config.yml"
 
 func GetConfig() (*Config, error) {
-	path, has := env.GetEnv(env.ConfigName)
-	if !has {
+	path := env.ConfigPath()
+	if path == "" {
 		path = fmt.Sprintf(defaultPath, env.AppName())
 	}
 	data, err := ioutil.ReadFile(path)
