@@ -55,7 +55,7 @@ func (rc *Node) replayWAL() *wal.WAL {
 func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if !wal.Exist(rc.waldir) {
 		// 创建本地文件
-		if err := os.Mkdir(rc.waldir, 0750); err != nil {
+		if err := os.MkdirAll(rc.waldir, 0750); err != nil {
 			log.Fatalf("eosc: cannot create dir for wal (%v)", err)
 		}
 		// 创建wal日志对象

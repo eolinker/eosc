@@ -22,7 +22,7 @@ func Info() *cli.Command {
 
 //InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
-	pid, err := readPid(env.PidFilePath())
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}

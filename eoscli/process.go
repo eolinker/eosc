@@ -9,7 +9,7 @@ import (
 )
 
 func restartProcess() error {
-	pidDir := env.PidFilePath()
+	pidDir := env.PidFileDir()
 	pid, err := readPid(pidDir)
 
 	if err != nil {
@@ -26,7 +26,7 @@ func restartProcess() error {
 }
 
 func stopProcess() error {
-	pidDir := env.PidFilePath()
+	pidDir := env.PidFileDir()
 	log.Debugf("app %s is stopping,please wait...\n", env.AppName())
 	pid, err := readPid(pidDir)
 	if err != nil {

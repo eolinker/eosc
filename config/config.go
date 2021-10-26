@@ -17,7 +17,7 @@ type Config struct {
 }
 
 type SSLConfig struct {
-	Listen *ListenConfig `json:"listen"`
+	Listen []*ListenConfig `json:"listen"`
 }
 
 type ListenConfig struct {

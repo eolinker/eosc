@@ -208,7 +208,7 @@ func (w *WorkersRaft) DelayDone() {
 }
 
 func (w *WorkersRaft) CommitDelay(cmd string, data []byte) error {
-
+	return nil
 }
 
 func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {

@@ -23,7 +23,7 @@ func Leave() *cli.Command {
 
 //LeaveFunc 离开集群
 func LeaveFunc(c *cli.Context) error {
-	pid, err := readPid(env.PidFilePath())
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}
