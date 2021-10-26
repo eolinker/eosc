@@ -11,6 +11,10 @@ type IRaftServiceHandler interface {
 	ResetHandler(data []byte) error
 	// CommitHandler 节点commit信息前的处理
 	CommitHandler(cmd string, data []byte) error
+
+	DelayDone()
+
+	CommitDelay(cmd string, data []byte) error
 	// Snapshot 获取快照
 	Snapshot() []byte
 	// ProcessHandler 节点propose信息前的处理

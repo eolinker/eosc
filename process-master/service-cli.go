@@ -15,6 +15,7 @@ import (
 func (m *Master) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
 	for _, address := range request.ClusterAddress {
+		request.BroadcastPort = 9400
 		err := raft.JoinCluster(m.node, request.BroadcastIP, int(request.BroadcastPort), address, request.Protocol)
 		if err != nil {
 			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())

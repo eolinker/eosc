@@ -12,5 +12,7 @@ func Restart() *cli.Command {
 }
 
 func RestartFunc(c *cli.Context) error {
+	// 先check插件版本是否存在，若不存在，则先下载插件后才能执行restart
+
 	return restartProcess()
 }
