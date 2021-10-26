@@ -23,10 +23,9 @@ import (
 	"github.com/eolinker/eosc/traffic"
 )
 
-func Process(register eosc.IExtenderRegister) {
-	if register == nil {
-		register = eosc.NewExtenderRegister()
-	}
+func Process() {
+
+	register := eosc.NewExtenderRegister()
 
 	utils.InitLogTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
@@ -85,7 +84,7 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker(extends eosc.IExtenderRegister) (*ProcessWorker, error) {
+func NewProcessWorker(extends eosc.IExtenders) (*ProcessWorker, error) {
 	workerServer, err := NewWorkerServer()
 	if err != nil {
 		return nil, err

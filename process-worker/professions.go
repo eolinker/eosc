@@ -77,7 +77,7 @@ func NewProfessions() *Professions {
 	return &Professions{}
 }
 
-func (ps *Professions) init(configs []*eosc.ProfessionConfig, extends eosc.IExtenderRegister) {
+func (ps *Professions) init(configs []*eosc.ProfessionConfig, extends eosc.IExtenders) {
 	data := eosc.NewUntyped()
 	for _, c := range configs {
 		log.Debug("add profession config:", c)

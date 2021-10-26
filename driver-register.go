@@ -33,5 +33,8 @@ func NewExtenderRegister() *ExtenderRegister {
 
 type IExtenderRegister interface {
 	RegisterExtender(name string, factory IExtenderDriverFactory) error
+}
+
+type IExtenders interface {
 	GetExtender(name string) (IExtenderDriverFactory, bool)
 }

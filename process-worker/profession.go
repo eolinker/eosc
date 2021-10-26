@@ -20,7 +20,7 @@ func (p *Profession) GetDriver(name string) (eosc.IExtenderDriver, bool) {
 	return p.drivers.Get(name)
 }
 
-func NewProfession(c *eosc.ProfessionConfig, extends eosc.IExtenderRegister) *Profession {
+func NewProfession(c *eosc.ProfessionConfig, extends eosc.IExtenders) *Profession {
 	ds := NewProfessionDrivers()
 	for _, d := range c.Drivers {
 		df, b := extends.GetExtender(d.Id)
