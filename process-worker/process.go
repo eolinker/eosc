@@ -25,13 +25,11 @@ import (
 
 func Process() {
 
-	register := eosc.NewExtenderRegister()
-
 	utils.InitLogTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")
 
-	loadPluginEnv(register)
+	register := loadPluginEnv()
 	log.Debug("create worker...")
 	w, err := NewProcessWorker(register)
 	if err != nil {
