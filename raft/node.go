@@ -315,18 +315,7 @@ func (rc *Node) Status() raft.Status {
 // leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
 func (rc *Node) Send(msg []byte) (interface{}, error) {
-	// 移除节点后，因为有外部api，故不会停止程序，以此做隔离
-	//if !rc.active {
-	//	return fmt.Errorf("current node is leave")
-	//}
-	// 非集群模式下直接处理
-	//if !rc.isCluster {
-	//	data, err := rc.service.ProcessDataHandler(msg)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	return rc.service.CommitHandler(data)
-	//}
+
 	// 集群模式下的处理
 	isLeader, err := rc.isLeader()
 	if err != nil {

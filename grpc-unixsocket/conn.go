@@ -56,7 +56,7 @@ func Connect(addr string) (*grpc.ClientConn, error) {
 }
 
 func Listener(addr string) (net.Listener, error) {
-	defer utils.Timeout(fmt.Sprint("listener unix:", addr))()
+	defer utils.Timeout(fmt.Sprint("port-reqiure unix:", addr))()
 	serverAddress, err := net.ResolveUnixAddr("unix", addr)
 	if err != nil {
 		return nil, err
@@ -75,16 +75,16 @@ type unixListener struct {
 }
 
 func (u *unixListener) Close() error {
-	log.Debug("unix listener close:", u.Addr().String())
+	log.Debug("unix port-reqiure close:", u.Addr().String())
 	err := u.UnixListener.Close()
 	if err != nil {
-		log.Warn("close unix listener:", err)
+		log.Warn("close unix port-reqiure:", err)
 		return err
 	}
 	//err = syscall.Unlink(u.Addr().String())
 	//if err != nil {
-	//	log.Warn("Unlink unix listener:", err)
-	//	fmt.Println("Unlink unix listener:", err)
+	//	log.Warn("Unlink unix port-reqiure:", err)
+	//	fmt.Println("Unlink unix port-reqiure:", err)
 	//	return err
 	//}
 	return nil

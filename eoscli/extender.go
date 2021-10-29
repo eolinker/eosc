@@ -21,12 +21,12 @@ func PluginFunc(c *cli.Context) error {
 
 	for _, id := range extenderNames.Slice() {
 
-		group, name, err := extends.DecodeExtenderId(id)
+		group, name, version, err := extends.DecodeExtenderId(id)
 		if err != nil {
 			log.Warn(err)
 			continue
 		}
-		register, err := extends.ReadExtenderProject(group, name)
+		register, err := extends.ReadExtenderProject(group, name, version)
 		if err != nil {
 			log.Warn(err)
 			//return err

@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/eolinker/eosc/listener"
+	port_reqiure "github.com/eolinker/eosc/common/port-reqiure"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -47,7 +47,7 @@ type WorkerManager struct {
 	professions    IProfessions
 	data           ITypedWorkers
 	requireManager IWorkerRequireManager
-	portsRequire   listener.IPortsRequire
+	portsRequire   port_reqiure.IPortsRequire
 }
 
 func (wm *WorkerManager) ResourcesPort() []int32 {
@@ -123,7 +123,7 @@ func NewWorkerManager(professions IProfessions) *WorkerManager {
 		professions:    professions,
 		data:           NewTypedWorkers(),
 		requireManager: NewWorkerRequireManager(),
-		portsRequire:   listener.NewPortsRequire(),
+		portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
 

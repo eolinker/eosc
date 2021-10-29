@@ -76,7 +76,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 
 		//l, ok := o.(*net.TCPListener)
 		//if !ok {
-		//	log.Warn("unknown error while try close  listener:", n)
+		//	log.Warn("unknown error while try close  port-reqiure:", n)
 		//	continue
 		//}
 		log.Debug("close old : ", n)

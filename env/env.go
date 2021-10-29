@@ -38,6 +38,7 @@ func createApp() string {
 	tryReadEnv(app)
 	return app
 }
+
 func Envs() []string {
 	return envs
 }
