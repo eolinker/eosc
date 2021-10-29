@@ -216,7 +216,7 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "120003", "fail to parse propose message", err.Error())
 		return
 	}
-	obj, data, err := rc.service.ProcessDataHandler(msg.Body)
+	obj, data, err := rc.service.PreProcessData(msg.Body)
 	if err != nil {
 		w.WriteHeader(503)
 		writeError(w, "120004", "fail to send propose message", err.Error())
@@ -228,7 +228,7 @@ func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "120005", "fail to send propose message", err.Error())
 		return
 	}
-	err = rc.service.CommitHandler(data)
+	err = rc.service.Commit(data)
 	if err != nil {
 		w.WriteHeader(503)
 		writeError(w, "120005", "fail to commit message", err.Error())

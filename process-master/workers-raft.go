@@ -67,6 +67,40 @@ type WorkersRaft struct {
 	workerProcessController WorkerProcessController
 }
 
+func (w *WorkersRaft) Append(cmd string, data []byte) error {
+
+	switch cmd {
+	case workers.CommandSet:
+		{
+			worker, err := workers.DecodeWorker(data)
+			if err != nil {
+				return err
+			}
+			log.Info("append worker set:", worker.Id)
+
+			w.data.Set(worker.Id, worker)
+
+			return nil
+		}
+	case workers.CommandDel:
+		{
+
+			id := string(data)
+			log.Info("append worker delete:", id)
+			w.data.Del(id)
+
+			return nil
+		}
+	default:
+		return raft_service.ErrInvalidCommand
+	}
+}
+
+func (w *WorkersRaft) Complete() error {
+	// todo 重置worker 进程
+	return nil
+}
+
 func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, workerServiceClient service.WorkerServiceClient, service raft_service.IService, workerController WorkerProcessController) *WorkersRaft {
 	return &WorkersRaft{data: workerData, professions: professions, workerServiceClient: workerServiceClient, service: service, workerProcessController: workerController}
 }

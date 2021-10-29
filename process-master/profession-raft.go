@@ -12,6 +12,14 @@ type ProfessionRaft struct {
 	eosc.IProfessionsData
 }
 
+func (p *ProfessionRaft) Append(cmd string, data []byte) error {
+	return nil
+}
+
+func (p *ProfessionRaft) Complete() error {
+	return nil
+}
+
 func NewProfessionRaft(IProfessionsData eosc.IProfessionsData) *ProfessionRaft {
 	return &ProfessionRaft{IProfessionsData: IProfessionsData}
 }

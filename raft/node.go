@@ -307,7 +307,7 @@ func (rc *Node) Status() raft.Status {
 
 // Send 客户端发送propose请求的处理
 // 由客户端API调用或Leader收到转发后调用
-// 如果是非集群模式(isCluster为false)，直接处理(即service.ProcessHandler后直接service.CommitHandler)
+// 如果是非集群模式(isCluster为false)，直接处理(即service.ProcessHandler后直接service.Commit)
 // 如果是集群模式，分两种情况
 // 1、当前节点是leader，经service.ProcessHandler后由node.Propose处理后返回，
 // 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
@@ -325,7 +325,7 @@ func (rc *Node) Send(msg []byte) (interface{}, error) {
 	// 如果自己本身就是leader，直接处理，否则转发由leader处理
 	if isLeader {
 		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		obj, data, err := rc.service.ProcessDataHandler(msg)
+		obj, data, err := rc.service.PreProcessData(msg)
 		if err != nil {
 			return nil, err
 		}
@@ -334,7 +334,7 @@ func (rc *Node) Send(msg []byte) (interface{}, error) {
 			return nil, err
 		}
 
-		if err := rc.service.CommitHandler(data); err != nil {
+		if err := rc.service.Commit(data); err != nil {
 			return nil, err
 		}
 		return obj, nil

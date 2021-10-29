@@ -4,8 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-
-	"google.golang.org/protobuf/proto"
+	"sync"
+	"time"
 
 	"github.com/eolinker/eosc/raft"
 
@@ -22,12 +22,81 @@ var (
 const (
 	CommandInit     = "init"
 	SystemNamespace = "__system"
+	appendDelay     = time.Second
 )
 
 type Service struct {
 	handlers eosc.IUntyped
 	raftNode raft.IRaftSender
-	//processHandlers eosc.IUntyped
+
+	commitHandler func(namespace, cmd string, body []byte) error
+
+	timerAppend *time.Timer
+	locker      sync.Mutex
+}
+
+func NewService() *Service {
+	s := &Service{
+		handlers: eosc.NewUntyped(),
+	}
+	s.SetHandler(SystemNamespace, s)
+	s.commitHandler = s.doCommit
+	return s
+}
+func (s *Service) ResetHandler(data []byte) error {
+	return errors.New("not support")
+}
+
+func (s *Service) Append(cmd string, data []byte) error {
+
+	switch cmd {
+	case CommandInit:
+		snaps := make(map[string]string)
+		err := json.Unmarshal(data, &snaps)
+		if err != nil {
+			return err
+		}
+		s.doResetSnap(snaps)
+	}
+	return ErrInvalidCommand
+
+}
+
+func (s *Service) Complete() error {
+	return nil
+}
+
+func (s *Service) complete() error {
+
+	for namespace, f := range s.handlers.All() {
+		if namespace == SystemNamespace {
+			continue
+		}
+		f.(IRaftServiceHandler).Complete()
+	}
+	return nil
+}
+
+func (s *Service) CommitHandler(cmd string, data []byte) error {
+	switch cmd {
+	case CommandInit:
+		snaps := make(map[string]string)
+		err := json.Unmarshal(data, &snaps)
+		if err != nil {
+			return err
+		}
+		s.doResetSnap(snaps)
+		return nil
+	}
+	return ErrInvalidCommand
+}
+
+func (s *Service) Snapshot() []byte {
+	return nil
+}
+
+func (s *Service) ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error) {
+	return nil, nil, errors.New("not support")
 }
 
 func (s *Service) Send(namespace, cmd string, body []byte) (interface{}, error) {
@@ -39,7 +108,7 @@ func (s *Service) Send(namespace, cmd string, body []byte) (interface{}, error) 
 	return s.raftNode.Send(data)
 }
 
-func (s *Service) CommitHandler(data []byte) error {
+func (s *Service) Commit(data []byte) error {
 	cmd, err := unMarshalCmd(data)
 	if err != nil {
 		return err
@@ -47,23 +116,26 @@ func (s *Service) CommitHandler(data []byte) error {
 	if err != nil {
 		return err
 	}
+	s.locker.Lock()
+	defer s.locker.Unlock()
 	return s.commitHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
-
 }
 
-func (s *Service) ProcessDataHandler(inBody []byte) (object interface{}, data []byte, err error) {
+func (s *Service) PreProcessData(inBody []byte) (object interface{}, data []byte, err error) {
 	cmd, err := unMarshalCmd(inBody)
 	if err != nil {
 		return nil, nil, err
 	}
-	return s.ProcessHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	return s.processHandler(cmd.Namespace, cmd.Cmd, cmd.Body)
 }
 
 func (s *Service) SetRaft(raft raft.IRaftSender) {
 	s.raftNode = raft
 }
 
-func (s *Service) ProcessHandler(namespace string, command string, processData []byte) (interface{}, []byte, error) {
+func (s *Service) processHandler(namespace string, command string, processData []byte) (interface{}, []byte, error) {
 	v, has := s.handlers.Get(namespace)
 	if !has {
 		return nil, nil, ErrInvalidNamespace
@@ -84,18 +156,6 @@ func (s *Service) ProcessHandler(namespace string, command string, processData [
 
 }
 
-//func RegisterHandlers(s *Service, handlers ...ICreateHandler) {
-//	if handlers != nil {
-//		for _, cf := range handlers {
-//			h, ok := cf.(ICreateHandler)
-//			if !ok {
-//				continue
-//			}
-//			s.SetHandler(h.Namespace(), h.Handler())
-//		}
-//	}
-//}
-
 func (s *Service) SetHandlers(handlers ...ICreateHandler) {
 	if handlers != nil {
 		for _, cf := range handlers {
@@ -108,25 +168,11 @@ func (s *Service) SetHandlers(handlers ...ICreateHandler) {
 	}
 }
 
-func NewService() *Service {
-	s := &Service{
-		handlers: eosc.NewUntyped(),
-	}
-	return s
-}
-
 func (s *Service) SetHandler(namespace string, handler IRaftServiceHandler) {
 	s.handlers.Set(namespace, handler)
 }
 
-func (s *Service) commitHandler(namespace string, cmd string, data []byte) error {
-	if namespace == SystemNamespace {
-		switch cmd {
-		case CommandInit:
-			return s.ResetSnap(data)
-		}
-		return ErrInvalidCommand
-	}
+func (s *Service) doCommit(namespace string, cmd string, data []byte) error {
 
 	v, has := s.handlers.Get(namespace)
 	if !has {
@@ -141,29 +187,38 @@ func (s *Service) commitHandler(namespace string, cmd string, data []byte) error
 
 }
 
+func (s *Service) doAppend(namespace string, cmd string, data []byte) error {
+
+	s.timerAppend.Reset(appendDelay)
+	v, has := s.handlers.Get(namespace)
+	if !has {
+		return ErrInvalidNamespace
+	}
+	f, ok := v.(IRaftServiceHandler)
+	if !ok {
+		return ErrInvalidCommitHandler
+	}
+
+	err := f.Append(cmd, data)
+
+	return err
+}
+
 func (s *Service) GetInit() ([]byte, error) {
 
 	data, err := s.GetSnapshot()
 	if err != nil {
 		return nil, err
 	}
-	cmd := &Commend{
-		Namespace: SystemNamespace,
-		Cmd:       CommandInit,
-		Body:      data,
-	}
-	return proto.Marshal(cmd)
+
+	return encodeCmd(SystemNamespace, CommandInit, data)
 
 }
-
-func (s *Service) ResetSnap(data []byte) error {
-	snaps := make(map[string]string)
-	err := json.Unmarshal(data, &snaps)
-	if err != nil {
-		return err
-	}
-
+func (s *Service) doResetSnap(snaps map[string]string) {
 	for namespace, value := range snaps {
+		if namespace == SystemNamespace {
+			continue
+		}
 		handler, has := s.handlers.Get(namespace)
 		if !has {
 			log.Warnf("reset snap %s:%w", namespace, ErrInvalidNamespace)
@@ -185,16 +240,47 @@ func (s *Service) ResetSnap(data []byte) error {
 			continue
 		}
 	}
+}
+func (s *Service) ResetSnap(data []byte) error {
+	snaps := make(map[string]string)
+	err := json.Unmarshal(data, &snaps)
+	if err != nil {
+		return err
+	}
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	s.doResetSnap(snaps)
+	if s.timerAppend == nil {
+		s.timerAppend = time.NewTimer(appendDelay)
+		s.commitHandler = s.doAppend
+		go s.appendSwitch(s.timerAppend)
+	}
+
 	return nil
 }
+func (s *Service) appendSwitch(t *time.Timer) {
 
+	<-t.C
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	s.timerAppend = nil
+	s.commitHandler = s.doCommit
+	s.complete()
+
+}
 func (s *Service) GetSnapshot() ([]byte, error) {
+	s.locker.Lock()
+	defer s.locker.Unlock()
 	snapshots := make(map[string]string)
 	for namespace, handler := range s.handlers.All() {
+		if namespace == SystemNamespace {
+			continue
+		}
 		h, ok := handler.(IRaftServiceHandler)
 		if !ok {
 			continue
 		}
+
 		snapshots[namespace] = base64.StdEncoding.EncodeToString(h.Snapshot())
 	}
 	return json.Marshal(snapshots)
