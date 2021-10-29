@@ -41,6 +41,6 @@ func (l *listenerNotClose) Close() error {
 }
 
 func newNotClose(inner net.Listener) *listenerNotClose {
-	log.Debug("new not close listener:", inner.Addr())
+	log.Debug("new not close port-reqiure:", inner.Addr())
 	return &listenerNotClose{inner: inner, addr: inner.Addr()}
 }

@@ -6,24 +6,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
-	"os/user"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/ghodss/yaml"
 )
 
 const (
-	envConfigName     = "CONFIG"
-	envDataDirName    = "DATA_DIR"
-	envPidFileName    = "PID_FILE"
-	envSocketDirName  = "SOCKET_DIR"
-	envLogDirName     = "LOG_DIR"
-	envExtendsDirName = "EXTENDS_DIR"
-
-	configNameForEnv = "ENV"
+	envConfigName       = "CONFIG"
+	envDataDirName      = "DATA_DIR"
+	envPidFileName      = "PID_FILE"
+	envSocketDirName    = "SOCKET_DIR"
+	envLogDirName       = "LOG_DIR"
+	envExtendsDirName   = "EXTENDS_DIR"
+	envExtenderMarkName = "EXTENDS_MARK"
+	envConfigNameForEnv = "ENV"
 )
 
 var (
@@ -33,6 +30,7 @@ var (
 	pidFilePath          = ""
 	logDirPath           = ""
 	extendsBaseDir       = ""
+	extendsMark          = ""
 )
 
 func init() {
@@ -55,6 +53,8 @@ func init() {
 	extendsBaseDir = GetDefault(envExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
 	extendsBaseDir = formatPath(extendsBaseDir)
 
+	extendsMark = GetDefault(envExtendsDirName, "https://mark.gokuapi.com")
+	// todo 如有必要，这里增加对 mark地址格式的校验
 }
 func GetConfig() map[string]string {
 	return map[string]string{
@@ -79,14 +79,13 @@ func tryReadEnv(name string) {
 	path := ""
 
 	commandline := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	commandline.Usage = func() {
-	}
+	commandline.Usage = func() {}
 	commandline.SetOutput(&bytes.Buffer{})
 	commandline.StringVar(&path, "env", "", "env")
 	commandline.Parse(os.Args[1:])
 	if path == "" {
 
-		path = os.Getenv(createEnvName(en, configNameForEnv))
+		path = os.Getenv(createEnvName(en, envConfigNameForEnv))
 		if path == "" {
 			path = fmt.Sprintf("/etc/%s/%s.yaml", name, name)
 		}
@@ -147,7 +146,9 @@ func DataDir() string {
 func ExtendersDir() string {
 	return extendsBaseDir
 }
-
+func ExtenderMarkAddr() string {
+	return extendsMark
+}
 func formatPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
 		path = strings.TrimPrefix(path, "~/")
@@ -156,60 +157,4 @@ func formatPath(path string) string {
 		path, _ = filepath.Abs(path)
 	}
 	return filepath.Join(filepath.Dir(path), filepath.Base(path))
-}
-
-// Home returns the home directory for the executing user.
-//
-// This uses an OS-specific method for discovering the home directory.
-// An error is returned if a home directory cannot be detected.
-func Home() string {
-	user, err := user.Current()
-	if nil == err {
-		return user.HomeDir
-	}
-
-	// cross compile support
-
-	if "windows" == runtime.GOOS {
-		return homeWindows()
-	}
-
-	// Unix-like system, so just assume Unix
-	return homeUnix()
-}
-
-func homeUnix() string {
-	// First prefer the HOME environmental variable
-	if home := os.Getenv("HOME"); home != "" {
-		return home
-	}
-
-	// If that fails, try the shell
-	var stdout bytes.Buffer
-	cmd := exec.Command("sh", "-c", "eval echo ~$USER")
-	cmd.Stdout = &stdout
-	if err := cmd.Run(); err != nil {
-		return ""
-	}
-
-	result := strings.TrimSpace(stdout.String())
-	if result == "" {
-		return "/"
-	}
-
-	return result
-}
-
-func homeWindows() string {
-	drive := os.Getenv("HOMEDRIVE")
-	path := os.Getenv("HOMEPATH")
-	home := drive + path
-	if drive == "" || path == "" {
-		home = os.Getenv("USERPROFILE")
-	}
-	if home == "" {
-		return "/"
-	}
-
-	return home
 }

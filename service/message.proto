@@ -6,12 +6,19 @@ message ProfessionConfig{
   string name = 1;//
   string label = 2;//
   string desc = 3 ;//
+
   repeated string dependencies = 4;
   repeated string appendLabels = 5;
   repeated DriverConfig drivers = 6;
+
+  enum ProfessionMod {
+    Worker = 0;
+    Singleton = 1;
+  }
+  ProfessionMod mod=7;
 }
 message ProfessionConfigData{
-  repeated ProfessionConfig data=1;
+  repeated ProfessionConfig data = 1;
 }
 
 message ProfessionInfo {
@@ -54,7 +61,7 @@ message DriverDetail{
   string desc = 4;
   //  string profession=5;
   map<string, string> params = 5;
-  PluginInfo plugin=6;
+  PluginInfo plugin = 6;
 }
 
 message WorkerInfo{
@@ -76,5 +83,21 @@ message WorkerData{
   bytes body = 7;
 }
 message WorkersData{
-  repeated WorkerData data=1;
+  repeated WorkerData data = 1;
+}
+
+message ExtenderLibItem{
+  string group = 1;
+  string project = 2;
+  string version = 3;
+}
+message ExtenderInstallItem{
+  string group = 1;
+  string project = 2;
+  string version = 3;
+}
+message ExtenderDriver{
+  string group = 1;
+  string project = 2;
+  string name = 3;
 }

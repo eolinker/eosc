@@ -18,11 +18,13 @@ type RegisterFunc func(eosc.IExtenderRegister)
 var (
 	ErrorInvalidExtenderId     = errors.New("invalid  extender id")
 	ErrorExtenderNameDuplicate = errors.New("duplicate extender factory name")
-	ErrorExtenderNotFind       = errors.New("not find extender on local")
+	ErrorExtenderNotFindLocal  = errors.New("not find extender on local")
+	ErrorExtenderNotFindMark   = errors.New("not find extender on mark")
+	ErrorExtenderNoLatest      = errors.New("no latest for extender")
 )
 
-func ReadExtenderProject(group, project string) (*ExtenderRegister, error) {
-	funcs, err := look(group, project)
+func ReadExtenderProject(group, project, version string) (*ExtenderRegister, error) {
+	funcs, err := look(group, project, version)
 	if err != nil {
 		return nil, err
 	}
@@ -34,18 +36,18 @@ func ReadExtenderProject(group, project string) (*ExtenderRegister, error) {
 	return register, nil
 }
 
-func look(group, project string) ([]RegisterFunc, error) {
+func look(group, project, version string) ([]RegisterFunc, error) {
 	inners, has := lookInner(group, project)
 	if has {
 		return inners, nil
 	}
-	dir := LocalExtenderPath(group, project)
+	dir := LocalExtenderPath(group, project, version)
 	_, err := os.Stat(dir)
 	if err != nil {
 		log.Error(err)
 		log.Debug(dir)
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("%s-%s:%w:%s", group, project, ErrorExtenderNotFind, dir)
+			return nil, fmt.Errorf("%s-%s:%w:%s", group, project, ErrorExtenderNotFindLocal, dir)
 		}
 		return nil, err
 	}
@@ -53,7 +55,7 @@ func look(group, project string) ([]RegisterFunc, error) {
 	if err != nil {
 		log.Error(err)
 		log.Debug(dir)
-		return nil, fmt.Errorf("%s-%s:%w", group, project, ErrorExtenderNotFind)
+		return nil, fmt.Errorf("%s-%s:%w", group, project, ErrorExtenderNotFindLocal)
 	}
 	registerFuncList := make([]RegisterFunc, 0, len(files))
 	for _, f := range files {

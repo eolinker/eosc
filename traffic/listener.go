@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ErrorNotTcpListener = errors.New("not tcp listener")
+	ErrorNotTcpListener = errors.New("not tcp port-reqiure")
 )
 
 type iRemove interface {
@@ -41,12 +41,12 @@ func (t *tListener) Addr() net.Addr {
 
 func newTTcpListener(listener *net.TCPListener) *tListener {
 	addr := listener.Addr()
-	log.Debug("new tcp listener...", eosc.TypeNameOf(listener), " ", addrToName(addr))
+	log.Debug("new tcp port-reqiure...", eosc.TypeNameOf(listener), " ", addrToName(addr))
 	return &tListener{listener: listener, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) shutdown() {
 
-	log.Info("shutdown listener:", t.name)
+	log.Info("shutdown port-reqiure:", t.name)
 	if t.parent != nil {
 		t.parent.remove(t.name)
 	}
@@ -64,7 +64,7 @@ func (t *tListener) Close() error {
 		if t.listener != nil {
 			err := t.listener.Close()
 			if err != nil {
-				log.Warn("close listener:", err)
+				log.Warn("close port-reqiure:", err)
 			}
 			t.listener = nil
 		}
@@ -74,17 +74,17 @@ func (t *tListener) Close() error {
 
 func (t *tListener) File() (*os.File, error) {
 	if t.file == nil && t.fileError == nil {
-		//if tcp, ok := t.listener.(*net.TCPListener); ok {
+		//if tcp, ok := t.port-reqiure.(*net.TCPListener); ok {
 
 		t.file, t.fileError = t.listener.File()
 		log.Debug("get tcp file...", t.name)
-		//tcp := t.listener
-		//t.listener = nil
+		//tcp := t.port-reqiure
+		//t.port-reqiure = nil
 		//err := tcp.Close()
 		//if err != nil {
-		//	log.Error("tcp listener close error: ", err)
+		//	log.Error("tcp port-reqiure close error: ", err)
 		//}
-		//log.Debug("listener is closed...", t.name)
+		//log.Debug("port-reqiure is closed...", t.name)
 
 		//} else {
 		//	t.fileError = ErrorNotTcpListener
