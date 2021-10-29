@@ -104,6 +104,26 @@ func (w *WorkersRaft) Complete() error {
 }
 
 func NewWorkersRaft(workerData *WorkersData, professions eosc.IProfessionsData, workerServiceClient service.WorkerServiceClient, service raft_service.IService, workerController WorkerProcessController) *WorkersRaft {
+	// 初始化单例的worker
+	for _, p := range professions.All() {
+		if p.Mod == eosc.ProfessionConfig_Singleton {
+			for _, d := range p.Drivers {
+				id, _ := eosc.ToWorkerId(d.Name, p.Name)
+				wr, _ := workers.ToWorker(&eosc.WorkerData{
+					Id:         id,
+					Profession: p.Name,
+					Name:       d.Name,
+					Driver:     d.Name,
+					Create:     eosc.Now(),
+					Update:     eosc.Now(),
+					Body:       nil,
+				})
+
+				workerData.Set(id, wr)
+
+			}
+		}
+	}
 	return &WorkersRaft{data: workerData, professions: professions, workerServiceClient: workerServiceClient, service: service, workerProcessController: workerController}
 }
 
@@ -161,21 +181,31 @@ func (w *WorkersRaft) processHandlerWorkerSet(body []byte) (*eosc.WorkerData, er
 		log.Warn("decode woker data:", err)
 		return nil, fmt.Errorf("decode woker data:%w", err)
 	}
+	pf, b := w.professions.GetProfession(request.Profession)
+	if !b {
+		return nil, eosc.ErrorProfessionNotExist
+	}
 	log.Info("process worker set: ", request.Id)
-	ow, has := w.data.Get(request.Id)
-	if has {
+
+	createTime := eosc.Now()
+
+	if ow, has := w.data.Get(request.Id); has {
 		// can not change driver
-		if ow.Driver != request.Driver {
+
+		if len(request.Driver) > 0 && ow.Driver != request.Driver {
 			return nil, workers.ErrorChangeDriver
 		}
+		request.Driver = ow.Driver
+		createTime = ow.WorkerData.Create
 	} else {
-		pf, b := w.professions.GetProfession(request.Profession)
-		if !b {
-			return nil, eosc.ErrorProfessionNotExist
+
+		if pf.Mod() == eosc.ProfessionConfig_Singleton {
+			return nil, eosc.ErrorNotAllowCreateForSingleton
 		}
 		if !pf.HasDriver(request.Driver) {
 			return nil, eosc.ErrorDriverNotExist
 		}
+
 	}
 
 	// check on process worker
@@ -188,10 +218,6 @@ func (w *WorkersRaft) processHandlerWorkerSet(body []byte) (*eosc.WorkerData, er
 		return nil, errors.New(response.Message)
 	}
 
-	createTime := eosc.Now()
-	if has {
-		createTime = ow.WorkerData.Create
-	}
 	return &eosc.WorkerData{
 		Id:         request.Id,
 		Name:       request.Name,
