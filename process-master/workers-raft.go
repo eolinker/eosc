@@ -97,7 +97,9 @@ func (w *WorkersRaft) Append(cmd string, data []byte) error {
 }
 
 func (w *WorkersRaft) Complete() error {
-	// todo 重置worker 进程
+
+	w.workerProcessController.Restart()
+
 	return nil
 }
 
@@ -308,8 +310,7 @@ func (w *WorkersRaft) ResetHandler(data []byte) error {
 	}
 
 	w.data.reset(vs)
-	log.Debug("try restart...")
-	w.workerProcessController.Restart()
+	//log.Debug("try restart...")
 	//if err != nil {
 	//	log.Error("reset handler error: ", err)
 	//}
