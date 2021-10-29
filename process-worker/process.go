@@ -14,6 +14,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/eolinker/eosc/config"
+
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
@@ -119,6 +121,8 @@ func NewProcessWorker(extends eosc.IExtenders) (*ProcessWorker, error) {
 		log.Warn("worker configs error:", err)
 		return nil, err
 	}
+	listenCfg := config.ReadHttpTrafficConfig(os.Stdin)
+	bean.Injection(&listenCfg)
 
 	w.workers = wm
 	//ports32 := wm.portsRequire.All()

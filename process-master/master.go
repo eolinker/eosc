@@ -10,9 +10,12 @@ package process_master
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
-	"strconv"
+	"strings"
+
+	"github.com/eolinker/eosc/config"
 
 	"github.com/eolinker/eosc/env"
 
@@ -42,13 +45,20 @@ import (
 
 func Process() {
 	utils.InitLogTransport(eosc.ProcessMaster)
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error("get config error: ", err)
+		return
+	}
 	file, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
+
 	master := NewMasterHandle(file)
-	if err := master.Start(nil); err != nil {
+	if err := master.Start(nil, cfg); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
@@ -69,18 +79,14 @@ type Master struct {
 	cancelFunc    context.CancelFunc
 	PID           *pidfile.PidFile
 	httpserver    *http.Server
-
-	admin *admin.Admin
+	cfg           *config.Config
+	admin         *admin.Admin
 
 	workerController *WorkerController
 }
 
 type MasterHandler struct {
 	Professions eosc.IProfessionsData
-	//WorkersRaft     admin2.IWorkers
-	//RaftService raft_service.IService
-	//RaftServiceHandler raft_service.IRaftServiceHandler
-	//Service            raft.IService
 }
 
 func (mh *MasterHandler) initHandler() {
@@ -89,7 +95,7 @@ func (mh *MasterHandler) initHandler() {
 	}
 }
 
-func (m *Master) start(handler *MasterHandler) error {
+func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	if handler == nil {
 		handler = new(MasterHandler)
 	}
@@ -98,8 +104,7 @@ func (m *Master) start(handler *MasterHandler) error {
 	s := raft_service.NewService()
 	workersData := NewWorkersData(workers.NewTypedWorkers())
 	professionRaft := NewProfessionRaft(handler.Professions)
-
-	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
+	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData, cfg)
 	m.workerController.Start()
 	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s, m.workerController)
 	m.admin = admin.NewAdmin(handler.Professions, worker)
@@ -115,20 +120,31 @@ func (m *Master) start(handler *MasterHandler) error {
 	return nil
 }
 
-func (m *Master) Start(handler *MasterHandler) error {
+func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
 
-	err := m.start(handler)
+	m.cfg = cfg
+	m.masterTraffic.Reset([]int{m.cfg.Admin.Listen})
+	m.workerTraffic.Reset([]int{m.cfg.Admin.Listen})
+	err := m.start(handler, cfg)
 	if err != nil {
 		return err
 	}
 
-	ip := env.GetDefault(env.IP, "")
-	port, _ := strconv.Atoi(env.GetDefault(env.Port, "9400"))
 	// 监听master监听地址，用于接口处理
-	l, err := m.masterTraffic.ListenTcp(ip, port)
+	l, err := m.masterTraffic.ListenTcp(m.cfg.Admin.IP, m.cfg.Admin.Listen)
 	if err != nil {
-		log.Error(err)
+		log.Error("master listen tcp error: ", err)
 		return err
+	}
+
+	if strings.ToLower(m.cfg.Admin.Scheme) == "https" {
+		// start https listener
+		log.Debug("start https listener...")
+		cert, err := config.NewCert([]*config.Certificate{m.cfg.Admin.Certificate}, m.cfg.CertificateDir.Dir)
+		if err != nil {
+			return err
+		}
+		l = tls.NewListener(l, &tls.Config{GetCertificate: cert.GetCertificate})
 	}
 
 	m.startHttp(l)
@@ -227,7 +243,6 @@ func (m *Master) close() {
 }
 
 func NewMasterHandle(pid *pidfile.PidFile) *Master {
-
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
 		PID:                           pid,

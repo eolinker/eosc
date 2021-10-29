@@ -10,7 +10,8 @@ import (
 var _ IHttpTraffic = (*HttpTraffic)(nil)
 
 type IHttpTraffic interface {
-	Get(port int) IService
+	Set(port int, srv *HttpService)
+	Get(port int) (IService, bool)
 	ShutDown(port int)
 	Close()
 }
@@ -46,25 +47,32 @@ func (h *HttpTraffic) Close() {
 	return
 }
 
-func (h *HttpTraffic) Get(port int) IService {
+func (h *HttpTraffic) Set(port int, srv *HttpService) {
+	h.locker.Lock()
+	defer h.locker.Unlock()
+	h.srvs[port] = srv
+}
+
+func (h *HttpTraffic) Get(port int) (IService, bool) {
 
 	h.locker.Lock()
 	defer h.locker.Unlock()
 
 	srv, has := h.srvs[port]
 	if has {
-		return srv
+		return srv, true
 	}
-	log.Debug("http traffic get:", port)
-	listener, err := h.tf.ListenTcp("", port)
-
-	if err != nil {
-		srv = NewHttpService(nil)
-	} else {
-		srv = NewHttpService(listener)
-	}
-	h.srvs[port] = srv
-	return srv
+	return nil, false
+	//log.Debug("http traffic get:", port)
+	//listener, err := h.tf.ListenTcp("", port)
+	//
+	//if err != nil {
+	//	srv = NewHttpService(nil)
+	//} else {
+	//	srv = NewHttpService(listener)
+	//}
+	//h.srvs[port] = srv
+	//return srv
 }
 
 func NewHttpTraffic(tf traffic.ITraffic) *HttpTraffic {
