@@ -16,7 +16,7 @@ func NewExtenderRegister(group string, name string) *ExtenderRegister {
 	return &ExtenderRegister{group: group, name: name, data: make(map[string]eosc.IExtenderDriverFactory)}
 }
 
-func (r *ExtenderRegister) RegisterExtender(name string, factory eosc.IExtenderDriverFactory) error {
+func (r *ExtenderRegister) RegisterExtenderDriver(name string, factory eosc.IExtenderDriverFactory) error {
 	_, has := r.data[name]
 	if has {
 		return fmt.Errorf("%s:%w", name, ErrorExtenderNameDuplicate)
@@ -25,10 +25,10 @@ func (r *ExtenderRegister) RegisterExtender(name string, factory eosc.IExtenderD
 	return nil
 }
 
-func (r *ExtenderRegister) RegisterTo(register eosc.IExtenderRegister) {
+func (r *ExtenderRegister) RegisterTo(register eosc.IExtenderDriverRegister) {
 	for n, f := range r.data {
 		id := FormatDriverId(r.group, r.name, n)
-		register.RegisterExtender(id, f)
+		register.RegisterExtenderDriver(id, f)
 	}
 }
 

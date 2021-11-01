@@ -889,18 +889,16 @@ func (x *WorkersData) GetData() []*WorkerData {
 	return nil
 }
 
-type ExtenderLibItem struct {
+type ExtendersData struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Group   string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
-	Project string `protobuf:"bytes,2,opt,name=project,proto3" json:"project,omitempty"`
-	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	Extenders map[string]string `protobuf:"bytes,1,rep,name=Extenders,proto3" json:"Extenders,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (x *ExtenderLibItem) Reset() {
-	*x = ExtenderLibItem{}
+func (x *ExtendersData) Reset() {
+	*x = ExtendersData{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_message_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -908,13 +906,13 @@ func (x *ExtenderLibItem) Reset() {
 	}
 }
 
-func (x *ExtenderLibItem) String() string {
+func (x *ExtendersData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExtenderLibItem) ProtoMessage() {}
+func (*ExtendersData) ProtoMessage() {}
 
-func (x *ExtenderLibItem) ProtoReflect() protoreflect.Message {
+func (x *ExtendersData) ProtoReflect() protoreflect.Message {
 	mi := &file_message_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -926,156 +924,16 @@ func (x *ExtenderLibItem) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExtenderLibItem.ProtoReflect.Descriptor instead.
-func (*ExtenderLibItem) Descriptor() ([]byte, []int) {
+// Deprecated: Use ExtendersData.ProtoReflect.Descriptor instead.
+func (*ExtendersData) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *ExtenderLibItem) GetGroup() string {
+func (x *ExtendersData) GetExtenders() map[string]string {
 	if x != nil {
-		return x.Group
+		return x.Extenders
 	}
-	return ""
-}
-
-func (x *ExtenderLibItem) GetProject() string {
-	if x != nil {
-		return x.Project
-	}
-	return ""
-}
-
-func (x *ExtenderLibItem) GetVersion() string {
-	if x != nil {
-		return x.Version
-	}
-	return ""
-}
-
-type ExtenderInstallItem struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Group   string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
-	Project string `protobuf:"bytes,2,opt,name=project,proto3" json:"project,omitempty"`
-	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
-}
-
-func (x *ExtenderInstallItem) Reset() {
-	*x = ExtenderInstallItem{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_message_proto_msgTypes[12]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ExtenderInstallItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExtenderInstallItem) ProtoMessage() {}
-
-func (x *ExtenderInstallItem) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[12]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExtenderInstallItem.ProtoReflect.Descriptor instead.
-func (*ExtenderInstallItem) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *ExtenderInstallItem) GetGroup() string {
-	if x != nil {
-		return x.Group
-	}
-	return ""
-}
-
-func (x *ExtenderInstallItem) GetProject() string {
-	if x != nil {
-		return x.Project
-	}
-	return ""
-}
-
-func (x *ExtenderInstallItem) GetVersion() string {
-	if x != nil {
-		return x.Version
-	}
-	return ""
-}
-
-type ExtenderDriver struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Group   string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
-	Project string `protobuf:"bytes,2,opt,name=project,proto3" json:"project,omitempty"`
-	Name    string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-}
-
-func (x *ExtenderDriver) Reset() {
-	*x = ExtenderDriver{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_message_proto_msgTypes[13]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ExtenderDriver) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExtenderDriver) ProtoMessage() {}
-
-func (x *ExtenderDriver) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[13]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExtenderDriver.ProtoReflect.Descriptor instead.
-func (*ExtenderDriver) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *ExtenderDriver) GetGroup() string {
-	if x != nil {
-		return x.Group
-	}
-	return ""
-}
-
-func (x *ExtenderDriver) GetProject() string {
-	if x != nil {
-		return x.Project
-	}
-	return ""
-}
-
-func (x *ExtenderDriver) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
+	return nil
 }
 
 var File_message_proto protoreflect.FileDescriptor
@@ -1188,27 +1046,19 @@ var file_message_proto_rawDesc = []byte{
 	0x79, 0x22, 0x36, 0x0a, 0x0b, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x44, 0x61, 0x74, 0x61,
 	0x12, 0x27, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13,
 	0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x44,
-	0x61, 0x74, 0x61, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x22, 0x5b, 0x0a, 0x0f, 0x45, 0x78, 0x74,
-	0x65, 0x6e, 0x64, 0x65, 0x72, 0x4c, 0x69, 0x62, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x14, 0x0a, 0x05,
-	0x67, 0x72, 0x6f, 0x75, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72, 0x6f,
-	0x75, 0x70, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x18, 0x0a, 0x07,
-	0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76,
-	0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0x5f, 0x0a, 0x13, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x64,
-	0x65, 0x72, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x14, 0x0a,
-	0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72,
-	0x6f, 0x75, 0x70, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x18, 0x0a,
-	0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07,
-	0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0x54, 0x0a, 0x0e, 0x45, 0x78, 0x74, 0x65, 0x6e,
-	0x64, 0x65, 0x72, 0x44, 0x72, 0x69, 0x76, 0x65, 0x72, 0x12, 0x14, 0x0a, 0x05, 0x67, 0x72, 0x6f,
-	0x75, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x12,
-	0x18, 0x0a, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d,
-	0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x1a, 0x5a,
-	0x18, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x65, 0x6f, 0x6c, 0x69,
-	0x6e, 0x6b, 0x65, 0x72, 0x2f, 0x65, 0x6f, 0x73, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x61, 0x74, 0x61, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x22, 0x92, 0x01, 0x0a, 0x0d, 0x45, 0x78,
+	0x74, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x73, 0x44, 0x61, 0x74, 0x61, 0x12, 0x43, 0x0a, 0x09, 0x45,
+	0x78, 0x74, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x25,
+	0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x65,
+	0x72, 0x73, 0x44, 0x61, 0x74, 0x61, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x73,
+	0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x09, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x73,
+	0x1a, 0x3c, 0x0a, 0x0e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x73, 0x45, 0x6e, 0x74,
+	0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x42, 0x1a,
+	0x5a, 0x18, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x65, 0x6f, 0x6c,
+	0x69, 0x6e, 0x6b, 0x65, 0x72, 0x2f, 0x65, 0x6f, 0x73, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -1224,7 +1074,7 @@ func file_message_proto_rawDescGZIP() []byte {
 }
 
 var file_message_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_message_proto_goTypes = []interface{}{
 	(ProfessionConfig_ProfessionMod)(0), // 0: service.ProfessionConfig.ProfessionMod
 	(*ProfessionConfig)(nil),            // 1: service.ProfessionConfig
@@ -1238,26 +1088,26 @@ var file_message_proto_goTypes = []interface{}{
 	(*WorkerInfo)(nil),                  // 9: service.WorkerInfo
 	(*WorkerData)(nil),                  // 10: service.WorkerData
 	(*WorkersData)(nil),                 // 11: service.WorkersData
-	(*ExtenderLibItem)(nil),             // 12: service.ExtenderLibItem
-	(*ExtenderInstallItem)(nil),         // 13: service.ExtenderInstallItem
-	(*ExtenderDriver)(nil),              // 14: service.ExtenderDriver
-	nil,                                 // 15: service.DriverConfig.ParamsEntry
-	nil,                                 // 16: service.DriverDetail.ParamsEntry
+	(*ExtendersData)(nil),               // 12: service.ExtendersData
+	nil,                                 // 13: service.DriverConfig.ParamsEntry
+	nil,                                 // 14: service.DriverDetail.ParamsEntry
+	nil,                                 // 15: service.ExtendersData.ExtendersEntry
 }
 var file_message_proto_depIdxs = []int32{
 	6,  // 0: service.ProfessionConfig.drivers:type_name -> service.DriverConfig
 	0,  // 1: service.ProfessionConfig.mod:type_name -> service.ProfessionConfig.ProfessionMod
 	1,  // 2: service.ProfessionConfigData.data:type_name -> service.ProfessionConfig
 	8,  // 3: service.ProfessionDetail.drivers:type_name -> service.DriverDetail
-	15, // 4: service.DriverConfig.params:type_name -> service.DriverConfig.ParamsEntry
-	16, // 5: service.DriverDetail.params:type_name -> service.DriverDetail.ParamsEntry
+	13, // 4: service.DriverConfig.params:type_name -> service.DriverConfig.ParamsEntry
+	14, // 5: service.DriverDetail.params:type_name -> service.DriverDetail.ParamsEntry
 	7,  // 6: service.DriverDetail.plugin:type_name -> service.PluginInfo
 	10, // 7: service.WorkersData.data:type_name -> service.WorkerData
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	15, // 8: service.ExtendersData.Extenders:type_name -> service.ExtendersData.ExtendersEntry
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_message_proto_init() }
@@ -1399,31 +1249,7 @@ func file_message_proto_init() {
 			}
 		}
 		file_message_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtenderLibItem); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_message_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtenderInstallItem); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_message_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtenderDriver); i {
+			switch v := v.(*ExtendersData); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1441,7 +1267,7 @@ func file_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_message_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

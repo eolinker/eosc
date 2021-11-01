@@ -30,7 +30,7 @@ func lookInner(group, project string) ([]RegisterFunc, bool) {
 	}
 	return nil, false
 }
-func LoadInner(register eosc.IExtenderRegister) {
+func LoadInner(register eosc.IExtenderDriverRegister) {
 	innerLock.Lock()
 	defer innerLock.Unlock()
 

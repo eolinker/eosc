@@ -13,7 +13,7 @@ import (
 )
 
 //RegisterFunc 注册函数
-type RegisterFunc func(eosc.IExtenderRegister)
+type RegisterFunc func(eosc.IExtenderDriverRegister)
 
 var (
 	ErrorInvalidExtenderId     = errors.New("invalid  extender id")

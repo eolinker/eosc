@@ -20,10 +20,10 @@ func (p *Profession) GetDriver(name string) (eosc.IExtenderDriver, bool) {
 	return p.drivers.Get(name)
 }
 
-func NewProfession(c *eosc.ProfessionConfig, extends eosc.IExtenders) *Profession {
+func NewProfession(c *eosc.ProfessionConfig, extends eosc.IExtenderDrivers) *Profession {
 	ds := NewProfessionDrivers()
 	for _, d := range c.Drivers {
-		df, b := extends.GetExtender(d.Id)
+		df, b := extends.GetDriver(d.Id)
 		if !b {
 			log.Warn("driver not exist:", d.Id)
 			continue

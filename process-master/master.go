@@ -70,8 +70,8 @@ type Master struct {
 	PID           *pidfile.PidFile
 	httpserver    *http.Server
 
-	admin *admin.Admin
-
+	admin            *admin.Admin
+	extenderRaft     eosc.IExtenderData
 	workerController *WorkerController
 }
 
@@ -101,6 +101,7 @@ func (m *Master) start(handler *MasterHandler) error {
 
 	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
 	m.workerController.Start()
+	m.extenderRaft = NewExtenderRaft(s)
 	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s, m.workerController)
 	m.admin = admin.NewAdmin(handler.Professions, worker)
 	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))

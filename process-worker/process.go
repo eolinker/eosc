@@ -82,7 +82,7 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker(extends eosc.IExtenders) (*ProcessWorker, error) {
+func NewProcessWorker(extends eosc.IExtenderDrivers) (*ProcessWorker, error) {
 	workerServer, err := NewWorkerServer()
 	if err != nil {
 		return nil, err
