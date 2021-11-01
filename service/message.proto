@@ -86,18 +86,6 @@ message WorkersData{
   repeated WorkerData data = 1;
 }
 
-message ExtenderLibItem{
-  string group = 1;
-  string project = 2;
-  string version = 3;
-}
-message ExtenderInstallItem{
-  string group = 1;
-  string project = 2;
-  string version = 3;
-}
-message ExtenderDriver{
-  string group = 1;
-  string project = 2;
-  string name = 3;
+message ExtendersData{
+  map<string,string> Extenders=1;
 }
