@@ -46,11 +46,6 @@ import (
 func Process() {
 	utils.InitLogTransport(eosc.ProcessMaster)
 
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error("get config error: ", err)
-		return
-	}
 	file, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
@@ -58,7 +53,7 @@ func Process() {
 	}
 
 	master := NewMasterHandle(file)
-	if err := master.Start(nil, cfg); err != nil {
+	if err := master.Start(nil); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
@@ -95,7 +90,7 @@ func (mh *MasterHandler) initHandler() {
 	}
 }
 
-func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
+func (m *Master) start(handler *MasterHandler) error {
 	if handler == nil {
 		handler = new(MasterHandler)
 	}
@@ -104,7 +99,7 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	s := raft_service.NewService()
 	workersData := NewWorkersData(workers.NewTypedWorkers())
 	professionRaft := NewProfessionRaft(handler.Professions)
-	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData, cfg)
+	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData, m.cfg)
 	m.workerController.Start()
 	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s, m.workerController)
 	m.admin = admin.NewAdmin(handler.Professions, worker)
@@ -120,12 +115,16 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	return nil
 }
 
-func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
-
+func (m *Master) Start(handler *MasterHandler) error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error("get config error: ", err)
+		return err
+	}
 	m.cfg = cfg
 	m.masterTraffic.Reset([]int{m.cfg.Admin.Listen})
-	m.workerTraffic.Reset(cfg.Ports())
-	err := m.start(handler, cfg)
+	m.workerTraffic.Reset(m.cfg.Ports())
+	err = m.start(handler)
 	if err != nil {
 		return err
 	}
@@ -222,6 +221,9 @@ func (m *Master) Close() {
 }
 
 func (m *Master) close() {
+	if m.node == nil {
+		return
+	}
 	log.Info("process-master close")
 	log.Info("raft node close")
 	m.node.Stop()
