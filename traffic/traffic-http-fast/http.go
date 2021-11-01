@@ -30,13 +30,18 @@ const (
 type HttpService struct {
 	locker sync.Mutex
 	status int
+	inner  net.Listener
 	srv    *fasthttp.Server
 }
 
 func (h *HttpService) Set(handler fasthttp.RequestHandler) {
 	h.locker.Lock()
 	defer h.locker.Unlock()
+	if handler == nil {
+		h.srv.Handler = NotFound
+	}
 	h.srv.Handler = handler
+
 }
 
 //func (h *HttpService) SetHttps(handler fasthttp.RequestHandler, certs map[string]*tls.Certificate) {
@@ -114,8 +119,14 @@ func (h *HttpService) ShutDown() {
 func NewHttpService(listener net.Listener) *HttpService {
 	s := &HttpService{
 		//inner: listener,
-		srv: &fasthttp.Server{},
+		srv: &fasthttp.Server{Handler: NotFound},
 	}
-	s.srv.Serve(listener)
+	go s.srv.Serve(listener)
+	log.Debug("new http service:", listener.Addr())
 	return s
+}
+
+func NotFound(ctx *fasthttp.RequestCtx) {
+	ctx.NotFound()
+	return
 }

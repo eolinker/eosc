@@ -12,6 +12,7 @@ var _ IHttpTraffic = (*HttpTraffic)(nil)
 type IHttpTraffic interface {
 	Set(port int, srv *HttpService)
 	Get(port int) (IService, bool)
+	All() map[int]IService
 	ShutDown(port int)
 	Close()
 }
@@ -73,6 +74,16 @@ func (h *HttpTraffic) Get(port int) (IService, bool) {
 	//}
 	//h.srvs[port] = srv
 	//return srv
+}
+
+func (h *HttpTraffic) All() map[int]IService {
+	h.locker.Lock()
+	defer h.locker.Unlock()
+	srv := make(map[int]IService)
+	for k, v := range h.srvs {
+		srv[k] = v
+	}
+	return srv
 }
 
 func NewHttpTraffic(tf traffic.ITraffic) *HttpTraffic {

@@ -124,7 +124,7 @@ func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
 
 	m.cfg = cfg
 	m.masterTraffic.Reset([]int{m.cfg.Admin.Listen})
-	m.workerTraffic.Reset([]int{m.cfg.Admin.Listen})
+	m.workerTraffic.Reset(cfg.Ports())
 	err := m.start(handler, cfg)
 	if err != nil {
 		return err

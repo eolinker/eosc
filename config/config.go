@@ -28,6 +28,19 @@ type Config struct {
 	CertificateDir *CertificateDir `json:"certificate" yaml:"certificate"`
 }
 
+func (c *Config) Ports() []int {
+	portLen := len(c.Listen)
+	if c.SSL != nil {
+		portLen += len(c.SSL.Listen)
+	}
+	ports := make([]int, 0, portLen)
+	ports = append(ports, c.Listen...)
+	for _, p := range c.SSL.Listen {
+		ports = append(ports, p.Port)
+	}
+	return ports
+}
+
 func (c *Config) Encode(startIndex int) ([]byte, []*os.File, error) {
 	data, err := c.encode()
 	if err != nil {

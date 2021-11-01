@@ -41,12 +41,12 @@ func (t *tListener) Addr() net.Addr {
 
 func newTTcpListener(listener *net.TCPListener) *tListener {
 	addr := listener.Addr()
-	log.Debug("new tcp port-reqiure...", eosc.TypeNameOf(listener), " ", addrToName(addr))
+	log.Debug("new tcp port-require...", eosc.TypeNameOf(listener), " ", addrToName(addr))
 	return &tListener{listener: listener, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) shutdown() {
 
-	log.Info("shutdown port-reqiure:", t.name)
+	log.Info("shutdown port-require:", t.name)
 	if t.parent != nil {
 		t.parent.remove(t.name)
 	}
