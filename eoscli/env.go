@@ -18,7 +18,7 @@ func Env() *cli.Command {
 
 func EnvFunc(c *cli.Context) error {
 	for _, name := range env.Envs() {
-		fmt.Println(name, ":\t", env.GenEnv(name, env.GetDefault(name, "")))
+		fmt.Println(name, ":\t", env.GetDefault(name, ""))
 	}
 	for k, v := range env.GetConfig() {
 		fmt.Println(k, ":\t", v)

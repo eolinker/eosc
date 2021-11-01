@@ -265,6 +265,14 @@ func (w *WorkersRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface
 
 }
 
+func (w *WorkersRaft) DelayDone() {
+
+}
+
+func (w *WorkersRaft) CommitDelay(cmd string, data []byte) error {
+	return nil
+}
+
 func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 
 	switch cmd {

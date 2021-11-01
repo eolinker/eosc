@@ -65,6 +65,26 @@ message InfoResponse {
   NodeInfo info = 3;
 }
 
+message ExtendsRequest {
+
+}
+
+message ExtendsResponse {
+  string msg = 1;
+  string code = 2;
+  repeated ExtendsInfo extends = 3;
+}
+
+message ExtendsInfo {
+  string id = 1;
+  string name = 2;
+  string group = 3;
+  string project = 4;
+  string version = 5;
+}
+
+
+
 message ClusterRequest{}
 message ClusterResponse{}
 
@@ -78,4 +98,5 @@ service CtiService {
   rpc Leave(LeaveRequest)returns(LeaveResponse){}
   rpc List(ListRequest)returns(ListResponse){}
   rpc Info(InfoRequest)returns(InfoResponse){}
+  rpc Extends(ExtendsRequest) returns(ExtendsResponse){}
 }

@@ -129,6 +129,10 @@ func SocketAddr(name string, pid int) string {
 	return fmt.Sprintf("%s/%s.%s-%d.sock", socketSocketDirValue, appName, name, pid)
 }
 
+func ConfigPath() string {
+	return configPath
+}
+
 func LogDir() string {
 	return fmt.Sprintf("%s/%s", logDirPath, appName)
 }

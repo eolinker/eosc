@@ -22,6 +22,7 @@ type CtiServiceClient interface {
 	Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
+	Extends(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsResponse, error)
 }
 
 type ctiServiceClient struct {
@@ -68,6 +69,15 @@ func (c *ctiServiceClient) Info(ctx context.Context, in *InfoRequest, opts ...gr
 	return out, nil
 }
 
+func (c *ctiServiceClient) Extends(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsResponse, error) {
+	out := new(ExtendsResponse)
+	err := c.cc.Invoke(ctx, "/service.CtiService/Extends", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CtiServiceServer is the server API for CtiService service.
 // All implementations must embed UnimplementedCtiServiceServer
 // for forward compatibility
@@ -76,6 +86,7 @@ type CtiServiceServer interface {
 	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
 	Info(context.Context, *InfoRequest) (*InfoResponse, error)
+	Extends(context.Context, *ExtendsRequest) (*ExtendsResponse, error)
 	mustEmbedUnimplementedCtiServiceServer()
 }
 
@@ -94,6 +105,9 @@ func (UnimplementedCtiServiceServer) List(context.Context, *ListRequest) (*ListR
 }
 func (UnimplementedCtiServiceServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
+}
+func (UnimplementedCtiServiceServer) Extends(context.Context, *ExtendsRequest) (*ExtendsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Extends not implemented")
 }
 func (UnimplementedCtiServiceServer) mustEmbedUnimplementedCtiServiceServer() {}
 
@@ -180,6 +194,24 @@ func _CtiService_Info_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CtiService_Extends_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExtendsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CtiServiceServer).Extends(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.CtiService/Extends",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CtiServiceServer).Extends(ctx, req.(*ExtendsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CtiService_ServiceDesc is the grpc.ServiceDesc for CtiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -203,7 +235,11 @@ var CtiService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Info",
 			Handler:    _CtiService_Info_Handler,
 		},
+		{
+			MethodName: "Extends",
+			Handler:    _CtiService_Extends_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ctl.proto",
+	Metadata: "service/ctl.proto",
 }

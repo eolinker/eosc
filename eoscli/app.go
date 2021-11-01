@@ -50,7 +50,6 @@ func (a *App) Default() {
 		Stop(),
 		Info(),
 		Leave(),
-		Cluster(),
 		Restart(),
 		Env(),
 		Plugin(),

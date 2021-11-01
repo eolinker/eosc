@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
@@ -21,7 +22,7 @@ func Info() *cli.Command {
 
 //InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
-	pid, err := readPid()
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}

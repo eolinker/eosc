@@ -14,6 +14,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/eolinker/eosc/config"
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
@@ -104,8 +105,6 @@ func NewProcessWorker(extends eosc.IExtenderDrivers) (*ProcessWorker, error) {
 	bean.Injection(&w.professions)
 	var iWorkers eosc.IWorkers = w.workers
 	bean.Injection(&iWorkers)
-	bean.Check()
-
 	psData, err := ReadProfessionData(os.Stdin)
 	if err != nil {
 		log.Warn("profession configs error:", err)
@@ -113,7 +112,14 @@ func NewProcessWorker(extends eosc.IExtenderDrivers) (*ProcessWorker, error) {
 	}
 	ps.init(psData, extends)
 	workersData := ReadWorkers(os.Stdin)
-
+	listenCfg := config.ReadHttpTrafficConfig(os.Stdin)
+	ports := make([]int, 0, len(listenCfg.Listens))
+	for _, info := range listenCfg.Listens {
+		ports = append(ports, int(info.Port))
+	}
+	tf.Expire(ports)
+	bean.Injection(&listenCfg)
+	bean.Check()
 	err = wm.Init(workersData)
 	if err != nil {
 		log.Warn("worker configs error:", err)
