@@ -3,13 +3,11 @@ package raft
 // 业务处理，根据实际需求更改service，service是外层的业务对象
 
 type IService interface {
-	// CommitHandler 节点commit信息前的处理
-	CommitHandler(data []byte) (err error)
+	// Commit 节点commit信息前的处理
+	Commit(data []byte) (err error)
 
-	// ProcessHandler 节点propose信息前的处理,leader发起或者未启用集群时使用
-	//ProcessHandler(body interface{}) (data []byte, err error)
-	// ProcessHandler 转发到leader时的处理
-	ProcessDataHandler(body []byte) (object interface{}, data []byte, err error)
+	// PreProcessData 转发到leader时的处理
+	PreProcessData(body []byte) (object interface{}, data []byte, err error)
 
 	// GetInit 集群初始化时的将service缓存中的信息进行打包处理,只会在切换集群模式的时候调用一次
 	GetInit() (data []byte, err error)
@@ -86,7 +84,7 @@ type IRaftService interface {
 //			return err
 //		}
 //
-//		return r.ser.CommitHandler(namespace, msg)
+//		return r.ser.Commit(namespace, msg)
 //
 //	}
 //}

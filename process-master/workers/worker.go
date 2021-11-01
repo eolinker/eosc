@@ -79,10 +79,13 @@ func ReadTWorker(obj interface{}) (map[string]interface{}, error) {
 }
 func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
 	wa := make(WorkerAttr)
-	err := json.Unmarshal(wd.Body, &wa)
-	if err != nil {
-		return nil, err
+	if len(wd.Body) > 0 {
+		err := json.Unmarshal(wd.Body, &wa)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &Worker{
 		WorkerData: wd,
 		Data:       wa,

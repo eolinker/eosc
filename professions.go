@@ -4,7 +4,6 @@ type IProfessionsData interface {
 	Set(name string, profession *ProfessionConfig) error
 	Delete(name string) error
 	GetProfession(name string) (IProfessionData, bool)
-
 	Infos() []*ProfessionInfo
 	Reset([]*ProfessionConfig)
 	All() []*ProfessionConfig
@@ -16,6 +15,7 @@ type IProfessionData interface {
 	HasDriver(name string) bool
 	AppendAttr() []string
 	DriversItem() []*Item
+	Mod() ProfessionConfig_ProfessionMod
 	Detail() *ProfessionDetail
 }
 

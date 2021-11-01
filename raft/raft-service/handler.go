@@ -7,8 +7,13 @@ type IService interface {
 }
 
 type IRaftServiceHandler interface {
-	// ResetHandler  初始化日志操作
+	// ResetHandler  初始化snapshot
 	ResetHandler(data []byte) error
+	// Append 追加需要初始化的日志
+	Append(cmd string, data []byte) error
+	// Complete 初始化完成
+	Complete() error
+
 	// CommitHandler 节点commit信息前的处理
 	CommitHandler(cmd string, data []byte) error
 
@@ -17,7 +22,7 @@ type IRaftServiceHandler interface {
 	//CommitDelay(cmd string, data []byte) error
 	// Snapshot 获取快照
 	Snapshot() []byte
-	// ProcessHandler 节点propose信息前的处理
+	// ProcessHandler leader 节点propose信息前的处理
 	ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error)
 }
 
