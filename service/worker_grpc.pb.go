@@ -18,12 +18,13 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerServiceClient interface {
-	DeleteCheck(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerDeleteResponse, error)
-	SetCheck(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerSetResponse, error)
-	Delete(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerDeleteResponse, error)
-	Set(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerSetResponse, error)
-	Ping(ctx context.Context, in *WorkerHelloRequest, opts ...grpc.CallOption) (*WorkerHelloResponse, error)
-	Refresh(ctx context.Context, in *WorkerRefreshRequest, opts ...grpc.CallOption) (*WorkerRefreshResponse, error)
+	DeleteCheck(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
+	SetCheck(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
+	Delete(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
+	Set(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
+	Ping(ctx context.Context, in *WorkerHelloRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
+	Reset(ctx context.Context, in *ResetRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
+	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 }
 
 type workerServiceClient struct {
@@ -34,8 +35,8 @@ func NewWorkerServiceClient(cc grpc.ClientConnInterface) WorkerServiceClient {
 	return &workerServiceClient{cc}
 }
 
-func (c *workerServiceClient) DeleteCheck(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerDeleteResponse, error) {
-	out := new(WorkerDeleteResponse)
+func (c *workerServiceClient) DeleteCheck(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
 	err := c.cc.Invoke(ctx, "/service.WorkerService/deleteCheck", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -43,8 +44,8 @@ func (c *workerServiceClient) DeleteCheck(ctx context.Context, in *WorkerDeleteR
 	return out, nil
 }
 
-func (c *workerServiceClient) SetCheck(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerSetResponse, error) {
-	out := new(WorkerSetResponse)
+func (c *workerServiceClient) SetCheck(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
 	err := c.cc.Invoke(ctx, "/service.WorkerService/setCheck", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -52,8 +53,8 @@ func (c *workerServiceClient) SetCheck(ctx context.Context, in *WorkerSetRequest
 	return out, nil
 }
 
-func (c *workerServiceClient) Delete(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerDeleteResponse, error) {
-	out := new(WorkerDeleteResponse)
+func (c *workerServiceClient) Delete(ctx context.Context, in *WorkerDeleteRequest, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
 	err := c.cc.Invoke(ctx, "/service.WorkerService/delete", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -61,8 +62,8 @@ func (c *workerServiceClient) Delete(ctx context.Context, in *WorkerDeleteReques
 	return out, nil
 }
 
-func (c *workerServiceClient) Set(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerSetResponse, error) {
-	out := new(WorkerSetResponse)
+func (c *workerServiceClient) Set(ctx context.Context, in *WorkerSetRequest, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
 	err := c.cc.Invoke(ctx, "/service.WorkerService/set", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -70,8 +71,8 @@ func (c *workerServiceClient) Set(ctx context.Context, in *WorkerSetRequest, opt
 	return out, nil
 }
 
-func (c *workerServiceClient) Ping(ctx context.Context, in *WorkerHelloRequest, opts ...grpc.CallOption) (*WorkerHelloResponse, error) {
-	out := new(WorkerHelloResponse)
+func (c *workerServiceClient) Ping(ctx context.Context, in *WorkerHelloRequest, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
 	err := c.cc.Invoke(ctx, "/service.WorkerService/ping", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -79,9 +80,18 @@ func (c *workerServiceClient) Ping(ctx context.Context, in *WorkerHelloRequest, 
 	return out, nil
 }
 
-func (c *workerServiceClient) Refresh(ctx context.Context, in *WorkerRefreshRequest, opts ...grpc.CallOption) (*WorkerRefreshResponse, error) {
-	out := new(WorkerRefreshResponse)
-	err := c.cc.Invoke(ctx, "/service.WorkerService/refresh", in, out, opts...)
+func (c *workerServiceClient) Reset(ctx context.Context, in *ResetRequest, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
+	err := c.cc.Invoke(ctx, "/service.WorkerService/reset", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, "/service.WorkerService/status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +102,13 @@ func (c *workerServiceClient) Refresh(ctx context.Context, in *WorkerRefreshRequ
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
 type WorkerServiceServer interface {
-	DeleteCheck(context.Context, *WorkerDeleteRequest) (*WorkerDeleteResponse, error)
-	SetCheck(context.Context, *WorkerSetRequest) (*WorkerSetResponse, error)
-	Delete(context.Context, *WorkerDeleteRequest) (*WorkerDeleteResponse, error)
-	Set(context.Context, *WorkerSetRequest) (*WorkerSetResponse, error)
-	Ping(context.Context, *WorkerHelloRequest) (*WorkerHelloResponse, error)
-	Refresh(context.Context, *WorkerRefreshRequest) (*WorkerRefreshResponse, error)
+	DeleteCheck(context.Context, *WorkerDeleteRequest) (*WorkerResponse, error)
+	SetCheck(context.Context, *WorkerSetRequest) (*WorkerResponse, error)
+	Delete(context.Context, *WorkerDeleteRequest) (*WorkerResponse, error)
+	Set(context.Context, *WorkerSetRequest) (*WorkerResponse, error)
+	Ping(context.Context, *WorkerHelloRequest) (*WorkerResponse, error)
+	Reset(context.Context, *ResetRequest) (*WorkerResponse, error)
+	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -105,23 +116,26 @@ type WorkerServiceServer interface {
 type UnimplementedWorkerServiceServer struct {
 }
 
-func (UnimplementedWorkerServiceServer) DeleteCheck(context.Context, *WorkerDeleteRequest) (*WorkerDeleteResponse, error) {
+func (UnimplementedWorkerServiceServer) DeleteCheck(context.Context, *WorkerDeleteRequest) (*WorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCheck not implemented")
 }
-func (UnimplementedWorkerServiceServer) SetCheck(context.Context, *WorkerSetRequest) (*WorkerSetResponse, error) {
+func (UnimplementedWorkerServiceServer) SetCheck(context.Context, *WorkerSetRequest) (*WorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetCheck not implemented")
 }
-func (UnimplementedWorkerServiceServer) Delete(context.Context, *WorkerDeleteRequest) (*WorkerDeleteResponse, error) {
+func (UnimplementedWorkerServiceServer) Delete(context.Context, *WorkerDeleteRequest) (*WorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedWorkerServiceServer) Set(context.Context, *WorkerSetRequest) (*WorkerSetResponse, error) {
+func (UnimplementedWorkerServiceServer) Set(context.Context, *WorkerSetRequest) (*WorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
-func (UnimplementedWorkerServiceServer) Ping(context.Context, *WorkerHelloRequest) (*WorkerHelloResponse, error) {
+func (UnimplementedWorkerServiceServer) Ping(context.Context, *WorkerHelloRequest) (*WorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedWorkerServiceServer) Refresh(context.Context, *WorkerRefreshRequest) (*WorkerRefreshResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Refresh not implemented")
+func (UnimplementedWorkerServiceServer) Reset(context.Context, *ResetRequest) (*WorkerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Reset not implemented")
+}
+func (UnimplementedWorkerServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 
@@ -226,20 +240,38 @@ func _WorkerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkerService_Refresh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WorkerRefreshRequest)
+func _WorkerService_Reset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkerServiceServer).Refresh(ctx, in)
+		return srv.(WorkerServiceServer).Reset(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/service.WorkerService/refresh",
+		FullMethod: "/service.WorkerService/reset",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkerServiceServer).Refresh(ctx, req.(*WorkerRefreshRequest))
+		return srv.(WorkerServiceServer).Reset(ctx, req.(*ResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).Status(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.WorkerService/status",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).Status(ctx, req.(*StatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -272,10 +304,14 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkerService_Ping_Handler,
 		},
 		{
-			MethodName: "refresh",
-			Handler:    _WorkerService_Refresh_Handler,
+			MethodName: "reset",
+			Handler:    _WorkerService_Reset_Handler,
+		},
+		{
+			MethodName: "status",
+			Handler:    _WorkerService_Status_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "service/worker.proto",
+	Metadata: "worker.proto",
 }

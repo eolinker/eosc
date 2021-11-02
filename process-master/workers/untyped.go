@@ -10,14 +10,14 @@ type ITypedWorkers interface {
 	Set(id string, w *Worker)
 	Get(id string) (*Worker, bool)
 	Del(id string) (*Worker, bool)
-	Reset(ds []*eosc.WorkerData)
+	Reset(ds []*eosc.WorkerConfig)
 }
 
 type TypedWorkers struct {
 	data eosc.IUntyped
 }
 
-func (t *TypedWorkers) Reset(ds []*eosc.WorkerData) {
+func (t *TypedWorkers) Reset(ds []*eosc.WorkerConfig) {
 	nw := eosc.NewUntyped()
 	log.Debug("reset worker data len: ", len(ds))
 	for _, v := range ds {

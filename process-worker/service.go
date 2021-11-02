@@ -17,11 +17,23 @@ import (
 	"github.com/eolinker/eosc/service"
 )
 
+var (
+	_ service.WorkerServiceServer = (*WorkerServer)(nil)
+)
+
 type WorkerServer struct {
 	service.UnimplementedWorkerServiceServer
 	*grpc.Server
 	workers IWorkers
 	tf      traffic.ITraffic
+}
+
+func (ws *WorkerServer) Reset(ctx context.Context, request *service.ResetRequest) (*service.WorkerResponse, error) {
+	panic("implement me")
+}
+
+func (ws *WorkerServer) Status(ctx context.Context, request *service.StatusRequest) (*service.StatusResponse, error) {
+	panic("implement me")
 }
 
 func (ws *WorkerServer) SetTraffic(tf traffic.ITraffic) {
@@ -62,155 +74,96 @@ func NewWorkerServer() (*WorkerServer, error) {
 
 }
 
-func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerDeleteResponse, error) {
+func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerResponse, error) {
 	log.Debug("delete check: ", request.Id)
 	if ws.workers == nil {
-		return &service.WorkerDeleteResponse{
-			Status:   service.WorkerStatusCode_FAIL,
-			Message:  "Initializing",
-			Resource: nil,
+		return &service.WorkerResponse{
+			Status:  service.WorkerStatusCode_FAIL,
+			Message: "Initializing",
 		}, nil
 	}
 	count := ws.workers.RequiredCount(request.Id)
 	if count > 0 {
-		return &service.WorkerDeleteResponse{
+		return &service.WorkerResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: "requiring",
-			Resource: &service.WorkerResource{
-				Port: ws.workers.ResourcesPort(),
-			},
 		}, nil
 	}
-	return &service.WorkerDeleteResponse{
+	return &service.WorkerResponse{
 		Status: service.WorkerStatusCode_SUCCESS,
-		Resource: &service.WorkerResource{
-			Port: ws.workers.ResourcesPort(),
-		},
 	}, nil
 }
 
-func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerSetResponse, error) {
+func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerResponse, error) {
 	log.Debug("set check: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
 	err := ws.workers.Check(req.Id, req.Profession, req.Name, req.Driver, req.Body)
 	if ws.workers == nil {
-		return &service.WorkerSetResponse{
-			Status:   service.WorkerStatusCode_FAIL,
-			Message:  "Initializing",
-			Resource: nil,
+		return &service.WorkerResponse{
+			Status:  service.WorkerStatusCode_FAIL,
+			Message: "Initializing",
 		}, nil
 	}
 	if err != nil {
 		log.Info("serivce set :", err)
-		return &service.WorkerSetResponse{
+		return &service.WorkerResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
-			Resource: &service.WorkerResource{
-				Port: ws.workers.ResourcesPort(),
-			},
 		}, nil
 	}
-	return &service.WorkerSetResponse{
+	return &service.WorkerResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
-		Resource: &service.WorkerResource{
-			Port: ws.workers.ResourcesPort(),
-		},
 	}, nil
 }
 
-func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerDeleteResponse, error) {
+func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerResponse, error) {
 	log.Debug("delete: ", request.Id)
 	if ws.workers == nil {
-		return &service.WorkerDeleteResponse{
-			Status:   service.WorkerStatusCode_FAIL,
-			Message:  "Initializing",
-			Resource: nil,
+		return &service.WorkerResponse{
+			Status:  service.WorkerStatusCode_FAIL,
+			Message: "Initializing",
 		}, nil
 	}
 	err := ws.workers.Del(request.Id)
 
 	if err != nil {
 		log.Info("delete fail:", err)
-		return &service.WorkerDeleteResponse{
+		return &service.WorkerResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
-			Resource: &service.WorkerResource{
-				Port: ws.workers.ResourcesPort(),
-			},
 		}, nil
 	}
-	return &service.WorkerDeleteResponse{
+	return &service.WorkerResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
-		Resource: &service.WorkerResource{
-			Port: ws.workers.ResourcesPort(),
-		},
 	}, nil
 }
 
-func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerSetResponse, error) {
+func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerResponse, error) {
 	log.Debug("worker server set: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
 	if ws.workers == nil {
-		return &service.WorkerSetResponse{
-			Status:   service.WorkerStatusCode_FAIL,
-			Message:  "Initializing",
-			Resource: nil,
+		return &service.WorkerResponse{
+			Status:  service.WorkerStatusCode_FAIL,
+			Message: "Initializing",
 		}, nil
 	}
 	err := ws.workers.Set(req.Id, req.Profession, req.Name, req.Driver, req.Body)
 	if err != nil {
 		log.Info("worker server set error:", err)
-		return &service.WorkerSetResponse{
+		return &service.WorkerResponse{
 			Status:  service.WorkerStatusCode_FAIL,
 			Message: err.Error(),
-			Resource: &service.WorkerResource{
-				Port: ws.workers.ResourcesPort(),
-			},
 		}, nil
 	}
-	return &service.WorkerSetResponse{
+	return &service.WorkerResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
-		Resource: &service.WorkerResource{
-			Port: ws.workers.ResourcesPort(),
-		},
 	}, nil
 }
 
-func (ws *WorkerServer) Ping(ctx context.Context, request *service.WorkerHelloRequest) (*service.WorkerHelloResponse, error) {
+func (ws *WorkerServer) Ping(ctx context.Context, request *service.WorkerHelloRequest) (*service.WorkerResponse, error) {
 	if ws.workers == nil {
-		return &service.WorkerHelloResponse{
-			Resource: &service.WorkerResource{
-				Port: []int32{},
-			},
-		}, nil
+		return &service.WorkerResponse{}, nil
 	}
-	return &service.WorkerHelloResponse{
-		Hello: request.Hello,
-		Resource: &service.WorkerResource{
-			Port: ws.workers.ResourcesPort(),
-		},
-	}, nil
-}
-
-func (ws *WorkerServer) Refresh(ctx context.Context, request *service.WorkerRefreshRequest) (*service.WorkerRefreshResponse, error) {
-	if ws.tf == nil {
-		return &service.WorkerRefreshResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: "Initializing",
-		}, nil
-	}
-	ws.tf.Expire(int32ToInt(request.Ports))
-	return &service.WorkerRefreshResponse{
-		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: "",
-	}, nil
-}
-
-func int32ToInt(vs []int32) []int {
-	rs := make([]int, len(vs))
-	for i, v := range vs {
-		rs[i] = int(v)
-	}
-	return rs
+	return &service.WorkerResponse{}, nil
 }

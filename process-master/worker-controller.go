@@ -93,54 +93,6 @@ func (wc *WorkerController) Start() {
 
 	wc.NewWorker()
 
-	go func() {
-
-		next := time.NewTimer(time.Second)
-		next.Stop()
-		defer next.Stop()
-		for {
-			select {
-			case <-next.C:
-				{
-					response, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
-					if err != nil {
-						continue
-					}
-					ps, psInt := sortAndSet(response.Resource.Port)
-					if equal(ps, wc.localPorts) {
-						continue
-					}
-					log.Debug("reset traffic:", ps)
-					isCreate, err := wc.trafficController.Reset(psInt)
-					if err != nil {
-						log.Debug("reset ports error: ", err, " last ports: ", ps, " isCreate: ", isCreate)
-						continue
-					}
-					wc.localPorts = ps
-					if isCreate {
-						wc.NewWorker()
-					} else {
-						in := &service.WorkerRefreshRequest{
-							Ports: wc.localPorts,
-						}
-						_, err := wc.Refresh(context.TODO(), in)
-						if err != nil {
-							log.Debug("ping worker controller error: ", err)
-							continue
-						}
-					}
-				}
-			case <-wc.checkClose:
-				return
-			case _, ok := <-wc.portsChan:
-				if ok {
-					//last = ports
-					next.Reset(time.Second)
-				}
-			}
-		}
-
-	}()
 }
 
 func (wc *WorkerController) Restart() {

@@ -37,7 +37,7 @@ func (p *ProfessionRaft) Delete(name string) error {
 
 func (p *ProfessionRaft) encode() ([]byte, error) {
 	list := p.IProfessionsData.All()
-	pcd := &eosc.ProfessionConfigData{
+	pcd := &eosc.ProfessionConfigs{
 		Data: list,
 	}
 	data, err := proto.Marshal(pcd)
@@ -47,7 +47,7 @@ func (p *ProfessionRaft) encode() ([]byte, error) {
 	return data, nil
 }
 func (p *ProfessionRaft) decode(data []byte) ([]*eosc.ProfessionConfig, error) {
-	pcd := new(eosc.ProfessionConfigData)
+	pcd := new(eosc.ProfessionConfigs)
 	err := proto.Unmarshal(data, pcd)
 	if err != nil {
 		return nil, err

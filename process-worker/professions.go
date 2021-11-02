@@ -104,7 +104,7 @@ func ReadProfessionData(r io.Reader) ([]*eosc.ProfessionConfig, error) {
 		return nil, err
 	}
 
-	pd := new(eosc.ProfessionConfigData)
+	pd := new(eosc.ProfessionConfigs)
 	if e := proto.Unmarshal(frame, pd); e != nil {
 		return nil, e
 	}

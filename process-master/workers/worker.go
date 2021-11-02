@@ -29,7 +29,7 @@ func (wa WorkerAttr) Get(field string) string {
 }
 
 type Worker struct {
-	*eosc.WorkerData
+	*eosc.WorkerConfig
 	Data WorkerAttr
 }
 
@@ -39,13 +39,13 @@ func (w *Worker) MarshalJSON() ([]byte, error) {
 		return nil, ErrorInvalidWorkerData
 	}
 
-	return EncodeWorkerData(w.WorkerData)
+	return EncodeWorkerData(w.WorkerConfig)
 }
-func EncodeWorkerData(wd *eosc.WorkerData) ([]byte, error) {
+func EncodeWorkerData(wd *eosc.WorkerConfig) ([]byte, error) {
 	return json.Marshal(wd)
 }
-func DecodeWorkerData(data []byte) (*eosc.WorkerData, error) {
-	wd := new(eosc.WorkerData)
+func DecodeWorkerData(data []byte) (*eosc.WorkerConfig, error) {
+	wd := new(eosc.WorkerConfig)
 	err := json.Unmarshal(data, wd)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func ReadTWorker(obj interface{}) (map[string]interface{}, error) {
 			return nil, err
 		}
 		return wk.Info(), nil
-	case *eosc.WorkerData:
+	case *eosc.WorkerConfig:
 		wk, err := ToWorker(v)
 		if err != nil {
 			return nil, err
@@ -77,7 +77,7 @@ func ReadTWorker(obj interface{}) (map[string]interface{}, error) {
 	}
 	return nil, errors.New("unknown type")
 }
-func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
+func ToWorker(wd *eosc.WorkerConfig) (*Worker, error) {
 	wa := make(WorkerAttr)
 	if len(wd.Body) > 0 {
 		err := json.Unmarshal(wd.Body, &wa)
@@ -87,8 +87,8 @@ func ToWorker(wd *eosc.WorkerData) (*Worker, error) {
 	}
 
 	return &Worker{
-		WorkerData: wd,
-		Data:       wa,
+		WorkerConfig: wd,
+		Data:         wa,
 	}, nil
 }
 func (w *Worker) Info() eosc.TWorker {
