@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc"
 )
 
@@ -12,7 +14,7 @@ func DownLoadToRepository(group, project, version string) error {
 	// todo 填充下载插件的代码
 	// todo 插件市场地址为 ： env.ExtenderMarkAddr()
 	// todo 保存目录为  filepath.Join(env.ExtendersDir(),eosc.Version(),runtime.Version(),group,project,version)
-
+	addr := fmt.Sprintf("%s/%s", env.ExtenderMarkAddr(), "")
 	return nil
 }
 

@@ -9,6 +9,7 @@
 package process_worker
 
 import (
+	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -79,6 +80,10 @@ func (w *ProcessWorker) wait() {
 		}
 	}
 
+}
+
+func ReadStdin(reader io.Reader) map[string][]byte {
+	return nil
 }
 
 //NewProcessWorker 创建新的worker进程
