@@ -23,6 +23,8 @@ const (
 	CommandInit     = "init"
 	SystemNamespace = "__system"
 	appendDelay     = time.Second
+	EventReset      = "reset"
+	EventComplete   = "complete"
 )
 
 type Service struct {
@@ -33,6 +35,9 @@ type Service struct {
 
 	timerAppend *time.Timer
 	locker      sync.Mutex
+
+	eventHandlers       []IRaftEventHandler
+	commitEventHandlers []ICommitEventHandler
 }
 
 func NewService() *Service {
@@ -43,6 +48,7 @@ func NewService() *Service {
 	s.commitHandler = s.doCommit
 	return s
 }
+
 func (s *Service) ResetHandler(data []byte) error {
 	return errors.New("not support")
 }
@@ -59,10 +65,10 @@ func (s *Service) Append(cmd string, data []byte) error {
 		s.doResetSnap(snaps)
 	}
 	return ErrInvalidCommand
-
 }
 
 func (s *Service) Complete() error {
+
 	return nil
 }
 
@@ -74,6 +80,7 @@ func (s *Service) complete() error {
 		}
 		f.(IRaftServiceHandler).Complete()
 	}
+
 	return nil
 }
 
@@ -183,8 +190,13 @@ func (s *Service) doCommit(namespace string, cmd string, data []byte) error {
 		return ErrInvalidCommitHandler
 	}
 
-	return f.CommitHandler(cmd, data)
+	err := f.CommitHandler(cmd, data)
+	if err != nil {
+		return err
+	}
 
+	s.callCommitEvent(namespace, cmd)
+	return nil
 }
 
 func (s *Service) doAppend(namespace string, cmd string, data []byte) error {
@@ -250,6 +262,7 @@ func (s *Service) ResetSnap(data []byte) error {
 	s.locker.Lock()
 	defer s.locker.Unlock()
 	s.doResetSnap(snaps)
+	s.callbackEvent(EventReset)
 	if s.timerAppend == nil {
 		s.timerAppend = time.NewTimer(appendDelay)
 		s.commitHandler = s.doAppend
@@ -266,7 +279,7 @@ func (s *Service) appendSwitch(t *time.Timer) {
 	s.timerAppend = nil
 	s.commitHandler = s.doCommit
 	s.complete()
-
+	s.callbackEvent(EventComplete)
 }
 func (s *Service) GetSnapshot() ([]byte, error) {
 	s.locker.Lock()

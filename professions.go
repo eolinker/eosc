@@ -1,15 +1,15 @@
 package eosc
 
-type IProfessionsData interface {
+type IProfessions interface {
 	Set(name string, profession *ProfessionConfig) error
 	Delete(name string) error
-	GetProfession(name string) (IProfessionData, bool)
+	GetProfession(name string) (IProfession, bool)
 	Infos() []*ProfessionInfo
 	Reset([]*ProfessionConfig)
 	All() []*ProfessionConfig
 }
 
-type IProfessionData interface {
+type IProfession interface {
 	Drivers() []*DriverInfo
 	GetDriver(name string) (*DriverDetail, bool)
 	HasDriver(name string) bool
@@ -17,9 +17,4 @@ type IProfessionData interface {
 	DriversItem() []*Item
 	Mod() ProfessionConfig_ProfessionMod
 	Detail() *ProfessionDetail
-}
-
-type IProfessionDataEdit interface {
-	SetDriver(name string, detail *DriverConfig) error
-	DeleteDriver(name string) error
 }

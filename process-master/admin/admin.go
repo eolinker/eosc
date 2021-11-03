@@ -9,7 +9,7 @@ import (
 type WorkerInfo map[string]interface{}
 
 type Admin struct {
-	professions eosc.IProfessionsData
+	professions eosc.IProfessions
 	workers     eosc.IWorkersData
 	handler     http.Handler
 }
@@ -22,7 +22,7 @@ func (a *Admin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.handler.ServeHTTP(w, r)
 }
 
-func NewAdmin(professions eosc.IProfessionsData, workers eosc.IWorkersData) *Admin {
+func NewAdmin(professions eosc.IProfessions, workers eosc.IWorkersData) *Admin {
 	a := &Admin{professions: professions, workers: workers}
 	a.handler = load(a)
 	return a

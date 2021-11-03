@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/eolinker/eosc/log"
 
@@ -13,58 +12,14 @@ import (
 	"github.com/eolinker/eosc/process-master/workers"
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
 )
 
-type WorkerConfigs struct {
-	workers.ITypedWorkers
-}
-
-func NewWorkerConfigs(ITypedWorkers workers.ITypedWorkers) *WorkerConfigs {
-	return &WorkerConfigs{ITypedWorkers: ITypedWorkers}
-}
-func (w *WorkerConfigs) Encode(startIndex int) ([]byte, []*os.File, error) {
-	data, err := w.encode()
-	if err != nil {
-		return nil, nil, err
-	}
-	return utils.EncodeFrame(data), nil, nil
-}
-func (w *WorkerConfigs) encode() ([]byte, error) {
-	values := w.ITypedWorkers.All()
-
-	wd := &eosc.WorkerConfigs{
-		Data: make([]*eosc.WorkerConfig, len(values)),
-	}
-	for i, v := range values {
-
-		wd.Data[i] = v.WorkerConfig
-	}
-	data, err := proto.Marshal(wd)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-func (w *WorkerConfigs) decode(data []byte) ([]*eosc.WorkerConfig, error) {
-	wd := new(eosc.WorkerConfigs)
-	err := proto.Unmarshal(data, wd)
-	if err != nil {
-		return nil, err
-	}
-	return wd.Data, nil
-}
-func (w *WorkerConfigs) reset(vs []*eosc.WorkerConfig) {
-	w.ITypedWorkers.Reset(vs)
-}
-
 type WorkersRaft struct {
-	data                    *WorkerConfigs
-	professions             eosc.IProfessionsData
-	workerServiceClient     service.WorkerServiceClient
-	service                 raft_service.IService
-	workerProcessController WorkerProcessController
+	data                *WorkerConfigs
+	professions         eosc.IProfessions
+	workerServiceClient service.WorkerServiceClient
+	service             raft_service.IService
 }
 
 func (w *WorkersRaft) Append(cmd string, data []byte) error {
@@ -98,12 +53,10 @@ func (w *WorkersRaft) Append(cmd string, data []byte) error {
 
 func (w *WorkersRaft) Complete() error {
 
-	w.workerProcessController.Restart()
-
 	return nil
 }
 
-func NewWorkersRaft(WorkerConfig *WorkerConfigs, professions eosc.IProfessionsData, workerServiceClient service.WorkerServiceClient, service raft_service.IService, workerController WorkerProcessController) *WorkersRaft {
+func NewWorkersRaft(WorkerConfig *WorkerConfigs, professions eosc.IProfessions, workerServiceClient service.WorkerServiceClient, service raft_service.IService) *WorkersRaft {
 	// 初始化单例的worker
 	for _, p := range professions.All() {
 		if p.Mod == eosc.ProfessionConfig_Singleton {
@@ -124,7 +77,7 @@ func NewWorkersRaft(WorkerConfig *WorkerConfigs, professions eosc.IProfessionsDa
 			}
 		}
 	}
-	return &WorkersRaft{data: WorkerConfig, professions: professions, workerServiceClient: workerServiceClient, service: service, workerProcessController: workerController}
+	return &WorkersRaft{data: WorkerConfig, professions: professions, workerServiceClient: workerServiceClient, service: service}
 }
 
 func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
@@ -320,8 +273,8 @@ func (w *WorkersRaft) CommitHandler(cmd string, data []byte) error {
 }
 
 func (w *WorkersRaft) Snapshot() []byte {
-
-	data, err := w.data.encode()
+	export := w.data.export()
+	data, err := encode(export)
 	if err != nil {
 		return nil
 	}
@@ -330,7 +283,7 @@ func (w *WorkersRaft) Snapshot() []byte {
 
 func (w *WorkersRaft) ResetHandler(data []byte) error {
 
-	vs, err := w.data.decode(data)
+	vs, err := decode(data)
 	if err != nil {
 		return err
 	}
@@ -366,4 +319,21 @@ func (w *WorkersRaft) GetList(profession string) ([]eosc.TWorker, error) {
 		}
 	}
 	return result, nil
+}
+func decode(data []byte) ([]*eosc.WorkerConfig, error) {
+	if len(data) == 0 {
+		return nil, ErrClientNotInit
+	}
+	wd := new(eosc.WorkerConfigs)
+	err := proto.Unmarshal(data, wd)
+	if err != nil {
+		return nil, err
+	}
+	return wd.Data, nil
+}
+func encode(cs []*eosc.WorkerConfig) ([]byte, error) {
+	wd := new(eosc.WorkerConfigs)
+	wd.Data = cs
+	return proto.Marshal(wd)
+
 }

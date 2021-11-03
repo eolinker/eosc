@@ -7,13 +7,13 @@ import (
 )
 
 type ExtenderRegister struct {
-	group string
-	name  string
-	data  map[string]eosc.IExtenderDriverFactory
+	group   string
+	project string
+	data    map[string]eosc.IExtenderDriverFactory
 }
 
-func NewExtenderRegister(group string, name string) *ExtenderRegister {
-	return &ExtenderRegister{group: group, name: name, data: make(map[string]eosc.IExtenderDriverFactory)}
+func NewExtenderRegister(group string, project string) *ExtenderRegister {
+	return &ExtenderRegister{group: group, project: project, data: make(map[string]eosc.IExtenderDriverFactory)}
 }
 
 func (r *ExtenderRegister) RegisterExtenderDriver(name string, factory eosc.IExtenderDriverFactory) error {
@@ -27,7 +27,7 @@ func (r *ExtenderRegister) RegisterExtenderDriver(name string, factory eosc.IExt
 
 func (r *ExtenderRegister) RegisterTo(register eosc.IExtenderDriverRegister) {
 	for n, f := range r.data {
-		id := FormatDriverId(r.group, r.name, n)
+		id := FormatDriverId(r.group, r.project, n)
 		register.RegisterExtenderDriver(id, f)
 	}
 }
@@ -35,7 +35,7 @@ func (r *ExtenderRegister) RegisterTo(register eosc.IExtenderDriverRegister) {
 func (r *ExtenderRegister) All() []string {
 	rs := make([]string, 0, len(r.data))
 	for n := range r.data {
-		rs = append(rs, FormatDriverId(r.group, r.name, n))
+		rs = append(rs, FormatDriverId(r.group, r.project, n))
 	}
 	return rs
 }

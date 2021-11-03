@@ -72,9 +72,11 @@ func (ps *Professions) Sort() []*Profession {
 	return sl
 }
 
-func NewProfessions() *Professions {
+func NewProfessions(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) *Professions {
 
-	return &Professions{}
+	ps := &Professions{}
+	ps.init(configs, extends)
+	return ps
 }
 
 func (ps *Professions) init(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) {

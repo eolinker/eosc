@@ -33,7 +33,6 @@ import (
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/raft"
-	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
 
 	"google.golang.org/grpc"
@@ -64,8 +63,7 @@ func Process() {
 }
 
 type Master struct {
-	service.UnimplementedMasterServer
-	service.UnimplementedCtiServiceServer
+	//service.UnimplementedMasterServer
 	node          *raft.Node
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
@@ -74,16 +72,15 @@ type Master struct {
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
 	//PID           *pidfile.PidFile
-	httpserver   *http.Server
-	extenderRaft eosc.IExtenderData
-	cfg          *config.Config
-	admin        *admin.Admin
+	httpserver *http.Server
+
+	admin *admin.Admin
 
 	workerController *WorkerController
 }
 
 type MasterHandler struct {
-	Professions eosc.IProfessionsData
+	Professions eosc.IProfessions
 }
 
 func (mh *MasterHandler) initHandler() {
@@ -92,20 +89,27 @@ func (mh *MasterHandler) initHandler() {
 	}
 }
 
-func (m *Master) start(handler *MasterHandler) error {
+func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
+
 	if handler == nil {
 		handler = new(MasterHandler)
 	}
 
 	handler.initHandler()
+	workerServiceProxy := NewWorkerServiceProxy()
 	raftService := raft_service.NewService()
-	workersData := NewWorkerConfigs(workers.NewTypedWorkers())
+
+	workersConfig := NewWorkerConfigs()
+
 	professionRaft := NewProfessionRaft(handler.Professions)
-	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData, m.cfg)
-	m.workerController.Start()
-	m.extenderRaft = NewExtenderRaft(raftService)
-	workerRaft := NewWorkersRaft(workersData, handler.Professions, m.workerController, raftService, m.workerController)
+	extenderRaft := NewExtenderRaft(raftService)
+	workerRaft := NewWorkersRaft(workersConfig, handler.Professions, workerServiceProxy, raftService)
+
+	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy)
 	m.admin = admin.NewAdmin(handler.Professions, workerRaft)
+	raftService.AddEventHandler(m.workerController.raftEvent)
+	raftService.AddCommitEventHandler(m.workerController.raftCommitEvent)
+
 	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, workerRaft), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
 	node, err := raft.NewNode(raftService)
 	if err != nil {
@@ -124,25 +128,30 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("get config error: ", err)
 		return err
 	}
-	m.cfg = cfg
-	m.masterTraffic.Reset([]int{m.cfg.Admin.Listen})
-	m.workerTraffic.Reset(m.cfg.Ports())
-	err = m.start(handler)
+	_, err = m.masterTraffic.Reset([]int{cfg.Admin.Listen})
+	if err != nil {
+		return err
+	}
+	_, err = m.workerTraffic.Reset(cfg.Ports())
+	if err != nil {
+		return err
+	}
+	err = m.start(handler, cfg)
 	if err != nil {
 		return err
 	}
 
 	// 监听master监听地址，用于接口处理
-	l, err := m.masterTraffic.ListenTcp(m.cfg.Admin.IP, m.cfg.Admin.Listen)
+	l, err := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen)
 	if err != nil {
 		log.Error("master listen tcp error: ", err)
 		return err
 	}
 
-	if strings.ToLower(m.cfg.Admin.Scheme) == "https" {
+	if strings.ToLower(cfg.Admin.Scheme) == "https" {
 		// start https listener
 		log.Debug("start https listener...")
-		cert, err := config.NewCert([]*config.Certificate{m.cfg.Admin.Certificate}, m.cfg.CertificateDir.Dir)
+		cert, err := config.NewCert([]*config.Certificate{cfg.Admin.Certificate}, cfg.CertificateDir.Dir)
 		if err != nil {
 			return err
 		}
@@ -247,10 +256,8 @@ func (m *Master) close() {
 func NewMasterHandle() *Master {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
-		cancelFunc:                    cancelFunc,
-		ctx:                           cancel,
-		UnimplementedMasterServer:     service.UnimplementedMasterServer{},
-		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
+		cancelFunc: cancelFunc,
+		ctx:        cancel,
 	}
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("init traffic from stdin")

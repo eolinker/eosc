@@ -16,7 +16,7 @@ func LocalExtenderPath(group, project, version string) string {
 
 	return filepath.Join(env.ExtendersDir(), "repository", eosc.Version(), runtime.Version(), group, project, version, fileName)
 }
-func DecodeExtenderId(id string) (group, name, version string, err error) {
+func DecodeExtenderId(id string) (group, project, version string, err error) {
 	vs := strings.Split(id, ":")
 	if len(vs) == 2 {
 		return vs[0], vs[1], "", nil
@@ -27,8 +27,8 @@ func DecodeExtenderId(id string) (group, name, version string, err error) {
 	return "", "", "", fmt.Errorf("%w:%s", ErrorInvalidExtenderId, id)
 }
 
-func FormatDriverId(group, name, fac string) string {
-	return fmt.Sprint(group, ":", name, ":", fac)
+func FormatDriverId(group, project, fac string) string {
+	return fmt.Sprint(group, ":", project, ":", fac)
 }
 
 func FormatFileName(group, project, version string) string {

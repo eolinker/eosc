@@ -16,6 +16,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eolinker/eosc/traffic"
+	"github.com/eolinker/eosc/utils"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc"
@@ -37,16 +41,23 @@ func (m *Master) Fork(pFile *pidfile.PidFile) error {
 		return err
 	}
 	runningMasterForked = true
+	tfMaster, filesMaster := m.masterTraffic.Export(3)
 
-	dataMasterTraffic, filesMaster, err := m.masterTraffic.Encode(3)
+	dataMasterTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfMaster})
 	if err != nil {
 		return err
 	}
-	//m.masterTraffic.Close()
-	dataWorkerTraffic, filesWorker, err := m.workerTraffic.Encode(len(filesMaster) + 3)
+
+	dataMasterTraffic = utils.EncodeFrame(dataMasterTraffic)
+
+	tfWorker, filesWorker := m.workerTraffic.Export(len(filesMaster) + 3)
+	dataWorkerTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfWorker})
+
 	if err != nil {
 		return err
 	}
+	dataWorkerTraffic = utils.EncodeFrame(dataWorkerTraffic)
+
 	data := make([]byte, len(dataMasterTraffic)+len(dataWorkerTraffic))
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
@@ -57,7 +68,7 @@ func (m *Master) Fork(pFile *pidfile.PidFile) error {
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = bytes.NewBuffer(data)
+	cmd.Stdin = bytes.NewReader(data)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,
 	}

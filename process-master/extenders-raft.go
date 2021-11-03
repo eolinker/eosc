@@ -11,21 +11,21 @@ import (
 	"github.com/eolinker/eosc/process-master/extenders"
 )
 
-type ExtenderRaft struct {
+type ExtenderSettingRaft struct {
 	locker  sync.Mutex
-	data    extenders.ITypedInstallData
+	data    extenders.ITypedExtenderSetting
 	service raft_service.IService
 }
 
-func NewExtenderRaft(service raft_service.IService) *ExtenderRaft {
-	return &ExtenderRaft{
+func NewExtenderRaft(service raft_service.IService) *ExtenderSettingRaft {
+	return &ExtenderSettingRaft{
 		locker:  sync.Mutex{},
 		data:    extenders.NewInstallData(),
 		service: service,
 	}
 }
 
-func (e *ExtenderRaft) SetExtender(group, project, version string) error {
+func (e *ExtenderSettingRaft) SetExtender(group, project, version string) error {
 
 	_, err := e.service.Send(extenders.NamespaceExtenders, extenders.CommandSet, []byte(fmt.Sprint(group, ":", project, ":", version)))
 	if err != nil {
@@ -34,7 +34,7 @@ func (e *ExtenderRaft) SetExtender(group, project, version string) error {
 	return nil
 }
 
-func (e *ExtenderRaft) DelExtender(group, project string) (string, bool) {
+func (e *ExtenderSettingRaft) DelExtender(group, project string) (string, bool) {
 
 	d, err := e.service.Send(extenders.NamespaceExtenders, extenders.CommandSet, []byte(fmt.Sprint(group, ":", project)))
 	if err != nil {
@@ -43,13 +43,13 @@ func (e *ExtenderRaft) DelExtender(group, project string) (string, bool) {
 	return d.(string), true
 }
 
-func (e *ExtenderRaft) GetExtenderVersion(group, project string) (string, bool) {
+func (e *ExtenderSettingRaft) GetExtenderVersion(group, project string) (string, bool) {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	return e.data.Get(group, project)
 }
 
-func (e *ExtenderRaft) Append(cmd string, data []byte) error {
+func (e *ExtenderSettingRaft) Append(cmd string, data []byte) error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	switch cmd {
@@ -64,13 +64,13 @@ func (e *ExtenderRaft) Append(cmd string, data []byte) error {
 	return nil
 }
 
-func (e *ExtenderRaft) Complete() error {
+func (e *ExtenderSettingRaft) Complete() error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	return nil
 }
 
-func (e *ExtenderRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error) {
+func (e *ExtenderSettingRaft) ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error) {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	switch cmd {
@@ -94,7 +94,7 @@ func (e *ExtenderRaft) ProcessHandler(cmd string, body []byte) ([]byte, interfac
 	return nil, "", fmt.Errorf("%s:%w", cmd, extenders.ErrorInvalidCommand)
 }
 
-func (e *ExtenderRaft) ResetHandler(data []byte) error {
+func (e *ExtenderSettingRaft) ResetHandler(data []byte) error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	m := make(map[string]string)
@@ -103,7 +103,7 @@ func (e *ExtenderRaft) ResetHandler(data []byte) error {
 	return nil
 }
 
-func (e *ExtenderRaft) CommitHandler(cmd string, data []byte) error {
+func (e *ExtenderSettingRaft) CommitHandler(cmd string, data []byte) error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	switch cmd {
@@ -119,14 +119,14 @@ func (e *ExtenderRaft) CommitHandler(cmd string, data []byte) error {
 	return nil
 }
 
-func (e *ExtenderRaft) Snapshot() []byte {
+func (e *ExtenderSettingRaft) Snapshot() []byte {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	marshal, _ := json.Marshal(e.data.All())
 	return marshal
 }
 
-func (e *ExtenderRaft) readId(id string) (group string, project string, version string) {
+func (e *ExtenderSettingRaft) readId(id string) (group string, project string, version string) {
 	vs := strings.Split(id, ":")
 	l := len(vs)
 	switch l {

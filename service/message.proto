@@ -86,6 +86,6 @@ message WorkerConfigs{
   repeated WorkerConfig data = 1;
 }
 
-message ExtendersSetting{
+message ExtendersSettings{
   map<string,string> Extenders=1;
 }
