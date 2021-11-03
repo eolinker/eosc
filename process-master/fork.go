@@ -10,6 +10,7 @@ package process_master
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"syscall"
@@ -27,11 +28,11 @@ import (
 var runningMasterForked bool
 
 //Fork Master fork 子进程，入参为子进程需要的内容
-func (m *Master) Fork() error {
+func (m *Master) Fork(pFile *pidfile.PidFile) error {
 	if runningMasterForked {
 		return errors.New("Another process already forked. Ignoring this one.")
 	}
-	err := m.PID.TryFork()
+	err := pFile.TryFork()
 	if err != nil {
 		return err
 	}
@@ -71,21 +72,21 @@ func (m *Master) Fork() error {
 	}
 	log.Debug("fork new process: ", cmd.String())
 	// check cmd
-	go m.waitFork(cmd.Process.Pid)
+	go waitFork(m.ctx, pFile, cmd.Process.Pid)
 
 	return nil
 }
 
-func (m *Master) waitFork(pid int) {
+func waitFork(ctx context.Context, pFile *pidfile.PidFile, pid int) {
 	t := time.NewTicker(time.Millisecond * 100)
 	defer t.Stop()
 	for {
 		select {
-		case <-m.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-t.C:
 			if !pidfile.ProcessExists(pid) {
-				m.PID.UnFork()
+				pFile.UnFork()
 				return
 			}
 		}

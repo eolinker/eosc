@@ -46,20 +46,21 @@ import (
 func Process() {
 	utils.InitLogTransport(eosc.ProcessMaster)
 
-	file, err := pidfile.New()
+	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
 
-	master := NewMasterHandle(file)
+	master := NewMasterHandle()
 	if err := master.Start(nil); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
 	}
 
-	master.Wait()
+	master.Wait(pFile)
+	pFile.Remove()
 }
 
 type Master struct {
@@ -72,11 +73,11 @@ type Master struct {
 	masterSrv     *grpc.Server
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
-	PID           *pidfile.PidFile
-	httpserver    *http.Server
-	extenderRaft  eosc.IExtenderData
-	cfg           *config.Config
-	admin         *admin.Admin
+	//PID           *pidfile.PidFile
+	httpserver   *http.Server
+	extenderRaft eosc.IExtenderData
+	cfg          *config.Config
+	admin        *admin.Admin
 
 	workerController *WorkerController
 }
@@ -97,16 +98,16 @@ func (m *Master) start(handler *MasterHandler) error {
 	}
 
 	handler.initHandler()
-	s := raft_service.NewService()
+	raftService := raft_service.NewService()
 	workersData := NewWorkerConfigs(workers.NewTypedWorkers())
 	professionRaft := NewProfessionRaft(handler.Professions)
 	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData, m.cfg)
 	m.workerController.Start()
-	m.extenderRaft = NewExtenderRaft(s)
-	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s, m.workerController)
-	m.admin = admin.NewAdmin(handler.Professions, worker)
-	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
-	node, err := raft.NewNode(s)
+	m.extenderRaft = NewExtenderRaft(raftService)
+	workerRaft := NewWorkersRaft(workersData, handler.Professions, m.workerController, raftService, m.workerController)
+	m.admin = admin.NewAdmin(handler.Professions, workerRaft)
+	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, workerRaft), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
+	node, err := raft.NewNode(raftService)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -184,7 +185,7 @@ func (m *Master) handler() http.Handler {
 
 	return sm
 }
-func (m *Master) Wait() error {
+func (m *Master) Wait(pFile *pidfile.PidFile) error {
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
@@ -207,7 +208,7 @@ func (m *Master) Wait() error {
 			{
 				m.node.Stop()
 				log.Info("try fork new")
-				err := m.Fork() //传子进程需要的内容
+				err := m.Fork(pFile) //传子进程需要的内容
 				if err != nil {
 					log.Error("fork new:", err)
 				}
@@ -239,17 +240,13 @@ func (m *Master) close() {
 	m.stopService()
 	log.Debug("try remove pid")
 
-	if err := m.PID.Remove(); err != nil {
-		log.Warn("remove pid:", err)
-	}
 	m.workerController.Stop()
 
 }
 
-func NewMasterHandle(pid *pidfile.PidFile) *Master {
+func NewMasterHandle() *Master {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
-		PID:                           pid,
 		cancelFunc:                    cancelFunc,
 		ctx:                           cancel,
 		UnimplementedMasterServer:     service.UnimplementedMasterServer{},

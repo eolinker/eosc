@@ -114,6 +114,7 @@ func (e *ExtenderRaft) CommitHandler(cmd string, data []byte) error {
 	case extenders.CommandSet:
 		group, project, version := e.readId(string(data))
 		e.data.Set(group, project, version)
+
 	}
 	return nil
 }
