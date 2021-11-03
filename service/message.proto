@@ -17,7 +17,7 @@ message ProfessionConfig{
   }
   ProfessionMod mod=7;
 }
-message ProfessionConfigData{
+message ProfessionConfigs{
   repeated ProfessionConfig data = 1;
 }
 
@@ -63,17 +63,17 @@ message DriverDetail{
   map<string, string> params = 5;
   PluginInfo plugin = 6;
 }
+//
+//message WorkerInfo{
+//  string id = 1;
+//  string profession = 2;
+//  string name = 3;
+//  string driver = 4;
+//  string create = 5;
+//  string update = 6;
+//}
 
-message WorkerInfo{
-  string id = 1;
-  string profession = 2;
-  string name = 3;
-  string driver = 4;
-  string create = 5;
-  string update = 6;
-}
-
-message WorkerData{
+message WorkerConfig{
   string id = 1;
   string profession = 2;
   string name = 3;
@@ -82,10 +82,10 @@ message WorkerData{
   string update = 6;
   bytes body = 7;
 }
-message WorkersData{
-  repeated WorkerData data = 1;
+message WorkerConfigs{
+  repeated WorkerConfig data = 1;
 }
 
-message ExtendersData{
+message ExtendersSetting{
   map<string,string> Extenders=1;
 }

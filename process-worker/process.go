@@ -146,7 +146,6 @@ func (w *ProcessWorker) close() {
 	w.once.Do(func() {
 		w.tf.Close()
 		w.workerServer.Stop()
-
 	})
 
 }

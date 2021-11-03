@@ -98,7 +98,7 @@ func (m *Master) start(handler *MasterHandler) error {
 
 	handler.initHandler()
 	s := raft_service.NewService()
-	workersData := NewWorkersData(workers.NewTypedWorkers())
+	workersData := NewWorkerConfigs(workers.NewTypedWorkers())
 	professionRaft := NewProfessionRaft(handler.Professions)
 	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData, m.cfg)
 	m.workerController.Start()

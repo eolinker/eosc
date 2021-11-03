@@ -26,7 +26,7 @@ type IWorkers interface {
 
 var _ IWorkers = (*WorkerManager)(nil)
 
-func ReadWorkers(r io.Reader) []*eosc.WorkerData {
+func ReadWorkers(r io.Reader) []*eosc.WorkerConfig {
 	frame, err := utils.ReadFrame(r)
 	if err != nil {
 		log.Warn("read  workerIds frame :", err)
@@ -34,7 +34,7 @@ func ReadWorkers(r io.Reader) []*eosc.WorkerData {
 		return nil
 	}
 
-	wd := new(eosc.WorkersData)
+	wd := new(eosc.WorkerConfigs)
 	if e := proto.Unmarshal(frame, wd); e != nil {
 		log.Warn("unmarshal workerIds data :", e)
 		return nil
@@ -127,11 +127,11 @@ func NewWorkerManager(professions IProfessions) *WorkerManager {
 	}
 }
 
-func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
+func (wm *WorkerManager) Init(wdl []*eosc.WorkerConfig) error {
 
 	ps := wm.professions.Sort()
 
-	pm := make(map[string][]*eosc.WorkerData)
+	pm := make(map[string][]*eosc.WorkerConfig)
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
