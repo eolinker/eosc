@@ -1,0 +1,10 @@
+syntax = "proto3";
+option go_package = "github.com/eolinker/eosc/common/fileLocker";
+package fileLocker;
+
+message lockMsg {
+  string name =1;
+  int32 timeout =2;
+  int32 local = 3;
+}
+
