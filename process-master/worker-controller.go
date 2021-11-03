@@ -93,15 +93,13 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 	}
 }
 func (wc *WorkerController) Start() {
-
 	wc.NewWorker()
-
 }
 
 func (wc *WorkerController) Restart() {
 	wc.NewWorker()
-
 }
+
 func (wc *WorkerController) NewWorker() error {
 
 	wc.locker.Lock()

@@ -4,7 +4,8 @@ package fileLocker;
 
 message lockMsg {
   string name =1;
-  int32 timeout =2;
-  int32 local = 3;
+  int64 timeout =2;
+  int64 local = 3;
+  string localTime = 4;
 }
 
