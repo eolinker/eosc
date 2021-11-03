@@ -27,6 +27,7 @@ type WorkerProcessController interface {
 	Restart()
 }
 type WorkerController struct {
+	*WorkerServiceProxy
 	locker            sync.Mutex
 	dms               []eosc.IDataMarshaller
 	current           *WorkerProcess
@@ -46,10 +47,11 @@ func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDat
 	}
 
 	return &WorkerController{
-		trafficController: trafficController,
-		dms:               dmsAll,
-		checkClose:        make(chan int, 1),
-		portsChan:         make(chan []int32, 1),
+		WorkerServiceProxy: NewWorkerServiceProxy(),
+		trafficController:  trafficController,
+		dms:                dmsAll,
+		checkClose:         make(chan int, 1),
+		portsChan:          make(chan []int32, 1),
 	}
 }
 
@@ -64,6 +66,7 @@ func (wc *WorkerController) Stop() {
 	close(wc.portsChan)
 	wc.isStop = true
 	if wc.current != nil {
+		wc.WorkerServiceProxy.SetWorkerProcess(nil)
 		wc.current.Close()
 		wc.expireWorkers = append(wc.expireWorkers, wc.current)
 		wc.current = nil
@@ -112,7 +115,7 @@ func (wc *WorkerController) NewWorker() error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	defer utils.Timeout("wait worker process start:")()
-	wc.current.createClient()
+
 	for {
 		_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 		if err == nil {
@@ -147,9 +150,12 @@ func (wc *WorkerController) new() error {
 		log.Warn("new worker process:", err)
 		return err
 	}
-
+	workerProcess.createClient()
 	old := wc.current
 	wc.current = workerProcess
+
+	wc.WorkerServiceProxy.SetWorkerProcess(wc.current)
+
 	go wc.check(wc.current)
 
 	if old != nil {
@@ -162,10 +168,7 @@ func (wc *WorkerController) new() error {
 func (wc *WorkerController) getClient() *WorkerProcess {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
-	if wc.current == nil {
-		return nil
-	}
-	wc.current.createClient()
+
 	return wc.current
 }
 

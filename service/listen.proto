@@ -2,7 +2,7 @@ syntax = "proto3";
 
 
 option go_package = "github.com/eolinker/eosc/config";
-package config;
+package service;
 
 message ListensMsg {
     string dir = 1;

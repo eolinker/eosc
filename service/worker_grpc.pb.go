@@ -25,6 +25,8 @@ type WorkerServiceClient interface {
 	Ping(ctx context.Context, in *WorkerHelloRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
 	Reset(ctx context.Context, in *ResetRequest, opts ...grpc.CallOption) (*WorkerResponse, error)
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	AddExtender(ctx context.Context, in *WorkerAddExtender, opts ...grpc.CallOption) (*WorkerResponse, error)
+	DelExtenderCheck(ctx context.Context, in *WorkerDelExtender, opts ...grpc.CallOption) (*WorkerResponse, error)
 }
 
 type workerServiceClient struct {
@@ -98,6 +100,24 @@ func (c *workerServiceClient) Status(ctx context.Context, in *StatusRequest, opt
 	return out, nil
 }
 
+func (c *workerServiceClient) AddExtender(ctx context.Context, in *WorkerAddExtender, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
+	err := c.cc.Invoke(ctx, "/service.WorkerService/addExtender", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) DelExtenderCheck(ctx context.Context, in *WorkerDelExtender, opts ...grpc.CallOption) (*WorkerResponse, error) {
+	out := new(WorkerResponse)
+	err := c.cc.Invoke(ctx, "/service.WorkerService/delExtenderCheck", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
@@ -109,6 +129,8 @@ type WorkerServiceServer interface {
 	Ping(context.Context, *WorkerHelloRequest) (*WorkerResponse, error)
 	Reset(context.Context, *ResetRequest) (*WorkerResponse, error)
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
+	AddExtender(context.Context, *WorkerAddExtender) (*WorkerResponse, error)
+	DelExtenderCheck(context.Context, *WorkerDelExtender) (*WorkerResponse, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -136,6 +158,12 @@ func (UnimplementedWorkerServiceServer) Reset(context.Context, *ResetRequest) (*
 }
 func (UnimplementedWorkerServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
+}
+func (UnimplementedWorkerServiceServer) AddExtender(context.Context, *WorkerAddExtender) (*WorkerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddExtender not implemented")
+}
+func (UnimplementedWorkerServiceServer) DelExtenderCheck(context.Context, *WorkerDelExtender) (*WorkerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DelExtenderCheck not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 
@@ -276,6 +304,42 @@ func _WorkerService_Status_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_AddExtender_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkerAddExtender)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).AddExtender(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.WorkerService/addExtender",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).AddExtender(ctx, req.(*WorkerAddExtender))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_DelExtenderCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkerDelExtender)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).DelExtenderCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.WorkerService/delExtenderCheck",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).DelExtenderCheck(ctx, req.(*WorkerDelExtender))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -310,6 +374,14 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "status",
 			Handler:    _WorkerService_Status_Handler,
+		},
+		{
+			MethodName: "addExtender",
+			Handler:    _WorkerService_AddExtender_Handler,
+		},
+		{
+			MethodName: "delExtenderCheck",
+			Handler:    _WorkerService_DelExtenderCheck_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
