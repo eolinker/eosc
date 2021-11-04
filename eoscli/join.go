@@ -17,7 +17,7 @@ import (
 
 var CmdJoin = "join"
 
-func Join(x cli.ActionFunc) *cli.Command {
+func Join() *cli.Command {
 	return &cli.Command{
 		Name:  CmdJoin,
 		Usage: "join the cluster",
@@ -40,7 +40,7 @@ func Join(x cli.ActionFunc) *cli.Command {
 				Required: true,
 			},
 		},
-		Action: x,
+		Action: JoinFunc,
 	}
 }
 
@@ -90,7 +90,7 @@ func join(c *cli.Context, cfg *env.Config) error {
 	if !validAddr {
 		return errors.New("start node error: no valid cluster address")
 	}
-	pid, err := readPid()
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}

@@ -8,18 +8,20 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Env(x cli.ActionFunc) *cli.Command {
+func Env() *cli.Command {
 	return &cli.Command{
-		Name:  "env",
-		Usage: "list env",
-
-		Action: x,
+		Name:   "env",
+		Usage:  "list env",
+		Action: EnvFunc,
 	}
 }
 
 func EnvFunc(c *cli.Context) error {
 	for _, name := range env.Envs() {
-		fmt.Println(env.GenEnv(name, env.GetDefault(name, "")))
+		fmt.Println(name, ":\t", env.GenEnv(name, env.GetDefault(name, "")))
+	}
+	for k, v := range env.GetConfig() {
+		fmt.Println(k, ":\t", v)
 	}
 	return nil
 }

@@ -5,23 +5,24 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
 
 var CmdInfo = "info"
 
-func Info(x cli.ActionFunc) *cli.Command {
+func Info() *cli.Command {
 	return &cli.Command{
 		Name:   CmdInfo,
 		Usage:  "display information of the node",
-		Action: x,
+		Action: InfoFunc,
 	}
 }
 
 //InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
-	pid, err := readPid()
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}

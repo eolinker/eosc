@@ -1,46 +1,40 @@
 package eosc
 
 import "fmt"
-var(
-	DefaultProfessionDriverRegister IDriverRegister = NewProfessionDriverRegister()
+
+var (
+//DefaultProfessionDriverRegister IExtenderDriverRegister = NewExtenderRegister()
 )
 
-type ProfessionDriverRegister struct {
+type ExtenderRegister struct {
 	data IRegister
 }
 
-func (p *ProfessionDriverRegister) RegisterProfessionDriver(name string, factory IProfessionDriverFactory) error {
+func (p *ExtenderRegister) RegisterExtenderDriver(name string, factory IExtenderDriverFactory) error {
 	err := p.data.Register(name, factory, false)
-	if err!=nil{
-		return fmt.Errorf("register profession  driver %s:%w",name,err)
+	if err != nil {
+		return fmt.Errorf("register profession  driver %s:%w", name, err)
 	}
-	return  nil
+	return nil
 }
 
-func (p *ProfessionDriverRegister) GetProfessionDriver(name string) (IProfessionDriverFactory, bool) {
-	if v, has := p.data.Get(name);has{
-		return v.(IProfessionDriverFactory),true
+func (p *ExtenderRegister) GetDriver(name string) (IExtenderDriverFactory, bool) {
+	if v, has := p.data.Get(name); has {
+		return v.(IExtenderDriverFactory), true
 	}
-	return nil,false
+	return nil, false
 }
 
-func NewProfessionDriverRegister() *ProfessionDriverRegister {
-	return &ProfessionDriverRegister{
-		data:NewRegister(),
+func NewExtenderRegister() *ExtenderRegister {
+	return &ExtenderRegister{
+		data: NewRegister(),
 	}
 }
 
-type IDriverRegister interface {
-	RegisterProfessionDriver(name string,factory IProfessionDriverFactory) error
-	GetProfessionDriver(name string)(IProfessionDriverFactory,bool)
+type IExtenderDriverRegister interface {
+	RegisterExtenderDriver(name string, factory IExtenderDriverFactory) error
 }
 
-func RegisterProfessionDriver(name string, factory IProfessionDriverFactory) error {
-
-	return  DefaultProfessionDriverRegister.RegisterProfessionDriver(name, factory)
-}
-
-func GetProfessionDriver(name string) (IProfessionDriverFactory, bool) {
-
-	return  DefaultProfessionDriverRegister.GetProfessionDriver(name)
+type IExtenderDrivers interface {
+	GetDriver(name string) (IExtenderDriverFactory, bool)
 }

@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 /*
  * Copyright (c) 2021. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
@@ -17,10 +18,10 @@ import (
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/eoscli"
-	"github.com/eolinker/eosc/helper"
 	"github.com/eolinker/eosc/log"
 	admin_open_api "github.com/eolinker/eosc/modules/admin-open-api"
 	"github.com/eolinker/eosc/process"
+	process_helper "github.com/eolinker/eosc/process-helper"
 	process_master "github.com/eolinker/eosc/process-master"
 	"github.com/eolinker/eosc/process-master/admin"
 	process_worker "github.com/eolinker/eosc/process-worker"
@@ -30,7 +31,7 @@ func init() {
 	admin.Register("/api/", admin_open_api.CreateHandler())
 	process.Register(eosc.ProcessWorker, process_worker.Process)
 	process.Register(eosc.ProcessMaster, process_master.Process)
-	process.Register(eosc.ProcessHelper, helper.Process)
+	process.Register(eosc.ProcessHelper, process_helper.Process)
 }
 
 func main() {
@@ -49,16 +50,7 @@ func main() {
 		return
 	}
 	app := eoscli.NewApp()
-	app.AppendCommand(
-		eoscli.Start(eoscli.StartFunc),
-		eoscli.Join(eoscli.JoinFunc),
-		eoscli.Stop(eoscli.StopFunc),
-		eoscli.Info(eoscli.InfoFunc),
-		eoscli.Leave(eoscli.LeaveFunc),
-		eoscli.Cluster(eoscli.ClustersFunc),
-		eoscli.Restart(eoscli.RestartFunc),
-		eoscli.Env(eoscli.EnvFunc),
-	)
+	app.Default()
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err)
