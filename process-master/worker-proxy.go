@@ -21,11 +21,19 @@ type WorkerServiceProxy struct {
 }
 
 func (wc *WorkerServiceProxy) AddExtender(ctx context.Context, in *service.WorkerAddExtender, opts ...grpc.CallOption) (*service.WorkerResponse, error) {
-	panic("implement me")
+	client := wc.GetWorkerProcess()
+	if client != nil {
+		return client.AddExtender(ctx, in, opts...)
+	}
+	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerServiceProxy) DelExtenderCheck(ctx context.Context, in *service.WorkerDelExtender, opts ...grpc.CallOption) (*service.WorkerResponse, error) {
-	panic("implement me")
+	client := wc.GetWorkerProcess()
+	if client != nil {
+		return client.DelExtenderCheck(ctx, in, opts...)
+	}
+	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerServiceProxy) GetWorkerProcess() service.WorkerServiceClient {
