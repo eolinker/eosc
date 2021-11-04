@@ -14,7 +14,7 @@ type VersionInfo struct {
 }
 
 func GetAvailableVersions(group, project string) ([]*VersionInfo, error) {
-	plugins, err := PluginsRequest(group, project)
+	plugins, err := ExtendersRequest(group, project)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,6 @@ func GetAvailableVersions(group, project string) ([]*VersionInfo, error) {
 		for _, a := range p.Arches {
 			if a == arch {
 				versions = append(versions, p.VersionInfo)
-
 				break
 			}
 		}

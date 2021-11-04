@@ -1,7 +1,7 @@
 package extends
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -10,12 +10,11 @@ import (
 )
 
 var (
-	client         = &http.Client{}
-	NotPluginErr   = "the file is not found,group is %s,project is %s"
-	FileContentErr = "the file content is error,group is %s,project is %s,version is %s"
+	client             = &http.Client{}
+	ErrorFileCorrupted = errors.New("the file corrupted")
 )
 
-type PluginInfo struct {
+type ExtenderInfo struct {
 	ID          string `json:"id"`
 	Description string `json:"description"`
 	Group       string `json:"group"`
@@ -34,7 +33,7 @@ type PluginInfo struct {
 
 //DownLoadToRepository 下载指定版本的插件项目，并解压到仓库
 func DownLoadToRepository(group, project, version string) error {
-	info, err := PluginInfoRequest(group, project, version)
+	info, err := ExtenderInfoRequest(group, project, version)
 	if err != nil {
 		return err
 	}
@@ -59,7 +58,7 @@ func DownLoadToRepository(group, project, version string) error {
 		return err
 	}
 	if tarSha != info.Sha {
-		return fmt.Errorf(FileContentErr, group, project, version)
+		return ErrorFileCorrupted
 	}
 	return eosc.Decompress(tarPath, dest)
 }
