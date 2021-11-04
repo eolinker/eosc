@@ -19,12 +19,12 @@ func localCheck(group, project, version string) (bool, error) {
 		log.Error(err)
 		log.Debug(dir)
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("%s-%s:%w:%s", group, project, ErrorExtenderNotFindLocal, dir)
+			return false, fmt.Errorf("%s-%s:%w:%s", group, project, ErrorExtenderNotFindLocal, dir)
 		}
-		return nil, err
+		return false, err
 	}
 
-	return true
+	return true, nil
 }
 
 //decompress 解压文件

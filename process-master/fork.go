@@ -29,18 +29,18 @@ import (
 	"github.com/eolinker/eosc/process"
 )
 
-var runningMasterForked bool
+var runningMasterForked = new(ForkStatus)
 
 //Fork Master fork 子进程，入参为子进程需要的内容
 func (m *Master) Fork(pFile *pidfile.PidFile) error {
-	if runningMasterForked {
+	if runningMasterForked.Start() {
 		return errors.New("Another process already forked. Ignoring this one.")
 	}
 	err := pFile.TryFork()
 	if err != nil {
 		return err
 	}
-	runningMasterForked = true
+
 	tfMaster, filesMaster := m.masterTraffic.Export(3)
 
 	dataMasterTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfMaster})
@@ -98,6 +98,7 @@ func waitFork(ctx context.Context, pFile *pidfile.PidFile, pid int) {
 		case <-t.C:
 			if !pidfile.ProcessExists(pid) {
 				pFile.UnFork()
+				runningMasterForked.Stop()
 				return
 			}
 		}
