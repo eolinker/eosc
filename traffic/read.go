@@ -58,7 +58,7 @@ func readListener(r io.Reader) ([]*net.TCPListener, error) {
 			f := os.NewFile(uintptr(pt.GetFD()), name)
 			l, err := net.FileListener(f)
 			if err != nil {
-				log.Warn("error to read listener:", err)
+				log.Warn("error to read port-reqiure:", err)
 				return nil, err
 			}
 

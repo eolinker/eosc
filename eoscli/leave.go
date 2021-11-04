@@ -3,6 +3,8 @@ package eoscli
 import (
 	"context"
 
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
@@ -10,18 +12,18 @@ import (
 
 var CmdLeave = "leave"
 
-func Leave(x cli.ActionFunc) *cli.Command {
+func Leave() *cli.Command {
 	return &cli.Command{
 		Name:   CmdLeave,
 		Usage:  "leave the cluster",
 		Flags:  []cli.Flag{},
-		Action: x,
+		Action: LeaveFunc,
 	}
 }
 
 //LeaveFunc 离开集群
 func LeaveFunc(c *cli.Context) error {
-	pid, err := readPid()
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}

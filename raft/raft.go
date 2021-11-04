@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/eolinker/eosc/env"
+
 	"go.etcd.io/etcd/raft/v3/raftpb"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -78,8 +80,9 @@ func (rc *Node) joinInit() error {
 
 // startRaft 收到id，peer等信息后，新建并加入集群，新建日志文件等处理
 func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
-	rc.waldir = fmt.Sprintf("eosc-%d", rc.nodeID)
-	rc.snapdir = fmt.Sprintf("eosc-%d-snap", rc.nodeID)
+
+	rc.waldir = fmt.Sprintf("%s/%s-%d", env.DataDir(), env.AppName(), rc.nodeID)
+	rc.snapdir = fmt.Sprintf("%s/%s-%d-snap", env.DataDir(), env.AppName(), rc.nodeID)
 	rc.transport.ID = types.ID(rc.nodeID)
 	rc.transport.Raft = rc
 	rc.transport.LeaderStats = stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(int(rc.nodeID)))

@@ -3,7 +3,6 @@ package eoscli
 import (
 	"io"
 
-	"github.com/eolinker/eosc/env"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/service"
 )
@@ -26,7 +25,7 @@ func (c *ctlServiceClient) Close() error {
 }
 
 func createCtlServiceClient(pid int) (ICtiServiceClient, error) {
-	conn, err := grpc_unixsocket.Connect(service.MasterServerAddr(env.AppName(), pid))
+	conn, err := grpc_unixsocket.Connect(service.MasterServerAddr(pid))
 	if err != nil {
 		return nil, err
 	}

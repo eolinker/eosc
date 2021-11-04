@@ -1,12 +1,14 @@
 package process_master
 
 import (
-	"bytes"
 	"context"
 	"os"
-	"sort"
 	"sync"
 	"time"
+
+	"github.com/eolinker/eosc/config"
+
+	"github.com/eolinker/eosc/process-master/extenders"
 
 	"github.com/eolinker/eosc/utils"
 
@@ -18,38 +20,33 @@ import (
 	"github.com/eolinker/eosc/service"
 )
 
-var _ service.WorkerServiceClient = (*WorkerController)(nil)
-
-type WorkerProcessController interface {
-	Stop()
-	NewWorker() error
-	Start()
-	Restart()
-}
 type WorkerController struct {
-	locker            sync.Mutex
-	dms               []eosc.IDataMarshaller
-	current           *WorkerProcess
-	expireWorkers     []*WorkerProcess
-	trafficController traffic.IController
-	isStop            bool
-	checkClose        chan int
-	portsChan         chan []int32
-	localPorts        []int32
+	locker             sync.Mutex
+	workerServiceProxy *WorkerServiceProxy
+
+	current       *WorkerProcess
+	expireWorkers []*WorkerProcess
+
+	traffics     []*traffic.PbTraffic
+	trafficFiles []*os.File
+	listensMsg   *config.ListensMsg
+	isStop       bool
+
+	extenderSetting extenders.ITypedExtenderSetting
+	professions     eosc.IProfessions
+	workers         *WorkerConfigs
 }
 
-func NewWorkerController(trafficController traffic.IController, dms ...eosc.IDataMarshaller) *WorkerController {
-	dmsAll := make([]eosc.IDataMarshaller, 0, len(dms)+1)
-	dmsAll = append(dmsAll, trafficController)
-	for _, v := range dms {
-		dmsAll = append(dmsAll, v)
-	}
-
+func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy) *WorkerController {
+	traffics, files := traffic.Export(3)
 	return &WorkerController{
-		trafficController: trafficController,
-		dms:               dmsAll,
-		checkClose:        make(chan int, 1),
-		portsChan:         make(chan []int32, 1),
+		workerServiceProxy: workerServiceProxy,
+		traffics:           traffics,
+		trafficFiles:       files,
+		listensMsg:         config.Export(),
+		extenderSetting:    extenderSetting,
+		professions:        professions,
+		workers:            workers,
 	}
 }
 
@@ -60,10 +57,10 @@ func (wc *WorkerController) Stop() {
 	if wc.isStop {
 		return
 	}
-	close(wc.checkClose)
-	close(wc.portsChan)
+
 	wc.isStop = true
 	if wc.current != nil {
+		wc.workerServiceProxy.SetWorkerProcess(nil)
 		wc.current.Close()
 		wc.expireWorkers = append(wc.expireWorkers, wc.current)
 		wc.current = nil
@@ -89,64 +86,19 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 		}
 	}
 }
-func (wc *WorkerController) Start() {
 
-	wc.NewWorker()
+func (wc *WorkerController) restart() {
 
-	go func() {
-
-		next := time.NewTimer(time.Second)
-		next.Stop()
-		defer next.Stop()
-		for {
-			select {
-			case <-next.C:
-				{
-					response, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
-					if err != nil {
-						continue
-					}
-					ps, psInt := sortAndSet(response.Resource.Port)
-					if equal(ps, wc.localPorts) {
-						continue
-					}
-					log.Debug("reset traffic:", ps)
-					isCreate, err := wc.trafficController.Reset(psInt)
-					if err != nil {
-						log.Debug("reset ports error: ", err, " last ports: ", ps, " isCreate: ", isCreate)
-						continue
-					}
-					wc.localPorts = ps
-					if isCreate {
-						wc.NewWorker()
-					} else {
-						in := &service.WorkerRefreshRequest{
-							Ports: wc.localPorts,
-						}
-						_, err := wc.Refresh(context.TODO(), in)
-						if err != nil {
-							log.Debug("ping worker controller error: ", err)
-							continue
-						}
-					}
-				}
-			case <-wc.checkClose:
-				return
-			case _, ok := <-wc.portsChan:
-				if ok {
-					//last = ports
-					next.Reset(time.Second)
-				}
-			}
+	process := wc.getClient()
+	if process == nil {
+		err := wc.NewWorker()
+		if err != nil {
+			return
 		}
-
-	}()
+		return
+	}
 }
 
-func (wc *WorkerController) Restart() {
-	wc.NewWorker()
-
-}
 func (wc *WorkerController) NewWorker() error {
 
 	wc.locker.Lock()
@@ -160,44 +112,44 @@ func (wc *WorkerController) NewWorker() error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	defer utils.Timeout("wait worker process start:")()
-	wc.current.createClient()
+
 	for {
 		_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 		if err == nil {
-			log.Debug("work controller ping: ", err)
-			wc.portsChan <- []int32{}
 			return nil
 		}
+
+		log.Debug("work controller ping: ", err)
 		<-ticker.C
 	}
 
 }
+func (wc *WorkerController) config() (*service.WorkerLoadArg, []*os.File) {
 
+	return &service.WorkerLoadArg{
+		Traffic:         wc.traffics,
+		ListensMsg:      wc.listensMsg,
+		ExtenderSetting: wc.extenderSetting.All(),
+		Professions:     wc.professions.All(),
+		Workers:         wc.workers.export(),
+	}, wc.trafficFiles
+}
 func (wc *WorkerController) new() error {
 	log.Debug("create worker process start")
-	buf := bytes.NewBuffer(nil)
-	var fileAll []*os.File
-	index := 3
-	for _, dm := range wc.dms {
-		data, files, err := dm.Encode(index)
-		log.Debugf("encode:data[%d] file[%d]", len(data), len(files))
-		if err != nil {
-			log.Warn("create worker process fail:", err)
-			return err
-		}
-		index += len(files)
-		fileAll = append(fileAll, files...)
-		buf.Write(data)
-	}
 
-	workerProcess, err := newWorkerProcess(buf, fileAll)
+	arg, files := wc.config()
+
+	workerProcess, err := newWorkerProcess(arg, files)
 	if err != nil {
 		log.Warn("new worker process:", err)
 		return err
 	}
-
+	workerProcess.createClient()
 	old := wc.current
 	wc.current = workerProcess
+
+	wc.workerServiceProxy.SetWorkerProcess(wc.current)
+
 	go wc.check(wc.current)
 
 	if old != nil {
@@ -210,56 +162,13 @@ func (wc *WorkerController) new() error {
 func (wc *WorkerController) getClient() *WorkerProcess {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
-	if wc.current == nil {
-		return nil
-	}
-	wc.current.createClient()
+
 	return wc.current
 }
 
-func equal(v1, v2 []int32) bool {
-	if len(v1) != len(v2) {
-		return false
-	}
+func (wc *WorkerController) raftEvent(event string) {
 
-	for i, v := range v1 {
-		if v != v2[i] {
-			return false
-		}
-	}
-	return true
 }
+func (wc *WorkerController) raftCommitEvent(namespace, cmd string) {
 
-type int32Slice []int32
-
-func (x int32Slice) Len() int {
-	return len(x)
-}
-
-func (x int32Slice) Less(i, j int) bool {
-	return x[i] < x[j]
-}
-
-func (x int32Slice) Swap(i, j int) {
-	x[i], x[j] = x[j], x[i]
-}
-
-func sortAndSet(vs []int32) ([]int32, []int) {
-	if len(vs) == 0 {
-		return nil, nil
-	}
-
-	m := make(map[int32]int32)
-	for _, v := range vs {
-		m[v] = 1
-	}
-	rs := make([]int32, 0, len(m))
-	rsInt := make([]int, 0, len(m))
-	for v := range m {
-		rs = append(rs, v)
-		rsInt = append(rsInt, int(v))
-	}
-	sort.Sort(int32Slice(rs))
-	sort.Ints(rsInt)
-	return rs, rsInt
 }

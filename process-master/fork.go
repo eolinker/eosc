@@ -10,10 +10,15 @@ package process_master
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/eolinker/eosc/traffic"
+	"github.com/eolinker/eosc/utils"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/eolinker/eosc/env"
 
@@ -24,28 +29,35 @@ import (
 	"github.com/eolinker/eosc/process"
 )
 
-var runningMasterForked bool
+var runningMasterForked = new(ForkStatus)
 
 //Fork Master fork 子进程，入参为子进程需要的内容
-func (m *Master) Fork() error {
-	if runningMasterForked {
+func (m *Master) Fork(pFile *pidfile.PidFile) error {
+	if runningMasterForked.Start() {
 		return errors.New("Another process already forked. Ignoring this one.")
 	}
-	err := m.PID.TryFork()
+	err := pFile.TryFork()
 	if err != nil {
 		return err
 	}
-	runningMasterForked = true
 
-	dataMasterTraffic, filesMaster, err := m.masterTraffic.Encode(3)
+	tfMaster, filesMaster := m.masterTraffic.Export(3)
+
+	dataMasterTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfMaster})
 	if err != nil {
 		return err
 	}
-	//m.masterTraffic.Close()
-	dataWorkerTraffic, filesWorker, err := m.workerTraffic.Encode(len(filesMaster) + 3)
+
+	dataMasterTraffic = utils.EncodeFrame(dataMasterTraffic)
+
+	tfWorker, filesWorker := m.workerTraffic.Export(len(filesMaster) + 3)
+	dataWorkerTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfWorker})
+
 	if err != nil {
 		return err
 	}
+	dataWorkerTraffic = utils.EncodeFrame(dataWorkerTraffic)
+
 	data := make([]byte, len(dataMasterTraffic)+len(dataWorkerTraffic))
 	copy(data, dataMasterTraffic)
 	copy(data[len(dataMasterTraffic):], dataWorkerTraffic)
@@ -56,7 +68,7 @@ func (m *Master) Fork() error {
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = bytes.NewBuffer(data)
+	cmd.Stdin = bytes.NewReader(data)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,
 	}
@@ -71,21 +83,22 @@ func (m *Master) Fork() error {
 	}
 	log.Debug("fork new process: ", cmd.String())
 	// check cmd
-	go m.waitFork(cmd.Process.Pid)
+	go waitFork(m.ctx, pFile, cmd.Process.Pid)
 
 	return nil
 }
 
-func (m *Master) waitFork(pid int) {
+func waitFork(ctx context.Context, pFile *pidfile.PidFile, pid int) {
 	t := time.NewTicker(time.Millisecond * 100)
 	defer t.Stop()
 	for {
 		select {
-		case <-m.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-t.C:
 			if !pidfile.ProcessExists(pid) {
-				m.PID.UnFork()
+				pFile.UnFork()
+				runningMasterForked.Stop()
 				return
 			}
 		}

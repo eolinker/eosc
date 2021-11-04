@@ -14,7 +14,17 @@ import (
 	"github.com/eolinker/eosc/service"
 )
 
-func (m *Master) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
+var _ service.MasterServer = (*MasterServiceServer)(nil)
+
+type MasterServiceServer struct {
+	service.UnimplementedMasterServer
+}
+
+func NewMasterServiceServer() *MasterServiceServer {
+	return &MasterServiceServer{}
+}
+
+func (m *MasterServiceServer) Hello(ctx context.Context, request *service.HelloRequest) (*service.HelloResponse, error) {
 	return &service.HelloResponse{
 		Name: request.GetName(),
 	}, nil

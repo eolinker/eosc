@@ -16,6 +16,22 @@ func NewApp() *App {
 		Name:     env.AppName(),
 		Usage:    fmt.Sprintf("%s controller", env.AppName()),
 		Commands: make([]*cli.Command, 0, 6),
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "env",
+				Aliases:     nil,
+				Usage:       "",
+				EnvVars:     nil,
+				FilePath:    "",
+				Required:    false,
+				Hidden:      false,
+				TakesFile:   false,
+				Value:       "",
+				DefaultText: "",
+				Destination: nil,
+				HasBeenSet:  false,
+			},
+		},
 	}}
 }
 
@@ -25,4 +41,17 @@ func (a *App) AppendCommand(cmd ...*cli.Command) {
 
 func (a *App) Run(args []string) error {
 	return a.app.Run(args)
+}
+
+func (a *App) Default() {
+	a.AppendCommand(
+		Start(),
+		Join(),
+		Stop(),
+		Info(),
+		Leave(),
+		Restart(),
+		Env(),
+		Plugin(),
+	)
 }

@@ -47,13 +47,13 @@ func (t *Transporter) reset(c *Config) error {
 }
 
 //CreateTransporter 创建filelog-Transporter
-func CreateTransporter(level eosc_log.Level) (*Transporter, error) {
+func CreateTransporter(level eosc_log.Level) *Transporter {
 
 	fileWriterByPeriod := NewFileWriteByPeriod()
 
 	return &Transporter{
 		Transporter: eosc_log.NewTransport(fileWriterByPeriod, level),
 		writer:      fileWriterByPeriod,
-	}, nil
+	}
 
 }

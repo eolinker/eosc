@@ -174,7 +174,6 @@ func (m *container) Check() error {
 func (m *container) dispatchAfterPropertiesSet() {
 
 	beanHandlers := m.initializingBean
-
 	for _, h := range beanHandlers {
 		h.AfterPropertiesSet()
 	}
