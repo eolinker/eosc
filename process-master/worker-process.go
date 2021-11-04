@@ -25,12 +25,13 @@ type IWorkerProcess interface {
 	TrafficStatus() ([]int, []int, error)
 }
 type WorkerProcess struct {
-	service.WorkerServiceClient
-	cmd  *exec.Cmd
-	conn *grpc.ClientConn
-	once sync.Once
+	client service.WorkerServiceClient
+	cmd    *exec.Cmd
+	conn   *grpc.ClientConn
+	once   sync.Once
 
-	args *service.WorkerLoadArg
+	args             *service.WorkerLoadArg
+	extendersDeleted map[string]string
 }
 
 func (w *WorkerProcess) Close() error {
@@ -45,7 +46,7 @@ func (w *WorkerProcess) Close() error {
 	return nil
 }
 
-func (w *WorkerProcess) createClient() {
+func (w *WorkerProcess) createClient() service.WorkerServiceClient {
 	w.once.Do(func() {
 		client, conn, err := createClient(w.cmd.Process.Pid)
 		if err != nil {
@@ -53,8 +54,9 @@ func (w *WorkerProcess) createClient() {
 			return
 		}
 		w.conn = conn
-		w.WorkerServiceClient = client
+		w.client = client
 	})
+	return w.client
 }
 
 func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*WorkerProcess, error) {
@@ -82,8 +84,9 @@ func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*Work
 	}
 
 	return &WorkerProcess{
-		cmd:  cmd,
-		args: clone,
+		cmd:              cmd,
+		args:             clone,
+		extendersDeleted: make(map[string]string),
 	}, nil
 }
 
