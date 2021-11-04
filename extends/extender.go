@@ -1,14 +1,21 @@
 package extends
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"plugin"
+	"runtime"
+	"strings"
 
 	"github.com/eolinker/eosc"
 
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 )
 
@@ -19,7 +26,7 @@ var (
 	ErrorInvalidExtenderId     = errors.New("invalid  extender id")
 	ErrorExtenderNameDuplicate = errors.New("duplicate extender factory name")
 	ErrorExtenderNotFindLocal  = errors.New("not find extender on local")
-	ErrorExtenderNotFindMark   = errors.New("not find extender on mark")
+	ErrorExtenderNotFindMark   = errors.New("not find extender on market")
 	ErrorExtenderNoLatest      = errors.New("no latest for extender")
 )
 
@@ -77,4 +84,72 @@ func look(group, project, version string) ([]RegisterFunc, error) {
 		}
 	}
 	return registerFuncList, nil
+}
+
+type ExtenderVersion struct {
+	*VersionInfo
+	Arches []string `json:"arches"`
+}
+
+func ExtendersRequest(group, project string) ([]*ExtenderVersion, error) {
+	uri := fmt.Sprintf("%s/api/%s/%s", env.ExtenderMarkAddr(), group, project)
+	resp, err := http.Get(uri)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	type result struct {
+		Code    string             `json:"code"`
+		Data    []*ExtenderVersion `json:"data"`
+		Message string             `json:"message"`
+	}
+	var respResult result
+	err = json.Unmarshal(body, &respResult)
+	if err != nil {
+		return nil, err
+	}
+	return respResult.Data, err
+}
+
+func ExtenderInfoRequest(group, project, version string) (*ExtenderInfo, error) {
+	uri := fmt.Sprintf("%s/api/%s/%s/%s", env.ExtenderMarkAddr(), group, project, version)
+	query := url.Values{}
+	query.Add("go", runtime.Version())
+	query.Add("arch", runtime.GOARCH)
+	query.Add("eosc", eosc.Version())
+	req, err := http.NewRequest("GET", uri, strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = query.Encode()
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	type result struct {
+		Code    string          `json:"code"`
+		Data    []*ExtenderInfo `json:"data"`
+		Message string          `json:"message"`
+	}
+	var respResult result
+	err = json.Unmarshal(body, &respResult)
+	if err != nil {
+		return nil, err
+	}
+	if respResult.Data == nil || len(respResult.Data) < 1 {
+		if version == "latest" {
+			return nil, ErrorExtenderNoLatest
+		}
+		return nil, ErrorExtenderNotFindMark
+	}
+	return respResult.Data[0], err
 }

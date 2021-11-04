@@ -35,6 +35,6 @@ func FormatFileName(group, project, version string) string {
 	return fmt.Sprint(group, "-", project, "-", version, "-", runtime.Version(), "-", eosc.Version(), "-", runtime.GOOS, "-", runtime.GOARCH)
 }
 
-func FormatTarName(group, project, version string) string {
-	return fmt.Sprint(FormatFileName(group, project, version), ".tar.gz")
+func LocalExtendTarPath(group, project, version string) string {
+	return filepath.Join(env.ExtendersDir(), "repository", eosc.Version(), runtime.Version(), group, project, version, FormatFileName(group, project, version), tarSuffix)
 }
