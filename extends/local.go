@@ -19,7 +19,7 @@ func LocalCheck(group, project, version string) error {
 			tarPath := LocalExtendTarPath(group, project, version)
 			_, err = os.Stat(tarPath)
 			if err != nil {
-				return err
+				return ErrorExtenderNotFindLocal
 			}
 			return eosc.Decompress(tarPath, dir)
 		}

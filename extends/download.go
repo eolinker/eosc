@@ -1,28 +1,18 @@
 package extends
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
-	"runtime"
-	"strings"
-
-	"github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc"
 )
 
-const (
-	pluginInfoURI = "/plugins/info"
-)
-
 var (
-	client       = &http.Client{}
-	NotPluginErr = "the plugin %s is not found"
+	client         = &http.Client{}
+	NotPluginErr   = "the file is not found,group is %s,project is %s"
+	FileContentErr = "the file content is error,group is %s,project is %s,version is %s"
 )
 
 type PluginInfo struct {
@@ -34,7 +24,7 @@ type PluginInfo struct {
 	Go          string `json:"go"`
 	Arch        string `json:"arch"`
 	Eosc        string `json:"eosc"`
-	sha         string `json:"sha"`
+	Sha         string `json:"Sha"`
 	Status      int    `json:"status"`
 	IsLatest    bool   `json:"is_latest"`
 	Create      string `json:"create"`
@@ -42,54 +32,9 @@ type PluginInfo struct {
 	URL         string `json:"url"`
 }
 
-func pluginInfoRequest(group, project, version string) (*PluginInfo, error) {
-	uri := fmt.Sprintf("%s%s", env.ExtenderMarkAddr(), pluginInfoURI)
-	query := url.Values{}
-	query.Add("version", version)
-	query.Add("group", group)
-	query.Add("project", project)
-	query.Add("go", runtime.Version())
-	query.Add("arch", runtime.GOARCH)
-	query.Add("eosc", eosc.Version())
-	req, err := http.NewRequest("GET", uri, strings.NewReader(""))
-	if err != nil {
-		return nil, err
-	}
-	req.URL.RawQuery = query.Encode()
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	type result struct {
-		Code    string      `json:"code"`
-		Data    *PluginInfo `json:"data"`
-		Message string      `json:"message"`
-	}
-	var respResult result
-	err = json.Unmarshal(body, &respResult)
-	if err != nil {
-		return nil, err
-	}
-	if respResult.Data == nil {
-		if version == "" {
-			version = "latest"
-		}
-		return nil, fmt.Errorf(NotPluginErr, fmt.Sprintf("%s:%s:%s", group, project, version))
-	}
-	return respResult.Data, err
-}
-
 //DownLoadToRepository 下载指定版本的插件项目，并解压到仓库
 func DownLoadToRepository(group, project, version string) error {
-	// todo 填充下载插件的代码
-	// todo 插件市场地址为 ： env.ExtenderMarkAddr()
-	// todo 保存目录为  filepath.Join(env.ExtendersDir(),eosc.Version(),runtime.Version(),group,project,version)
-	info, err := pluginInfoRequest(group, project, version)
+	info, err := PluginInfoRequest(group, project, version)
 	if err != nil {
 		return err
 	}
@@ -105,11 +50,17 @@ func DownLoadToRepository(group, project, version string) error {
 		return err
 	}
 	defer f.Close()
-	_, err = io.Copy(f, resp.Body)
+	size, err := io.Copy(f, resp.Body)
 	if err != nil {
 		return err
 	}
-
+	tarSha, err := eosc.FileSha1(f, size)
+	if err != nil {
+		return err
+	}
+	if tarSha != info.Sha {
+		return fmt.Errorf(FileContentErr, group, project, version)
+	}
 	return eosc.Decompress(tarPath, dest)
 }
 
@@ -119,24 +70,8 @@ func DownLoadToRepositoryById(id string) error {
 	if err != nil {
 		return err
 	}
-	//if version == "" {
-	//	return DownLoadLatest(group, project)
-	//}
+	if version == "" {
+		version = "latest"
+	}
 	return DownLoadToRepository(group, project, version)
 }
-
-////DownLoadLatest 下载latest
-//func DownLoadLatest(group, project string) error {
-//	latest, err := FindLatest(group, project)
-//	if err != nil {
-//		return err
-//	}
-//	return DownLoadToRepository(group, project, latest)
-//}
-//
-////FindLatest 查找目标项目的latest
-//func FindLatest(group, project string) (string, error) {
-//	// todo 填充获取插件的latest 版本的逻辑
-//	// todo 插件市场地址为 ： env.ExtenderMarkAddr()
-//	return "", fmt.Errorf("[%s:%s]:%w for %s-%s-%s-eosc%s", group, project, ErrorExtenderNotFindMark, runtime.GOOS, runtime.GOARCH, runtime.Version(), eosc.Version())
-//}

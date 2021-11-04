@@ -19,7 +19,7 @@ var (
 	ErrorInvalidExtenderId     = errors.New("invalid  extender id")
 	ErrorExtenderNameDuplicate = errors.New("duplicate extender factory name")
 	ErrorExtenderNotFindLocal  = errors.New("not find extender on local")
-	ErrorExtenderNotFindMark   = errors.New("not find extender on mark")
+	ErrorExtenderNotFindMark   = errors.New("not find extender on market")
 	ErrorExtenderNoLatest      = errors.New("no latest for extender")
 )
 

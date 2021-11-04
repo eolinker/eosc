@@ -3,6 +3,8 @@ package eosc
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -121,4 +123,20 @@ func CreateFile(name string) (*os.File, error) {
 		return nil, err
 	}
 	return os.Create(name)
+}
+
+func FileSha1(file *os.File, size int64) (string, error) {
+	data := make([]byte, size)
+	_, err := file.Read(data)
+	if err != nil {
+		return "", err
+	}
+	return SHA1(data), nil
+}
+
+//SHA1 生成SHA1加密后的16进制字符串
+func SHA1(data []byte) string {
+	h := sha1.New()
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
 }
