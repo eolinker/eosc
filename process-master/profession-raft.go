@@ -9,7 +9,7 @@ import (
 )
 
 type ProfessionRaft struct {
-	eosc.IProfessionsData
+	eosc.IProfessions
 }
 
 func (p *ProfessionRaft) Append(cmd string, data []byte) error {
@@ -20,23 +20,23 @@ func (p *ProfessionRaft) Complete() error {
 	return nil
 }
 
-func NewProfessionRaft(IProfessionsData eosc.IProfessionsData) *ProfessionRaft {
-	return &ProfessionRaft{IProfessionsData: IProfessionsData}
+func NewProfessionRaft(IProfessionsData eosc.IProfessions) *ProfessionRaft {
+	return &ProfessionRaft{IProfessions: IProfessionsData}
 }
 
 func (p *ProfessionRaft) Set(name string, profession *eosc.ProfessionConfig) error {
 	// todo raft sender
-	return p.IProfessionsData.Set(name, profession)
+	return p.IProfessions.Set(name, profession)
 }
 
 func (p *ProfessionRaft) Delete(name string) error {
 	// todo raft sender
 
-	return p.IProfessionsData.Delete(name)
+	return p.IProfessions.Delete(name)
 }
 
 func (p *ProfessionRaft) encode() ([]byte, error) {
-	list := p.IProfessionsData.All()
+	list := p.IProfessions.All()
 	pcd := &eosc.ProfessionConfigs{
 		Data: list,
 	}
@@ -69,7 +69,7 @@ func (p *ProfessionRaft) ResetHandler(data []byte) error {
 	if err != nil {
 		return err
 	}
-	p.IProfessionsData.Reset(ps)
+	p.IProfessions.Reset(ps)
 	return nil
 }
 

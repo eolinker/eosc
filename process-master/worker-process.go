@@ -1,11 +1,14 @@
 package process_master
 
 import (
-	"io"
+	"bytes"
 	"os"
 	"os/exec"
 	"sync"
 	"syscall"
+
+	"github.com/eolinker/eosc/utils"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/eolinker/eosc/log"
 
@@ -26,6 +29,8 @@ type WorkerProcess struct {
 	cmd  *exec.Cmd
 	conn *grpc.ClientConn
 	once sync.Once
+
+	args *service.WorkerLoadArg
 }
 
 func (w *WorkerProcess) Close() error {
@@ -52,12 +57,22 @@ func (w *WorkerProcess) createClient() {
 	})
 }
 
-func newWorkerProcess(stdIn io.Reader, extraFiles []*os.File) (*WorkerProcess, error) {
+func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*WorkerProcess, error) {
 	cmd, err := process.Cmd(eosc.ProcessWorker, nil)
 	if err != nil {
 		return nil, err
 	}
-	cmd.Stdin = stdIn
+	argData, err := proto.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+
+	clone := &service.WorkerLoadArg{}
+	err = proto.Unmarshal(argData, clone)
+	if err != nil {
+		return nil, err
+	}
+	cmd.Stdin = bytes.NewReader(utils.EncodeFrame(argData))
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -67,7 +82,8 @@ func newWorkerProcess(stdIn io.Reader, extraFiles []*os.File) (*WorkerProcess, e
 	}
 
 	return &WorkerProcess{
-		cmd: cmd,
+		cmd:  cmd,
+		args: clone,
 	}, nil
 }
 

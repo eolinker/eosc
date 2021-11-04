@@ -37,15 +37,16 @@ message WorkerResponse{
 message WorkerLoadArg{
   repeated  PbTraffic traffic = 1;
   ListensMsg listensMsg = 2;
-  ExtendersSetting extenders = 3;
-  ProfessionConfigs professions = 4;
-  WorkerConfigs workers = 5;
+  map<string,string> extenderSetting= 3;
+  repeated ProfessionConfig  professions = 4;
+  repeated WorkerConfig workers = 5;
 }
 
 message ResetRequest{
-  ProfessionConfigs professions = 2;
-  WorkerConfigs workers = 3;
+  repeated ProfessionConfig professions = 2;
+  repeated WorkerConfig workers = 3;
 }
+
 message StatusRequest{
 
 }

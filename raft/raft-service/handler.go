@@ -16,15 +16,14 @@ type IRaftServiceHandler interface {
 
 	// CommitHandler 节点commit信息前的处理
 	CommitHandler(cmd string, data []byte) error
-
-	//DelayDone()
-
-	//CommitDelay(cmd string, data []byte) error
 	// Snapshot 获取快照
 	Snapshot() []byte
 	// ProcessHandler leader 节点propose信息前的处理
 	ProcessHandler(cmd string, body []byte) ([]byte, interface{}, error)
 }
+
+type IRaftEventHandler func(event string)
+type ICommitEventHandler func(namespace, cmd string)
 
 func unMarshalCmd(data []byte) (*Commend, error) {
 	cmd := new(Commend)

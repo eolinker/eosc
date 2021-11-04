@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
@@ -26,6 +25,7 @@ type Config struct {
 	SSL            *SSLConfig      `json:"ssl" yaml:"ssl"`
 	Admin          *AdminConfig    `json:"admin" yaml:"admin"`
 	CertificateDir *CertificateDir `json:"certificate" yaml:"certificate"`
+	exportData     *ListensMsg
 }
 
 func (c *Config) Ports() []int {
@@ -40,16 +40,11 @@ func (c *Config) Ports() []int {
 	}
 	return ports
 }
-
-func (c *Config) Encode(startIndex int) ([]byte, []*os.File, error) {
-	data, err := c.encode()
-	if err != nil {
-		return nil, nil, err
-	}
-	return utils.EncodeFrame(data), nil, nil
+func (c *Config) Export() *ListensMsg {
+	return c.exportData
 }
 
-func (c *Config) encode() ([]byte, error) {
+func (c *Config) encode() {
 	portNum := len(c.Listen)
 	if c.SSL != nil {
 		portNum += len(c.SSL.Listen)
@@ -71,12 +66,8 @@ func (c *Config) encode() ([]byte, error) {
 			})
 		}
 	}
+	c.exportData = cfg
 
-	data, err := proto.Marshal(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
 }
 
 type SSLConfig struct {
@@ -124,6 +115,7 @@ func GetConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.encode()
 	return &cfg, err
 }
 

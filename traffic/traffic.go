@@ -98,7 +98,6 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
-	Expire([]int)
 }
 
 func (t *Traffic) Close() {
