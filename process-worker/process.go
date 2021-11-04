@@ -9,10 +9,15 @@
 package process_worker
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/eolinker/eosc/service"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/eolinker/eosc/utils"
 
@@ -24,10 +29,11 @@ import (
 )
 
 func Process() {
+
 	utils.InitLogTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")
-	loadPluginEnv()
+
 	log.Debug("create worker...")
 	w, err := NewProcessWorker()
 	if err != nil {
@@ -81,6 +87,8 @@ func (w *ProcessWorker) wait() {
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
 func NewProcessWorker() (*ProcessWorker, error) {
+	arg := readArg()
+	register := loadPluginEnv(arg.ExtenderSetting)
 	workerServer, err := NewWorkerServer()
 	if err != nil {
 		return nil, err
@@ -89,30 +97,20 @@ func NewProcessWorker() (*ProcessWorker, error) {
 		workerServer: workerServer,
 	}
 
-	tf := traffic.NewTraffic()
-	w.tf = tf
-	ps := NewProfessions()
-	w.professions = ps
+	w.tf = createTraffic(arg.Traffic)
+	w.professions = NewProfessions(arg.Professions, register)
 	wm := NewWorkerManager(w.professions)
 	w.workers = wm
 
-	tf.Read(os.Stdin)
-
 	bean.Injection(&w.tf)
 	bean.Injection(&w.professions)
+
 	var iWorkers eosc.IWorkers = w.workers
 	bean.Injection(&iWorkers)
+	bean.Injection(&arg.ListensMsg)
 	bean.Check()
 
-	psData, err := ReadProfessionData(os.Stdin)
-	if err != nil {
-		log.Warn("profession configs error:", err)
-		return nil, err
-	}
-	ps.init(psData)
-	workersData := ReadWorkers(os.Stdin)
-
-	err = wm.Init(workersData)
+	err = wm.Init(arg.Workers)
 	if err != nil {
 		log.Warn("worker configs error:", err)
 		return nil, err
@@ -133,7 +131,6 @@ func (w *ProcessWorker) close() {
 	w.once.Do(func() {
 		w.tf.Close()
 		w.workerServer.Stop()
-
 	})
 
 }
@@ -143,4 +140,43 @@ func (w *ProcessWorker) Start() error {
 	w.workerServer.SetWorkers(w.workers)
 
 	return nil
+}
+
+func readArg() *service.WorkerLoadArg {
+	arg := new(service.WorkerLoadArg)
+	frame, err := utils.ReadFrame(os.Stdin)
+	if err != nil {
+		log.Warn("read arg fail:", err)
+		return arg
+	}
+	err = proto.Unmarshal(frame, arg)
+	if err != nil {
+		log.Warn("unmarshal arg fail:", err)
+		return arg
+	}
+	return arg
+}
+func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
+	t := traffic.NewTraffic()
+	reader, err := toReader(tfConf)
+	if err != nil {
+		log.Error("encode traffic :", err)
+		return t
+	}
+	err = t.Read(reader)
+	if err != nil {
+		log.Error("read traffic :", err)
+		return t
+	}
+	return t
+}
+func toReader(tf []*traffic.PbTraffic) (io.Reader, error) {
+	pbs := &traffic.PbTraffics{
+		Traffic: tf,
+	}
+	data, err := proto.Marshal(pbs)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(data), nil
 }

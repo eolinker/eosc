@@ -15,12 +15,11 @@ const BroadcastIP = "BROADCAST_IP"
 
 const ClusterAddress = "CLUSTER_ADDRESS"
 const IsJoin = "IS_JOIN"
-const PluginPath = "PLUGINS_DIR"
 const NodeID = "NODE_ID"
 const NodeKey = "NODE_KEY"
 
 var envs = []string{
-	IP, Port, Protocol, BroadcastIP, ClusterAddress, PluginPath, IsJoin, NodeID, NodeKey,
+	IP, Port, Protocol, BroadcastIP, ClusterAddress, IsJoin, NodeID, NodeKey,
 }
 var (
 	appName    = createApp()
@@ -35,8 +34,10 @@ func createApp() string {
 	if err := os.Setenv("APP", app); err != nil {
 		panic(err)
 	}
+	tryReadEnv(app)
 	return app
 }
+
 func Envs() []string {
 	return envs
 }
@@ -60,9 +61,12 @@ func GenEnv(name, value string) string {
 	return fmt.Sprintf("%s=%s", EnvName(name), value)
 }
 func EnvName(name string) string {
-	return fmt.Sprintf("%s_%s", envAppName, name)
+	return createEnvName(envAppName, name)
 }
+func createEnvName(envName, name string) string {
+	return fmt.Sprintf("%s_%s", envName, name)
 
+}
 func AppName() string {
 	return appName
 }

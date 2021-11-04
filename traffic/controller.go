@@ -14,17 +14,20 @@ import (
 	"os"
 	"sync"
 
-	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	_ IController = (*Controller)(nil)
+)
+
 type IController interface {
-	eosc.IDataMarshaller
 	ITraffic
 	Close()
 	Reset(ports []int) (isCreate bool, err error)
+	Export(int) ([]*PbTraffic, []*os.File)
 }
 
 type Controller struct {
@@ -32,8 +35,26 @@ type Controller struct {
 	data   *tTrafficData
 }
 
-func (c *Controller) Expire(ports []int) {
-	c.Reset(ports)
+func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
+	log.Debug("traffic controller: Export:")
+	ts := c.All()
+	pts := make([]*PbTraffic, 0, len(ts))
+	files := make([]*os.File, 0, len(ts))
+	for i, ln := range ts {
+		file, err := ln.File()
+		if err != nil {
+			continue
+		}
+		addr := ln.Addr()
+		pt := &PbTraffic{
+			FD:      uint64(i + startIndex),
+			Addr:    addr.String(),
+			Network: addr.Network(),
+		}
+		pts = append(pts, pt)
+		files = append(files, file)
+	}
+	return pts, files
 }
 
 func (c *Controller) Close() {
@@ -76,7 +97,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 
 		//l, ok := o.(*net.TCPListener)
 		//if !ok {
-		//	log.Warn("unknown error while try close  listener:", n)
+		//	log.Warn("unknown error while try close  port-reqiure:", n)
 		//	continue
 		//}
 		log.Debug("close old : ", n)
@@ -88,26 +109,11 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 }
 
 func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
-	log.Debug("traffic controller: encode:")
-	ts := c.All()
-	pts := new(PbTraffics)
-	files := make([]*os.File, 0, len(ts))
-	pts.Traffic = make([]*PbTraffic, 0, len(ts))
-	for i, ln := range ts {
-		file, err := ln.File()
-		if err != nil {
-			continue
-		}
-		addr := ln.Addr()
-		pt := &PbTraffic{
-			FD:      uint64(i + startIndex),
-			Addr:    addr.String(),
-			Network: addr.Network(),
-		}
-		pts.Traffic = append(pts.Traffic, pt)
-		files = append(files, file)
-	}
 
+	pt, files := c.Export(startIndex)
+	pts := &PbTraffics{
+		Traffic: pt,
+	}
 	data, err := proto.Marshal(pts)
 	if err != nil {
 		return nil, nil, err

@@ -4,7 +4,7 @@ const (
 	SpaceWorker = "worker"
 )
 
-var (
+const (
 	CommandSet = "set"
 	CommandDel = "delete"
 )

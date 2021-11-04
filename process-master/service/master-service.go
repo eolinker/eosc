@@ -25,7 +25,7 @@ func NewMasterServer() *MasterServer {
 }
 
 //func (m *MasterServer) Accept(request *service.ListenerRequest, server service.Master_AcceptServer) error {
-//	lr, err := listener.ListenTCP(int(request.Port), m.sign)
+//	lr, err := port-reqiure.ListenTCP(int(request.Port), m.sign)
 //	if err!= nil{
 //		return err
 //	}

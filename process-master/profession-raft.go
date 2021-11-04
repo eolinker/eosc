@@ -9,27 +9,35 @@ import (
 )
 
 type ProfessionRaft struct {
-	eosc.IProfessionsData
+	eosc.IProfessions
 }
 
-func NewProfessionRaft(IProfessionsData eosc.IProfessionsData) *ProfessionRaft {
-	return &ProfessionRaft{IProfessionsData: IProfessionsData}
+func (p *ProfessionRaft) Append(cmd string, data []byte) error {
+	return nil
+}
+
+func (p *ProfessionRaft) Complete() error {
+	return nil
+}
+
+func NewProfessionRaft(IProfessionsData eosc.IProfessions) *ProfessionRaft {
+	return &ProfessionRaft{IProfessions: IProfessionsData}
 }
 
 func (p *ProfessionRaft) Set(name string, profession *eosc.ProfessionConfig) error {
 	// todo raft sender
-	return p.IProfessionsData.Set(name, profession)
+	return p.IProfessions.Set(name, profession)
 }
 
 func (p *ProfessionRaft) Delete(name string) error {
 	// todo raft sender
 
-	return p.IProfessionsData.Delete(name)
+	return p.IProfessions.Delete(name)
 }
 
 func (p *ProfessionRaft) encode() ([]byte, error) {
-	list := p.IProfessionsData.All()
-	pcd := &eosc.ProfessionConfigData{
+	list := p.IProfessions.All()
+	pcd := &eosc.ProfessionConfigs{
 		Data: list,
 	}
 	data, err := proto.Marshal(pcd)
@@ -39,7 +47,7 @@ func (p *ProfessionRaft) encode() ([]byte, error) {
 	return data, nil
 }
 func (p *ProfessionRaft) decode(data []byte) ([]*eosc.ProfessionConfig, error) {
-	pcd := new(eosc.ProfessionConfigData)
+	pcd := new(eosc.ProfessionConfigs)
 	err := proto.Unmarshal(data, pcd)
 	if err != nil {
 		return nil, err
@@ -61,7 +69,7 @@ func (p *ProfessionRaft) ResetHandler(data []byte) error {
 	if err != nil {
 		return err
 	}
-	p.IProfessionsData.Reset(ps)
+	p.IProfessions.Reset(ps)
 	return nil
 }
 

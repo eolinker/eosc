@@ -10,9 +10,12 @@ package process_master
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
-	"strconv"
+	"strings"
+
+	"github.com/eolinker/eosc/config"
 
 	"github.com/eolinker/eosc/env"
 
@@ -30,7 +33,6 @@ import (
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
 	"github.com/eolinker/eosc/raft"
-	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
 
 	"google.golang.org/grpc"
@@ -42,24 +44,26 @@ import (
 
 func Process() {
 	utils.InitLogTransport(eosc.ProcessMaster)
-	file, err := pidfile.New()
+
+	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-	master := NewMasterHandle(file)
+
+	master := NewMasterHandle()
 	if err := master.Start(nil); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
 	}
 
-	master.Wait()
+	master.Wait(pFile)
+	pFile.Remove()
 }
 
 type Master struct {
-	service.UnimplementedMasterServer
-	service.UnimplementedCtiServiceServer
+	//service.UnimplementedMasterServer
 	node          *raft.Node
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
@@ -67,8 +71,8 @@ type Master struct {
 	masterSrv     *grpc.Server
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
-	PID           *pidfile.PidFile
-	httpserver    *http.Server
+	//PID           *pidfile.PidFile
+	httpserver *http.Server
 
 	admin *admin.Admin
 
@@ -76,11 +80,7 @@ type Master struct {
 }
 
 type MasterHandler struct {
-	Professions eosc.IProfessionsData
-	//WorkersRaft     admin2.IWorkers
-	//RaftService raft_service.IService
-	//RaftServiceHandler raft_service.IRaftServiceHandler
-	//Service            raft.IService
+	Professions eosc.IProfessions
 }
 
 func (mh *MasterHandler) initHandler() {
@@ -89,22 +89,29 @@ func (mh *MasterHandler) initHandler() {
 	}
 }
 
-func (m *Master) start(handler *MasterHandler) error {
+func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
+
 	if handler == nil {
 		handler = new(MasterHandler)
 	}
 
 	handler.initHandler()
-	s := raft_service.NewService()
-	workersData := NewWorkersData(workers.NewTypedWorkers())
-	professionRaft := NewProfessionRaft(handler.Professions)
+	workerServiceProxy := NewWorkerServiceProxy()
+	raftService := raft_service.NewService()
 
-	m.workerController = NewWorkerController(m.workerTraffic, professionRaft, workersData)
-	m.workerController.Start()
-	worker := NewWorkersRaft(workersData, handler.Professions, m.workerController, s, m.workerController)
-	m.admin = admin.NewAdmin(handler.Professions, worker)
-	s.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, worker), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
-	node, err := raft.NewNode(s)
+	workersConfig := NewWorkerConfigs()
+
+	professionRaft := NewProfessionRaft(handler.Professions)
+	extenderRaft := NewExtenderRaft(raftService)
+	workerRaft := NewWorkersRaft(workersConfig, handler.Professions, workerServiceProxy, raftService)
+
+	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy)
+	m.admin = admin.NewAdmin(handler.Professions, workerRaft)
+	raftService.AddEventHandler(m.workerController.raftEvent)
+	raftService.AddCommitEventHandler(m.workerController.raftCommitEvent)
+
+	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, workerRaft), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
+	node, err := raft.NewNode(raftService)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -116,19 +123,39 @@ func (m *Master) start(handler *MasterHandler) error {
 }
 
 func (m *Master) Start(handler *MasterHandler) error {
-
-	err := m.start(handler)
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error("get config error: ", err)
+		return err
+	}
+	_, err = m.masterTraffic.Reset([]int{cfg.Admin.Listen})
+	if err != nil {
+		return err
+	}
+	_, err = m.workerTraffic.Reset(cfg.Ports())
+	if err != nil {
+		return err
+	}
+	err = m.start(handler, cfg)
 	if err != nil {
 		return err
 	}
 
-	ip := env.GetDefault(env.IP, "")
-	port, _ := strconv.Atoi(env.GetDefault(env.Port, "9400"))
 	// 监听master监听地址，用于接口处理
-	l, err := m.masterTraffic.ListenTcp(ip, port)
+	l, err := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen)
 	if err != nil {
-		log.Error(err)
+		log.Error("master listen tcp error: ", err)
 		return err
+	}
+
+	if strings.ToLower(cfg.Admin.Scheme) == "https" {
+		// start https listener
+		log.Debug("start https listener...")
+		cert, err := config.NewCert([]*config.Certificate{cfg.Admin.Certificate}, cfg.CertificateDir.Dir)
+		if err != nil {
+			return err
+		}
+		l = tls.NewListener(l, &tls.Config{GetCertificate: cert.GetCertificate})
 	}
 
 	m.startHttp(l)
@@ -167,7 +194,7 @@ func (m *Master) handler() http.Handler {
 
 	return sm
 }
-func (m *Master) Wait() error {
+func (m *Master) Wait(pFile *pidfile.PidFile) error {
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
@@ -190,7 +217,7 @@ func (m *Master) Wait() error {
 			{
 				m.node.Stop()
 				log.Info("try fork new")
-				err := m.Fork() //传子进程需要的内容
+				err := m.Fork(pFile) //传子进程需要的内容
 				if err != nil {
 					log.Error("fork new:", err)
 				}
@@ -206,6 +233,9 @@ func (m *Master) Close() {
 }
 
 func (m *Master) close() {
+	if m.node == nil {
+		return
+	}
 	log.Info("process-master close")
 	log.Info("raft node close")
 	m.node.Stop()
@@ -219,22 +249,15 @@ func (m *Master) close() {
 	m.stopService()
 	log.Debug("try remove pid")
 
-	if err := m.PID.Remove(); err != nil {
-		log.Warn("remove pid:", err)
-	}
 	m.workerController.Stop()
 
 }
 
-func NewMasterHandle(pid *pidfile.PidFile) *Master {
-
+func NewMasterHandle() *Master {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
-		PID:                           pid,
-		cancelFunc:                    cancelFunc,
-		ctx:                           cancel,
-		UnimplementedMasterServer:     service.UnimplementedMasterServer{},
-		UnimplementedCtiServiceServer: service.UnimplementedCtiServiceServer{},
+		cancelFunc: cancelFunc,
+		ctx:        cancel,
 	}
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("init traffic from stdin")

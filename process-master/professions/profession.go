@@ -11,6 +11,10 @@ type Profession struct {
 	info       *eosc.ProfessionInfo
 }
 
+func (p *Profession) Mod() eosc.ProfessionConfig_ProfessionMod {
+	return p.config.Mod
+}
+
 func NewProfession(config *eosc.ProfessionConfig) *Profession {
 	dm := eosc.NewUntyped()
 

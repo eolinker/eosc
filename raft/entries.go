@@ -41,7 +41,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				}
 			}
 
-			err = rc.service.CommitHandler(m.Data)
+			err = rc.service.Commit(m.Data)
 			if err != nil {
 				log.Error(err)
 			}

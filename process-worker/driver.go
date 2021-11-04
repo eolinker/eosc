@@ -2,22 +2,22 @@ package process_worker
 
 import "github.com/eolinker/eosc"
 
-var _ ITypedDrivers = (*TypedDrivers)(nil)
+var _ ITypedProfessionDrivers = (*TypedProfessionDrivers)(nil)
 
-type ITypedDrivers interface {
-	Get(name string) (eosc.IProfessionDriver, bool)
+type ITypedProfessionDrivers interface {
+	Get(name string) (eosc.IExtenderDriver, bool)
 }
-type TypedDrivers struct {
+type TypedProfessionDrivers struct {
 	data eosc.IUntyped
 }
 
-func NewTypedDrivers() *TypedDrivers {
-	return &TypedDrivers{data: eosc.NewUntyped()}
+func NewProfessionDrivers() *TypedProfessionDrivers {
+	return &TypedProfessionDrivers{data: eosc.NewUntyped()}
 }
 
-func (t *TypedDrivers) Get(name string) (eosc.IProfessionDriver, bool) {
+func (t *TypedProfessionDrivers) Get(name string) (eosc.IExtenderDriver, bool) {
 	if o, has := t.data.Get(name); has {
-		return o.(eosc.IProfessionDriver), has
+		return o.(eosc.IExtenderDriver), has
 	}
 	return nil, false
 }

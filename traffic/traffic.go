@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	ErrorInvalidListener = errors.New("invalid listener")
+	ErrorInvalidListener = errors.New("invalid port-reqiure")
 )
 var _ ITraffic = (*Traffic)(nil)
 
@@ -49,7 +49,7 @@ func (t *Traffic) Expire(ports []int) {
 		log.Debug("close old : ", n)
 		o.shutdown()
 		//if err := o.shutdown(); err != nil {
-		//	log.Warn("close listener:", err, " ", o.Addr())
+		//	log.Warn("close port-reqiure:", err, " ", o.Addr())
 		//}
 		log.Debug("close old done:", n)
 	}
@@ -82,7 +82,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 	if o, has := t.data.get(name); has {
 
 		//if !ok {
-		//	log.Debug("traffic ListenTcp:", ip, ":", port, ", not listener")
+		//	log.Debug("traffic ListenTcp:", ip, ":", port, ", not port-reqiure")
 		//
 		//	return nil, ErrorInvalidListener
 		//}
@@ -98,7 +98,6 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
 	Close()
-	Expire([]int)
 }
 
 func (t *Traffic) Close() {
@@ -109,7 +108,7 @@ func (t *Traffic) Close() {
 	for _, it := range list {
 		err := it.Close()
 		if err != nil {
-			log.Info("close traffic listener:", err)
+			log.Info("close traffic port-reqiure:", err)
 		}
 	}
 }
@@ -133,6 +132,7 @@ func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
 		Zone: "",
 	}
 }
+
 func toName(ln net.Listener) string {
 	addr := ln.Addr()
 	return addrToName(addr)

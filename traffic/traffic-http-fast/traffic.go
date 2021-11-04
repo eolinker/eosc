@@ -10,7 +10,9 @@ import (
 var _ IHttpTraffic = (*HttpTraffic)(nil)
 
 type IHttpTraffic interface {
-	Get(port int) IService
+	Set(port int, srv *HttpService)
+	Get(port int) (IService, bool)
+	All() map[int]IService
 	ShutDown(port int)
 	Close()
 }
@@ -46,24 +48,41 @@ func (h *HttpTraffic) Close() {
 	return
 }
 
-func (h *HttpTraffic) Get(port int) IService {
+func (h *HttpTraffic) Set(port int, srv *HttpService) {
+	h.locker.Lock()
+	defer h.locker.Unlock()
+	h.srvs[port] = srv
+}
+
+func (h *HttpTraffic) Get(port int) (IService, bool) {
 
 	h.locker.Lock()
 	defer h.locker.Unlock()
 
 	srv, has := h.srvs[port]
 	if has {
-		return srv
+		return srv, true
 	}
-	log.Debug("http traffic get:", port)
-	listener, err := h.tf.ListenTcp("", port)
+	return nil, false
+	//log.Debug("http traffic get:", port)
+	//listener, err := h.tf.ListenTcp("", port)
+	//
+	//if err != nil {
+	//	srv = NewHttpService(nil)
+	//} else {
+	//	srv = NewHttpService(listener)
+	//}
+	//h.srvs[port] = srv
+	//return srv
+}
 
-	if err != nil {
-		srv = NewHttpService(nil)
-	} else {
-		srv = NewHttpService(listener)
+func (h *HttpTraffic) All() map[int]IService {
+	h.locker.Lock()
+	defer h.locker.Unlock()
+	srv := make(map[int]IService)
+	for k, v := range h.srvs {
+		srv[k] = v
 	}
-	h.srvs[port] = srv
 	return srv
 }
 

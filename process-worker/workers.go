@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/eolinker/eosc/listener"
+	port_reqiure "github.com/eolinker/eosc/common/port-reqiure"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -26,7 +26,7 @@ type IWorkers interface {
 
 var _ IWorkers = (*WorkerManager)(nil)
 
-func ReadWorkers(r io.Reader) []*eosc.WorkerData {
+func ReadWorkers(r io.Reader) []*eosc.WorkerConfig {
 	frame, err := utils.ReadFrame(r)
 	if err != nil {
 		log.Warn("read  workerIds frame :", err)
@@ -34,7 +34,7 @@ func ReadWorkers(r io.Reader) []*eosc.WorkerData {
 		return nil
 	}
 
-	wd := new(eosc.WorkersData)
+	wd := new(eosc.WorkerConfigs)
 	if e := proto.Unmarshal(frame, wd); e != nil {
 		log.Warn("unmarshal workerIds data :", e)
 		return nil
@@ -47,7 +47,7 @@ type WorkerManager struct {
 	professions    IProfessions
 	data           ITypedWorkers
 	requireManager IWorkerRequireManager
-	portsRequire   listener.IPortsRequire
+	portsRequire   port_reqiure.IPortsRequire
 }
 
 func (wm *WorkerManager) ResourcesPort() []int32 {
@@ -77,7 +77,7 @@ func (wm *WorkerManager) Check(id, profession, name, driverName string, body []b
 	if err != nil {
 		return err
 	}
-	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
+	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
 		if err := dc.Check(conf, requires); err != nil {
 			return err
 		}
@@ -123,15 +123,15 @@ func NewWorkerManager(professions IProfessions) *WorkerManager {
 		professions:    professions,
 		data:           NewTypedWorkers(),
 		requireManager: NewWorkerRequireManager(),
-		portsRequire:   listener.NewPortsRequire(),
+		portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
 
-func (wm *WorkerManager) Init(wdl []*eosc.WorkerData) error {
+func (wm *WorkerManager) Init(wdl []*eosc.WorkerConfig) error {
 
 	ps := wm.professions.Sort()
 
-	pm := make(map[string][]*eosc.WorkerData)
+	pm := make(map[string][]*eosc.WorkerConfig)
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
@@ -172,7 +172,7 @@ func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byt
 	if err != nil {
 		return err
 	}
-	if dc, ok := driver.(eosc.IProfessionDriverCheckConfig); ok {
+	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
 		if e := dc.Check(conf, requires); err != nil {
 			return e
 		}

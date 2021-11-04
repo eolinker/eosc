@@ -1,10 +1,8 @@
 package traffic_http_fast
 
 import (
-	"crypto/tls"
 	"errors"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/eolinker/eosc/log"
@@ -18,8 +16,8 @@ var (
 )
 
 type IService interface {
-	SetHttps(handler fasthttp.RequestHandler, certs map[string]*tls.Certificate)
-	SetHttp(handler fasthttp.RequestHandler)
+	//SetHttps(handler fasthttp.RequestHandler, certs map[string]*tls.Certificate)
+	Set(handler fasthttp.RequestHandler)
 	ShutDown()
 }
 
@@ -31,88 +29,104 @@ const (
 
 type HttpService struct {
 	locker sync.Mutex
-	certs  *Certs
 	status int
-	last   net.Listener
 	inner  net.Listener
 	srv    *fasthttp.Server
 }
 
-func (h *HttpService) SetHttps(handler fasthttp.RequestHandler, certs map[string]*tls.Certificate) {
-	log.Debug("http Service SetHttps")
-
+func (h *HttpService) Set(handler fasthttp.RequestHandler) {
 	h.locker.Lock()
 	defer h.locker.Unlock()
-
-	h.certs = newCerts(certs)
+	if handler == nil {
+		h.srv.Handler = NotFound
+	}
 	h.srv.Handler = handler
 
-	if h.inner != nil && h.status != serviceHttps {
-		// http to https
-		h.status = serviceHttps
-
-		if h.last != nil {
-			h.last.Close()
-		}
-
-		h.last = tls.NewListener(newNotClose(h.inner), &tls.Config{GetCertificate: h.GetCertificate})
-		go h.srv.Serve(h.last)
-	}
 }
 
-func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
-	log.Debug("http Service SetHttp")
-	h.locker.Lock()
-	defer h.locker.Unlock()
-	h.srv.Handler = handler
-	if h.inner != nil && h.status != serviceHttp {
-		h.status = serviceHttp
-		if h.last != nil {
-			h.last.Close()
-		}
-		h.certs = nil
+//func (h *HttpService) SetHttps(handler fasthttp.RequestHandler, certs map[string]*tls.Certificate) {
+//	log.Debug("http Service SetHttps")
+//
+//	h.locker.Lock()
+//	defer h.locker.Unlock()
+//
+//	h.certs = newCerts(certs)
+//	h.srv.Handler = handler
+//
+//	if h.inner != nil && h.status != serviceHttps {
+//		// http to https
+//		h.status = serviceHttps
+//
+//		if h.last != nil {
+//			h.last.Close()
+//		}
+//
+//		h.last = tls.NewListener(newNotClose(h.inner), &tls.Config{GetCertificate: h.GetCertificate})
+//		go h.srv.Serve(h.last)
+//	}
+//}
+//
+//func (h *HttpService) SetHttp(handler fasthttp.RequestHandler) {
+//	log.Debug("http Service SetHttp")
+//	h.locker.Lock()
+//	defer h.locker.Unlock()
+//	h.srv.Handler = handler
+//	if h.inner != nil && h.status != serviceHttp {
+//		h.status = serviceHttp
+//		if h.last != nil {
+//			h.last.Close()
+//		}
+//		h.certs = nil
+//
+//		h.last = newNotClose(h.inner)
+//		log.Debug("open a new connect, addr is ", h.last.Addr())
+//
+//		go h.srv.Serve(h.last)
+//	}
+//	log.Debug("update http status successful...")
+//}
 
-		h.last = newNotClose(h.inner)
-		log.Debug("open a new connect, addr is ", h.last.Addr())
-
-		go h.srv.Serve(h.last)
-	}
-	log.Debug("update http status successful...")
-}
-
-//GetCertificate 获取证书配置
-func (h *HttpService) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	if h.certs == nil {
-		return nil, errorCertificateNotExit
-	}
-	certificate, has := h.certs.Get(strings.ToLower(info.ServerName))
-	if !has {
-		return nil, errorCertificateNotExit
-	}
-
-	return certificate, nil
-}
+////GetCertificate 获取证书配置
+//func (h *HttpService) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+//	if h.certs == nil {
+//		return nil, errorCertificateNotExit
+//	}
+//	certificate, has := h.certs.Get(strings.ToLower(info.ServerName))
+//	if !has {
+//		return nil, errorCertificateNotExit
+//	}
+//
+//	return certificate, nil
+//}
 
 func (h *HttpService) ShutDown() {
 	h.locker.Lock()
 	defer h.locker.Unlock()
 
-	if h.inner != nil {
-		log.Debug("http service shutdown,inner addr is ", h.last.Addr())
-		h.last.Close()
-		h.last = nil
-		h.inner.Close()
-		h.inner = nil
+	//if h.inner != nil {
+	//	log.Debug("http service shutdown,inner addr is ", h.last.Addr())
+	//	h.last.Close()
+	//	h.last = nil
+	//	h.inner.Close()
+	//	h.inner = nil
 
-		h.srv.Shutdown()
-		h.srv = nil
-		log.Debug("http service shutdown done")
-	}
+	h.srv.Shutdown()
+	h.srv = nil
+	log.Debug("http service shutdown done")
+	//}
 }
 
 func NewHttpService(listener net.Listener) *HttpService {
-	return &HttpService{
-		inner: listener,
-		srv:   &fasthttp.Server{},
+	s := &HttpService{
+		//inner: listener,
+		srv: &fasthttp.Server{Handler: NotFound},
 	}
+	go s.srv.Serve(listener)
+	log.Debug("new http service:", listener.Addr())
+	return s
+}
+
+func NotFound(ctx *fasthttp.RequestCtx) {
+	ctx.NotFound()
+	return
 }

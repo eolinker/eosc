@@ -20,7 +20,7 @@ import (
 )
 
 func InitLogTransport(name string) {
-	dir := fmt.Sprintf("/var/log/%s", env.AppName())
+	dir := env.LogDir()
 	if env.IsDebug() {
 		dir = filepath.Base(".")
 		log.InitDebug(true)
@@ -30,11 +30,11 @@ func InitLogTransport(name string) {
 	writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
 	writer.Open()
 	transport := log.NewTransport(writer, log.InfoLevel)
-	formater := &log.LineFormatter{
+	formatter := &log.LineFormatter{
 		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
-	transport.SetFormatter(formater)
+	transport.SetFormatter(formatter)
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
 }

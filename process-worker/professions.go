@@ -72,16 +72,18 @@ func (ps *Professions) Sort() []*Profession {
 	return sl
 }
 
-func NewProfessions() *Professions {
+func NewProfessions(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) *Professions {
 
-	return &Professions{}
+	ps := &Professions{}
+	ps.init(configs, extends)
+	return ps
 }
 
-func (ps *Professions) init(configs []*eosc.ProfessionConfig) {
+func (ps *Professions) init(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) {
 	data := eosc.NewUntyped()
 	for _, c := range configs {
 		log.Debug("add profession config:", c)
-		p := NewProfession(c)
+		p := NewProfession(c, extends)
 		data.Set(c.Name, p)
 	}
 	ps.data = data
@@ -104,7 +106,7 @@ func ReadProfessionData(r io.Reader) ([]*eosc.ProfessionConfig, error) {
 		return nil, err
 	}
 
-	pd := new(eosc.ProfessionConfigData)
+	pd := new(eosc.ProfessionConfigs)
 	if e := proto.Unmarshal(frame, pd); e != nil {
 		return nil, e
 	}

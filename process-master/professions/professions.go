@@ -35,7 +35,7 @@ func (p *Professions) Infos() []*eosc.ProfessionInfo {
 	return ps
 }
 
-func (p *Professions) GetProfession(name string) (eosc.IProfessionData, bool) {
+func (p *Professions) GetProfession(name string) (eosc.IProfession, bool) {
 	vl, has := p.data.Get(name)
 
 	return vl, has

@@ -3,7 +3,7 @@ syntax = "proto3";
 
 
 option go_package = "github.com/eolinker/eosc/traffic";
-package traffic;
+package service;
 
 message PbTraffic {
   uint64 FD =1;
