@@ -1,13 +1,9 @@
 package process_worker
 
 import (
-	"io"
-
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 var _ IProfessions = (*Professions)(nil)
@@ -16,6 +12,7 @@ type IProfessions interface {
 	Get(name string) (*Profession, bool)
 	Sort() []*Profession
 	List() []*Profession
+	Reset(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers)
 }
 
 type Professions struct {
@@ -72,14 +69,14 @@ func (ps *Professions) Sort() []*Profession {
 	return sl
 }
 
-func NewProfessions(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) *Professions {
+func NewProfessions() *Professions {
 
 	ps := &Professions{}
-	ps.init(configs, extends)
+
 	return ps
 }
 
-func (ps *Professions) init(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) {
+func (ps *Professions) Reset(configs []*eosc.ProfessionConfig, extends eosc.IExtenderDrivers) {
 	data := eosc.NewUntyped()
 	for _, c := range configs {
 		log.Debug("add profession config:", c)
@@ -99,16 +96,4 @@ func (ps *Professions) Get(name string) (*Profession, bool) {
 		return p.(*Profession), true
 	}
 	return nil, false
-}
-func ReadProfessionData(r io.Reader) ([]*eosc.ProfessionConfig, error) {
-	frame, err := utils.ReadFrame(r)
-	if err != nil {
-		return nil, err
-	}
-
-	pd := new(eosc.ProfessionConfigs)
-	if e := proto.Unmarshal(frame, pd); e != nil {
-		return nil, e
-	}
-	return pd.Data, nil
 }
