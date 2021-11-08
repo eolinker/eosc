@@ -1,8 +1,8 @@
 package http
 
 type IFilter interface {
-	DoFilter(ctx IHttpContext, next IFilterChain) (err error)
+	DoFilter(ctx IHttpContext, next IChain) (err error)
 }
-type IFilterChain interface {
+type IChain interface {
 	DoFilter(ctx IHttpContext) error
 }
