@@ -8,12 +8,15 @@ import (
 
 type IHttpContext interface {
 	ResponseWriter // 处理返回
-	StoreContainer // cache
 	RequestId() string
 	Request() RequestReader
 	Proxy() Request // 请求信息，包含原始请求数据以及被更高优先级处理过的结果
 	Labels() map[string]string
 	ProxyResponse() ResponseReader // 转发后返回的结果
+
+	// 一个key只可以set一次，重复set报错
+	SetStoreValue(key string, value interface{}) error
+	GetStoreValue(key string) (interface{}, bool)
 }
 
 type HeaderReader interface {
@@ -51,8 +54,6 @@ type FileHeader struct {
 	Data     []byte
 }
 type BodyDataReader interface {
-	//Parse() error
-
 	//protocol() RequestType
 	ContentType() string
 	//content-Type = application/x-www-form-urlencoded 或 multipart/form-data，与原生request.Form不同，这里不包括 query 参数
@@ -133,13 +134,6 @@ type ResponseReader interface {
 type Store interface {
 	Set(value interface{})
 	Get() (value interface{})
-}
-
-// 存储容器
-type StoreContainer interface {
-	Store() Store // 私有存储
-	SetCache(name string, value interface{})
-	GetCache(name string) (value interface{}, has bool)
 }
 
 // 带优先的header
