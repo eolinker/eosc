@@ -30,7 +30,7 @@ type WorkerProcess struct {
 	conn   *grpc.ClientConn
 	once   sync.Once
 
-	args             *service.WorkerLoadArg
+	extenderSetting  map[string]string
 	extendersDeleted map[string]string
 }
 
@@ -85,7 +85,7 @@ func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*Work
 
 	return &WorkerProcess{
 		cmd:              cmd,
-		args:             clone,
+		extenderSetting:  clone.ExtenderSetting,
 		extendersDeleted: make(map[string]string),
 	}, nil
 }

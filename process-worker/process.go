@@ -48,9 +48,9 @@ func Process() {
 }
 
 type ProcessWorker struct {
-	tf          traffic.ITraffic
-	professions IProfessions
-	workers     IWorkers
+	tf traffic.ITraffic
+
+	workers IWorkers
 
 	once         sync.Once
 	workerServer *WorkerServer
@@ -89,28 +89,29 @@ func (w *ProcessWorker) wait() {
 func NewProcessWorker() (*ProcessWorker, error) {
 	arg := readArg()
 	register := loadPluginEnv(arg.ExtenderSetting)
-	workerServer, err := NewWorkerServer()
+	tf := createTraffic(arg.Traffic)
+	professions := NewProfessions()
+	professions.Reset(arg.Professions, register)
+	wm := NewWorkerManager()
+	workerServer, err := NewWorkerServer(wm, professions)
 	if err != nil {
 		return nil, err
 	}
 	w := &ProcessWorker{
 		workerServer: workerServer,
+		workers:      wm,
+		tf:           tf,
 	}
 
-	w.tf = createTraffic(arg.Traffic)
-	w.professions = NewProfessions(arg.Professions, register)
-	wm := NewWorkerManager(w.professions)
-	w.workers = wm
-
-	bean.Injection(&w.tf)
-	bean.Injection(&w.professions)
+	bean.Injection(&tf)
+	bean.Injection(&professions)
 
 	var iWorkers eosc.IWorkers = w.workers
 	bean.Injection(&iWorkers)
 	bean.Injection(&arg.ListensMsg)
 	bean.Check()
 
-	err = wm.Init(arg.Workers)
+	err = wm.Reset(professions, arg.Workers)
 	if err != nil {
 		log.Warn("worker configs error:", err)
 		return nil, err
@@ -136,8 +137,6 @@ func (w *ProcessWorker) close() {
 }
 
 func (w *ProcessWorker) Start() error {
-	w.workerServer.SetTraffic(w.tf)
-	w.workerServer.SetWorkers(w.workers)
 
 	return nil
 }
