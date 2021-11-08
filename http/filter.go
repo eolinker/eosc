@@ -6,8 +6,3 @@ type IFilter interface {
 type IFilterChain interface {
 	DoFilter(ctx IHttpContext) error
 }
-type IChain interface {
-	IFilterChain
-	Append(filter IFilter)
-	Insert(filter IFilter)
-}
