@@ -93,7 +93,7 @@ func NewProcessWorker() (*ProcessWorker, error) {
 	professions := NewProfessions()
 	professions.Reset(arg.Professions, register)
 	wm := NewWorkerManager()
-	workerServer, err := NewWorkerServer(wm, professions)
+	workerServer, err := NewWorkerServer(wm, register, professions)
 	if err != nil {
 		return nil, err
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/eolinker/eosc/extends"
 )
 
-func loadPluginEnv(settings map[string]string) eosc.IExtenderDrivers {
+func loadPluginEnv(settings map[string]string) ExtenderRegister {
 	register := eosc.NewExtenderRegister()
 	extends.LoadInner(register)
 	inners := extends.GetInners()
