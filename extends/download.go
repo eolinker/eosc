@@ -15,20 +15,16 @@ var (
 )
 
 type ExtenderInfo struct {
-	ID          string `json:"id"`
-	Description string `json:"description"`
-	Group       string `json:"group"`
-	Project     string `json:"project"`
-	Version     string `json:"version"`
-	Go          string `json:"go"`
-	Arch        string `json:"arch"`
-	Eosc        string `json:"eosc"`
-	Sha         string `json:"Sha"`
-	Status      int    `json:"status"`
-	IsLatest    bool   `json:"is_latest"`
-	Create      string `json:"create"`
-	Update      string `json:"update"`
-	URL         string `json:"url"`
+	*BasicInfo
+	Go       string `json:"go"`
+	Arch     string `json:"arch"`
+	Eosc     string `json:"eosc"`
+	Sha      string `json:"Sha"`
+	Status   int    `json:"status"`
+	IsLatest bool   `json:"is_latest"`
+	Create   string `json:"create"`
+	Update   string `json:"update"`
+	URL      string `json:"url"`
 }
 
 //DownLoadToRepository 下载指定版本的插件项目，并解压到仓库
