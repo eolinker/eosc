@@ -3,7 +3,6 @@ package process_worker
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"reflect"
 	"sync"
 
@@ -11,8 +10,6 @@ import (
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 type IWorkers interface {
@@ -22,25 +19,10 @@ type IWorkers interface {
 	Set(id, profession, name, driverName string, body []byte) error
 	RequiredCount(id string) int
 	ResourcesPort() []int32
+	Reset(professions IProfessions, wdl []*eosc.WorkerConfig) error
 }
 
 var _ IWorkers = (*WorkerManager)(nil)
-
-func ReadWorkers(r io.Reader) []*eosc.WorkerConfig {
-	frame, err := utils.ReadFrame(r)
-	if err != nil {
-		log.Warn("read  workerIds frame :", err)
-
-		return nil
-	}
-
-	wd := new(eosc.WorkerConfigs)
-	if e := proto.Unmarshal(frame, wd); e != nil {
-		log.Warn("unmarshal workerIds data :", e)
-		return nil
-	}
-	return wd.Data
-}
 
 type WorkerManager struct {
 	locker         sync.Mutex
@@ -117,17 +99,17 @@ func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
 	return nil, false
 }
 
-func NewWorkerManager(professions IProfessions) *WorkerManager {
+func NewWorkerManager() *WorkerManager {
 	return &WorkerManager{
 		locker:         sync.Mutex{},
-		professions:    professions,
 		data:           NewTypedWorkers(),
 		requireManager: NewWorkerRequireManager(),
 		portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
 
-func (wm *WorkerManager) Init(wdl []*eosc.WorkerConfig) error {
+func (wm *WorkerManager) Reset(professions IProfessions, wdl []*eosc.WorkerConfig) error {
+	wm.professions = professions
 
 	ps := wm.professions.Sort()
 

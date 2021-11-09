@@ -11,7 +11,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/eolinker/eosc/env"
@@ -22,7 +21,7 @@ import (
 func InitLogTransport(name string) {
 	dir := env.LogDir()
 	if env.IsDebug() {
-		dir = filepath.Base(".")
+		//dir = filepath.Base(".")
 		log.InitDebug(true)
 	}
 

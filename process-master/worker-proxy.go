@@ -16,28 +16,36 @@ var (
 )
 
 type WorkerServiceProxy struct {
-	workerProcess *WorkerProcess
-	locker        sync.RWMutex
+	client service.WorkerServiceClient
+	locker sync.RWMutex
 }
 
 func (wc *WorkerServiceProxy) AddExtender(ctx context.Context, in *service.WorkerAddExtender, opts ...grpc.CallOption) (*service.WorkerResponse, error) {
-	panic("implement me")
+	client := wc.GetWorkerProcess()
+	if client != nil {
+		return client.AddExtender(ctx, in, opts...)
+	}
+	return nil, ErrClientNotInit
 }
 
 func (wc *WorkerServiceProxy) DelExtenderCheck(ctx context.Context, in *service.WorkerDelExtender, opts ...grpc.CallOption) (*service.WorkerResponse, error) {
-	panic("implement me")
+	client := wc.GetWorkerProcess()
+	if client != nil {
+		return client.DelExtenderCheck(ctx, in, opts...)
+	}
+	return nil, ErrClientNotInit
 }
 
-func (wc *WorkerServiceProxy) GetWorkerProcess() *WorkerProcess {
+func (wc *WorkerServiceProxy) GetWorkerProcess() service.WorkerServiceClient {
 	wc.locker.RLocker()
-	c := wc.workerProcess
+	c := wc.client
 	wc.locker.RUnlock()
 	return c
 }
 
-func (wc *WorkerServiceProxy) SetWorkerProcess(workerProcess *WorkerProcess) {
+func (wc *WorkerServiceProxy) SetWorkerProcess(client service.WorkerServiceClient) {
 	wc.locker.Lock()
-	wc.workerProcess = workerProcess
+	wc.client = client
 	wc.locker.Unlock()
 }
 

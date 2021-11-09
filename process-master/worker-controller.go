@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	raft_service "github.com/eolinker/eosc/raft/raft-service"
+
 	"github.com/eolinker/eosc/config"
 
 	"github.com/eolinker/eosc/process-master/extenders"
@@ -35,11 +37,19 @@ type WorkerController struct {
 	extenderSetting extenders.ITypedExtenderSetting
 	professions     eosc.IProfessions
 	workers         *WorkerConfigs
+
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+
+	restartChan chan int
 }
 
 func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy) *WorkerController {
 	traffics, files := traffic.Export(3)
-	return &WorkerController{
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	wc := &WorkerController{
 		workerServiceProxy: workerServiceProxy,
 		traffics:           traffics,
 		trafficFiles:       files,
@@ -47,7 +57,12 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 		extenderSetting:    extenderSetting,
 		professions:        professions,
 		workers:            workers,
+		ctx:                ctx,
+		cancelFunc:         cancelFunc,
+		restartChan:        make(chan int, 1),
 	}
+	go wc.doControl()
+	return wc
 }
 
 func (wc *WorkerController) Stop() {
@@ -56,6 +71,10 @@ func (wc *WorkerController) Stop() {
 
 	if wc.isStop {
 		return
+	}
+	if wc.cancelFunc != nil {
+		wc.cancelFunc()
+		wc.cancelFunc = nil
 	}
 
 	wc.isStop = true
@@ -87,16 +106,82 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 	}
 }
 
-func (wc *WorkerController) restart() {
+func (wc *WorkerController) restart() bool {
 
 	process := wc.getClient()
 	if process == nil {
 		err := wc.NewWorker()
 		if err != nil {
-			return
+			return true
 		}
-		return
+		return true
 	}
+	oldExtenderSetting := process.extenderSetting
+	deletedExtenderSetting := process.extendersDeleted
+	extenderSetting := wc.extenderSetting.All()
+
+	for id, oVersion := range oldExtenderSetting {
+		v, has := extenderSetting[id]
+		if !has {
+			if _, ok := deletedExtenderSetting[id]; !ok {
+				deletedExtenderSetting[id] = oVersion
+			}
+			continue
+		}
+		delete(extenderSetting, id)
+		if v != oVersion {
+			// 存在不同版本的，直接重启
+			err := wc.NewWorker()
+			if err != nil {
+				log.Errorf("restart worker process:", err)
+				return true
+			}
+			return true
+		}
+		// 版本一致，不做操作
+	}
+
+	for id, version := range extenderSetting {
+		if dv, has := deletedExtenderSetting[id]; has {
+			if version != dv {
+				// 该项目版本已经在被删除列表中， 且版本不一致，需要重启
+				err := wc.NewWorker()
+				if err != nil {
+					log.Errorf("restart worker process:", err)
+					return true
+				}
+				return true
+			}
+			// 以删除的版本一致
+			delete(deletedExtenderSetting, id)
+		}
+		oldExtenderSetting[id] = version
+	}
+
+	if len(extenderSetting) > 0 {
+		_, err := wc.workerServiceProxy.AddExtender(wc.ctx, &service.WorkerAddExtender{
+			Extenders: extenderSetting,
+		})
+		if err != nil {
+			log.Error("call addExtender:", err)
+		}
+	}
+
+	return false
+
+}
+func (wc *WorkerController) reset() {
+
+	resetArg := &service.ResetRequest{
+		Professions: wc.professions.All(),
+		Workers:     wc.workers.export(),
+	}
+
+	wc.workerServiceProxy.Reset(wc.ctx, resetArg)
+}
+
+func (wc *WorkerController) tryRestart() {
+	wc.restartChan <- 1
 }
 
 func (wc *WorkerController) NewWorker() error {
@@ -114,7 +199,8 @@ func (wc *WorkerController) NewWorker() error {
 	defer utils.Timeout("wait worker process start:")()
 
 	for {
-		_, err := wc.current.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
+
+		_, err := wc.workerServiceProxy.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 		if err == nil {
 			return nil
 		}
@@ -148,7 +234,7 @@ func (wc *WorkerController) new() error {
 	old := wc.current
 	wc.current = workerProcess
 
-	wc.workerServiceProxy.SetWorkerProcess(wc.current)
+	wc.workerServiceProxy.SetWorkerProcess(wc.current.client)
 
 	go wc.check(wc.current)
 
@@ -167,8 +253,41 @@ func (wc *WorkerController) getClient() *WorkerProcess {
 }
 
 func (wc *WorkerController) raftEvent(event string) {
-
+	log.Debug("worker controller get event:", event)
+	switch event {
+	case raft_service.EventComplete:
+		wc.reset()
+		wc.tryRestart()
+	}
+	return
 }
 func (wc *WorkerController) raftCommitEvent(namespace, cmd string) {
+	log.Debug("worker controller get comit event:", namespace, ":", cmd)
 
+	switch namespace {
+	case extenders.NamespaceExtenders:
+		switch cmd {
+		case extenders.CommandSet:
+			wc.tryRestart()
+		case extenders.CommandDelete:
+			wc.tryRestart()
+		}
+	}
+}
+
+func (wc *WorkerController) doControl() {
+	t := time.NewTimer(time.Second)
+	t.Stop()
+	defer t.Stop()
+	for {
+		select {
+		case <-wc.ctx.Done():
+
+			return
+		case <-wc.restartChan:
+			t.Reset(time.Second)
+		case <-t.C:
+			wc.restart()
+		}
+	}
 }

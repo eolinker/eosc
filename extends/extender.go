@@ -119,7 +119,7 @@ func ExtenderInfoRequest(group, project, version string) (*ExtenderInfo, error) 
 	uri := fmt.Sprintf("%s/api/%s/%s/%s", env.ExtenderMarkAddr(), group, project, version)
 	query := url.Values{}
 	query.Add("go", runtime.Version())
-	query.Add("arch", runtime.GOARCH)
+	query.Add("arch", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH))
 	query.Add("eosc", eosc.Version())
 	req, err := http.NewRequest("GET", uri, strings.NewReader(""))
 	if err != nil {

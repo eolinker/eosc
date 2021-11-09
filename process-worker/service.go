@@ -2,14 +2,17 @@ package process_worker
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
-	"github.com/eolinker/eosc/traffic"
-
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/utils"
 
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/extends"
+
+	"github.com/eolinker/eosc"
 
 	"google.golang.org/grpc"
 
@@ -21,37 +24,19 @@ var (
 	_ service.WorkerServiceServer = (*WorkerServer)(nil)
 )
 
+type ExtenderRegister interface {
+	eosc.IExtenderDriverRegister
+	eosc.IExtenderDrivers
+}
 type WorkerServer struct {
 	service.UnimplementedWorkerServiceServer
 	*grpc.Server
-	workers IWorkers
-	tf      traffic.ITraffic
+	workers     IWorkers
+	extends     ExtenderRegister
+	professions IProfessions
 }
 
-func (ws *WorkerServer) Reset(ctx context.Context, request *service.ResetRequest) (*service.WorkerResponse, error) {
-	panic("implement me")
-}
-
-func (ws *WorkerServer) Status(ctx context.Context, request *service.StatusRequest) (*service.StatusResponse, error) {
-	panic("implement me")
-}
-
-func (ws *WorkerServer) SetTraffic(tf traffic.ITraffic) {
-	log.Debug("set traffic")
-	ws.tf = tf
-}
-
-func (ws *WorkerServer) SetWorkers(workers IWorkers) {
-	log.Debug("set IWorkers")
-	ws.workers = workers
-}
-func (ws *WorkerServer) Stop() {
-	ws.Server.Stop()
-	addr := service.WorkerServerAddr(os.Getpid())
-	// 移除unix socket
-	syscall.Unlink(addr)
-}
-func NewWorkerServer() (*WorkerServer, error) {
+func NewWorkerServer(workers IWorkers, extends ExtenderRegister, professions IProfessions) (*WorkerServer, error) {
 	defer utils.Timeout("NewWorkerServer")()
 	addr := service.WorkerServerAddr(os.Getpid())
 	// 移除unix socket
@@ -61,7 +46,12 @@ func NewWorkerServer() (*WorkerServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	ws := &WorkerServer{workers: nil, Server: grpc.NewServer()}
+	ws := &WorkerServer{
+
+		workers:     workers,
+		extends:     extends,
+		professions: professions,
+	}
 	service.RegisterWorkerServiceServer(ws.Server, ws)
 	go func() {
 		err := ws.Server.Serve(l)
@@ -72,6 +62,55 @@ func NewWorkerServer() (*WorkerServer, error) {
 	}()
 	return ws, nil
 
+}
+
+func (ws *WorkerServer) AddExtender(ctx context.Context, extender *service.WorkerAddExtender) (*service.WorkerResponse, error) {
+	invalidId := make([]string, 0, len(extender.Extenders))
+	errors := strings.Builder{}
+	for id, version := range extender.Extenders {
+		group, project, ok := readProject(id)
+		if !ok {
+			invalidId = append(invalidId, id)
+			continue
+		}
+		rg, err := extends.ReadExtenderProject(group, project, version)
+		if err != nil {
+			errors.WriteString(fmt.Sprint(id, ":", err, "\n"))
+		}
+		rg.RegisterTo(ws.extends)
+	}
+	return &service.WorkerResponse{
+		Status:  service.WorkerStatusCode_SUCCESS,
+		Message: "",
+	}, nil
+}
+
+func (ws *WorkerServer) DelExtenderCheck(ctx context.Context, extender *service.WorkerDelExtender) (*service.WorkerResponse, error) {
+
+	return &service.WorkerResponse{
+		Status: service.WorkerStatusCode_SUCCESS,
+	}, nil
+}
+
+func (ws *WorkerServer) Reset(ctx context.Context, request *service.ResetRequest) (*service.WorkerResponse, error) {
+	ws.professions.Reset(request.Professions, ws.extends)
+
+	return &service.WorkerResponse{
+		Status:  service.WorkerStatusCode_SUCCESS,
+		Message: "",
+	}, nil
+}
+
+func (ws *WorkerServer) Status(ctx context.Context, request *service.StatusRequest) (*service.StatusResponse, error) {
+	return &service.StatusResponse{}, nil
+
+}
+
+func (ws *WorkerServer) Stop() {
+	ws.Server.Stop()
+	addr := service.WorkerServerAddr(os.Getpid())
+	// 移除unix socket
+	syscall.Unlink(addr)
 }
 
 func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerResponse, error) {

@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/eolinker/eosc/raft/raft-service";
+option go_package = "github.com/eolinker/eosc/raft";
 package raft_service;
 
 message Commend {
