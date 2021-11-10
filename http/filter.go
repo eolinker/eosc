@@ -4,5 +4,5 @@ type IFilter interface {
 	DoFilter(ctx IHttpContext, next IChain) (err error)
 }
 type IChain interface {
-	DoFilter(ctx IHttpContext) error
+	DoChain(ctx IHttpContext) error
 }
