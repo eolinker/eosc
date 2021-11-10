@@ -38,8 +38,7 @@ func Process() {
 		log.Error("data unmarshal error: ", err)
 		return
 	}
-	ex := getExtenders(installInfo.Extends)
-	data, err := proto.Marshal(ex)
+	data, err := proto.Marshal(getExtenders(installInfo.Extends))
 	if err != nil {
 		log.Error("data marshal error: ", err)
 		return
