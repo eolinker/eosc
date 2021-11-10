@@ -1,4 +1,4 @@
-package http
+package http_service
 
 //IRouterEndpoint 实现了返回路由规则信息方法的接口，如返回location、Host、Header、Query
 type IEndpoint interface {
