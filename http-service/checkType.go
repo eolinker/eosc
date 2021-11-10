@@ -1,4 +1,4 @@
-package http
+package http_service
 
 //CheckType Checker类型
 type CheckType int

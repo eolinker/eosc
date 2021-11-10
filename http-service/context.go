@@ -1,4 +1,4 @@
-package http
+package http_service
 
 import (
 	"context"
