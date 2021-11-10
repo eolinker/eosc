@@ -1,12 +1,17 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"net/textproto"
 	"net/url"
 )
 
 type IHttpContext interface {
+	Context() context.Context
+	Value(key interface{}) interface{}
+	WithValue(key, val interface{})
+
 	ResponseWriter // 处理返回
 	RequestId() string
 	Request() RequestReader
