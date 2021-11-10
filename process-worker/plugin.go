@@ -8,16 +8,16 @@ import (
 	"github.com/eolinker/eosc/extends"
 )
 
-func loadPluginEnv(settings map[string]string) eosc.IExtenderDrivers {
+func loadPluginEnv(settings map[string]string) ExtenderRegister {
 	register := eosc.NewExtenderRegister()
 	extends.LoadInner(register)
-	inners := extends.GetInners()
-	for group, project := range inners {
-		delete(settings, toId(group, project))
-	}
 	for id, version := range settings {
+
 		group, project, ok := readProject(id)
 		if ok {
+			if extends.IsInner(group, project) {
+				continue
+			}
 			extenderProject, err := extends.ReadExtenderProject(group, project, version)
 			if err != nil {
 				continue
