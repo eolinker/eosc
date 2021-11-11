@@ -38,14 +38,14 @@ type IRaftService interface {
 //type Msg struct {
 //	Namespace string                 `json:"namespace"`
 //	Cmd       string                 `json:"cmd"`
-//	Body      map[string]interface{} `json:"body"`
+//	body      map[string]interface{} `json:"body"`
 //}
 //
-//func (r *raftDemo) Encode(namespace, cmd string, body map[string]interface{}) ([]byte, error) {
+//func (r *raftDemo) encode(namespace, cmd string, body map[string]interface{}) ([]byte, error) {
 //	msg := &Msg{
 //		Namespace: namespace,
 //		Cmd:       cmd,
-//		Body:      body,
+//		body:      body,
 //	}
 //
 //	return json.Marshal(msg)
@@ -58,7 +58,7 @@ type IRaftService interface {
 //		return "", "", nil, err
 //	}
 //
-//	return m.Namespace, m.Cmd, m.Body, nil
+//	return m.Namespace, m.Cmd, m.body, nil
 //
 //}
 //
@@ -71,7 +71,7 @@ type IRaftService interface {
 //			}
 //			return r.process(addr, "do", msg)
 //		} else {
-//			msgRaft, err := r.Encode(namespace, cmd, body)
+//			msgRaft, err := r.encode(namespace, cmd, body)
 //			if err != nil {
 //				return err
 //			}
@@ -99,8 +99,8 @@ type IRaftService interface {
 //		return
 //	}
 //
-//	err := r.doHandler(req.Body)
-//	req.Body.Close()
+//	err := r.doHandler(req.body)
+//	req.body.Close()
 //	if err != nil {
 //		writeError(w, "504", "error", err.Error())
 //		return
