@@ -68,3 +68,13 @@ func GetInners() map[string]string {
 	}
 	return rs
 }
+func IsInner(group, project string) bool {
+	innerLock.Lock()
+	defer innerLock.Unlock()
+
+	if projects, has := innerExtender[group]; has {
+		_, has := projects[project]
+		return has
+	}
+	return false
+}

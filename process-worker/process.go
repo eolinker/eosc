@@ -89,11 +89,12 @@ func (w *ProcessWorker) wait() {
 func NewProcessWorker() (*ProcessWorker, error) {
 	arg := readArg()
 	register := loadPluginEnv(arg.ExtenderSetting)
+
 	tf := createTraffic(arg.Traffic)
 	professions := NewProfessions()
 	professions.Reset(arg.Professions, register)
 	wm := NewWorkerManager()
-	workerServer, err := NewWorkerServer(wm, professions)
+	workerServer, err := NewWorkerServer(wm, register, professions)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,8 @@ func NewProcessWorker() (*ProcessWorker, error) {
 		workers:      wm,
 		tf:           tf,
 	}
-
+	var extenderDrivers eosc.IExtenderDrivers = register
+	bean.Injection(&extenderDrivers)
 	bean.Injection(&tf)
 	bean.Injection(&professions)
 
