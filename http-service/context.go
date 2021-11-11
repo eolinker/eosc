@@ -15,8 +15,7 @@ type IHttpContext interface {
 	ResponseWriter // 处理返回
 	RequestId() string
 	Request() IRequestReader
-	Proxy() IRequest // 请求信息，包含原始请求数据以及被更高优先级处理过的结果
-	Labels() map[string]string
+	Proxy() IRequest                // 请求信息，包含原始请求数据以及被更高优先级处理过的结果
 	ProxyResponse() IResponseReader // 转发后返回的结果
 	Finish()
 	// 一个key只可以set一次，重复set报错
