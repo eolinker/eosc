@@ -46,7 +46,7 @@ message DriverConfig{
   string name = 2;
   string label = 3;
   string desc = 4;
-  map<string, string> params = 5;
+  map<string,string> params = 5;
 }
 message PluginInfo {
   string group = 6;

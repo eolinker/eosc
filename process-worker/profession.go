@@ -28,7 +28,14 @@ func NewProfession(professionConfig *eosc.ProfessionConfig, extends eosc.IExtend
 			log.Warn("driver not exist:", driverConfig.Id)
 			continue
 		}
-		driver, err := df.Create(professionConfig.Name, driverConfig.Name, driverConfig.Label, driverConfig.Desc, driverConfig.Params)
+		var params map[string]interface{}
+		if driverConfig.Params != nil {
+			params = make(map[string]interface{})
+			for k, v := range driverConfig.Params {
+				params[k] = v
+			}
+		}
+		driver, err := df.Create(professionConfig.Name, driverConfig.Name, driverConfig.Label, driverConfig.Desc, params)
 		if err != nil {
 			log.Warnf("create driver %s of %s :%v", driverConfig.Id, professionConfig.Name, err)
 			continue
