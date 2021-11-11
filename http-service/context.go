@@ -2,6 +2,7 @@ package http_service
 
 import (
 	"context"
+	"net/http"
 	"net/textproto"
 	"net/url"
 )
@@ -20,6 +21,7 @@ type IHttpContext interface {
 
 type IHeaderReader interface {
 	GetHeader(name string) string
+	Headers() http.Header
 }
 
 type IHeaderWriter interface {
