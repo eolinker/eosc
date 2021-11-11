@@ -105,7 +105,7 @@ type IRequestData interface {
 	RequestURI() string
 	Host() string
 	RemoteAddr() string
-	Proto() string
+	Scheme() string
 }
 
 // 原始请求数据的读
