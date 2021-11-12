@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"time"
 )
 
 type IHttpContext interface {
@@ -14,9 +15,11 @@ type IHttpContext interface {
 	Value(key interface{}) interface{}
 	WithValue(key, val interface{})
 
-	Request() IRequestReader // 读取原始请求
-	Proxy() IRequest         // 读写转发请求
-	Response() IResponse     // 处理返回结果，可读可写
+	Request() IRequestReader      // 读取原始请求
+	Proxy() IRequest              // 读写转发请求
+	Response() (IResponse, error) // 处理返回结果，可读可写
+
+	SendTo(address string, timeout time.Duration) error
 }
 
 type IHeaderReader interface {
