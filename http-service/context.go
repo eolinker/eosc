@@ -8,44 +8,33 @@ import (
 )
 
 type IHttpContext interface {
+	RequestId() string
+
 	Context() context.Context
 	Value(key interface{}) interface{}
 	WithValue(key, val interface{})
 
-	ResponseWriter // 处理返回
-	RequestId() string
-	Request() IRequestReader
-	Proxy() IRequest // 请求信息，包含原始请求数据以及被更高优先级处理过的结果
-	Labels() map[string]string
-	ProxyResponse() IResponseReader // 转发后返回的结果
-	Finish()
-	// 一个key只可以set一次，重复set报错
-	SetStoreValue(key string, value interface{}) error
-	GetStoreValue(key string) (interface{}, bool)
+	Request() IRequestReader // 读取原始请求
+	Proxy() IRequest         // 读写转发请求
+	Response() IResponse     // 处理返回结果，可读可写
 }
 
 type IHeaderReader interface {
 	GetHeader(name string) string
-	// 返回所有header，返回值为一个副本，对他的修改不会生效
 	Headers() http.Header
 }
+
 type IHeaderWriter interface {
 	SetHeader(key, value string)
 	AddHeader(key, value string)
 	DelHeader(key string)
 }
+
 type IHeader interface {
 	IHeaderReader
 	IHeaderWriter
 }
 
-//type ICookieReader interface {
-//	Cookie(name string) (*http.Cookie, error)
-//	Cookies() []*http.Cookie
-//}
-type ICookieWriter interface {
-	AddCookie(c *http.Cookie)
-}
 type IBodyGet interface {
 	GetBody() []byte
 }
@@ -53,11 +42,13 @@ type IBodyGet interface {
 type IBodySet interface {
 	SetBody([]byte)
 }
+
 type FileHeader struct {
 	FileName string
 	Header   textproto.MIMEHeader
 	Data     []byte
 }
+
 type IBodyDataReader interface {
 	//protocol() RequestType
 	ContentType() string
@@ -79,14 +70,8 @@ type IBodyDataWriter interface {
 	// 会替换掉对应掉file信息，并且将content-type 设置为 multipart/form-data
 	AddFile(key string, file *FileHeader) error
 	//设置 multipartForm 数据并将content-type设置 为 multipart/form-data
-
 	// 重置body，会清除掉未处理掉 form和file
 	SetRaw(contentType string, body []byte)
-}
-
-type IBody interface {
-	IBodyDataReader
-	IBodyDataWriter
 }
 
 type IStatusGet interface {
@@ -98,66 +83,36 @@ type IStatusSet interface {
 	SetStatus(code int, status string)
 }
 
-type IRequestData interface {
+// 原始请求数据的读
+type IRequestReader interface {
+	IHeaderReader
 	IBodyDataReader
 	Method() string
-	URL() *url.URL
+	URL() url.URL
 	RequestURI() string
 	Host() string
 	RemoteAddr() string
-	Proto() string
-}
-
-// 原始请求数据的读
-type IRequestReader interface {
-	//ICookieReader
-	IHeaderReader
-	IRequestData
+	Scheme() string
 }
 
 // 用于组装转发的request
 type IRequest interface {
-	//ICookieReader
-	IHeaderReader
+	IRequestReader
 	IHeaderWriter
-	ICookieWriter
-	IBody
-	Querys() url.Values
+	IBodyDataWriter
 	TargetServer() string
 	TargetURL() string
-	Url() *url.URL
-}
-
-// 读取转发结果的response
-type IResponseReader interface {
-	//ICookieReader
-	IHeaderReader
-	IBodyGet
-	IStatusGet
-}
-
-//// 单存储
-//type IStore interface {
-//	Set(value interface{})
-//	Get() (value interface{})
-//}
-
-// 带优先的header
-type IPriorityHeader interface {
-	IHeaderReader // 读已经设置的header
-	IHeaderWriter // 设置header
-	// 非Priority的header会被 proxy 的同名项替换掉，
-	Set() IHeader    // 这里设置的header会替换掉proxy的内容
-	Append() IHeader // 这里设置的header会追加到proxy的内容
+	SetMethod(string)
+	SetURL(url.URL)
+	SetPath(string)
 }
 
 // 返回给client端的
-type ResponseWriter interface {
-	IPriorityHeader
-	//ICookieReader // 已经设置的cookie
-	ICookieWriter // 设置返回的cookie
+type IResponse interface {
+	IHeaderReader
+	IBodyGet
 	IStatusGet
+	IHeaderWriter
 	IStatusSet // 设置返回状态
 	IBodySet   // 设置返回内容
-	IBodyGet
 }
