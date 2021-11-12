@@ -104,6 +104,7 @@ type IRequest interface {
 	TargetURL() string
 	SetMethod(string)
 	SetURL(url.URL)
+	SetPath(string)
 }
 
 // 返回给client端的
