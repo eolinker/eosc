@@ -94,7 +94,7 @@ func (ws *WorkerServer) DelExtenderCheck(ctx context.Context, extender *service.
 
 func (ws *WorkerServer) Reset(ctx context.Context, request *service.ResetRequest) (*service.WorkerResponse, error) {
 	ws.professions.Reset(request.Professions, ws.extends)
-
+	ws.workers.Reset(request.Workers)
 	return &service.WorkerResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
