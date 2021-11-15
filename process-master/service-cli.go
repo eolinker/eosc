@@ -3,9 +3,6 @@ package process_master
 import (
 	"context"
 	"errors"
-	"fmt"
-
-	"github.com/golang/protobuf/proto"
 
 	"github.com/eolinker/eosc/log"
 
@@ -109,46 +106,47 @@ func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest
 
 //ExtendsInstall 安装拓展
 func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.ExtendsInstallRequest) (*service.ExtendsResponse, error) {
-	installInfo := &service.ExtendsInstallRequest{Extends: make([]*service.ExtendsInfo, 0, len(request.Extends))}
-	exts := make(map[string]string)
-	for _, ext := range request.Extends {
-		version, has := m.master.workerController.extenderSetting.Get(ext.Group, ext.Project)
-		if has {
-			if version == ext.Version {
-				continue
-			}
-			exts[fmt.Sprintf("%s:%s", ext.Group, ext.Project)] = version
-		}
-		installInfo.Extends = append(installInfo.Extends, ext)
-	}
-	data, _ := proto.Marshal(installInfo)
-	response, err := newHelperProcess(data)
-	if err != nil {
-		return nil, err
-	}
-	if response.Code != "000000" {
-		return nil, errors.New(response.Msg)
-	}
-	client := m.master.workerController.getClient()
-	needRestart := false
-	for _, r := range response.Extends {
-		if v, ok := exts[fmt.Sprintf("%s:%s", r.Group, r.Project)]; ok {
-			if v != r.Version {
-				needRestart = true
-				break
-			}
-		}
-	}
-
-	return response, nil
+	//installInfo := &service.ExtendsInstallRequest{Extends: make([]*service.ExtendsInfo, 0, len(request.Extends))}
+	//exts := make(map[string]string)
+	//for _, ext := range request.Extends {
+	//	version, has := m.master.workerController.extenderSetting.Get(ext.Group, ext.Project)
+	//	if has {
+	//		if version == ext.Version {
+	//			continue
+	//		}
+	//		exts[fmt.Sprintf("%s:%s", ext.Group, ext.Project)] = version
+	//	}
+	//	installInfo.Extends = append(installInfo.Extends, ext)
+	//}
+	//data, _ := proto.Marshal(installInfo)
+	//response, err := newHelperProcess(data)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if response.Code != "000000" {
+	//	return nil, errors.New(response.Msg)
+	//}
+	//client := m.master.workerController.getClient()
+	//needRestart := false
+	//for _, r := range response.Extends {
+	//	if v, ok := exts[fmt.Sprintf("%s:%s", r.Group, r.Project)]; ok {
+	//		if v != r.Version {
+	//			needRestart = true
+	//			break
+	//		}
+	//	}
+	//}
+	//
+	//return response, nil
+	return nil, nil
 }
 
 //ExtendsUpdate 更新拓展
 func (m *MasterCliServer) ExtendsUpdate(ctx context.Context, request *service.ExtendsUpdateRequest) (*service.ExtendsResponse, error) {
-
+	return nil, nil
 }
 
 //ExtendsUninstall卸载拓展
 func (m *MasterCliServer) ExtendsUninstall(ctx context.Context, request *service.ExtendsUninstallRequest) (*service.ExtendsResponse, error) {
-
+	return nil, nil
 }
