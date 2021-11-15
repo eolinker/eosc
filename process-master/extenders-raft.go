@@ -3,6 +3,7 @@ package process_master
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -12,16 +13,19 @@ import (
 )
 
 type ExtenderSettingRaft struct {
-	locker  sync.Mutex
-	data    extenders.ITypedExtenderSetting
-	service raft_service.IService
+	locker     sync.Mutex
+	data       extenders.ITypedExtenderSetting
+	service    raft_service.IService
+	commitChan chan []string
 }
 
 func NewExtenderRaft(service raft_service.IService) *ExtenderSettingRaft {
+
 	return &ExtenderSettingRaft{
-		locker:  sync.Mutex{},
-		data:    extenders.NewInstallData(),
-		service: service,
+		locker:     sync.Mutex{},
+		data:       extenders.NewInstallData(),
+		service:    service,
+		commitChan: make(chan []string, 1),
 	}
 }
 
@@ -67,6 +71,12 @@ func (e *ExtenderSettingRaft) Append(cmd string, data []byte) error {
 func (e *ExtenderSettingRaft) Complete() error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
+	all := e.data.All()
+	data := make([]string, 0, len(all)
+	for key, value := range all {
+		data = append(data, fmt.Sprintf("%s:%s",key,value))
+	}
+	e.commitChan<-data
 	return nil
 }
 
@@ -77,9 +87,9 @@ func (e *ExtenderSettingRaft) ProcessHandler(cmd string, body []byte) ([]byte, i
 	case extenders.CommandDelete:
 		group, project, _ := e.readId(string(body))
 
-		data, has := e.data.Get(group, project)
+		version, has := e.data.Get(group, project)
 		if has {
-			return body, data, nil
+			return body, version, nil
 		}
 		return nil, nil, fmt.Errorf("%s:%s %w", group, project, extenders.ErrorNotExist)
 
@@ -89,6 +99,7 @@ func (e *ExtenderSettingRaft) ProcessHandler(cmd string, body []byte) ([]byte, i
 		if version != "" {
 			return nil, nil, fmt.Errorf("%s:%s %w", group, project, extenders.ErrorInvalidVersion)
 		}
+		e.data.Set(group, project, version)
 		return body, "", nil
 	}
 	return nil, "", fmt.Errorf("%s:%w", cmd, extenders.ErrorInvalidCommand)
@@ -113,8 +124,8 @@ func (e *ExtenderSettingRaft) CommitHandler(cmd string, data []byte) error {
 
 	case extenders.CommandSet:
 		group, project, version := e.readId(string(data))
+		e.commitChan <-[]string{string(data)}
 		e.data.Set(group, project, version)
-
 	}
 	return nil
 }
@@ -138,3 +149,26 @@ func (e *ExtenderSettingRaft) readId(id string) (group string, project string, v
 		return "", "", ""
 	}
 }
+
+func (e *ExtenderSettingRaft) run() {
+	todos := make([]string, 0)
+	for {
+		if len(todos) > 0 {
+			// TODO：加载操作，包括本地检查、下载、解压、加载拓展信息等操作
+			for _,t := range todos {
+				log.Println(t)
+			}
+			todos = make([]string, 0)
+		}
+		select {
+		case ids, ok := <-e.commitChan:
+			if !ok {
+				return
+			}
+			todos = append(todos, ids...)
+		}
+
+	}
+}
+
+
