@@ -15,7 +15,6 @@ var (
 )
 
 type ExtenderInfo struct {
-	*BasicInfo
 	Go       string `json:"go"`
 	Arch     string `json:"arch"`
 	Eosc     string `json:"eosc"`
