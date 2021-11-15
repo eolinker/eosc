@@ -8,7 +8,9 @@ var (
 
 type IFilter interface {
 	DoFilter(ctx IHttpContext, next IChain) (err error)
+	Destroy()
 }
 type IChain interface {
 	DoChain(ctx IHttpContext) error
+	Destroy()
 }

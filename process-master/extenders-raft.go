@@ -72,11 +72,11 @@ func (e *ExtenderSettingRaft) Complete() error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	all := e.data.All()
-	data := make([]string, 0, len(all)
+	data := make([]string, 0, len(all))
 	for key, value := range all {
-		data = append(data, fmt.Sprintf("%s:%s",key,value))
+		data = append(data, fmt.Sprintf("%s:%s", key, value))
 	}
-	e.commitChan<-data
+	e.commitChan <- data
 	return nil
 }
 
@@ -124,7 +124,7 @@ func (e *ExtenderSettingRaft) CommitHandler(cmd string, data []byte) error {
 
 	case extenders.CommandSet:
 		group, project, version := e.readId(string(data))
-		e.commitChan <-[]string{string(data)}
+		e.commitChan <- []string{string(data)}
 		e.data.Set(group, project, version)
 	}
 	return nil
@@ -155,7 +155,7 @@ func (e *ExtenderSettingRaft) run() {
 	for {
 		if len(todos) > 0 {
 			// TODO：加载操作，包括本地检查、下载、解压、加载拓展信息等操作
-			for _,t := range todos {
+			for _, t := range todos {
 				log.Println(t)
 			}
 			todos = make([]string, 0)
@@ -170,5 +170,3 @@ func (e *ExtenderSettingRaft) run() {
 
 	}
 }
-
-

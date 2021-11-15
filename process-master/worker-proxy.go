@@ -37,7 +37,7 @@ func (wc *WorkerServiceProxy) DelExtenderCheck(ctx context.Context, in *service.
 }
 
 func (wc *WorkerServiceProxy) GetWorkerProcess() service.WorkerServiceClient {
-	wc.locker.RLocker()
+	wc.locker.RLock()
 	c := wc.client
 	wc.locker.RUnlock()
 	return c
@@ -50,7 +50,9 @@ func (wc *WorkerServiceProxy) SetWorkerProcess(client service.WorkerServiceClien
 }
 
 func NewWorkerServiceProxy() *WorkerServiceProxy {
-	return &WorkerServiceProxy{}
+	return &WorkerServiceProxy{
+		locker: sync.RWMutex{},
+	}
 }
 func (wc *WorkerServiceProxy) DeleteCheck(ctx context.Context, in *service.WorkerDeleteRequest, opts ...grpc.CallOption) (*service.WorkerResponse, error) {
 
