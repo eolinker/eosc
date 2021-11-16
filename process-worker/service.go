@@ -47,7 +47,7 @@ func NewWorkerServer(workers IWorkers, extends ExtenderRegister, professions IPr
 		return nil, err
 	}
 	ws := &WorkerServer{
-
+		Server:      grpc.NewServer(),
 		workers:     workers,
 		extends:     extends,
 		professions: professions,

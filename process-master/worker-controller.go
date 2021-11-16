@@ -48,7 +48,6 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 	traffics, files := traffic.Export(3)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-
 	wc := &WorkerController{
 		workerServiceProxy: workerServiceProxy,
 		traffics:           traffics,

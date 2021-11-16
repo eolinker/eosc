@@ -48,6 +48,13 @@ func look(group, project, version string) ([]RegisterFunc, error) {
 	if has {
 		return inners, nil
 	}
+	if version == "" {
+		info, err := ExtenderInfoRequest(group, project, "latest")
+		if err != nil {
+			return nil, err
+		}
+		version = info.Version
+	}
 	dir := LocalExtenderPath(group, project, version)
 	_, err := os.Stat(dir)
 	if err != nil {

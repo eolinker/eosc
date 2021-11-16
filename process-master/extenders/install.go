@@ -3,19 +3,42 @@ package extenders
 import (
 	"fmt"
 
+	"github.com/eolinker/eosc/service"
+
 	"github.com/eolinker/eosc"
 )
+
+var _ ITypedExtenderSetting = (*ExtenderSetting)(nil)
 
 type ITypedExtenderSetting interface {
 	Set(group, project, version string)
 	Del(group, project string)
 	Get(group, project string) (version string, has bool)
+	GetPlugins(id string) ([]*service.Plugin, bool)
+	SetPlugins(id string, plugins []*service.Plugin)
 	All() map[string]string
 	Reset(map[string]string)
 }
 
 type ExtenderSetting struct {
-	data eosc.IUntyped
+	data    eosc.IUntyped
+	plugins eosc.IUntyped
+}
+
+func (i *ExtenderSetting) SetPlugins(id string, plugins []*service.Plugin) {
+	i.plugins.Set(id, plugins)
+}
+
+func (i *ExtenderSetting) GetPlugins(id string) ([]*service.Plugin, bool) {
+	v, has := i.plugins.Get(id)
+	if !has {
+		return nil, false
+	}
+	plugins, ok := v.([]*service.Plugin)
+	if !ok {
+		return nil, false
+	}
+	return plugins, true
 }
 
 func (i *ExtenderSetting) Reset(m map[string]string) {
