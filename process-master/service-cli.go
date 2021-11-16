@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/eolinker/eosc/common/fileLocker"
 	"github.com/eolinker/eosc/extends"
 
 	"github.com/eolinker/eosc/log"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/eolinker/eosc/raft"
 
@@ -107,12 +107,11 @@ func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest
 	}}, nil
 }
 
-//ExtendsInstall 安装拓展
-func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.ExtendsInstallRequest) (*service.ExtendsResponse, error) {
+func (m *MasterCliServer) getExtenders(exts []*service.ExtendsBasicInfo) []*service.ExtendsBasicInfo {
 	// requestExt：待安装的拓展列表，key为{group}:{project},值为版本列表，当有重复版本时，视为无效安装
-	requestExt := make(map[string][]*service.ExtendsInfo)
+	requestExt := make(map[string][]*service.ExtendsBasicInfo)
 
-	for _, ext := range request.Extends {
+	for _, ext := range exts {
 		formatProject := extends.FormatProject(ext.Group, ext.Project)
 		if _, ok := requestExt[formatProject]; ok {
 			// 当有重复版本时，视为无效安装，直接跳过
@@ -123,11 +122,25 @@ func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.E
 		if has && version == ext.Version {
 			continue
 		}
+		if ext.Version == "" {
+			info, err := extends.ExtenderInfoRequest(ext.Group, ext.Project, "latest")
+			if err != nil {
+				continue
+			}
+			ext.Version = info.Version
+		}
 		err := extends.LocalCheck(ext.Group, ext.Project, ext.Version)
 		if err != nil {
 			if err == extends.ErrorExtenderNotFindLocal {
 				// 当本地不存在当前插件时，从插件市场中下载
+				locker := fileLocker.NewLocker(extends.LocalExtenderPath(ext.Group, ext.Project, ext.Version), 30, fileLocker.CliLocker)
+				err = locker.TryLock()
+				if err != nil {
+					continue
+				}
+
 				err = extends.DownLoadToRepositoryById(extends.FormatDriverId(ext.Group, ext.Project, ext.Version))
+				locker.Unlock()
 				if err != nil {
 					log.Error("download extender to local error: ", err)
 					continue
@@ -135,39 +148,72 @@ func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.E
 			}
 		}
 	}
-	installInfo := &service.ExtendsInstallRequest{Extends: make([]*service.ExtendsInfo, 0, len(request.Extends))}
+	newExts := make([]*service.ExtendsBasicInfo, 0, len(requestExt))
 	for _, ext := range requestExt {
 		if len(ext) > 1 {
 			continue
 		}
-		installInfo.Extends = append(installInfo.Extends, ext[0])
+		newExts = append(exts, newExts[0])
 	}
-	// 检查本地是否存在当前插件
-	data, _ := proto.Marshal(installInfo)
-	response, err := newHelperProcess(data)
+	return newExts
+}
+
+//ExtendsInstall 安装拓展
+func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.ExtendsRequest) (*service.ExtendsResponse, error) {
+	es, err := checkExtends(m.getExtenders(request.Extends))
 	if err != nil {
 		return nil, err
 	}
-	if response.Code != "000000" {
-		return nil, errors.New(response.Msg)
+	response := &service.ExtendsResponse{
+		Msg:     "",
+		Code:    "000000",
+		Extends: make([]*service.ExtendsInfo, 0, len(es)),
 	}
-	for _, ext := range response.Extends {
+	for _, ext := range es {
 		err = m.extendsRaft.SetExtender(ext.Group, ext.Project, ext.Version)
 		if err != nil {
 			log.Error("set extender error: ", err)
 			continue
 		}
+		response.Extends = append(response.Extends, ext)
 	}
 	return response, nil
 }
 
 //ExtendsUpdate 更新拓展
-func (m *MasterCliServer) ExtendsUpdate(ctx context.Context, request *service.ExtendsUpdateRequest) (*service.ExtendsResponse, error) {
-
-	return nil, nil
+func (m *MasterCliServer) ExtendsUpdate(ctx context.Context, request *service.ExtendsRequest) (*service.ExtendsResponse, error) {
+	es, err := checkExtends(m.getExtenders(request.Extends))
+	if err != nil {
+		return nil, err
+	}
+	response := &service.ExtendsResponse{
+		Msg:     "",
+		Code:    "000000",
+		Extends: make([]*service.ExtendsInfo, 0, len(es)),
+	}
+	for _, ext := range es {
+		err = m.extendsRaft.SetExtender(ext.Group, ext.Project, ext.Version)
+		if err != nil {
+			log.Error("set extender error: ", err)
+			continue
+		}
+		response.Extends = append(response.Extends, ext)
+	}
+	return response, nil
 }
 
 //ExtendsUninstall卸载拓展
-func (m *MasterCliServer) ExtendsUninstall(ctx context.Context, request *service.ExtendsUninstallRequest) (*service.ExtendsResponse, error) {
-	return nil, nil
+func (m *MasterCliServer) ExtendsUninstall(ctx context.Context, request *service.ExtendsRequest) (*service.ExtendsUninstallResponse, error) {
+	response := &service.ExtendsUninstallResponse{
+		Msg:     "",
+		Code:    "000000",
+		Extends: make([]*service.ExtendsBasicInfo, 0, len(request.Extends)),
+	}
+	for _, ext := range request.Extends {
+		_, has := m.extendsRaft.DelExtender(ext.Group, ext.Project)
+		if has {
+			response.Extends = append(response.Extends, ext)
+		}
+	}
+	return response, nil
 }

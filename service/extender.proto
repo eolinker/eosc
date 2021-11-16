@@ -4,13 +4,19 @@ option go_package = "github.com/eolinker/eosc/service";
 package service;
 
 message ExtendsRequest {
-
+  repeated ExtendsBasicInfo extends = 1;
 }
 
 message ExtendsResponse {
   string msg = 1;
   string code = 2;
   repeated ExtendsInfo extends = 3;
+}
+
+message ExtendsBasicInfo {
+  string group = 1;
+  string project = 2;
+  string version = 3;
 }
 
 message ExtendsInfo {
@@ -23,15 +29,17 @@ message ExtendsInfo {
 }
 
 message ExtendsInstallRequest {
-  repeated ExtendsInfo extends = 1;
+  repeated ExtendsBasicInfo extends = 1;
 }
 
 message ExtendsUpdateRequest {
-  repeated ExtendsInfo extends = 1;
+  repeated ExtendsBasicInfo extends = 1;
 }
 
-message ExtendsUninstallRequest {
-  repeated ExtendsInfo extends = 1;
+message ExtendsUninstallResponse {
+  string msg = 1;
+  string code = 2;
+  repeated ExtendsBasicInfo extends = 3;
 }
 
 message Plugin {
