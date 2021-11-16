@@ -107,6 +107,7 @@ type IURIReader interface {
 	Scheme() string
 	RawURL() string
 	Host() string
+	Path() string
 	IQueryReader
 }
 
@@ -115,6 +116,7 @@ type IURIWriter interface {
 	IQueryWriter
 	//SetRequestURI(uri string)
 	SetPath(string)
+	SetScheme(scheme string)
 	SetHost(host string)
 }
 
