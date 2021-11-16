@@ -34,13 +34,13 @@ func Process() {
 		log.Error("read stdin data error: ", err)
 		return
 	}
-	installInfo := new(service.ExtendsInstallRequest)
-	err = proto.Unmarshal(inData, installInfo)
+	request := new(service.ExtendsRequest)
+	err = proto.Unmarshal(inData, request)
 	if err != nil {
 		log.Error("data unmarshal error: ", err)
 		return
 	}
-	data, err := proto.Marshal(getExtenders(installInfo.Extends))
+	data, err := proto.Marshal(getExtenders(request.Extends))
 	if err != nil {
 		log.Error("data marshal error: ", err)
 		return
@@ -48,7 +48,7 @@ func Process() {
 	io.WriteString(os.Stdout, string(data))
 }
 
-func getExtenders(es []*service.ExtendsInfo) *service.ExtendsResponse {
+func getExtenders(es []*service.ExtendsBasicInfo) *service.ExtendsResponse {
 	data := &service.ExtendsResponse{
 		Extends: make([]*service.ExtendsInfo, 0, len(es)),
 	}

@@ -120,6 +120,7 @@ func (m *MasterCliServer) getExtenders(exts []*service.ExtendsBasicInfo) []*serv
 		}
 		version, has := m.extendsRaft.data.Get(ext.Group, ext.Project)
 		if has && version == ext.Version {
+			// 版本号相同则忽略
 			continue
 		}
 		if ext.Version == "" {
