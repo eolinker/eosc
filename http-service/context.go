@@ -13,9 +13,10 @@ type IHttpContext interface {
 	Context() context.Context
 	Value(key interface{}) interface{}
 	WithValue(key, val interface{})
-	Request() IRequestReader      // 读取原始请求
-	Proxy() IRequest              // 读写转发请求
-	Response() (IResponse, error) // 处理返回结果，可读可写
+	Request() IRequestReader // 读取原始请求
+	Proxy() IRequest         // 读写转发请求
+	Response() IResponse     // 处理返回结果，可读可写
+	ResponseError() error
 	SendTo(address string, timeout time.Duration) error
 }
 
@@ -33,6 +34,13 @@ type IHeaderWriter interface {
 	SetHost(host string)
 }
 
+type IResponseHeader interface {
+	GetHeader(name string) string
+	Headers() http.Header
+	SetHeader(key, value string)
+	AddHeader(key, value string)
+	DelHeader(key string)
+}
 type IBodyGet interface {
 	GetBody() []byte
 }
@@ -98,12 +106,14 @@ type IURIReader interface {
 	RequestURI() string
 	Scheme() string
 	RawURL() string
+	Host() string
 	IQueryReader
 }
 
 type IURIWriter interface {
 	IURIReader
-	SetRequestURI(uri string)
+	IQueryWriter
+	//SetRequestURI(uri string)
 	SetPath(string)
 	SetHost(host string)
 }
@@ -130,10 +140,9 @@ type IRequest interface {
 
 // 返回给client端的
 type IResponse interface {
-	IHeaderReader
-	IBodyGet
 	IStatusGet
-	IHeaderWriter
+	IResponseHeader
 	IStatusSet // 设置返回状态
 	IBodySet   // 设置返回内容
+	IBodyGet
 }
