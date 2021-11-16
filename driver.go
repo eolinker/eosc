@@ -5,7 +5,7 @@ import (
 )
 
 type IExtenderDriverFactory interface {
-	Create(profession string, name string, label string, desc string, params map[string]string) (IExtenderDriver, error)
+	Create(profession string, name string, label string, desc string, params map[string]interface{}) (IExtenderDriver, error)
 }
 type IExtenderConfigChecker interface {
 	Check(v interface{}, workers map[RequireId]interface{}) error

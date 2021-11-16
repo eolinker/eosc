@@ -15,8 +15,8 @@ import (
 
 const (
 	lockerSuffix = ".swap"
-	masterLocker = "master"
-	cliLocker    = "cli"
+	MasterLocker = "master"
+	CliLocker    = "cli"
 )
 
 var (
@@ -31,6 +31,9 @@ type Locker struct {
 }
 
 func NewLocker(path string, timeout int, name string) *Locker {
+	if path == "" {
+		path = "."
+	}
 	return &Locker{path: fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), lockerSuffix), timeout: int64(time.Duration(timeout) * time.Second), name: name}
 }
 

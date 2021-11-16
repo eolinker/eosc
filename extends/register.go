@@ -35,7 +35,7 @@ func (r *ExtenderRegister) RegisterTo(register eosc.IExtenderDriverRegister) {
 func (r *ExtenderRegister) All() []string {
 	rs := make([]string, 0, len(r.data))
 	for n := range r.data {
-		rs = append(rs, FormatDriverId(r.group, r.project, n))
+		rs = append(rs, n)
 	}
 	return rs
 }

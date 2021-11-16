@@ -3,7 +3,6 @@ package process_worker
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"reflect"
 	"sync"
 
@@ -11,8 +10,6 @@ import (
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 type IWorkers interface {
@@ -21,26 +18,10 @@ type IWorkers interface {
 	Check(id, profession, name, driverName string, body []byte) error
 	Set(id, profession, name, driverName string, body []byte) error
 	RequiredCount(id string) int
-	ResourcesPort() []int32
+	Reset(wdl []*eosc.WorkerConfig) error
 }
 
 var _ IWorkers = (*WorkerManager)(nil)
-
-func ReadWorkers(r io.Reader) []*eosc.WorkerConfig {
-	frame, err := utils.ReadFrame(r)
-	if err != nil {
-		log.Warn("read  workerIds frame :", err)
-
-		return nil
-	}
-
-	wd := new(eosc.WorkerConfigs)
-	if e := proto.Unmarshal(frame, wd); e != nil {
-		log.Warn("unmarshal workerIds data :", e)
-		return nil
-	}
-	return wd.Data
-}
 
 type WorkerManager struct {
 	locker         sync.Mutex
@@ -59,6 +40,9 @@ func (wm *WorkerManager) RequiredCount(id string) int {
 }
 
 func (wm *WorkerManager) Check(id, profession, name, driverName string, body []byte) error {
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+
 	p, has := wm.professions.Get(profession)
 	if !has {
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
@@ -117,27 +101,37 @@ func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
 	return nil, false
 }
 
-func NewWorkerManager(professions IProfessions) *WorkerManager {
+func NewWorkerManager(profession IProfessions) *WorkerManager {
 	return &WorkerManager{
+		professions:    profession,
 		locker:         sync.Mutex{},
-		professions:    professions,
 		data:           NewTypedWorkers(),
 		requireManager: NewWorkerRequireManager(),
 		portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
 
-func (wm *WorkerManager) Init(wdl []*eosc.WorkerConfig) error {
-
+func (wm *WorkerManager) Reset(wdl []*eosc.WorkerConfig) error {
 	ps := wm.professions.Sort()
 
 	pm := make(map[string][]*eosc.WorkerConfig)
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
+
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+
+	olddata := wm.data
+	wm.data = NewTypedWorkers()
+
 	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
 		for _, wd := range pm[p.Name] {
+			old, has := olddata.Del(wd.Id)
+			if has {
+				wm.data.Set(wd.Id, old)
+			}
 			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
 			if err := wm.Set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
 				log.Error("init set worker: ", err)
@@ -145,11 +139,18 @@ func (wm *WorkerManager) Init(wdl []*eosc.WorkerConfig) error {
 			}
 		}
 	}
-
+	for _, ov := range olddata.All() {
+		ov.Stop()
+	}
 	return nil
 }
 
 func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byte) error {
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+	return wm.set(id, profession, name, driverName, body)
+}
+func (wm *WorkerManager) set(id, profession, name, driverName string, body []byte) error {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)

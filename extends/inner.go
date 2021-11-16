@@ -1,7 +1,6 @@
 package extends
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/eolinker/eosc"
@@ -57,15 +56,25 @@ func LoadInner(register eosc.IExtenderDriverRegister) {
 		}
 	}
 }
-func GetInners() []string {
+func GetInners() map[string]string {
 	innerLock.Lock()
 	defer innerLock.Unlock()
-	rs := make([]string, 0, projectCount)
+	rs := make(map[string]string)
 	for group, projects := range innerExtender {
-		for project := range projects {
 
-			rs = append(rs, fmt.Sprint(group, ":", project))
+		for project := range projects {
+			rs[group] = project
 		}
 	}
 	return rs
+}
+func IsInner(group, project string) bool {
+	innerLock.Lock()
+	defer innerLock.Unlock()
+
+	if projects, has := innerExtender[group]; has {
+		_, has := projects[project]
+		return has
+	}
+	return false
 }

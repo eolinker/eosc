@@ -35,7 +35,7 @@ func (m *Master) startService() error {
 
 	grpcServer := grpc.NewServer()
 
-	service.RegisterCtiServiceServer(grpcServer, NewMasterCliServer(m))
+	service.RegisterCtiServiceServer(grpcServer, NewMasterCliServer(m.node, m.extenderSettingRaft))
 	service.RegisterMasterServer(grpcServer, NewMasterServiceServer())
 	go func() {
 		err := grpcServer.Serve(l)

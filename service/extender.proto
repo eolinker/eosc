@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+option go_package = "github.com/eolinker/eosc/service";
+package service;
+
+message ExtendsRequest {
+  repeated ExtendsBasicInfo extends = 1;
+}
+
+message ExtendsResponse {
+  string msg = 1;
+  string code = 2;
+  repeated ExtendsInfo extends = 3;
+}
+
+message ExtendsBasicInfo {
+  string group = 1;
+  string project = 2;
+  string version = 3;
+}
+
+message ExtendsInfo {
+  string id = 1;
+  string name = 2;
+  string group = 3;
+  string project = 4;
+  string version = 5;
+  repeated Plugin plugins = 6;
+}
+
+message ExtendsInstallRequest {
+  repeated ExtendsBasicInfo extends = 1;
+}
+
+message ExtendsUpdateRequest {
+  repeated ExtendsBasicInfo extends = 1;
+}
+
+message ExtendsUninstallResponse {
+  string msg = 1;
+  string code = 2;
+  repeated ExtendsBasicInfo extends = 3;
+}
+
+message Plugin {
+  string id = 1; // {group}:{project}:{name}
+  string name = 2;
+  string group = 3;
+  string project = 4;
+}

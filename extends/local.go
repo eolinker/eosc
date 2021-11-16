@@ -12,6 +12,7 @@ const (
 
 //LocalCheck 检查本地拓展文件是否存在
 func LocalCheck(group, project, version string) error {
+
 	dir := LocalExtenderPath(group, project, version)
 	_, err := os.Stat(dir)
 	if err != nil {

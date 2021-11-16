@@ -48,7 +48,6 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 	traffics, files := traffic.Export(3)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-
 	wc := &WorkerController{
 		workerServiceProxy: workerServiceProxy,
 		traffics:           traffics,
@@ -116,7 +115,7 @@ func (wc *WorkerController) restart() bool {
 		}
 		return true
 	}
-	oldExtenderSetting := process.args.ExtenderSetting
+	oldExtenderSetting := process.extenderSetting
 	deletedExtenderSetting := process.extendersDeleted
 	extenderSetting := wc.extenderSetting.All()
 
@@ -152,6 +151,8 @@ func (wc *WorkerController) restart() bool {
 				}
 				return true
 			}
+			// 以删除的版本一致
+			delete(deletedExtenderSetting, id)
 		}
 		oldExtenderSetting[id] = version
 	}
@@ -266,6 +267,8 @@ func (wc *WorkerController) raftCommitEvent(namespace, cmd string) {
 	case extenders.NamespaceExtenders:
 		switch cmd {
 		case extenders.CommandSet:
+			wc.tryRestart()
+		case extenders.CommandDelete:
 			wc.tryRestart()
 		}
 	}
