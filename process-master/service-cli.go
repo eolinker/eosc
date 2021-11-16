@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/eolinker/eosc/extends"
+
 	"github.com/eolinker/eosc/log"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/eolinker/eosc/raft"
 
@@ -106,43 +109,61 @@ func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest
 
 //ExtendsInstall 安装拓展
 func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.ExtendsInstallRequest) (*service.ExtendsResponse, error) {
-	//installInfo := &service.ExtendsInstallRequest{Extends: make([]*service.ExtendsInfo, 0, len(request.Extends))}
-	//exts := make(map[string]string)
-	//for _, ext := range request.Extends {
-	//	version, has := m.master.workerController.extenderSetting.Get(ext.Group, ext.Project)
-	//	if has {
-	//		if version == ext.Version {
-	//			continue
-	//		}
-	//		exts[fmt.Sprintf("%s:%s", ext.Group, ext.Project)] = version
-	//	}
-	//	installInfo.Extends = append(installInfo.Extends, ext)
-	//}
-	//data, _ := proto.Marshal(installInfo)
-	//response, err := newHelperProcess(data)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if response.Code != "000000" {
-	//	return nil, errors.New(response.Msg)
-	//}
-	//client := m.master.workerController.getClient()
-	//needRestart := false
-	//for _, r := range response.Extends {
-	//	if v, ok := exts[fmt.Sprintf("%s:%s", r.Group, r.Project)]; ok {
-	//		if v != r.Version {
-	//			needRestart = true
-	//			break
-	//		}
-	//	}
-	//}
-	//
-	//return response, nil
-	return nil, nil
+	// requestExt：待安装的拓展列表，key为{group}:{project},值为版本列表，当有重复版本时，视为无效安装
+	requestExt := make(map[string][]*service.ExtendsInfo)
+
+	for _, ext := range request.Extends {
+		formatProject := extends.FormatProject(ext.Group, ext.Project)
+		if _, ok := requestExt[formatProject]; ok {
+			// 当有重复版本时，视为无效安装，直接跳过
+			requestExt[formatProject] = append(requestExt[formatProject], ext)
+			continue
+		}
+		version, has := m.extendsRaft.data.Get(ext.Group, ext.Project)
+		if has && version == ext.Version {
+			continue
+		}
+		err := extends.LocalCheck(ext.Group, ext.Project, ext.Version)
+		if err != nil {
+			if err == extends.ErrorExtenderNotFindLocal {
+				// 当本地不存在当前插件时，从插件市场中下载
+				err = extends.DownLoadToRepositoryById(extends.FormatDriverId(ext.Group, ext.Project, ext.Version))
+				if err != nil {
+					log.Error("download extender to local error: ", err)
+					continue
+				}
+			}
+		}
+	}
+	installInfo := &service.ExtendsInstallRequest{Extends: make([]*service.ExtendsInfo, 0, len(request.Extends))}
+	for _, ext := range requestExt {
+		if len(ext) > 1 {
+			continue
+		}
+		installInfo.Extends = append(installInfo.Extends, ext[0])
+	}
+	// 检查本地是否存在当前插件
+	data, _ := proto.Marshal(installInfo)
+	response, err := newHelperProcess(data)
+	if err != nil {
+		return nil, err
+	}
+	if response.Code != "000000" {
+		return nil, errors.New(response.Msg)
+	}
+	for _, ext := range response.Extends {
+		err = m.extendsRaft.SetExtender(ext.Group, ext.Project, ext.Version)
+		if err != nil {
+			log.Error("set extender error: ", err)
+			continue
+		}
+	}
+	return response, nil
 }
 
 //ExtendsUpdate 更新拓展
 func (m *MasterCliServer) ExtendsUpdate(ctx context.Context, request *service.ExtendsUpdateRequest) (*service.ExtendsResponse, error) {
+
 	return nil, nil
 }
 
