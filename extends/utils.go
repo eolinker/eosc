@@ -27,6 +27,10 @@ func DecodeExtenderId(id string) (group, project, version string, err error) {
 	return "", "", "", fmt.Errorf("%w:%s", ErrorInvalidExtenderId, id)
 }
 
+func FormatProject(group, project string) string {
+	return fmt.Sprint(group, ":", project)
+}
+
 func FormatDriverId(group, project, fac string) string {
 	return fmt.Sprint(group, ":", project, ":", fac)
 }

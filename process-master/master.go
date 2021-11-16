@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/eolinker/eosc/process-master/extenders"
+
 	"github.com/eolinker/eosc/config"
 
 	"github.com/eolinker/eosc/env"
@@ -71,12 +73,13 @@ type Master struct {
 	masterSrv     *grpc.Server
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
+
 	//PID           *pidfile.PidFile
 	httpserver *http.Server
 
-	admin *admin.Admin
-
-	workerController *WorkerController
+	admin               *admin.Admin
+	extenderSettingRaft *ExtenderSettingRaft
+	workerController    *WorkerController
 }
 
 type MasterHandler struct {
@@ -103,6 +106,7 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 
 	professionRaft := NewProfessionRaft(handler.Professions)
 	extenderRaft := NewExtenderRaft(raftService)
+	m.extenderSettingRaft = extenderRaft
 	workerRaft := NewWorkersRaft(workersConfig, handler.Professions, workerServiceProxy, raftService)
 
 	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy)
@@ -110,7 +114,11 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	raftService.AddEventHandler(m.workerController.raftEvent)
 	raftService.AddCommitEventHandler(m.workerController.raftCommitEvent)
 
-	raftService.SetHandlers(raft_service.NewCreateHandler(workers.SpaceWorker, workerRaft), raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft))
+	raftService.SetHandlers(
+		raft_service.NewCreateHandler(workers.SpaceWorker, workerRaft),
+		raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft),
+		raft_service.NewCreateHandler(extenders.NamespaceExtenders, extenderRaft),
+	)
 	node, err := raft.NewNode(raftService)
 	if err != nil {
 		log.Error(err)
