@@ -93,7 +93,7 @@ func NewProcessWorker() (*ProcessWorker, error) {
 	tf := createTraffic(arg.Traffic)
 	professions := NewProfessions()
 	professions.Reset(arg.Professions, register)
-	wm := NewWorkerManager()
+	wm := NewWorkerManager(professions)
 	workerServer, err := NewWorkerServer(wm, register, professions)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func NewProcessWorker() (*ProcessWorker, error) {
 	bean.Injection(&arg.ListensMsg)
 	bean.Check()
 
-	err = wm.Reset(professions, arg.Workers)
+	err = wm.Reset(arg.Workers)
 	if err != nil {
 		log.Warn("worker configs error:", err)
 		return nil, err

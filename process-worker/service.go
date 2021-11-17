@@ -76,12 +76,13 @@ func (ws *WorkerServer) AddExtender(ctx context.Context, extender *service.Worke
 		rg, err := extends.ReadExtenderProject(group, project, version)
 		if err != nil {
 			errors.WriteString(fmt.Sprint(id, ":", err, "\n"))
+			continue
 		}
 		rg.RegisterTo(ws.extends)
 	}
 	return &service.WorkerResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: "",
+		Message: errors.String(),
 	}, nil
 }
 
@@ -93,8 +94,12 @@ func (ws *WorkerServer) DelExtenderCheck(ctx context.Context, extender *service.
 }
 
 func (ws *WorkerServer) Reset(ctx context.Context, request *service.ResetRequest) (*service.WorkerResponse, error) {
-	ws.professions.Reset(request.Professions, ws.extends)
-
+	if request.Professions != nil {
+		ws.professions.Reset(request.Professions, ws.extends)
+	}
+	if request.Workers != nil {
+		ws.workers.Reset(request.Workers)
+	}
 	return &service.WorkerResponse{
 		Status:  service.WorkerStatusCode_SUCCESS,
 		Message: "",
