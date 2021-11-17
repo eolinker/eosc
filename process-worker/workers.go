@@ -18,8 +18,7 @@ type IWorkers interface {
 	Check(id, profession, name, driverName string, body []byte) error
 	Set(id, profession, name, driverName string, body []byte) error
 	RequiredCount(id string) int
-	ResourcesPort() []int32
-	Reset(professions IProfessions, wdl []*eosc.WorkerConfig) error
+	Reset(wdl []*eosc.WorkerConfig) error
 }
 
 var _ IWorkers = (*WorkerManager)(nil)
@@ -41,6 +40,9 @@ func (wm *WorkerManager) RequiredCount(id string) int {
 }
 
 func (wm *WorkerManager) Check(id, profession, name, driverName string, body []byte) error {
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+
 	p, has := wm.professions.Get(profession)
 	if !has {
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
@@ -99,8 +101,9 @@ func (wm *WorkerManager) Get(id string) (eosc.IWorker, bool) {
 	return nil, false
 }
 
-func NewWorkerManager() *WorkerManager {
+func NewWorkerManager(profession IProfessions) *WorkerManager {
 	return &WorkerManager{
+		professions:    profession,
 		locker:         sync.Mutex{},
 		data:           NewTypedWorkers(),
 		requireManager: NewWorkerRequireManager(),
@@ -108,18 +111,27 @@ func NewWorkerManager() *WorkerManager {
 	}
 }
 
-func (wm *WorkerManager) Reset(professions IProfessions, wdl []*eosc.WorkerConfig) error {
-	wm.professions = professions
-
+func (wm *WorkerManager) Reset(wdl []*eosc.WorkerConfig) error {
 	ps := wm.professions.Sort()
 
 	pm := make(map[string][]*eosc.WorkerConfig)
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
+
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+
+	olddata := wm.data
+	wm.data = NewTypedWorkers()
+
 	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
 		for _, wd := range pm[p.Name] {
+			old, has := olddata.Del(wd.Id)
+			if has {
+				wm.data.Set(wd.Id, old)
+			}
 			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
 			if err := wm.Set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
 				log.Error("init set worker: ", err)
@@ -127,11 +139,18 @@ func (wm *WorkerManager) Reset(professions IProfessions, wdl []*eosc.WorkerConfi
 			}
 		}
 	}
-
+	for _, ov := range olddata.All() {
+		ov.Stop()
+	}
 	return nil
 }
 
 func (wm *WorkerManager) Set(id, profession, name, driverName string, body []byte) error {
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+	return wm.set(id, profession, name, driverName, body)
+}
+func (wm *WorkerManager) set(id, profession, name, driverName string, body []byte) error {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)

@@ -10,10 +10,20 @@ type ITypedWorkers interface {
 	Set(id string, w *Worker)
 	Del(id string) (*Worker, bool)
 	Get(id string) (*Worker, bool)
+	All() []*Worker
 }
 
 type TypedWorkers struct {
 	data eosc.IUntyped
+}
+
+func (wd *TypedWorkers) All() []*Worker {
+	all := wd.data.List()
+	list := make([]*Worker, 0, len(all))
+	for _, v := range all {
+		list = append(list, v.(*Worker))
+	}
+	return list
 }
 
 func NewTypedWorkers() *TypedWorkers {
