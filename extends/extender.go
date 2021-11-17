@@ -98,9 +98,23 @@ type ExtenderVersion struct {
 	Arches []string `json:"arches"`
 }
 
+func getArchQuery() url.Values {
+	query := url.Values{}
+	query.Add("go", runtime.Version())
+	query.Add("arch", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH))
+	query.Add("eosc", eosc.Version())
+	return query
+}
+
 func ExtendersRequest(group, project string) ([]*ExtenderVersion, error) {
 	uri := fmt.Sprintf("%s/api/%s/%s", env.ExtenderMarkAddr(), group, project)
-	resp, err := http.Get(uri)
+
+	req, err := http.NewRequest("GET", uri, strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = getArchQuery().Encode()
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -124,15 +138,12 @@ func ExtendersRequest(group, project string) ([]*ExtenderVersion, error) {
 
 func ExtenderInfoRequest(group, project, version string) (*ExtenderInfo, error) {
 	uri := fmt.Sprintf("%s/api/%s/%s/%s", env.ExtenderMarkAddr(), group, project, version)
-	query := url.Values{}
-	query.Add("go", runtime.Version())
-	query.Add("arch", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH))
-	query.Add("eosc", eosc.Version())
+
 	req, err := http.NewRequest("GET", uri, strings.NewReader(""))
 	if err != nil {
 		return nil, err
 	}
-	req.URL.RawQuery = query.Encode()
+	req.URL.RawQuery = getArchQuery().Encode()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
