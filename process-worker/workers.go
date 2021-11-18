@@ -133,7 +133,7 @@ func (wm *WorkerManager) Reset(wdl []*eosc.WorkerConfig) error {
 				wm.data.Set(wd.Id, old)
 			}
 			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
-			if err := wm.Set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
+			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
 				log.Error("init set worker: ", err)
 				continue
 			}
@@ -178,8 +178,8 @@ func (wm *WorkerManager) set(id, profession, name, driverName string, body []byt
 			return e
 		}
 	}
-	wm.locker.Lock()
-	defer wm.locker.Unlock()
+	//wm.locker.Lock()
+	//defer wm.locker.Unlock()
 
 	// if update
 	o, has := wm.data.Get(id)

@@ -127,6 +127,6 @@ func NewHttpService(listener net.Listener) *HttpService {
 }
 
 func NotFound(ctx *fasthttp.RequestCtx) {
-	ctx.NotFound()
+	ctx.Error("iilegal path", 500)
 	return
 }

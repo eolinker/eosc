@@ -155,6 +155,7 @@ func readArg() *service.WorkerLoadArg {
 		log.Warn("unmarshal arg fail:", err)
 		return arg
 	}
+	log.Debug("read arg: ", arg)
 	return arg
 }
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {

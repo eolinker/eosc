@@ -193,7 +193,7 @@ func (wc *WorkerController) NewWorker() error {
 		return err
 	}
 
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(10000 * time.Millisecond)
 	defer ticker.Stop()
 	defer utils.Timeout("wait worker process start:")()
 
