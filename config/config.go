@@ -35,6 +35,9 @@ func (c *Config) Ports() []int {
 	}
 	ports := make([]int, 0, portLen)
 	ports = append(ports, c.Listen...)
+	if c.SSL == nil {
+		return ports
+	}
 	for _, p := range c.SSL.Listen {
 		ports = append(ports, p.Port)
 	}
