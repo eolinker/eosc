@@ -42,6 +42,9 @@ type WorkerController struct {
 	cancelFunc context.CancelFunc
 
 	restartChan chan int
+
+	startedChannel chan int
+	onceStartDo    sync.Once
 }
 
 func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy) *WorkerController {
@@ -59,11 +62,14 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 		ctx:                ctx,
 		cancelFunc:         cancelFunc,
 		restartChan:        make(chan int, 1),
+		startedChannel:     make(chan int),
 	}
 	go wc.doControl()
 	return wc
 }
-
+func (wc *WorkerController) WaitStart() {
+	<-wc.startedChannel
+}
 func (wc *WorkerController) Stop() {
 	wc.locker.Lock()
 	defer wc.locker.Unlock()
@@ -201,6 +207,9 @@ func (wc *WorkerController) NewWorker() error {
 
 		_, err := wc.workerServiceProxy.Ping(context.TODO(), &service.WorkerHelloRequest{Hello: "hello"})
 		if err == nil {
+			wc.onceStartDo.Do(func() {
+				close(wc.startedChannel)
+			})
 			return nil
 		}
 

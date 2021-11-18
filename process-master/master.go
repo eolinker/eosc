@@ -167,14 +167,16 @@ func (m *Master) Start(handler *MasterHandler) error {
 	}
 
 	m.startHttp(l)
-	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
-		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
-	}
+
 	log.Info("process-master start grpc service")
 	err = m.startService()
 	if err != nil {
 		log.Error("process-master start  grpc server error: ", err.Error())
 		return err
+	}
+	m.workerController.WaitStart()
+	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
+		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 	return nil
 
