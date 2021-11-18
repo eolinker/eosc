@@ -159,12 +159,8 @@ func readArg() *service.WorkerLoadArg {
 }
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
 	t := traffic.NewTraffic()
-	reader, err := toReader(tfConf)
-	if err != nil {
-		log.Error("encode traffic :", err)
-		return t
-	}
-	err = t.Read(reader)
+
+	err := t.Read(tfConf)
 	if err != nil {
 		log.Error("read traffic :", err)
 		return t
