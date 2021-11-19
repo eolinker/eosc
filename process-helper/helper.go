@@ -10,7 +10,6 @@ package process_helper
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 
@@ -45,11 +44,13 @@ func Process() {
 		log.Error("data marshal error: ", err)
 		return
 	}
-	io.WriteString(os.Stdout, string(data))
+	os.Stdout.Write(data)
 }
 
 func getExtenders(es []*service.ExtendsBasicInfo) *service.ExtendsResponse {
 	data := &service.ExtendsResponse{
+		Msg:     "",
+		Code:    "000000",
 		Extends: make([]*service.ExtendsInfo, 0, len(es)),
 	}
 	for _, ex := range es {

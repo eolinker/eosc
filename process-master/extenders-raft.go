@@ -96,7 +96,7 @@ func (e *ExtenderSettingRaft) ProcessHandler(cmd string, body []byte) ([]byte, i
 	case extenders.CommandSet:
 		group, project, version := e.readId(string(body))
 
-		if version != "" {
+		if version == "" {
 			return nil, nil, fmt.Errorf("%s:%s %w", group, project, extenders.ErrorInvalidVersion)
 		}
 		e.data.Set(group, project, version)

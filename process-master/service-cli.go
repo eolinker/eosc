@@ -3,6 +3,7 @@ package process_master
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/eolinker/eosc/common/fileLocker"
 	"github.com/eolinker/eosc/extends"
@@ -134,27 +135,35 @@ func (m *MasterCliServer) getExtenders(exts []*service.ExtendsBasicInfo) []*serv
 		if err != nil {
 			if err == extends.ErrorExtenderNotFindLocal {
 				// 当本地不存在当前插件时，从插件市场中下载
+				path := extends.LocalExtenderPath(ext.Group, ext.Project, ext.Version)
+				err := os.MkdirAll(path, 0755)
+				if err != nil {
+					log.Error("create extender path ", path, " error: ", err)
+					continue
+				}
 				locker := fileLocker.NewLocker(extends.LocalExtenderPath(ext.Group, ext.Project, ext.Version), 30, fileLocker.CliLocker)
 				err = locker.TryLock()
 				if err != nil {
+					log.Error("locker error: ", err)
 					continue
 				}
 
 				err = extends.DownLoadToRepositoryById(extends.FormatDriverId(ext.Group, ext.Project, ext.Version))
-				locker.Unlock()
+				//locker.Unlock()
 				if err != nil {
 					log.Error("download extender to local error: ", err)
 					continue
 				}
 			}
 		}
+		requestExt[formatProject] = []*service.ExtendsBasicInfo{ext}
 	}
 	newExts := make([]*service.ExtendsBasicInfo, 0, len(requestExt))
 	for _, ext := range requestExt {
 		if len(ext) > 1 {
 			continue
 		}
-		newExts = append(exts, newExts[0])
+		newExts = append(newExts, ext[0])
 	}
 	return newExts
 }
