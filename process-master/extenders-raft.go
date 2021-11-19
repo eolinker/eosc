@@ -21,12 +21,14 @@ type ExtenderSettingRaft struct {
 
 func NewExtenderRaft(service raft_service.IService) *ExtenderSettingRaft {
 
-	return &ExtenderSettingRaft{
+	e := &ExtenderSettingRaft{
 		locker:     sync.Mutex{},
 		data:       extenders.NewInstallData(),
 		service:    service,
 		commitChan: make(chan []string, 1),
 	}
+	go e.run()
+	return e
 }
 
 func (e *ExtenderSettingRaft) SetExtender(group, project, version string) error {
@@ -40,7 +42,7 @@ func (e *ExtenderSettingRaft) SetExtender(group, project, version string) error 
 
 func (e *ExtenderSettingRaft) DelExtender(group, project string) (string, bool) {
 
-	d, err := e.service.Send(extenders.NamespaceExtenders, extenders.CommandSet, []byte(fmt.Sprint(group, ":", project)))
+	d, err := e.service.Send(extenders.NamespaceExtenders, extenders.CommandDelete, []byte(fmt.Sprint(group, ":", project)))
 	if err != nil {
 		return "", false
 	}

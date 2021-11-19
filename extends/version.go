@@ -3,6 +3,7 @@ package extends
 import (
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/eolinker/eosc"
 )
@@ -34,5 +35,5 @@ func GetAvailableVersions(group, project string) ([]*VersionInfo, error) {
 
 //Arch 当前架构环境，[{go版本}-{eosc版本}-{架构}]
 func Arch() string {
-	return fmt.Sprintf("%s-%s-%s", runtime.Version(), eosc.Version(), runtime.GOARCH)
+	return fmt.Sprintf("%s-%s-%s-%s", strings.TrimPrefix(runtime.Version(), "go"), eosc.Version(), runtime.GOOS, runtime.GOARCH)
 }

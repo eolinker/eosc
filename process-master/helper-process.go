@@ -3,7 +3,6 @@ package process_master
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/golang/protobuf/proto"
@@ -58,7 +57,6 @@ func checkExtends(exts []*service.ExtendsBasicInfo) ([]*service.ExtendsInfo, err
 	}
 	cmd.Wait()
 
-	fmt.Println(buff.String())
 	response := new(service.ExtendsResponse)
 
 	err = proto.Unmarshal(buff.Bytes(), response)
