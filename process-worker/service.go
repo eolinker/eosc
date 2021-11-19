@@ -25,7 +25,7 @@ var (
 )
 
 type ExtenderRegister interface {
-	eosc.IExtenderDriverRegister
+	eosc.IExtenderDriverManager
 	eosc.IExtenderDrivers
 }
 type WorkerServer struct {
@@ -87,6 +87,12 @@ func (ws *WorkerServer) AddExtender(ctx context.Context, extender *service.Worke
 }
 
 func (ws *WorkerServer) DelExtenderCheck(ctx context.Context, extender *service.WorkerDelExtender) (*service.WorkerResponse, error) {
+
+	if extender != nil {
+		for _, id := range extender.Extenders {
+			ws.extends.Remove(id)
+		}
+	}
 
 	return &service.WorkerResponse{
 		Status: service.WorkerStatusCode_SUCCESS,

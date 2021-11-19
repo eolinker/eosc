@@ -9,8 +9,6 @@
 package process_worker
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -167,14 +165,4 @@ func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
 		return t
 	}
 	return t
-}
-func toReader(tf []*traffic.PbTraffic) (io.Reader, error) {
-	pbs := &traffic.PbTraffics{
-		Traffic: tf,
-	}
-	data, err := proto.Marshal(pbs)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(data), nil
 }

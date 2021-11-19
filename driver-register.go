@@ -10,6 +10,10 @@ type ExtenderRegister struct {
 	data IRegister
 }
 
+func (p *ExtenderRegister) Remove(name string) {
+
+}
+
 func (p *ExtenderRegister) RegisterExtenderDriver(name string, factory IExtenderDriverFactory) error {
 	err := p.data.Register(name, factory, false)
 	if err != nil {
@@ -37,4 +41,8 @@ type IExtenderDriverRegister interface {
 
 type IExtenderDrivers interface {
 	GetDriver(name string) (IExtenderDriverFactory, bool)
+}
+type IExtenderDriverManager interface {
+	IExtenderDriverRegister
+	Remove(name string)
 }
