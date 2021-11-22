@@ -3,15 +3,15 @@ package eosc
 type IRegister interface {
 	Register(name string, obj interface{}, force bool) error
 	Get(name string) (interface{}, bool)
-}
-
-type IRegisterData interface {
-	Set(name string, v interface{})
-	Get(name string) (interface{}, bool)
+	Del(name string) (interface{}, bool)
 }
 
 type Register struct {
-	data IRegisterData
+	data IUntyped
+}
+
+func (r *Register) Del(name string) (interface{}, bool) {
+	return r.data.Del(name)
 }
 
 func NewRegister() IRegister {

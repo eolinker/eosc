@@ -11,7 +11,6 @@ package traffic
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 
@@ -62,11 +61,11 @@ func NewTraffic() *Traffic {
 		locker: sync.Mutex{},
 	}
 }
-func (t *Traffic) Read(in io.Reader) error {
+func (t *Traffic) Read(tfConf []*PbTraffic) error {
 	t.locker.Lock()
 	defer t.locker.Unlock()
 	data := newTTrafficData()
-	data.Read(in)
+	data.setListener(tfConf)
 	t.data = data
 	return nil
 }

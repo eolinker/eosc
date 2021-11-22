@@ -9,8 +9,6 @@
 package process_worker
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -155,29 +153,16 @@ func readArg() *service.WorkerLoadArg {
 		log.Warn("unmarshal arg fail:", err)
 		return arg
 	}
+	log.Debug("read arg: ", arg)
 	return arg
 }
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
 	t := traffic.NewTraffic()
-	reader, err := toReader(tfConf)
-	if err != nil {
-		log.Error("encode traffic :", err)
-		return t
-	}
-	err = t.Read(reader)
+
+	err := t.Read(tfConf)
 	if err != nil {
 		log.Error("read traffic :", err)
 		return t
 	}
 	return t
-}
-func toReader(tf []*traffic.PbTraffic) (io.Reader, error) {
-	pbs := &traffic.PbTraffics{
-		Traffic: tf,
-	}
-	data, err := proto.Marshal(pbs)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(data), nil
 }

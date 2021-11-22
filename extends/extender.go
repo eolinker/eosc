@@ -100,7 +100,7 @@ type ExtenderVersion struct {
 
 func getArchQuery() url.Values {
 	query := url.Values{}
-	query.Add("go", runtime.Version())
+	query.Add("go", strings.Replace(runtime.Version(), "go", "", -1))
 	query.Add("arch", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH))
 	query.Add("eosc", eosc.Version())
 	return query

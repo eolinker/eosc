@@ -40,6 +40,19 @@ func (t *tTrafficData) Read(r io.Reader) {
 		t.add(newTTcpListener(ln))
 	}
 }
+
+func (t *tTrafficData) setListener(tfConf []*PbTraffic) {
+
+	listeners, err := toListeners(tfConf)
+	log.Debug("read listeners: ", len(listeners))
+	if err != nil {
+		log.Warn("read listeners:", err)
+		return
+	}
+	for _, ln := range listeners {
+		t.add(newTTcpListener(ln))
+	}
+}
 func (t *tTrafficData) add(ln *tListener) {
 
 	log.Info("traffic add:", ln.name)

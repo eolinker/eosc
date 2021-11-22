@@ -1,6 +1,7 @@
 package extends
 
 import (
+	"io/ioutil"
 	"os"
 
 	"github.com/eolinker/eosc"
@@ -25,6 +26,14 @@ func LocalCheck(group, project, version string) error {
 			return eosc.Decompress(tarPath, dir)
 		}
 		return err
+	}
+	// check dir so num
+	fs, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	if len(fs) < 1 {
+		return ErrorExtenderNotFindLocal
 	}
 	return nil
 }
