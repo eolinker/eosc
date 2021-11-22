@@ -189,12 +189,10 @@ func (s *Service) doCommit(namespace string, cmd string, data []byte) error {
 	if !ok {
 		return ErrInvalidCommitHandler
 	}
-
 	err := f.CommitHandler(cmd, data)
 	if err != nil {
 		return err
 	}
-
 	s.callCommitEvent(namespace, cmd)
 	return nil
 }

@@ -2,7 +2,7 @@ package extends
 
 import (
 	"errors"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -44,22 +44,21 @@ func DownLoadToRepository(group, project, version string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if eosc.SHA1(data) != info.Sha {
+		return ErrorFileCorrupted
+	}
 	f, err := os.Create(tarPath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	size, err := io.Copy(f, resp.Body)
-	if err != nil {
-		return err
-	}
-	tarSha, err := eosc.FileSha1(f, size)
-	if err != nil {
-		return err
-	}
-	if tarSha != info.Sha {
-		return ErrorFileCorrupted
-	}
+	f.Write(data)
+
 	return eosc.Decompress(tarPath, dest)
 }
 

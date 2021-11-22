@@ -53,17 +53,18 @@ func init() {
 	extendsBaseDir = GetDefault(envExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
 	extendsBaseDir = formatPath(extendsBaseDir)
 
-	extendsMark = GetDefault(envExtendsDirName, "https://mark.gokuapi.com")
+	extendsMark = GetDefault(envExtenderMarkName, "https://market.gokuapi.com")
 	// todo 如有必要，这里增加对 mark地址格式的校验
 }
 func GetConfig() map[string]string {
 	return map[string]string{
-		envSocketDirName:  socketSocketDirValue,
-		envConfigName:     configPath,
-		envDataDirName:    dataDirPath,
-		envPidFileName:    pidFilePath,
-		envLogDirName:     logDirPath,
-		envExtendsDirName: extendsBaseDir,
+		envSocketDirName:    socketSocketDirValue,
+		envConfigName:       configPath,
+		envDataDirName:      dataDirPath,
+		envPidFileName:      pidFilePath,
+		envLogDirName:       logDirPath,
+		envExtendsDirName:   extendsBaseDir,
+		envExtenderMarkName: extendsMark,
 	}
 }
 func tryReadEnv(name string) {
@@ -144,6 +145,7 @@ func DataDir() string {
 }
 
 func ExtendersDir() string {
+	return "/var/lib/goku/extends"
 	return extendsBaseDir
 }
 func ExtenderMarkAddr() string {

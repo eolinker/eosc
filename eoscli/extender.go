@@ -105,7 +105,7 @@ func getExtenderRequest(ids []string) (*service.ExtendsRequest, error) {
 
 func ExtenderInstall(c *cli.Context) error {
 	if c.Args().Len() < 1 {
-		fmt.Println("未输入需要安装的拓展名")
+		fmt.Println("empty extender id list")
 		return nil
 	}
 	pid, err := readPid(env.PidFileDir())
@@ -128,29 +128,29 @@ func ExtenderInstall(c *cli.Context) error {
 		return errors.New(response.Msg)
 	}
 	if len(response.Extends) < 1 {
-		fmt.Printf("拓展：%s 无需安装\n", strings.Join(c.Args().Slice(), ","))
+		fmt.Printf("extenter：%s need not install\n", strings.Join(c.Args().Slice(), ","))
 		return nil
 	}
-	fmt.Println("以下拓展已安装：")
+	fmt.Println("the extenders which are installed are below:")
 	for _, ext := range response.Extends {
-		fmt.Printf("拓展名称：%s\t拓展版本号：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+		fmt.Printf("extender name：%s\tversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 		if len(ext.Plugins) < 1 {
-			fmt.Printf("该扩展无插件\n")
+			fmt.Printf("this extender has not plugin\n")
 			continue
 		}
-		fmt.Printf("该扩展有以下插件：\n")
+		fmt.Printf("the plugins in extender are below：\n")
 		for _, p := range ext.Plugins {
-			fmt.Printf("拓展ID：%s\t拓展名称：%s", p.Id, p.Name)
+			fmt.Printf("plugin id：%s\tplugin name：%s", p.Id, p.Name)
 			continue
 		}
 	}
-	fmt.Println("拓展安装完成")
+	fmt.Println("extender install finish")
 	return nil
 }
 
 func ExtenderUpgrade(c *cli.Context) error {
 	if c.Args().Len() < 1 {
-		fmt.Println("未输入需要更新的拓展名")
+		fmt.Println("empty extender id list")
 		return nil
 	}
 	pid, err := readPid(env.PidFileDir())
@@ -173,29 +173,29 @@ func ExtenderUpgrade(c *cli.Context) error {
 		return errors.New(response.Msg)
 	}
 	if len(response.Extends) < 1 {
-		fmt.Printf("拓展：%s 无需更新\n", strings.Join(c.Args().Slice(), ","))
+		fmt.Printf("extender：%s need not upgrate\n", strings.Join(c.Args().Slice(), ","))
 		return nil
 	}
-	fmt.Println("以下拓展已更新：")
+	fmt.Println("the extenders which are upgraded are below：")
 	for _, ext := range response.Extends {
 		fmt.Printf("拓展名称：%s\t拓展版本号：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 		if len(ext.Plugins) < 1 {
-			fmt.Printf("该扩展无插件\n")
+			fmt.Printf("the extender has not plugin\n")
 			continue
 		}
-		fmt.Printf("该扩展有以下插件：\n")
+		fmt.Printf("the plugins in extender are below：\n")
 		for _, p := range ext.Plugins {
-			fmt.Printf("拓展ID：%s\t拓展名称：%s", p.Id, p.Name)
+			fmt.Printf("extender id：%s\textender name：%s", p.Id, p.Name)
 			continue
 		}
 	}
-	fmt.Println("拓展更新完成")
+	fmt.Println("extender uninstall finish")
 	return nil
 }
 
 func ExtenderUninstall(c *cli.Context) error {
 	if c.Args().Len() < 1 {
-		fmt.Println("未输入需要卸载的拓展名")
+		fmt.Println("empty extender id list")
 		return nil
 	}
 	pid, err := readPid(env.PidFileDir())
@@ -204,7 +204,7 @@ func ExtenderUninstall(c *cli.Context) error {
 	}
 	client, err := createCtlServiceClient(pid)
 	if err != nil {
-		return fmt.Errorf("get cli grpc client error:% s", err.Error())
+		return fmt.Errorf("get cli grpc client error:%s", err.Error())
 	}
 	request, err := getExtenderRequest(c.Args().Slice())
 	if err != nil {
@@ -218,14 +218,14 @@ func ExtenderUninstall(c *cli.Context) error {
 		return errors.New(response.Msg)
 	}
 	if len(response.Extends) < 1 {
-		fmt.Printf("拓展：%s 无需卸载\n", strings.Join(c.Args().Slice(), ","))
+		fmt.Printf("extender：%s need not uninstall\n", strings.Join(c.Args().Slice(), ","))
 		return nil
 	}
-	fmt.Println("以下拓展已卸载：")
+	fmt.Println("the extenders which are uninstall are below：")
 	for _, ext := range response.Extends {
-		fmt.Printf("拓展名称：%s\t拓展版本号：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+		fmt.Printf("extender name：%s\textender version：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 	}
-	fmt.Println("拓展卸载完成")
+	fmt.Println("extender uninstall finish")
 	return nil
 }
 
@@ -247,7 +247,7 @@ func ExtenderDownload(c *cli.Context) error {
 
 func ExtenderInfo(c *cli.Context) error {
 	if c.Args().Len() < 1 {
-		fmt.Println("未输入需要扩展名")
+		fmt.Println("empty extender id list")
 		return nil
 	}
 	group, project, version, err := extends.DecodeExtenderId(c.Args().Get(0))
@@ -259,14 +259,14 @@ func ExtenderInfo(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("拓展名称： %s\n", extends.FormatProject(group, project))
+		fmt.Printf("extender name： %s\n", extends.FormatProject(group, project))
 		for i, v := range versions {
 			isLatest := ""
 			if v.IsLatest {
 				isLatest = "（latest）"
 			}
 			fmt.Printf("%d. %s %s\n", i+1, v.Version, isLatest)
-			fmt.Printf("版本描述：%s\n", v.Description)
+			fmt.Printf("extender description：%s\n", v.Description)
 		}
 		return nil
 	}
@@ -278,9 +278,9 @@ func ExtenderInfo(c *cli.Context) error {
 	if info.IsLatest {
 		isLatest = "（latest）"
 	}
-	fmt.Printf("拓展名称： %s\n", extends.FormatProject(group, project))
-	fmt.Printf("当前版本号： %s %s\n", info.Version, isLatest)
-	fmt.Printf("版本描述：%s\n", info.Description)
-	fmt.Printf("下载地址：%s\n", info.URL)
+	fmt.Printf("extender name： %s\n", extends.FormatProject(group, project))
+	fmt.Printf("version： %s %s\n", info.Version, isLatest)
+	fmt.Printf("description：%s\n", info.Description)
+	fmt.Printf("download url：%s\n", info.URL)
 	return nil
 }

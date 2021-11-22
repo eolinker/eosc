@@ -39,8 +39,13 @@ func readListener(r io.Reader) ([]*net.TCPListener, error) {
 		return nil, err
 	}
 
-	tfs := make([]*net.TCPListener, 0, len(pts.GetTraffic()))
-	for _, pt := range pts.GetTraffic() {
+	return toListeners(pts.GetTraffic())
+}
+
+func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {
+
+	tfs := make([]*net.TCPListener, 0, len(tfConf))
+	for _, pt := range tfConf {
 		name := fmt.Sprintf("%s:/%s", pt.Network, pt.Addr)
 
 		//addr, err := net.ResolveTCPAddr(pt.GetNetwork(), pt.GetAddr())

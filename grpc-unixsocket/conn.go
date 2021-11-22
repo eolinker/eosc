@@ -36,7 +36,7 @@ func UnixConnect(ctx context.Context, addr string) (net.Conn, error) {
 		if err == nil {
 			return conn, nil
 		}
-		log.Info("dail unix:", err)
+		//log.Info("dail unix:", err)
 		select {
 		case <-ctx.Done():
 			return nil, err
