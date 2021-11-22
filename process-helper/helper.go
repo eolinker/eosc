@@ -69,7 +69,7 @@ func getExtenders(es []*service.ExtendsBasicInfo) *service.ExtendsResponse {
 			Version: ex.Version,
 			Plugins: make([]*service.Plugin, 0, len(names)),
 		}
-		for _, n := range register.All() {
+		for _, n := range names {
 			extender.Plugins = append(extender.Plugins, &service.Plugin{
 				Id:      extends.FormatDriverId(ex.Group, ex.Project, n),
 				Name:    n,

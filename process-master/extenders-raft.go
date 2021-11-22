@@ -3,9 +3,12 @@ package process_master
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
+
+	"github.com/eolinker/eosc/log"
+
+	"github.com/eolinker/eosc/extends"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
@@ -156,9 +159,33 @@ func (e *ExtenderSettingRaft) run() {
 	todos := make([]string, 0)
 	for {
 		if len(todos) > 0 {
-			// TODO：加载操作，包括本地检查、下载、解压、加载拓展信息等操作
 			for _, t := range todos {
-				log.Println(t)
+				group, project, version, err := extends.DecodeExtenderId(t)
+				if err != nil {
+					log.Error("extender setting raft run decode id error: ", err, " id is ", t)
+					continue
+				}
+				if version == "" {
+					info, err := extends.ExtenderInfoRequest(group, project, "latest")
+					if err != nil {
+						log.Error("extender setting raft run get extender info error: ", err, " id is ", t)
+						continue
+					}
+					version = info.Version
+				}
+
+				err = extends.LocalCheck(group, project, version)
+				if err != nil {
+					if err != extends.ErrorExtenderNotFindLocal {
+						log.Error("extender setting raft run local check error: ", err, " id is ", t)
+						continue
+					}
+					err = extends.DownLoadToRepository(group, project, version)
+					if err != nil {
+						log.Error("extender setting raft run download extender error: ", err, " id is ", t)
+						continue
+					}
+				}
 			}
 			todos = make([]string, 0)
 		}
