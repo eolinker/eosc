@@ -133,14 +133,14 @@ func ExtenderInstall(c *cli.Context) error {
 	}
 	fmt.Println("the extenders which are installed are below:")
 	for _, ext := range response.Extends {
-		fmt.Printf("extender name：%s\tversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+		fmt.Printf("extender name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 		if len(ext.Plugins) < 1 {
 			fmt.Printf("this extender has not plugin\n")
 			continue
 		}
 		fmt.Printf("the plugins in extender are below：\n")
 		for _, p := range ext.Plugins {
-			fmt.Printf("plugin id：%s\tplugin name：%s", p.Id, p.Name)
+			fmt.Printf("plugin id：%s\nplugin name：%s\n", p.Id, p.Name)
 			continue
 		}
 	}
@@ -178,14 +178,14 @@ func ExtenderUpgrade(c *cli.Context) error {
 	}
 	fmt.Println("the extenders which are upgraded are below：")
 	for _, ext := range response.Extends {
-		fmt.Printf("拓展名称：%s\t拓展版本号：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+		fmt.Printf("extender name：%s\nextender version：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 		if len(ext.Plugins) < 1 {
 			fmt.Printf("the extender has not plugin\n")
 			continue
 		}
 		fmt.Printf("the plugins in extender are below：\n")
 		for _, p := range ext.Plugins {
-			fmt.Printf("extender id：%s\textender name：%s", p.Id, p.Name)
+			fmt.Printf("extender id：%s\nextender name：%s\n", p.Id, p.Name)
 			continue
 		}
 	}
@@ -223,7 +223,7 @@ func ExtenderUninstall(c *cli.Context) error {
 	}
 	fmt.Println("the extenders which are uninstall are below：")
 	for _, ext := range response.Extends {
-		fmt.Printf("extender name：%s\textender version：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+		fmt.Printf("extender name：%s\nextender version：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 	}
 	fmt.Println("extender uninstall finish")
 	return nil
