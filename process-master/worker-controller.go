@@ -121,6 +121,12 @@ func (wc *WorkerController) restart() bool {
 		}
 		return true
 	}
+	if process.extenderSetting == nil {
+		process.extenderSetting = make(map[string]string)
+	}
+	if process.extendersDeleted == nil {
+		process.extendersDeleted = make(map[string]string)
+	}
 	oldExtenderSetting := process.extenderSetting
 	deletedExtenderSetting := process.extendersDeleted
 	extenderSetting := wc.extenderSetting.All()

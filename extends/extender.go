@@ -72,22 +72,22 @@ func look(group, project, version string) ([]RegisterFunc, error) {
 		return nil, fmt.Errorf("%s-%s:%w", group, project, ErrorExtenderNotFindLocal)
 	}
 	registerFuncList := make([]RegisterFunc, 0, len(files))
-	for _, f := range files {
+	for _, file := range files {
 
-		p, err := plugin.Open(f)
+		p, err := plugin.Open(file)
 		if err != nil {
-			log.Errorf("error to open plugin %s:%s", f, err.Error())
+			log.Errorf("error to open plugin %s:%s", file, err.Error())
 			continue
 		}
 
-		r, err := p.Lookup("Register")
+		r, err := p.Lookup("Builder")
 		if err != nil {
-			log.Errorf("call register from  plugin : %s : %s", f, err.Error())
+			log.Errorf("call register from  plugin : %s : %s", file, err.Error())
 			continue
 		}
-		f, ok := r.(RegisterFunc)
+		f, ok := r.(func() eosc.ExtenderBuilder)
 		if ok {
-			registerFuncList = append(registerFuncList, f)
+			registerFuncList = append(registerFuncList, f().Register)
 		}
 	}
 	return registerFuncList, nil
