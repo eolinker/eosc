@@ -62,7 +62,7 @@ func NewWorkersRaft(WorkerConfig *WorkerConfigs, professions eosc.IProfessions, 
 		if p.Mod == eosc.ProfessionConfig_Singleton {
 			for _, d := range p.Drivers {
 				id, _ := eosc.ToWorkerId(d.Name, p.Name)
-				wr, _ := workers.ToWorker(&eosc.WorkerConfig{
+				wc := &eosc.WorkerConfig{
 					Id:         id,
 					Profession: p.Name,
 					Name:       d.Name,
@@ -70,7 +70,9 @@ func NewWorkersRaft(WorkerConfig *WorkerConfigs, professions eosc.IProfessions, 
 					Create:     eosc.Now(),
 					Update:     eosc.Now(),
 					Body:       nil,
-				})
+				}
+				wc.Body, _ = json.Marshal(wc)
+				wr, _ := workers.ToWorker(wc)
 
 				WorkerConfig.Set(id, wr)
 

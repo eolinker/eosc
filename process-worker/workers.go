@@ -167,6 +167,7 @@ func (wm *WorkerManager) set(id, profession, name, driverName string, body []byt
 
 	err := json.Unmarshal(body, conf)
 	if err != nil {
+		log.Debug(string(body))
 		return err
 	}
 	requires, err := eosc.CheckConfig(conf, wm)
