@@ -3,8 +3,11 @@ package process_master
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+
+	admin_open_api "github.com/eolinker/eosc/modules/admin-open-api"
 
 	"github.com/eolinker/eosc/log"
 
@@ -18,8 +21,17 @@ import (
 type ExtenderSettingRaft struct {
 	locker     sync.Mutex
 	data       extenders.ITypedExtenderSetting
+	handler    http.Handler
 	service    raft_service.IService
 	commitChan chan []string
+}
+
+func (e *ExtenderSettingRaft) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	if e.handler == nil {
+		http.NotFound(writer, request)
+		return
+	}
+	e.handler.ServeHTTP(writer, request)
 }
 
 func NewExtenderRaft(service raft_service.IService) *ExtenderSettingRaft {
@@ -30,6 +42,7 @@ func NewExtenderRaft(service raft_service.IService) *ExtenderSettingRaft {
 		service:    service,
 		commitChan: make(chan []string, 1),
 	}
+	e.handler = admin_open_api.NewExtenderAdmin("", e.data).GenHandler()
 	go e.run()
 	return e
 }
@@ -116,6 +129,7 @@ func (e *ExtenderSettingRaft) ResetHandler(data []byte) error {
 	m := make(map[string]string)
 	json.Unmarshal(data, &m)
 	e.data.Reset(m)
+	e.handler = admin_open_api.NewExtenderAdmin("", e.data).GenHandler()
 	return nil
 }
 

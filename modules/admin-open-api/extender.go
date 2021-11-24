@@ -3,6 +3,7 @@ package admin_open_api
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/eolinker/eosc/process-master/extenders"
 
@@ -10,11 +11,25 @@ import (
 )
 
 type ExtenderAdmin struct {
+	pre  string
 	data extenders.ITypedPlugin
 }
 
-func NewExtenderAdmin(data extenders.ITypedPlugin) *ExtenderAdmin {
-	return &ExtenderAdmin{data: data}
+func (e *ExtenderAdmin) GenHandler() http.Handler {
+	router := httprouter.New()
+	router.GET(e.pre+"/extender/:id", func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		e.ExtenderInfo(w, r, params)
+		return
+	})
+	router.GET(e.pre+"/extenders", func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		e.Extenders(w, r, params)
+		return
+	})
+	return router
+}
+
+func NewExtenderAdmin(pre string, data extenders.ITypedPlugin) *ExtenderAdmin {
+	return &ExtenderAdmin{pre: strings.TrimSuffix(pre, "/"), data: data}
 }
 
 func (e *ExtenderAdmin) ExtenderInfo(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

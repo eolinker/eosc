@@ -15,15 +15,15 @@ var (
 	ErrorNotMatch      = errors.New("not match profession")
 )
 
-type CreateHandler interface {
+type ICreateHandler interface {
 	Create(admin eosc.IAdmin, pref string) http.Handler
 }
 
 var (
-	creatorHandler = make(map[string]CreateHandler)
+	creatorHandler = make(map[string]ICreateHandler)
 )
 
-func Register(myPre string, handler CreateHandler) error {
+func Register(myPre string, handler ICreateHandler) error {
 	pre := formatPath(myPre)
 	_, has := creatorHandler[pre]
 	if has {

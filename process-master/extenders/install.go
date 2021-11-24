@@ -146,7 +146,7 @@ func (i *ExtenderSetting) Reset(m map[string]string) {
 }
 
 func NewInstallData() *ExtenderSetting {
-	return &ExtenderSetting{data: eosc.NewUntyped()}
+	return &ExtenderSetting{data: eosc.NewUntyped(), plugins: eosc.NewUntyped()}
 }
 
 func (i *ExtenderSetting) Set(group, project, version string) {
