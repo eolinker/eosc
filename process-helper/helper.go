@@ -49,15 +49,21 @@ func Process() {
 
 func getExtenders(es []*service.ExtendsBasicInfo) *service.ExtendsResponse {
 	data := &service.ExtendsResponse{
-		Msg:     "",
-		Code:    "000000",
-		Extends: make([]*service.ExtendsInfo, 0, len(es)),
+		Msg:         "",
+		Code:        "000000",
+		Extends:     make([]*service.ExtendsInfo, 0, len(es)),
+		FailExtends: make([]*service.ExtendsBasicInfo, 0, len(es)),
 	}
 	for _, ex := range es {
 		// 遍历拓展名称，加载拓展
 		register, err := extends.ReadExtenderProject(ex.Group, ex.Project, ex.Version)
 		if err != nil {
-			log.Error("read data error: ", err)
+			data.FailExtends = append(data.FailExtends, &service.ExtendsBasicInfo{
+				Group:   ex.Group,
+				Project: ex.Project,
+				Version: ex.Version,
+				Msg:     err.Error(),
+			})
 			continue
 		}
 		names := register.All()

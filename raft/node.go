@@ -333,11 +333,9 @@ func (rc *Node) Send(msg []byte) (interface{}, error) {
 		if err := rc.ProcessData(data); err != nil {
 			return nil, err
 		}
-		log.Debug("node commit data: ", string(data))
 		if err := rc.service.Commit(data); err != nil {
 			return nil, err
 		}
-		log.Debug("node commit complete")
 		return obj, nil
 	} else {
 		return rc.postMessageToLeader(msg)

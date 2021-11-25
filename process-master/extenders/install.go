@@ -29,6 +29,8 @@ type ITypedExtenderSetting interface {
 }
 
 type ITypedPlugin interface {
+	DelByExtenderID(extenderID string)
+	DelByID(id string)
 	GetPluginsByExtenderID(extenderID string) ([]*service.Plugin, bool)
 	SetPluginsByExtenderID(extenderID string, plugins []*service.Plugin)
 	GetPlugins() []*service.Plugin
@@ -39,6 +41,18 @@ type ITypedPlugin interface {
 type ExtenderSetting struct {
 	data    eosc.IUntyped
 	plugins eosc.IUntyped
+}
+
+func (i *ExtenderSetting) DelByExtenderID(extenderID string) {
+	i.plugins.Del(extenderID)
+}
+
+func (i *ExtenderSetting) DelByID(id string) {
+	e, has := i.getPlugin(id)
+	if !has {
+		return
+	}
+	e.Del(id)
 }
 
 func (i *ExtenderSetting) GetPluginsByExtenderID(extenderID string) ([]*service.Plugin, bool) {
@@ -65,7 +79,7 @@ func (i *ExtenderSetting) GetPluginsByExtenderID(extenderID string) ([]*service.
 
 func (i *ExtenderSetting) SetPluginsByExtenderID(extenderID string, plugins []*service.Plugin) {
 	var es eosc.IUntyped
-	var ok bool
+	var ok = true
 	extender, has := i.plugins.Get(extenderID)
 	if !has {
 		es = eosc.NewUntyped()
@@ -160,6 +174,7 @@ func (i *ExtenderSetting) Set(group, project, version string) {
 func (i *ExtenderSetting) Del(group, project string) {
 	id := toId(group, project)
 	i.data.Del(id)
+	i.DelByExtenderID(id)
 }
 
 func (i *ExtenderSetting) Get(group, project string) (string, bool) {

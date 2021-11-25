@@ -11,12 +11,14 @@ message ExtendsResponse {
   string msg = 1;
   string code = 2;
   repeated ExtendsInfo extends = 3;
+  repeated ExtendsBasicInfo failExtends = 4;
 }
 
 message ExtendsBasicInfo {
   string group = 1;
   string project = 2;
   string version = 3;
+  string msg = 4;
 }
 
 message ExtendsInfo {
@@ -40,6 +42,7 @@ message ExtendsUninstallResponse {
   string msg = 1;
   string code = 2;
   repeated ExtendsBasicInfo extends = 3;
+  repeated ExtendsBasicInfo failExtends = 4;
 }
 
 message Plugin {

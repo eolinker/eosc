@@ -208,12 +208,15 @@ func (e *ExtenderSettingRaft) run() {
 					Version: version,
 				})
 			}
-			exts, err := checkExtends(newExts)
+			exts, failExts, err := checkExtends(newExts)
 			if err != nil {
 				log.Error("check extender error: ", err)
 			}
 			for _, ext := range exts {
 				e.data.SetPluginsByExtenderID(extends.FormatProject(ext.Group, ext.Project), ext.Plugins)
+			}
+			for _, ext := range failExts {
+				log.Error(ext.Msg)
 			}
 			todos = make([]string, 0)
 		}

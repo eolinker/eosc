@@ -135,7 +135,7 @@ func ConfigPath() string {
 }
 
 func LogDir() string {
-	return fmt.Sprintf("%s/%s", logDirPath, appName)
+	return logDirPath
 }
 func PidFileDir() string {
 	return pidFilePath
@@ -145,6 +145,7 @@ func DataDir() string {
 }
 
 func ExtendersDir() string {
+	return "/var/lib/goku/extends"
 	return extendsBaseDir
 }
 func ExtenderMarkAddr() string {
