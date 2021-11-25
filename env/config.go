@@ -88,7 +88,7 @@ func tryReadEnv(name string) {
 
 		path = os.Getenv(createEnvName(en, envConfigNameForEnv))
 		if path == "" {
-			path = fmt.Sprintf("/etc/%s/%s.yaml", name, name)
+			path = fmt.Sprintf("/etc/%s/%s.yml", name, name)
 		}
 
 	}
