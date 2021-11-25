@@ -56,30 +56,11 @@ func (w *WorkersRaft) Complete() error {
 	return nil
 }
 
-func NewWorkersRaft(WorkerConfig *WorkerConfigs, professions eosc.IProfessions, workerServiceClient service.WorkerServiceClient, service raft_service.IService) *WorkersRaft {
-	// 初始化单例的worker
-	for _, p := range professions.All() {
-		if p.Mod == eosc.ProfessionConfig_Singleton {
-			for _, d := range p.Drivers {
-				id, _ := eosc.ToWorkerId(d.Name, p.Name)
-				wc := &eosc.WorkerConfig{
-					Id:         id,
-					Profession: p.Name,
-					Name:       d.Name,
-					Driver:     d.Name,
-					Create:     eosc.Now(),
-					Update:     eosc.Now(),
-					Body:       nil,
-				}
-				wc.Body, _ = json.Marshal(wc)
-				wr, _ := workers.ToWorker(wc)
+func NewWorkersRaft(workerConfig *WorkerConfigs, professions eosc.IProfessions, workerServiceClient service.WorkerServiceClient, service raft_service.IService) *WorkersRaft {
 
-				WorkerConfig.Set(id, wr)
-
-			}
-		}
-	}
-	return &WorkersRaft{data: WorkerConfig, professions: professions, workerServiceClient: workerServiceClient, service: service}
+	wrf := &WorkersRaft{data: workerConfig, professions: professions, workerServiceClient: workerServiceClient, service: service}
+	wrf.data.Reset(wrf.genInitWorkerConfig())
+	return wrf
 }
 
 func (w *WorkersRaft) Delete(id string) (eosc.TWorker, error) {
@@ -282,12 +263,36 @@ func (w *WorkersRaft) Snapshot() []byte {
 	}
 	return data
 }
-
+func (w *WorkersRaft) genInitWorkerConfig() []*eosc.WorkerConfig {
+	// 初始化单例的worker
+	ps := w.professions.All()
+	vs := make([]*eosc.WorkerConfig, 0, len(ps))
+	for _, p := range ps {
+		if p.Mod == eosc.ProfessionConfig_Singleton {
+			for _, d := range p.Drivers {
+				id, _ := eosc.ToWorkerId(d.Name, p.Name)
+				wc := &eosc.WorkerConfig{
+					Id:         id,
+					Profession: p.Name,
+					Name:       d.Name,
+					Driver:     d.Name,
+					Create:     eosc.Now(),
+					Update:     eosc.Now(),
+					Body:       nil,
+				}
+				wc.Body, _ = json.Marshal(wc)
+				vs = append(vs, wc)
+			}
+		}
+	}
+	return vs
+}
 func (w *WorkersRaft) ResetHandler(data []byte) error {
 
-	vs, err := decode(data)
-	if err != nil {
-		return err
+	vs := decode(data)
+
+	if len(vs) == 0 {
+		vs = w.genInitWorkerConfig()
 	}
 
 	w.data.reset(vs)
@@ -322,7 +327,7 @@ func (w *WorkersRaft) GetList(profession string) ([]eosc.TWorker, error) {
 	}
 	return result, nil
 }
-func decode(data []byte) ([]*eosc.WorkerConfig, error) {
+func decode(data []byte) []*eosc.WorkerConfig {
 	wd := new(eosc.WorkerConfigs)
 	if len(data) > 0 {
 		err := proto.Unmarshal(data, wd)
@@ -333,7 +338,7 @@ func decode(data []byte) ([]*eosc.WorkerConfig, error) {
 		log.Info("workers data reset to empty")
 	}
 
-	return wd.Data, nil
+	return wd.Data
 }
 func encode(cs []*eosc.WorkerConfig) ([]byte, error) {
 	wd := new(eosc.WorkerConfigs)
