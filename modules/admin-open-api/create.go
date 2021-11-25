@@ -13,5 +13,4 @@ func (c *createHandler) Create(admin eosc.IAdmin, pref string) http.Handler {
 	a := NewOpenAdmin(admin)
 	a.prefix = pref
 	return a.GenHandler()
-
 }

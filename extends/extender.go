@@ -23,11 +23,12 @@ import (
 type RegisterFunc func(eosc.IExtenderDriverRegister)
 
 var (
-	ErrorInvalidExtenderId     = errors.New("invalid  extender id")
-	ErrorExtenderNameDuplicate = errors.New("duplicate extender factory name")
-	ErrorExtenderNotFindLocal  = errors.New("not find extender on local")
-	ErrorExtenderNotFindMark   = errors.New("not find extender on market")
-	ErrorExtenderNoLatest      = errors.New("no latest for extender")
+	ErrorInvalidExtenderId      = errors.New("invalid  extender id")
+	ErrorExtenderNameDuplicate  = errors.New("duplicate extender factory name")
+	ErrorExtenderBuilderInvalid = errors.New("invalid builder")
+	ErrorExtenderNotFindLocal   = errors.New("not find extender on local")
+	ErrorExtenderNotFindMark    = errors.New("not find extender on market")
+	ErrorExtenderNoLatest       = errors.New("no latest for extender")
 )
 
 func ReadExtenderProject(group, project, version string) (*ExtenderRegister, error) {
@@ -71,23 +72,31 @@ func look(group, project, version string) ([]RegisterFunc, error) {
 		log.Debug(dir)
 		return nil, fmt.Errorf("%s-%s:%w", group, project, ErrorExtenderNotFindLocal)
 	}
+	if len(files) < 1 {
+		log.Error(ErrorExtenderNotFindLocal)
+		return nil, fmt.Errorf("%s-%s:%w", group, project, ErrorExtenderNotFindLocal)
+	}
 	registerFuncList := make([]RegisterFunc, 0, len(files))
 	for _, file := range files {
 
 		p, err := plugin.Open(file)
 		if err != nil {
 			log.Errorf("error to open plugin %s:%s", file, err.Error())
-			continue
+			return nil, err
 		}
 
 		r, err := p.Lookup("Builder")
 		if err != nil {
 			log.Errorf("call register from  plugin : %s : %s", file, err.Error())
-			continue
+			return nil, err
 		}
 		f, ok := r.(func() eosc.ExtenderBuilder)
 		if ok {
 			registerFuncList = append(registerFuncList, f().Register)
+		} else {
+			err := fmt.Errorf("%s-%s:%w", group, project, ErrorExtenderBuilderInvalid)
+			log.Error(err)
+			return nil, err
 		}
 	}
 	return registerFuncList, nil

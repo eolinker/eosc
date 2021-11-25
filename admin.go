@@ -12,6 +12,13 @@ type IAdmin interface {
 	IAdminWorker
 	IAdminPermission
 }
+
+type IAdminExtender interface {
+	GetPlugin(id string) (interface{}, error)
+	Plugins() []interface{}
+	PluginsByExtenderID(extenderID string) []interface{}
+}
+
 type IAdminWorker interface {
 	ListEmployees(profession string) ([]interface{}, error)
 	//ListEmployeeNames(profession string) ([]string, error)

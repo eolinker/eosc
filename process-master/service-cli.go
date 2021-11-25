@@ -3,9 +3,6 @@ package process_master
 import (
 	"context"
 	"errors"
-	"os"
-
-	"github.com/eolinker/eosc/common/fileLocker"
 
 	"github.com/eolinker/eosc/extends"
 
@@ -132,33 +129,10 @@ func (m *MasterCliServer) getExtenders(exts []*service.ExtendsBasicInfo) []*serv
 			}
 			ext.Version = info.Version
 		}
-		err := extends.LocalCheck(ext.Group, ext.Project, ext.Version)
+		err := localCheck(ext.Group, ext.Project, ext.Version)
 		if err != nil {
-			if err != extends.ErrorExtenderNotFindLocal {
-				log.Error("extender local check error: ", err)
-				continue
-			}
-
-			// 当本地不存在当前插件时，从插件市场中下载
-			path := extends.LocalExtenderPath(ext.Group, ext.Project, ext.Version)
-			err := os.MkdirAll(path, 0755)
-			if err != nil {
-				log.Error("create extender path ", path, " error: ", err)
-				continue
-			}
-			locker := fileLocker.NewLocker(extends.LocalExtenderPath(ext.Group, ext.Project, ext.Version), 30, fileLocker.CliLocker)
-			err = locker.TryLock()
-			if err != nil {
-				log.Error("locker error: ", err)
-				continue
-			}
-
-			err = extends.DownLoadToRepositoryById(extends.FormatDriverId(ext.Group, ext.Project, ext.Version))
-			locker.Unlock()
-			if err != nil {
-				log.Error("download extender to local error: ", err)
-				continue
-			}
+			log.Error(err)
+			continue
 		}
 		requestExt[formatProject] = []*service.ExtendsBasicInfo{ext}
 	}
@@ -174,14 +148,15 @@ func (m *MasterCliServer) getExtenders(exts []*service.ExtendsBasicInfo) []*serv
 
 //ExtendsInstall 安装拓展
 func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.ExtendsRequest) (*service.ExtendsResponse, error) {
-	es, err := checkExtends(m.getExtenders(request.Extends))
+	es, failExts, err := checkExtends(m.getExtenders(request.Extends))
 	if err != nil {
 		return nil, err
 	}
 	response := &service.ExtendsResponse{
-		Msg:     "",
-		Code:    "000000",
-		Extends: make([]*service.ExtendsInfo, 0, len(es)),
+		Msg:         "",
+		Code:        "000000",
+		Extends:     make([]*service.ExtendsInfo, 0, len(es)),
+		FailExtends: failExts,
 	}
 	for _, ext := range es {
 		err = m.extendsRaft.SetExtender(ext.Group, ext.Project, ext.Version)
@@ -196,14 +171,15 @@ func (m *MasterCliServer) ExtendsInstall(ctx context.Context, request *service.E
 
 //ExtendsUpdate 更新拓展
 func (m *MasterCliServer) ExtendsUpdate(ctx context.Context, request *service.ExtendsRequest) (*service.ExtendsResponse, error) {
-	es, err := checkExtends(m.getExtenders(request.Extends))
+	es, failExts, err := checkExtends(m.getExtenders(request.Extends))
 	if err != nil {
 		return nil, err
 	}
 	response := &service.ExtendsResponse{
-		Msg:     "",
-		Code:    "000000",
-		Extends: make([]*service.ExtendsInfo, 0, len(es)),
+		Msg:         "",
+		Code:        "000000",
+		Extends:     make([]*service.ExtendsInfo, 0, len(es)),
+		FailExtends: failExts,
 	}
 	for _, ext := range es {
 		err = m.extendsRaft.SetExtender(ext.Group, ext.Project, ext.Version)
@@ -224,8 +200,9 @@ func (m *MasterCliServer) ExtendsUninstall(ctx context.Context, request *service
 		Extends: make([]*service.ExtendsBasicInfo, 0, len(request.Extends)),
 	}
 	for _, ext := range request.Extends {
-		_, has := m.extendsRaft.DelExtender(ext.Group, ext.Project)
+		version, has := m.extendsRaft.DelExtender(ext.Group, ext.Project)
 		if has {
+			ext.Version = version
 			response.Extends = append(response.Extends, ext)
 		}
 	}

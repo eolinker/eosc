@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/eolinker/eosc/env"
@@ -41,12 +42,51 @@ func Plugin() *cli.Command {
 				Action: ExtenderInfo,
 			},
 			{
+				Name:   "version",
+				Usage:  "",
+				Action: ExtenderVersion,
+			},
+			{
 				Name:   "download",
 				Usage:  "下载拓展",
 				Action: ExtenderDownload,
 			},
 		},
 	}
+}
+
+func ExtenderVersion(c *cli.Context) error {
+	if c.Args().Len() < 1 {
+		return errors.New("need extend id")
+	}
+	for _, id := range c.Args().Slice() {
+		group, project, _, err := extends.DecodeExtenderId(id)
+		if err != nil {
+			fmt.Printf("%s is not exists\n", id)
+			continue
+		}
+		versions, err := extends.GetAvailableVersions(group, project)
+		if err != nil {
+			fmt.Printf("%s is not exists\n", id)
+			continue
+		}
+		fmt.Printf("[%s]\n", id)
+		for i, v := range versions {
+			isLatest := ""
+			if v.IsLatest {
+				isLatest = "（latest）"
+			}
+			if i != 0 {
+				fmt.Printf("\t\t")
+			} else {
+				fmt.Printf("  ")
+			}
+			fmt.Printf("%s:%s %s", id, v.Version, isLatest)
+		}
+		fmt.Println()
+	}
+
+	return nil
 }
 
 func PluginFunc(c *cli.Context) error {
@@ -127,23 +167,30 @@ func ExtenderInstall(c *cli.Context) error {
 	if response.Code != "000000" {
 		return errors.New(response.Msg)
 	}
-	if len(response.Extends) < 1 {
-		fmt.Printf("extenter：%s need not install\n", strings.Join(c.Args().Slice(), ","))
-		return nil
-	}
-	fmt.Println("the extenders which are installed are below:")
-	for _, ext := range response.Extends {
-		fmt.Printf("extender name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
-		if len(ext.Plugins) < 1 {
-			fmt.Printf("this extender has not plugin\n")
-			continue
+
+	if len(response.Extends) > 0 {
+		fmt.Println("the extenders which are installed are below:")
+		for _, ext := range response.Extends {
+			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+			if len(ext.Plugins) < 1 {
+				fmt.Printf("this extender has not plugin\n")
+				continue
+			}
+			fmt.Printf("the plugins in extender are below：\n")
+			for _, p := range ext.Plugins {
+				fmt.Printf("plugin id：%s\nplugin name：%s\n", p.Id, p.Name)
+				continue
+			}
 		}
-		fmt.Printf("the plugins in extender are below：\n")
-		for _, p := range ext.Plugins {
-			fmt.Printf("plugin id：%s\nplugin name：%s\n", p.Id, p.Name)
-			continue
+	}
+
+	if len(response.FailExtends) > 0 {
+		fmt.Println("the extenders which are installed failed are below:")
+		for _, ext := range response.FailExtends {
+			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 		}
 	}
+
 	fmt.Println("extender install finish")
 	return nil
 }
@@ -172,21 +219,26 @@ func ExtenderUpgrade(c *cli.Context) error {
 	if response.Code != "000000" {
 		return errors.New(response.Msg)
 	}
-	if len(response.Extends) < 1 {
-		fmt.Printf("extender：%s need not upgrate\n", strings.Join(c.Args().Slice(), ","))
-		return nil
-	}
-	fmt.Println("the extenders which are upgraded are below：")
-	for _, ext := range response.Extends {
-		fmt.Printf("extender name：%s\nextender version：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
-		if len(ext.Plugins) < 1 {
-			fmt.Printf("the extender has not plugin\n")
-			continue
+	if len(response.Extends) > 0 {
+		fmt.Println("the extenders which are upgraded are below：")
+		for _, ext := range response.Extends {
+			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+			if len(ext.Plugins) < 1 {
+				fmt.Printf("the extender has not plugin\n")
+				continue
+			}
+			fmt.Printf("the plugins in extender are below：\n")
+			for _, p := range ext.Plugins {
+				fmt.Printf("id：%s\nname：%s\n", p.Id, p.Name)
+				continue
+			}
 		}
-		fmt.Printf("the plugins in extender are below：\n")
-		for _, p := range ext.Plugins {
-			fmt.Printf("extender id：%s\nextender name：%s\n", p.Id, p.Name)
-			continue
+	}
+
+	if len(response.FailExtends) > 0 {
+		fmt.Println("the extenders which are upgraded failed are below:")
+		for _, ext := range response.FailExtends {
+			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 		}
 	}
 	fmt.Println("extender uninstall finish")
@@ -221,10 +273,19 @@ func ExtenderUninstall(c *cli.Context) error {
 		fmt.Printf("extender：%s need not uninstall\n", strings.Join(c.Args().Slice(), ","))
 		return nil
 	}
-	fmt.Println("the extenders which are uninstall are below：")
-	for _, ext := range response.Extends {
-		fmt.Printf("extender name：%s\nextender version：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+	if len(response.Extends) > 0 {
+		fmt.Println("the extenders which are uninstall are below：")
+		for _, ext := range response.Extends {
+			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+		}
 	}
+	if len(response.FailExtends) > 0 {
+		fmt.Println("the extenders which are uninstall failed are below：")
+		for _, ext := range response.FailExtends {
+			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
+		}
+	}
+
 	fmt.Println("extender uninstall finish")
 	return nil
 }
@@ -250,37 +311,28 @@ func ExtenderInfo(c *cli.Context) error {
 		fmt.Println("empty extender id list")
 		return nil
 	}
-	group, project, version, err := extends.DecodeExtenderId(c.Args().Get(0))
-	if err != nil {
-		return err
-	}
-	if version == "" {
-		versions, err := extends.GetAvailableVersions(group, project)
+	for _, id := range c.Args().Slice() {
+		group, project, version, err := extends.DecodeExtenderId(id)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("extender name： %s\n", extends.FormatProject(group, project))
-		for i, v := range versions {
-			isLatest := ""
-			if v.IsLatest {
-				isLatest = "（latest）"
-			}
-			fmt.Printf("%d. %s %s\n", i+1, v.Version, isLatest)
-			fmt.Printf("extender description：%s\n", v.Description)
+		if version == "" {
+			version = "latest"
 		}
-		return nil
+		info, err := extends.ExtenderInfoRequest(group, project, version)
+		if err != nil {
+			return err
+		}
+		isLatest := ""
+		if info.IsLatest {
+			isLatest = "（latest）"
+		}
+		fmt.Printf("name： %s\n", extends.FormatProject(group, project))
+		fmt.Printf("version： %s %s\n", info.Version, isLatest)
+		fmt.Printf("description：%s\n", info.Description)
+		fmt.Printf("download url：%s\n", info.URL)
+		fmt.Printf("install to run：%s extender install %s\n", os.Args[0], info.ID)
 	}
-	info, err := extends.ExtenderInfoRequest(group, project, version)
-	if err != nil {
-		return err
-	}
-	isLatest := ""
-	if info.IsLatest {
-		isLatest = "（latest）"
-	}
-	fmt.Printf("extender name： %s\n", extends.FormatProject(group, project))
-	fmt.Printf("version： %s %s\n", info.Version, isLatest)
-	fmt.Printf("description：%s\n", info.Description)
-	fmt.Printf("download url：%s\n", info.URL)
+
 	return nil
 }

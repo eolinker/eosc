@@ -37,23 +37,23 @@ func newHelperProcess(data []byte) (*service.ExtendsResponse, error) {
 	return response, err
 }
 
-func checkExtends(exts []*service.ExtendsBasicInfo) ([]*service.ExtendsInfo, error) {
+func checkExtends(exts []*service.ExtendsBasicInfo) ([]*service.ExtendsInfo, []*service.ExtendsBasicInfo, error) {
 	request := &service.ExtendsRequest{Extends: make([]*service.ExtendsBasicInfo, 0, len(exts))}
 	request.Extends = append(request.Extends, exts...)
 	data, err := proto.Marshal(request)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cmd, err := process.Cmd(eosc.ProcessHelper, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cmd.Stdin = bytes.NewReader(data)
 	buff := &bytes.Buffer{}
 	cmd.Stdout = buff
 	err = cmd.Start()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cmd.Wait()
 
@@ -61,10 +61,10 @@ func checkExtends(exts []*service.ExtendsBasicInfo) ([]*service.ExtendsInfo, err
 
 	err = proto.Unmarshal(buff.Bytes(), response)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if response.Code != "000000" {
-		return nil, errors.New(response.Msg)
+		return nil, nil, errors.New(response.Msg)
 	}
-	return response.Extends, nil
+	return response.Extends, response.FailExtends, nil
 }

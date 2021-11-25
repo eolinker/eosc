@@ -3,6 +3,8 @@ package process_master
 import (
 	"os"
 
+	"github.com/eolinker/eosc/log"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
@@ -48,10 +50,15 @@ func (p *ProfessionRaft) encode() ([]byte, error) {
 }
 func (p *ProfessionRaft) decode(data []byte) ([]*eosc.ProfessionConfig, error) {
 	pcd := new(eosc.ProfessionConfigs)
-	err := proto.Unmarshal(data, pcd)
-	if err != nil {
-		return nil, err
+	if len(data) > 0 {
+		err := proto.Unmarshal(data, pcd)
+		if err != nil {
+			log.Warn("decode professions data:", err)
+		}
+	} else {
+		log.Info("decode professions empty")
 	}
+
 	return pcd.Data, nil
 
 }
