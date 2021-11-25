@@ -64,12 +64,15 @@ func (i *ExtenderSetting) GetPluginsByExtenderID(extenderID string) ([]*service.
 }
 
 func (i *ExtenderSetting) SetPluginsByExtenderID(extenderID string, plugins []*service.Plugin) {
+	var es eosc.IUntyped
+	var ok bool
 	extender, has := i.plugins.Get(extenderID)
 	if !has {
-		log.Error(errExtenderNotExist)
-		return
+		es = eosc.NewUntyped()
+		i.plugins.Set(extenderID, es)
+	} else {
+		es, ok = extender.(eosc.IUntyped)
 	}
-	es, ok := extender.(eosc.IUntyped)
 	if !ok {
 		log.Error(errExtenderNotExist)
 		return

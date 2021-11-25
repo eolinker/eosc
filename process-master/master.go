@@ -203,6 +203,9 @@ func (m *Master) handler() http.Handler {
 	sm.Handle("/api/", m.admin)
 	sm.Handle("/api", m.admin)
 
+	sm.Handle("/extender/", m.extenderSettingRaft)
+	sm.Handle("/extenders", m.extenderSettingRaft)
+
 	return sm
 }
 func (m *Master) Wait(pFile *pidfile.PidFile) error {
