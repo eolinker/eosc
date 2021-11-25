@@ -323,14 +323,16 @@ func (w *WorkersRaft) GetList(profession string) ([]eosc.TWorker, error) {
 	return result, nil
 }
 func decode(data []byte) ([]*eosc.WorkerConfig, error) {
-	if len(data) == 0 {
-		return nil, ErrClientNotInit
-	}
 	wd := new(eosc.WorkerConfigs)
-	err := proto.Unmarshal(data, wd)
-	if err != nil {
-		return nil, err
+	if len(data) > 0 {
+		err := proto.Unmarshal(data, wd)
+		if err != nil {
+			log.Warn("decode workers :", err)
+		}
+	} else {
+		log.Info("workers data reset to empty")
 	}
+
 	return wd.Data, nil
 }
 func encode(cs []*eosc.WorkerConfig) ([]byte, error) {

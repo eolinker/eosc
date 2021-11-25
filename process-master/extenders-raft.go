@@ -127,7 +127,9 @@ func (e *ExtenderSettingRaft) ResetHandler(data []byte) error {
 	e.locker.Lock()
 	defer e.locker.Unlock()
 	m := make(map[string]string)
-	json.Unmarshal(data, &m)
+	if len(data) > 0 {
+		json.Unmarshal(data, &m)
+	}
 	e.data.Reset(m)
 	e.handler = admin_open_api.NewExtenderAdmin("", e.data).GenHandler()
 	return nil

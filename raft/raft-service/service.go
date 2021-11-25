@@ -58,6 +58,7 @@ func (s *Service) Append(cmd string, data []byte) error {
 	switch cmd {
 	case CommandInit:
 		snaps := make(map[string]string)
+
 		err := json.Unmarshal(data, &snaps)
 		if err != nil {
 			return err
@@ -225,15 +226,16 @@ func (s *Service) GetInit() ([]byte, error) {
 
 }
 func (s *Service) doResetSnap(snaps map[string]string) {
-	for namespace, value := range snaps {
+
+	if snaps == nil {
+		snaps = make(map[string]string)
+	}
+	for namespace, handler := range s.handlers.All() {
 		if namespace == SystemNamespace {
 			continue
 		}
-		handler, has := s.handlers.Get(namespace)
-		if !has {
-			log.Warnf("reset snap %s:%w", namespace, ErrInvalidNamespace)
-			continue
-		}
+		value := snaps[namespace]
+
 		h, ok := handler.(IRaftServiceHandler)
 		if !ok {
 			log.Warnf("reset snap %s:%w", namespace, ErrInvalidCommitHandler)
@@ -241,8 +243,8 @@ func (s *Service) doResetSnap(snaps map[string]string) {
 		}
 		d, err := base64.StdEncoding.DecodeString(value)
 		if err != nil {
-			log.Errorf("reset snap %s:%w", namespace, err)
-			continue
+			d = nil
+			log.Warnf("reset snap %s:%w", namespace, err)
 		}
 		err = h.ResetHandler(d)
 		if err != nil {
@@ -250,13 +252,17 @@ func (s *Service) doResetSnap(snaps map[string]string) {
 			continue
 		}
 	}
+
 }
 func (s *Service) ResetSnap(data []byte) error {
 	snaps := make(map[string]string)
-	err := json.Unmarshal(data, &snaps)
-	if err != nil {
-		return err
+	if len(data) > 0 {
+		err := json.Unmarshal(data, &snaps)
+		if err != nil {
+			return err
+		}
 	}
+
 	s.locker.Lock()
 	defer s.locker.Unlock()
 	s.doResetSnap(snaps)
