@@ -42,5 +42,14 @@ func (ed *ExtenderData) Del(id string) {
 }
 
 func (ed *ExtenderData) All() []*Extender {
-	panic("implement me")
+	list := ed.data.List()
+	extenders := make([]*Extender, 0, len(list))
+	for _, extender := range list {
+		v, ok := extender.(*Extender)
+		if !ok {
+			continue
+		}
+		extenders = append(extenders, v)
+	}
+	return extenders
 }

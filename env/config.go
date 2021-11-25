@@ -88,7 +88,7 @@ func tryReadEnv(name string) {
 
 		path = os.Getenv(createEnvName(en, envConfigNameForEnv))
 		if path == "" {
-			path = fmt.Sprintf("/etc/%s/%s.yaml", name, name)
+			path = fmt.Sprintf("/etc/%s/%s.yml", name, name)
 		}
 
 	}
@@ -135,7 +135,7 @@ func ConfigPath() string {
 }
 
 func LogDir() string {
-	return fmt.Sprintf("%s/%s", logDirPath, appName)
+	return logDirPath
 }
 func PidFileDir() string {
 	return pidFilePath
@@ -145,6 +145,7 @@ func DataDir() string {
 }
 
 func ExtendersDir() string {
+	return "/var/lib/goku/extends"
 	return extendsBaseDir
 }
 func ExtenderMarkAddr() string {

@@ -17,7 +17,7 @@ import (
 
 var _ iOpenAdmin = (*OpenAdmin)(nil)
 
-func CreateHandler() admin.CreateHandler {
+func CreateHandler() admin.ICreateHandler {
 	return new(createHandler)
 }
 

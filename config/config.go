@@ -93,7 +93,7 @@ type CertificateDir struct {
 	Dir string `json:"dir" yaml:"dir"`
 }
 
-var defaultPath = "/etc/%s/config.yml"
+var defaultPath = "config.yml"
 
 func GetConfig() (*Config, error) {
 	path := env.ConfigPath()

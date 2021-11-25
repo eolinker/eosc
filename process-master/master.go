@@ -110,6 +110,7 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	workerRaft := NewWorkersRaft(workersConfig, handler.Professions, workerServiceProxy, raftService)
 
 	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy)
+
 	m.admin = admin.NewAdmin(handler.Professions, workerRaft)
 	raftService.AddEventHandler(m.workerController.raftEvent)
 	raftService.AddCommitEventHandler(m.workerController.raftCommitEvent)
@@ -201,6 +202,9 @@ func (m *Master) handler() http.Handler {
 
 	sm.Handle("/api/", m.admin)
 	sm.Handle("/api", m.admin)
+
+	sm.Handle("/extender/", m.extenderSettingRaft)
+	sm.Handle("/extenders", m.extenderSettingRaft)
 
 	return sm
 }
