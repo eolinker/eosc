@@ -1,6 +1,6 @@
 package eosc
 
-var eoscVersion string = "0.3.2"
+var eoscVersion = "0.3.4"
 
 func Version() string {
 
