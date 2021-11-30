@@ -86,7 +86,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 			log.Debug("create traffic:", name)
 			l, err := net.ListenTCP("tcp", addr)
 			if err != nil {
-				log.Warn("listen tcp:", err)
+				log.Error("listen tcp:", err)
 				return false, err
 			}
 			newData.add(newTTcpListener(l))
