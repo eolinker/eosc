@@ -11,7 +11,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
@@ -24,15 +23,22 @@ func InitLogTransport(name string) {
 		//dir = filepath.Base(".")
 		log.InitDebug(true)
 	}
-
-	writer := filelog.NewFileWriteByPeriod()
-	writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
-	writer.Open()
-	transport := log.NewTransport(writer, log.InfoLevel)
 	formatter := &log.LineFormatter{
 		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
+	//writer := filelog.NewFileWriteByPeriod()
+	//writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
+	//writer.Open()
+	transport := filelog.CreateTransporter(log.InfoLevel)
+	transport.Reset(&filelog.Config{
+		Dir:    dir,
+		File:   fmt.Sprintf("%s.log", name),
+		Expire: 7,
+		Period: filelog.PeriodDay,
+		Level:  log.InfoLevel,
+	}, formatter)
+
 	transport.SetFormatter(formatter)
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
