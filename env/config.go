@@ -38,7 +38,7 @@ func init() {
 	socketSocketDirValue = GetDefault(envSocketDirName, fmt.Sprintf("/tmp/%s", appName))
 	socketSocketDirValue = formatPath(socketSocketDirValue)
 
-	configPath = GetDefault(envConfigName, fmt.Sprintf("/etc/%s/config.yml", appName))
+	configPath = GetDefault(envConfigName, "config.yml")
 	configPath = formatPath(configPath)
 
 	dataDirPath = GetDefault(envDataDirName, fmt.Sprintf("/var/lib/%s", appName))

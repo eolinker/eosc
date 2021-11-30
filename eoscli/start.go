@@ -34,7 +34,6 @@ func Start() *cli.Command {
 
 //StartFunc 开启节点
 func StartFunc(c *cli.Context) error {
-
 	pidDir := env.PidFileDir()
 	// 判断程序是否存在
 	if CheckPIDFILEAlreadyExists(pidDir) {

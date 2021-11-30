@@ -46,13 +46,11 @@ import (
 
 func Process() {
 	utils.InitLogTransport(eosc.ProcessMaster)
-
 	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-
 	master := NewMasterHandle()
 	if err := master.Start(nil); err != nil {
 		master.close()
