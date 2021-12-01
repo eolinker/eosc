@@ -1,38 +1,34 @@
 package eoscli
 
-import (
-	"context"
-	"fmt"
-
-	eosc_args "github.com/eolinker/eosc/eosc-args"
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/service"
-	"github.com/urfave/cli/v2"
-)
-
 var CmdCluster = "clusters"
 
-func Cluster(x cli.ActionFunc) *cli.Command {
-	return &cli.Command{
-		Name:   CmdCluster,
-		Usage:  "list the clusters",
-		Action: x,
-	}
-}
-
-//ClustersFunc 获取集群列表
-func ClustersFunc(c *cli.Context) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	client := service.NewCtiServiceClient(conn)
-	response, err := client.List(context.Background(), &service.ListRequest{})
-	if err != nil {
-		return err
-	}
-	log.Infof("join successful! node id is: %d", response.Msg)
-	return nil
-}
+//func Cluster() *cli.Command {
+//	return &cli.Command{
+//		Name:   CmdCluster,
+//		Usage:  "list the clusters",
+//		Action: ClustersFunc,
+//	}
+//}
+//
+////ClustersFunc 获取集群列表
+//func ClustersFunc(c *cli.Context) error {
+//	cfg, err := config.GetConfig()
+//	if err != nil {
+//
+//	}
+//	pid, err := readPid()
+//	if err != nil {
+//		return err
+//	}
+//	client, err := createCtlServiceClient(pid)
+//	if err != nil {
+//		return err
+//	}
+//	defer client.Close()
+//	response, err := client.List(context.Background(), &service.ListRequest{})
+//	if err != nil {
+//		return err
+//	}
+//	log.Infof("join successful! node id is: %d", response.Msg)
+//	return nil
+//}

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
 )
 
 var errPidNotFound = errors.New("pid not found")
@@ -30,8 +30,8 @@ func processExists(pid int) bool {
 	return true
 }
 
-func CheckPIDFILEAlreadyExists() bool {
-	pid, err := readPid()
+func CheckPIDFILEAlreadyExists(dir string) bool {
+	pid, err := readPid(dir)
 	if err != nil {
 		return false
 	}
@@ -39,17 +39,17 @@ func CheckPIDFILEAlreadyExists() bool {
 	return processExists(pid)
 }
 
-func ClearPid() {
-	os.Remove(getPidFile())
+func ClearPid(dir string) {
+	os.Remove(getPidFile(dir))
 }
 
-func getPidFile() string {
-	abs, _ := filepath.Abs(fmt.Sprintf("%s.pid", eosc_args.AppName()))
+func getPidFile(dir string) string {
+	abs, _ := filepath.Abs(fmt.Sprintf("%s/%s.pid", strings.TrimSuffix(dir, "/"), env.AppName()))
 	return abs
 }
 
-func readPid() (int, error) {
-	pidByte, err := ioutil.ReadFile(getPidFile())
+func readPid(dir string) (int, error) {
+	pidByte, err := ioutil.ReadFile(getPidFile(dir))
 	if err != nil {
 		return 0, err
 	}

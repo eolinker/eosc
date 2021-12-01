@@ -20,7 +20,7 @@ func TypeNameOf(v interface{}) string {
 
 func TypeName(t reflect.Type) string {
 	if t.Kind() == reflect.Ptr {
-		return TypeName(t.Elem())
+		return fmt.Sprint("*", TypeName(t.Elem()))
 	}
 	return fmt.Sprintf("%s.%s", t.PkgPath(), t.String())
 }
@@ -97,7 +97,11 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 		{
 			id := v.String()
 			if id == "" {
-				return nil, fmt.Errorf("%s:%w", f.Name, ErrorRequire)
+				require, has := f.Tag.Lookup("require")
+				if !has || strings.ToLower(require) != "false" {
+					return nil, fmt.Errorf("%s:%w", f.Name, ErrorRequire)
+				}
+				return nil, nil
 			}
 
 			target, has := workers.Get(id)

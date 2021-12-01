@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+
+option go_package = "github.com/eolinker/eosc/config";
+package service;
+
+message ListensMsg {
+    string dir = 1;
+    repeated ListenMsg listens = 2;
+}
+
+message ListenMsg{
+    int32 port = 1;
+    string scheme = 2;
+    repeated Certificate certificate = 3;
+}
+
+message Certificate{
+    string key = 1;
+    string cert = 2;
+}

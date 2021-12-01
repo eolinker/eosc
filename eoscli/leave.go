@@ -2,10 +2,9 @@ package eoscli
 
 import (
 	"context"
-	"fmt"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/env"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
@@ -13,23 +12,26 @@ import (
 
 var CmdLeave = "leave"
 
-func Leave(x cli.ActionFunc) *cli.Command {
+func Leave() *cli.Command {
 	return &cli.Command{
 		Name:   CmdLeave,
 		Usage:  "leave the cluster",
 		Flags:  []cli.Flag{},
-		Action: x,
+		Action: LeaveFunc,
 	}
 }
 
 //LeaveFunc 离开集群
 func LeaveFunc(c *cli.Context) error {
-	conn, err := grpc_unixsocket.Connect(fmt.Sprintf("/tmp/%s.master.sock", eosc_args.AppName()))
+	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	client := service.NewCtiServiceClient(conn)
+	client, err := createCtlServiceClient(pid)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
 	response, err := client.Leave(context.Background(), &service.LeaveRequest{})
 	if err != nil {
 		return err

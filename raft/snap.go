@@ -27,16 +27,22 @@ func (rc *Node) loadSnapshot() *raftpb.Snapshot {
 }
 
 // ReadSnap 读取快照内容到service
-func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter) error {
+func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter, init bool) error {
 	// 读取快照的所有内容
 	snapshot, err := snapshotter.Load()
-	// 快照不存在
-	if err == snap.ErrNoSnapshot {
-		return nil
-	}
 	if err != nil {
-		return err
+		// 快照不存在
+		if err != snap.ErrNoSnapshot {
+			return err
+		}
+		if init {
+			log.Infof("reset snapshot")
+
+			return rc.service.ResetSnap(nil)
+		}
+
 	}
+
 	// 快照不为空的话写进service
 	if snapshot != nil {
 		// 将快照内容缓存到service中
@@ -80,7 +86,7 @@ func (rc *Node) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
 		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
 	}
-	err := rc.ReadSnap(rc.snapshotter)
+	err := rc.ReadSnap(rc.snapshotter, false)
 	if err != nil {
 		log.Info("read snap from snap shotter error:", err)
 	}

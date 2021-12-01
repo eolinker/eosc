@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"syscall"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc"
+
+	env "github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
@@ -15,12 +17,12 @@ import (
 
 func StartMaster(args []string, extra []*os.File) (*exec.Cmd, error) {
 
-	cmd, err := process.Cmd("master", args)
+	cmd, err := process.Cmd(eosc.ProcessMaster, args)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
-	if eosc_args.IsDebug() {
+	if env.IsDebug() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}

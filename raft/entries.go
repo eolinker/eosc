@@ -14,8 +14,10 @@ import (
 // 日志提交处理
 func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 	if len(ents) == 0 {
+		rc.walIndex = 0
 		return true
 	}
+	isInit := false
 	for i := range ents {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
@@ -30,20 +32,19 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				log.Error(err)
 				continue
 			}
-			err = rc.service.CommitHandler(m.Data)
+
+			if m.Type == PROPOSE && m.From == rc.nodeID {
+				if ents[i].Index > rc.walIndex {
+					continue
+				} else {
+					isInit = true
+				}
+			}
+
+			err = rc.service.Commit(m.Data)
 			if err != nil {
 				log.Error(err)
 			}
-			if m.Type == INIT && m.From == rc.nodeID {
-				// 释放InitSend方法的等待，仅针对切换集群的对应节点
-				if err != nil {
-					log.Error(err)
-					rc.waiter.Trigger(m.From, err.Error())
-					continue
-				}
-				rc.waiter.Trigger(m.From, "")
-			}
-
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
@@ -74,6 +75,10 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 						// 不存在，新增
 						rc.peers.SetPeer(cc.NodeID, &info)
 					}
+					if rc.peers.GetPeerNum() > 1 && !rc.join {
+						rc.join = true
+						rc.writeConfig()
+					}
 				}
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == rc.nodeID {
@@ -90,11 +95,19 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 					// 存在，减去
 					rc.peers.DeletePeerByID(cc.NodeID)
 				}
+				if rc.peers.GetPeerNum() < 2 && rc.join {
+					rc.join = false
+					rc.writeConfig()
+				}
 			}
 		}
 	}
 	// after commit, update appliedIndex
 	rc.appliedIndex = ents[len(ents)-1].Index
+	if isInit {
+		// 避免加入其他集群导致的问题
+		rc.walIndex = 0
+	}
 	return true
 }
 

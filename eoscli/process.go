@@ -4,18 +4,19 @@ import (
 	"os"
 	"syscall"
 
-	eosc_args "github.com/eolinker/eosc/eosc-args"
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 )
 
 func restartProcess() error {
-	pid, err := readPid()
+	pidDir := env.PidFileDir()
+	pid, err := readPid(pidDir)
 
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("app %s pid:%d is restart,please wait...\n", eosc_args.AppName(), pid)
+	log.Debugf("app %s pid:%d is restart,please wait...\n", env.AppName(), pid)
 
 	p, err := os.FindProcess(pid)
 	if err != nil {
@@ -25,8 +26,9 @@ func restartProcess() error {
 }
 
 func stopProcess() error {
-	log.Debugf("app %s is stopping,please wait...\n", eosc_args.AppName())
-	pid, err := readPid()
+	pidDir := env.PidFileDir()
+	log.Debugf("app %s is stopping,please wait...\n", env.AppName())
+	pid, err := readPid(pidDir)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ syntax = "proto3";
 option go_package = "github.com/eolinker/eosc/service";
 package service;
 
+import "extender.proto";
 //cli service : 提供管理接口给 cli
 
 message JoinRequest {
@@ -21,12 +22,14 @@ message JoinResponse{
 message NodeInfo {
   string nodeKey = 1;
   int32 nodeID = 2;
-  string broadcastIP = 3;
-  string broadcastPort =4;
+  int32 term = 3;
+  int32 leaderID = 4;
+
   // status 状态：running | leave | stop | timeout
   string status = 5;
   // role 角色
-  string role = 6;
+  string raftState = 6;
+  string addr = 7;
 }
 
 message NodeSecret {
@@ -63,6 +66,7 @@ message InfoResponse {
   NodeInfo info = 3;
 }
 
+
 message ClusterRequest{}
 message ClusterResponse{}
 
@@ -76,4 +80,9 @@ service CtiService {
   rpc Leave(LeaveRequest)returns(LeaveResponse){}
   rpc List(ListRequest)returns(ListResponse){}
   rpc Info(InfoRequest)returns(InfoResponse){}
+  rpc ExtendsInstall(ExtendsRequest)returns(ExtendsResponse){}
+  rpc ExtendsUpdate(ExtendsRequest)returns(ExtendsResponse){}
+  rpc ExtendsUninstall(ExtendsRequest)returns(ExtendsUninstallResponse){}
+//  rpc Extends(ExtendsRequest) returns(ExtendsResponse){}
+
 }

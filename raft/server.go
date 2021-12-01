@@ -3,13 +3,11 @@ package raft
 // 业务处理，根据实际需求更改service，service是外层的业务对象
 
 type IService interface {
-	// CommitHandler 节点commit信息前的处理
-	CommitHandler(data []byte) (err error)
+	// Commit 节点commit信息前的处理
+	Commit(data []byte) (err error)
 
-	// ProcessHandler 节点propose信息前的处理,leader发起或者未启用集群时使用
-	//ProcessHandler(body interface{}) (data []byte, err error)
-	// ProcessHandler 转发到leader时的处理
-	ProcessDataHandler(body []byte) (data []byte, err error)
+	// PreProcessData 转发到leader时的处理
+	PreProcessData(body []byte) (object interface{}, data []byte, err error)
 
 	// GetInit 集群初始化时的将service缓存中的信息进行打包处理,只会在切换集群模式的时候调用一次
 	GetInit() (data []byte, err error)
@@ -19,11 +17,16 @@ type IService interface {
 
 	// GetSnapshot 生成快照，用于快照文件的生成
 	GetSnapshot() (data []byte, err error)
+
 	SetRaft(raft IRaftSender)
 }
 
 type IRaftSender interface {
-	Send(msg []byte) error
+	Send(msg []byte) (interface{}, error)
+}
+
+type IRaftService interface {
+	IService
 }
 
 //
@@ -35,14 +38,14 @@ type IRaftSender interface {
 //type Msg struct {
 //	Namespace string                 `json:"namespace"`
 //	Cmd       string                 `json:"cmd"`
-//	Body      map[string]interface{} `json:"body"`
+//	body      map[string]interface{} `json:"body"`
 //}
 //
-//func (r *raftDemo) Encode(namespace, cmd string, body map[string]interface{}) ([]byte, error) {
+//func (r *raftDemo) encode(namespace, cmd string, body map[string]interface{}) ([]byte, error) {
 //	msg := &Msg{
 //		Namespace: namespace,
 //		Cmd:       cmd,
-//		Body:      body,
+//		body:      body,
 //	}
 //
 //	return json.Marshal(msg)
@@ -55,7 +58,7 @@ type IRaftSender interface {
 //		return "", "", nil, err
 //	}
 //
-//	return m.Namespace, m.Cmd, m.Body, nil
+//	return m.Namespace, m.Cmd, m.body, nil
 //
 //}
 //
@@ -68,7 +71,7 @@ type IRaftSender interface {
 //			}
 //			return r.process(addr, "do", msg)
 //		} else {
-//			msgRaft, err := r.Encode(namespace, cmd, body)
+//			msgRaft, err := r.encode(namespace, cmd, body)
 //			if err != nil {
 //				return err
 //			}
@@ -81,7 +84,7 @@ type IRaftSender interface {
 //			return err
 //		}
 //
-//		return r.ser.CommitHandler(namespace, msg)
+//		return r.ser.Commit(namespace, msg)
 //
 //	}
 //}
@@ -96,8 +99,8 @@ type IRaftSender interface {
 //		return
 //	}
 //
-//	err := r.doHandler(req.Body)
-//	req.Body.Close()
+//	err := r.doHandler(req.body)
+//	req.body.Close()
 //	if err != nil {
 //		writeError(w, "504", "error", err.Error())
 //		return

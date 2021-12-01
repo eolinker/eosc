@@ -11,77 +11,105 @@ package traffic
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 
-	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 )
 
 var (
-	ErrorInvalidListener = errors.New("invalid listener")
+	ErrorInvalidListener = errors.New("invalid port-reqiure")
 )
+var _ ITraffic = (*Traffic)(nil)
 
 type Traffic struct {
 	locker sync.Mutex
-	data   eosc.IUntyped
+	data   *tTrafficData
+}
+
+func (t *Traffic) Expire(ports []int) {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+
+	newData := newTTrafficData()
+
+	old := t.data.clone()
+
+	for _, p := range ports {
+		addr := ResolveTCPAddr("", p)
+		name := addrToName(addr)
+		if o, has := old.Del(name); has {
+			log.Debug("move traffic:", name)
+			newData.add(o)
+		}
+	}
+	for n, o := range old.All() {
+
+		log.Debug("close old : ", n)
+		o.shutdown()
+		//if err := o.shutdown(); err != nil {
+		//	log.Warn("close port-reqiure:", err, " ", o.Addr())
+		//}
+		log.Debug("close old done:", n)
+	}
+
 }
 
 func NewTraffic() *Traffic {
 	return &Traffic{
-		data:   eosc.NewUntyped(),
+		data:   newTTrafficData(),
 		locker: sync.Mutex{},
 	}
 }
+func (t *Traffic) Read(tfConf []*PbTraffic) error {
+	t.locker.Lock()
+	defer t.locker.Unlock()
+	data := newTTrafficData()
+	data.setListener(tfConf)
+	t.data = data
+	return nil
+}
 
-func (t *Traffic) ListenTcp(ip string, port int) (*net.TCPListener, error) {
-	//if strings.HasPrefix(addr, "0.0.0.0:") {
-	//	addr = strings.TrimPrefix(addr, "0.0.0.0")
-	//}
-
+func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
+	log.Debug("traffic try ListenTcp:", ip, ":", port)
 	tcpAddr := ResolveTCPAddr(ip, port)
+	name := addrToName(tcpAddr)
 	t.locker.Lock()
 	defer t.locker.Unlock()
 
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
 	log.Debug("traffic listen:", name)
-	if o, has := t.data.Get(name); has {
-		listener, ok := o.(*net.TCPListener)
-		if !ok {
-			return nil, ErrorInvalidListener
-		}
+	if o, has := t.data.get(name); has {
 
-		return listener, nil
+		//if !ok {
+		//	log.Debug("traffic ListenTcp:", ip, ":", port, ", not port-reqiure")
+		//
+		//	return nil, ErrorInvalidListener
+		//}
+		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
+
+		return o, nil
 	}
+	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
 
 	return nil, nil
 }
 
 type ITraffic interface {
-	ListenTcp(ip string, port int) (*net.TCPListener, error)
+	ListenTcp(ip string, port int) (net.Listener, error)
+	Close()
 }
 
-func (t *Traffic) Read(r io.Reader) {
+func (t *Traffic) Close() {
 	t.locker.Lock()
-	defer t.locker.Unlock()
-
-	listeners, err := Reader(r)
-	if err != nil {
-		log.Warn("read listeners:", err)
-		return
+	list := t.data.list()
+	t.data = newTTrafficData()
+	t.locker.Unlock()
+	for _, it := range list {
+		err := it.Close()
+		if err != nil {
+			log.Info("close traffic port-reqiure:", err)
+		}
 	}
-	for _, ln := range listeners {
-		t.add(ln)
-	}
-
-}
-
-func (t *Traffic) add(ln *net.TCPListener) {
-	tcpAddr := ln.Addr()
-	name := fmt.Sprintf("%s://%s", tcpAddr.Network(), tcpAddr.String())
-	log.Info("traffic add:", name)
-	t.data.Set(name, ln)
 }
 
 func resolve(value string) net.IP {
@@ -102,4 +130,14 @@ func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
 		Port: port,
 		Zone: "",
 	}
+}
+
+func toName(ln net.Listener) string {
+	addr := ln.Addr()
+	return addrToName(addr)
+}
+
+func addrToName(addr net.Addr) string {
+	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
+
 }

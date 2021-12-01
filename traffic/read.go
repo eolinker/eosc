@@ -23,16 +23,10 @@ import (
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
-	"go.etcd.io/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
-type Out struct {
-	Addr     net.Addr
-	File     *os.File
-	Listener net.Listener
-}
-
-func Reader(r io.Reader) ([]*net.TCPListener, error) {
+func readListener(r io.Reader) ([]*net.TCPListener, error) {
 
 	frame, err := utils.ReadFrame(r)
 	if err != nil {
@@ -45,8 +39,13 @@ func Reader(r io.Reader) ([]*net.TCPListener, error) {
 		return nil, err
 	}
 
-	tfs := make([]*net.TCPListener, 0, len(pts.GetTraffic()))
-	for _, pt := range pts.GetTraffic() {
+	return toListeners(pts.GetTraffic())
+}
+
+func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {
+
+	tfs := make([]*net.TCPListener, 0, len(tfConf))
+	for _, pt := range tfConf {
 		name := fmt.Sprintf("%s:/%s", pt.Network, pt.Addr)
 
 		//addr, err := net.ResolveTCPAddr(pt.GetNetwork(), pt.GetAddr())
@@ -64,7 +63,7 @@ func Reader(r io.Reader) ([]*net.TCPListener, error) {
 			f := os.NewFile(uintptr(pt.GetFD()), name)
 			l, err := net.FileListener(f)
 			if err != nil {
-				log.Warn("error to read listener:", err)
+				log.Warn("error to read port-reqiure:", err)
 				return nil, err
 			}
 

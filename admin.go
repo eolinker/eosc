@@ -4,43 +4,34 @@ import (
 	"net/http"
 )
 
-type ProfessionInfo struct {
-	Name         string       `json:"name"`
-	LocalName    string       `json:"local_name"`
-	Desc         string       `json:"desc"`
-	Dependencies []string     `json:"dependencies"`
-	AppendLabels []string     `json:"labels"`
-	Drivers      []DriverInfo `json:"drivers"`
-}
-type ProfessionItem struct {
-}
-type WorkerInfo struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
-	Driver string `json:"driver"`
-	Create string `json:"create_time"`
-	Update string `json:"update_time"`
-}
-
 type Item struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
 }
-
 type IAdmin interface {
-	ListProfessions() []ProfessionInfo
+	IAdminWorker
+	IAdminPermission
+}
+
+type IAdminExtender interface {
+	GetPlugin(id string) (interface{}, error)
+	Plugins() []interface{}
+	PluginsByExtenderID(extenderID string) []interface{}
+}
+
+type IAdminWorker interface {
 	ListEmployees(profession string) ([]interface{}, error)
-	ListEmployeeNames(profession string) ([]string, error)
-	Update(profession, name, driver string, data IData) (*WorkerInfo, error)
-	Delete(profession, name string) (*WorkerInfo, error)
+	//ListEmployeeNames(profession string) ([]string, error)
+	Update(profession, name, driver string, data []byte) (interface{}, error)
+	Delete(profession, name string) (interface{}, error)
 	GetEmployee(profession, name string) (interface{}, error)
-	Render(profession, driver string) (*Render, error)
-	Renders(profession string) (map[string]*Render, error)
-	Drivers(profession string) ([]DriverInfo, error)
-	DriverInfo(profession, driver string) (DriverDetail, error)
-	DriversItem(profession string) ([]Item, error)
-	SearchBySkill(profession string, skill []string) ([]WorkerInfo, error)
-	//ExportByProfession(profession string) ([]StoreValue, error)
+}
+
+type IAdminPermission interface {
+	Drivers(profession string) ([]*DriverInfo, error)
+	DriverInfo(profession, driver string) (*DriverDetail, error)
+	DriversItem(profession string) ([]*Item, error)
+	ListProfessions() []*ProfessionInfo
 }
 
 type IAdminHandler interface {

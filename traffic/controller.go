@@ -12,47 +12,108 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/eolinker/eosc/log"
-
-	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/utils"
 	"google.golang.org/protobuf/proto"
 )
 
-type Traffics []*Out
+var (
+	_ IController = (*Controller)(nil)
+)
 
 type IController interface {
 	ITraffic
-	Encode(startIndex int) ([]byte, []*os.File, error)
 	Close()
+	Reset(ports []int) (isCreate bool, err error)
+	Export(int) ([]*PbTraffic, []*os.File)
 }
 
 type Controller struct {
-	Traffic
+	locker sync.Mutex
+	data   *tTrafficData
 }
 
-func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
+func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
+	log.Debug("traffic controller: Export:")
 	ts := c.All()
-	pts := new(PbTraffics)
+	pts := make([]*PbTraffic, 0, len(ts))
 	files := make([]*os.File, 0, len(ts))
-	pts.Traffic = make([]*PbTraffic, 0, len(ts))
 	for i, ln := range ts {
 		file, err := ln.File()
 		if err != nil {
 			continue
 		}
-		ln.Close()
 		addr := ln.Addr()
 		pt := &PbTraffic{
 			FD:      uint64(i + startIndex),
 			Addr:    addr.String(),
 			Network: addr.Network(),
 		}
-		pts.Traffic = append(pts.Traffic, pt)
+		pts = append(pts, pt)
 		files = append(files, file)
 	}
+	return pts, files
+}
 
+func (c *Controller) Close() {
+	c.locker.Lock()
+	list := c.data.list()
+	c.data = newTTrafficData()
+	c.locker.Unlock()
+	for _, it := range list {
+		it.shutdown()
+	}
+}
+
+func (c *Controller) Reset(ports []int) (bool, error) {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+
+	isCreate := false
+	newData := newTTrafficData()
+
+	old := c.data.clone()
+
+	for _, p := range ports {
+		addr := ResolveTCPAddr("", p)
+		name := addrToName(addr)
+		if o, has := old.Del(name); has {
+			log.Debug("move traffic:", name)
+			newData.add(o)
+		} else {
+			log.Debug("create traffic:", name)
+			l, err := net.ListenTCP("tcp", addr)
+			if err != nil {
+				log.Error("listen tcp:", err)
+				return false, err
+			}
+			newData.add(newTTcpListener(l))
+			isCreate = true
+		}
+	}
+	for n, o := range old.All() {
+
+		//l, ok := o.(*net.TCPListener)
+		//if !ok {
+		//	log.Warn("unknown error while try close  port-reqiure:", n)
+		//	continue
+		//}
+		log.Debug("close old : ", n)
+		o.shutdown()
+		log.Debug("close old done:", n)
+	}
+	c.data = newData
+	return isCreate, nil
+}
+
+func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
+
+	pt, files := c.Export(startIndex)
+	pts := &PbTraffics{
+		Traffic: pt,
+	}
 	data, err := proto.Marshal(pts)
 	if err != nil {
 		return nil, nil, err
@@ -62,70 +123,43 @@ func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
 
 }
 
-func (c *Controller) All() []*net.TCPListener {
+func (c *Controller) All() []*tListener {
+
 	c.locker.Lock()
-	list := c.data.List()
-	c.data = eosc.NewUntyped()
+	list := c.data.list()
 	c.locker.Unlock()
 
-	ts := make([]*net.TCPListener, 0, len(list))
-	for _, it := range list {
-		tf, ok := it.(*net.TCPListener)
-		if !ok {
-			continue
-		}
-		ts = append(ts, tf)
-	}
-
-	return ts
+	return list
 }
 
-func NewController(r io.Reader) *Controller {
+func NewController(r io.Reader) IController {
 	c := &Controller{
-		Traffic: Traffic{
-			data: eosc.NewUntyped(),
-		},
+		data: newTTrafficData(),
 	}
 	if r != nil {
-		c.Read(r)
+		c.data.Read(r)
 	}
 	return c
 }
 
-func (c *Controller) ListenTcp(ip string, port int) (*net.TCPListener, error) {
+func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
+	tcpAddr := ResolveTCPAddr(ip, port)
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	tcp, has := c.data.get(addrToName(tcpAddr))
+	if !has {
+		log.Warn("get listen tcp not exist")
 
-	tcp, err := c.Traffic.ListenTcp(ip, port)
-	if err != nil {
-		log.Warn("get listen tcp from traffic :", err)
-		return nil, err
-	}
-	if tcp == nil {
-		log.Warn("get listen tcp not exit")
-		c.locker.Lock()
-		defer c.locker.Unlock()
-		tcpAddr := ResolveTCPAddr(ip, port)
+		//tcpAddr := ResolveTCPAddr(ip, port)
 
 		l, err := net.ListenTCP("tcp", tcpAddr)
 		if err != nil {
 			log.Warn("listen tcp:", err)
 			return nil, err
 		}
-
-		c.Traffic.add(l)
-		tcp = l
+		ln := newTTcpListener(l)
+		c.data.add(ln)
+		tcp = ln
 	}
 	return tcp, nil
-}
-
-func (c *Controller) Close() {
-	list := c.data.List()
-	c.data = eosc.NewUntyped()
-	for _, it := range list {
-		tf, ok := it.(*Out)
-		if !ok {
-			continue
-		}
-		tf.Listener.Close()
-		tf.File.Close()
-	}
 }

@@ -1,7 +1,10 @@
 package raft
 
 import (
+	"fmt"
 	"os"
+
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 
 	"go.etcd.io/etcd/server/v3/wal"
 
@@ -21,11 +24,9 @@ func (rc *Node) replayWAL() *wal.WAL {
 	if err != nil {
 		log.Fatalf("eosc: failed to read WAL (%v)", err)
 	}
-
 	// 节点日志缓存初始化
 	rc.raftStorage = NewMemoryStorage()
 	if snapshot != nil {
-
 		err = rc.raftStorage.ApplySnapshot(*snapshot)
 		if err != nil {
 			log.Infof("eosc: failed to apply snapshot for raftStorage (%v)", err)
@@ -40,6 +41,13 @@ func (rc *Node) replayWAL() *wal.WAL {
 	if err != nil {
 		log.Infof("eosc: failed to append ents for raftStorage (%v)", err)
 	}
+	rc.walIndex = 0
+	for i := len(ents) - 1; i > 0; i-- {
+		if ents[i].Type == raftpb.EntryNormal {
+			rc.walIndex = ents[i].Index
+			break
+		}
+	}
 	return w
 }
 
@@ -47,7 +55,7 @@ func (rc *Node) replayWAL() *wal.WAL {
 func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if !wal.Exist(rc.waldir) {
 		// 创建本地文件
-		if err := os.Mkdir(rc.waldir, 0750); err != nil {
+		if err := os.MkdirAll(rc.waldir, 0750); err != nil {
 			log.Fatalf("eosc: cannot create dir for wal (%v)", err)
 		}
 		// 创建wal日志对象
@@ -69,5 +77,22 @@ func (rc *Node) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if err != nil {
 		log.Fatalf("eosc: error loading wal (%v)", err)
 	}
+
 	return w
+}
+
+func (rc *Node) removeWalFile() error {
+	if fileutil.Exist(rc.waldir) {
+		err := os.RemoveAll(rc.waldir)
+		if err != nil {
+			return fmt.Errorf("eosc: cannot remove old dir for wal (%w)", err)
+		}
+	}
+	if fileutil.Exist(rc.snapdir) {
+		err := os.RemoveAll(rc.snapdir)
+		if err != nil {
+			return fmt.Errorf("eosc: cannot remove old dir for snap (%w)", err)
+		}
+	}
+	return nil
 }
