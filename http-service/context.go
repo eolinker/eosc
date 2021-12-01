@@ -43,6 +43,7 @@ type IResponseHeader interface {
 }
 type IBodyGet interface {
 	GetBody() []byte
+	BodyLen() int
 }
 
 type IBodySet interface {
