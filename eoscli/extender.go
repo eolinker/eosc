@@ -297,6 +297,12 @@ func ExtenderDownload(c *cli.Context) error {
 			fmt.Println("decode extender id error:", err, "id is", id)
 			continue
 		}
+		// 当本地不存在当前插件时，从插件市场中下载
+		path := extends.LocalExtenderPath(group, name, version)
+		err = os.MkdirAll(path, 0755)
+		if err != nil {
+			return errors.New("create extender path " + path + " error: " + err.Error())
+		}
 		err = extends.DownLoadToRepository(group, name, version)
 		if err != nil {
 			fmt.Println("download extender error:", err, "id is", id)
