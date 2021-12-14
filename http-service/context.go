@@ -21,6 +21,8 @@ type IHttpContext interface {
 	ResponseError() error
 	SendTo(address string, timeout time.Duration) error
 	Entry() formatter.IEntry
+	SetField(key, value string)
+	SetChildren(name string, fields []map[string]string)
 }
 
 type IHeaderReader interface {
