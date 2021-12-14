@@ -16,5 +16,5 @@ func NewFactory() *Factory {
 }
 
 func (f *Factory) Create(cfg formatter.Config) formatter.IFormatter {
-	return &Line{cfg: cfg}
+	return NewLine(cfg)
 }
