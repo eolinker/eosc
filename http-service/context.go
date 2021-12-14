@@ -18,6 +18,8 @@ type IHttpContext interface {
 	Response() IResponse     // 处理返回结果，可读可写
 	ResponseError() error
 	SendTo(address string, timeout time.Duration) error
+	//Fields() map[string]string
+	//SetField(name string, field string)
 }
 
 type IHeaderReader interface {
