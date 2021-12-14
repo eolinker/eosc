@@ -1,8 +1,8 @@
 package formatter
 
 type IEntry interface {
-	Read(pattern string) (string, bool)
-	Children(name string) []IEntry
+	Read(pattern string) string
+	Children(child string) []IEntry
 }
 
 type Config map[string][]string
