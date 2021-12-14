@@ -8,7 +8,7 @@ type IEntry interface {
 type Config map[string][]string
 
 type IFormatterFactory interface {
-	Create(cfg Config) IFormatter
+	Create(cfg Config) (IFormatter, error)
 }
 
 //IFormatter format config
