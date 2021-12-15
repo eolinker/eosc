@@ -58,7 +58,7 @@ type executor struct {
 func NewLine(cfg formatter.Config) (*Line, error) {
 	executors := make(map[string][]*executor)
 	for key, strArr := range cfg {
-		extList := make([]*executor, 0, len(strArr))
+		extList := make([]*executor, len(strArr))
 
 		for i, str := range strArr {
 			ext := new(executor)
@@ -74,11 +74,11 @@ func NewLine(cfg formatter.Config) (*Line, error) {
 					ext.fieldType = arr
 					ext.key = newStr[:idx]
 					ext.child = newStr[idx+1:]
-					continue
+				} else {
+					ext.fieldType = object
+					ext.key = newStr
 				}
 
-				ext.fieldType = object
-				ext.key = newStr
 			} else {
 				ext.fieldType = constant
 				ext.key = newStr
@@ -108,7 +108,7 @@ func (l *Line) Format(entry formatter.IEntry) []byte {
 func (l *Line) recursionField(fields []*executor, entry formatter.IEntry, level int) []string {
 	data := make([]string, len(fields))
 	if separatorLen <= level {
-		return nil
+		return []string{}
 	}
 
 	var left, right string
@@ -128,21 +128,17 @@ func (l *Line) recursionField(fields []*executor, entry formatter.IEntry, level 
 		case object:
 			fs, ok := l.executors[ext.key]
 			var value string
-			if ok {
+			if ok && separatorLen > level+1 {
 				result := l.recursionField(fs, entry, level+1)
-				if separatorLen <= level+1 {
-					continue
-				}
-
 				value = left + strings.Join(result, separators[level+1]) + right
 			}
 			data[i] = value
 		case arr:
 			var value string
 			fs, ok := l.executors[ext.key]
-			if ok {
+			if ok && separatorLen > level+1 {
 				entryList := entry.Children(ext.child)
-				results := make([]string, 0, len(entryList))
+				results := make([]string, len(entryList))
 
 				var arrLeft, arrRight string
 				if containerLen > level+1 {
@@ -152,8 +148,12 @@ func (l *Line) recursionField(fields []*executor, entry formatter.IEntry, level 
 				}
 
 				for idx, e := range entryList {
-					result := l.recursionField(fs, e, level+2)
-					results[idx] = arrLeft + strings.Join(result, separators[level+2]) + arrRight
+					if separatorLen > level+2 {
+						result := l.recursionField(fs, e, level+2)
+						results[idx] = arrLeft + strings.Join(result, separators[level+2]) + arrRight
+						continue
+					}
+					results[idx] = ""
 				}
 				value = left + strings.Join(results, separators[level+1]) + right
 			}
