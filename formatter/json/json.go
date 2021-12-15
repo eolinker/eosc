@@ -35,6 +35,19 @@ type json struct {
 	fields map[string]fieldInfo
 }
 
+func NewFormatter(cfg formatter.Config) (formatter.IFormatter, error) {
+
+	fields, ok := cfg[ROOT]
+	if !ok {
+		return nil, ConfigFormatError
+	}
+	data, err := ParseConfig(fields, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &json{fields: data}, nil
+}
+
 func (j *json) Format(entry formatter.IEntry) []byte {
 	res := make(map[string]interface{})
 	if len(j.fields) > 0 {
@@ -50,13 +63,13 @@ func (j *json) getValue(fields map[string]fieldInfo, entry formatter.IEntry) map
 		switch info.t {
 		case Constants:
 			// 常量
-			res[info.cname] = info.name
+			res[key] = info.name
 		case Variable:
-			res[info.cname] = entry.Read(key)
+			res[key] = entry.Read(info.name)
 		case Array:
-			res[info.cname] = j.getArray(info.childKey, info.child, entry)
+			res[key] = j.getArray(info.childKey, info.child, entry)
 		case Object:
-			res[info.cname] = j.getValue(info.child, entry)
+			res[key] = j.getValue(info.child, entry)
 		}
 	}
 	return res
@@ -70,19 +83,6 @@ func (j *json) getArray(key string, arr map[string]fieldInfo, entry formatter.IE
 		res = append(res, j.getValue(arr, en))
 	}
 	return res
-}
-
-func NewFormatter(cfg formatter.Config) (formatter.IFormatter, error) {
-
-	fields, ok := cfg[ROOT]
-	if !ok {
-		return nil, ConfigFormatError
-	}
-	data, err := ParseConfig(fields, cfg)
-	if err != nil {
-		return nil, err
-	}
-	return &json{fields: data}, nil
 }
 
 func ParseConfig(root []string, cfg formatter.Config) (map[string]fieldInfo, error) {
@@ -101,7 +101,7 @@ func ParseConfig(root []string, cfg formatter.Config) (map[string]fieldInfo, err
 			}
 			info.child = child
 		}
-		data[info.name] = info
+		data[info.cname] = info
 	}
 	return data, nil
 }
@@ -109,36 +109,36 @@ func ParseConfig(root []string, cfg formatter.Config) (map[string]fieldInfo, err
 func parse(filed string) fieldInfo {
 	filed = strings.Trim(filed, " ")
 	fs := strings.Split(filed, " ")
-	l := len(fs)
 	key := fs[0]
-	name := ""
-	if l == 3 && strings.Contains(filed, "as") {
-		name = fs[l-1]
-	}
+	res := fieldInfo{name: key, t: Constants}
 	if strings.HasPrefix(key, "$") {
 		key = strings.TrimLeft(key, "$")
-		name = key
 		// 常量
-		return fieldInfo{name: key, cname: name, t: Variable}
+		res = fieldInfo{name: key, t: Variable}
 	}
 	if strings.HasPrefix(key, "@") {
 		key = strings.TrimLeft(key, "@")
 		if strings.Contains(key, "#") {
 			if strings.HasSuffix(key, "#") {
 				key = strings.TrimRight(key, "#")
-				name = key
 				// 数组，获取所有字段
-				return fieldInfo{name: key, cname: name, t: Array, childKey: defaultChildKey}
+				res = fieldInfo{name: key, t: Array, childKey: defaultChildKey}
+			} else {
+				// 数组，获取检索字段
+				s := strings.Split(key, "#")
+				key, childKey := s[0], s[1]
+				res = fieldInfo{name: key, t: Array, childKey: childKey}
 			}
-			// 数组，获取个别字段
-			childKey := strings.Split(key, "#")[1]
-			return fieldInfo{name: key, cname: name, t: Array, childKey: childKey}
+		} else {
+			// 对象
+			res = fieldInfo{name: key, t: Object}
 		}
-
-		name = key
-		// 对象
-		return fieldInfo{name: key, cname: name, t: Object}
 	}
-	// 啥都没
-	return fieldInfo{name: key, cname: name, t: Constants}
+	l := len(fs)
+	if l == 3 && strings.Contains(filed, "as") {
+		res.cname = fs[l-1]
+	} else {
+		res.cname = res.name
+	}
+	return res
 }
