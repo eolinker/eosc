@@ -52,9 +52,10 @@ type Line struct {
 type executor struct {
 	fieldType int
 	key       string
+	child     string
 }
 
-func NewLine(cfg formatter.Config) *Line {
+func NewLine(cfg formatter.Config) (*Line, error) {
 	executors := make(map[string][]*executor)
 	for key, strArr := range cfg {
 		extList := make([]*executor, 0, len(strArr))
@@ -69,10 +70,10 @@ func NewLine(cfg formatter.Config) *Line {
 				ext.key = strings.Trim(newStr, "$")
 			} else if strings.HasPrefix(newStr, "@") {
 				newStr = strings.TrimPrefix(newStr, "@")
-				if strings.HasSuffix(newStr, "#") {
-					newStr = strings.TrimSuffix(newStr, "#")
+				if idx := strings.Index(newStr, "#"); idx != -1 {
 					ext.fieldType = arr
-					ext.key = newStr
+					ext.key = newStr[:idx]
+					ext.child = newStr[idx+1:]
 					continue
 				}
 
@@ -89,7 +90,7 @@ func NewLine(cfg formatter.Config) *Line {
 		executors[key] = extList
 	}
 
-	return &Line{executors: executors}
+	return &Line{executors: executors}, nil
 }
 
 func (l *Line) Format(entry formatter.IEntry) []byte {
@@ -123,8 +124,7 @@ func (l *Line) recursionField(fields []*executor, entry formatter.IEntry, level 
 		case constant:
 			data[i] = ext.key
 		case variable:
-			value, _ := entry.Read(ext.key)
-			data[i] = value
+			data[i] = entry.Read(ext.key)
 		case object:
 			fs, ok := l.executors[ext.key]
 			var value string
@@ -138,7 +138,26 @@ func (l *Line) recursionField(fields []*executor, entry formatter.IEntry, level 
 			}
 			data[i] = value
 		case arr:
+			var value string
+			fs, ok := l.executors[ext.key]
+			if ok {
+				entryList := entry.Children(ext.child)
+				results := make([]string, 0, len(entryList))
 
+				var arrLeft, arrRight string
+				if containerLen > level+1 {
+					cta := containers[level+1]
+					arrLeft = string(cta.left)
+					arrRight = string(cta.right)
+				}
+
+				for idx, e := range entryList {
+					result := l.recursionField(fs, e, level+2)
+					results[idx] = arrLeft + strings.Join(result, separators[level+2]) + arrRight
+				}
+				value = left + strings.Join(results, separators[level+1]) + right
+			}
+			data[i] = value
 		}
 
 	}
