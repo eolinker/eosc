@@ -6,8 +6,6 @@ import (
 	"net/textproto"
 	"net/url"
 	"time"
-
-	"github.com/eolinker/eosc/formatter"
 )
 
 type IHttpContext interface {
@@ -20,12 +18,11 @@ type IHttpContext interface {
 	Response() IResponse     // 处理返回结果，可读可写
 	ResponseError() error
 	SendTo(address string, timeout time.Duration) error
-	Entry() formatter.IEntry
-	SetField(key, value string)
-	SetChildren(name string, fields []map[string]string)
+	Proxies() []IRequest
 }
 
 type IHeaderReader interface {
+	RawHeader() string
 	GetHeader(name string) string
 	Headers() http.Header
 	Host() string
