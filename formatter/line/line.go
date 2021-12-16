@@ -3,7 +3,7 @@ package line
 import (
 	"strings"
 
-	"github.com/eolinker/eosc/formatter"
+	"github.com/eolinker/eosc"
 )
 
 var separators = []string{
@@ -55,7 +55,7 @@ type executor struct {
 	child     string
 }
 
-func NewLine(cfg formatter.Config) (*Line, error) {
+func NewLine(cfg eosc.FormatterConfig) (*Line, error) {
 	executors := make(map[string][]*executor)
 	for key, strArr := range cfg {
 		extList := make([]*executor, len(strArr))
@@ -93,7 +93,7 @@ func NewLine(cfg formatter.Config) (*Line, error) {
 	return &Line{executors: executors}, nil
 }
 
-func (l *Line) Format(entry formatter.IEntry) []byte {
+func (l *Line) Format(entry eosc.IEntry) []byte {
 	fields, ok := l.executors["fields"]
 	if !ok {
 		return []byte("")
@@ -105,7 +105,7 @@ func (l *Line) Format(entry formatter.IEntry) []byte {
 	return []byte(data)
 }
 
-func (l *Line) recursionField(fields []*executor, entry formatter.IEntry, level int) []string {
+func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) []string {
 	data := make([]string, len(fields))
 	if separatorLen <= level {
 		return []string{}

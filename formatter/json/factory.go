@@ -1,6 +1,9 @@
 package json
 
-import "github.com/eolinker/eosc/formatter"
+import (
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/formatter"
+)
 
 const Name = "json"
 
@@ -11,7 +14,7 @@ func init() {
 type Factory struct {
 }
 
-func (f *Factory) Create(cfg formatter.Config) (formatter.IFormatter, error) {
+func (f *Factory) Create(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
 	return NewFormatter(cfg)
 }
 
