@@ -101,6 +101,62 @@ func Test_json_Format(t *testing.T) {
 			name:   "general",
 			config: config,
 			args:   args{entry: initRootEntry()},
+			want: map[string]interface{}{
+				"id": "123",
+				"http": map[string]interface{}{
+					"request_method": "POST",
+					"request_uri":    "/path",
+					"service": map[string]interface{}{
+						"service_name": "abc",
+					},
+					"proxy": map[string]interface{}{
+						"error":          "error3",
+						"proxy_password": "password3",
+						"proxy_username": "username3",
+					},
+					"proxy2": []interface{}{
+						map[string]interface{}{
+							"error":          "error1",
+							"proxy_password": "password1",
+							"proxy_username": "username1",
+						},
+						map[string]interface{}{
+							"error":          "error2",
+							"proxy_password": "password2",
+							"proxy_username": "username2",
+						},
+						map[string]interface{}{
+							"error":          "error3",
+							"proxy_password": "password3",
+							"proxy_username": "username3",
+						},
+					},
+				},
+				"t": map[string]interface{}{
+					"service_name": "abc",
+				},
+				"tmp": map[string]interface{}{
+					"123":  "123",
+					"test": "456",
+				},
+				"proxy": []interface{}{
+					map[string]interface{}{
+						"error":          "error1",
+						"proxy_password": "password1",
+						"proxy_username": "username1",
+					},
+					map[string]interface{}{
+						"error":          "error2",
+						"proxy_password": "password2",
+						"proxy_username": "username2",
+					},
+					map[string]interface{}{
+						"error":          "error3",
+						"proxy_password": "password3",
+						"proxy_username": "username3",
+					},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
