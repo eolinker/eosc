@@ -5,10 +5,10 @@ type IEntry interface {
 	Children(child string) []IEntry
 }
 
-type Config map[string][]string
+type FormatterConfig map[string][]string
 
 type IFormatterFactory interface {
-	Create(cfg Config) (IFormatter, error)
+	Create(cfg FormatterConfig) (IFormatter, error)
 }
 
 //IFormatter format config
