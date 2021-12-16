@@ -3,8 +3,9 @@ package json
 import (
 	json2 "encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc/formatter"
 	"strings"
+
+	"github.com/eolinker/eosc/formatter"
 )
 
 const (
@@ -31,7 +32,7 @@ type fieldInfo struct {
 	childKey string
 }
 
-type json struct {
+type jsonFormat struct {
 	fields map[string]fieldInfo
 }
 
@@ -45,10 +46,10 @@ func NewFormatter(cfg formatter.Config) (formatter.IFormatter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &json{fields: data}, nil
+	return &jsonFormat{fields: data}, nil
 }
 
-func (j *json) Format(entry formatter.IEntry) []byte {
+func (j *jsonFormat) Format(entry formatter.IEntry) []byte {
 	res := make(map[string]interface{})
 	if len(j.fields) > 0 {
 		res = j.getValue(j.fields, entry)
@@ -57,7 +58,7 @@ func (j *json) Format(entry formatter.IEntry) []byte {
 	return b
 }
 
-func (j *json) getValue(fields map[string]fieldInfo, entry formatter.IEntry) map[string]interface{} {
+func (j *jsonFormat) getValue(fields map[string]fieldInfo, entry formatter.IEntry) map[string]interface{} {
 	res := make(map[string]interface{})
 	for key, info := range fields {
 		switch info.t {
@@ -76,7 +77,7 @@ func (j *json) getValue(fields map[string]fieldInfo, entry formatter.IEntry) map
 
 }
 
-func (j *json) getArray(key string, arr map[string]fieldInfo, entry formatter.IEntry) []interface{} {
+func (j *jsonFormat) getArray(key string, arr map[string]fieldInfo, entry formatter.IEntry) []interface{} {
 	ens := entry.Children(key)
 	res := make([]interface{}, 0, len(ens))
 	for _, en := range ens {

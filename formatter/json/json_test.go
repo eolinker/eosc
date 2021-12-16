@@ -1,10 +1,12 @@
 package json
 
 import (
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/formatter"
+	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/formatter"
 )
 
 type Entry struct {
@@ -92,7 +94,7 @@ func Test_json_Format(t *testing.T) {
 		name   string
 		config formatter.Config
 		args   args
-		want   []byte
+		want   map[string]interface{}
 	}{
 		// TODO: Add test cases.
 		{
@@ -103,11 +105,19 @@ func Test_json_Format(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			wantData, _ := json.Marshal(tt.want)
+
 			j, _ := NewFormatter(tt.config)
 			got := j.Format(tt.args.entry)
+			var gotObj interface{}
+			err := json.Unmarshal(got, &gotObj)
+			if err != nil {
+				t.Errorf("Format() = %s error:%v", string(got), err)
+				return
+			}
 			t.Log(string(got))
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Format() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(gotObj, tt.want) {
+				t.Errorf("Format() = %s, want %s", string(got), string(wantData))
 			}
 		})
 	}
