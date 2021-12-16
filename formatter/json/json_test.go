@@ -109,7 +109,7 @@ func Test_json_Format(t *testing.T) {
 
 			j, _ := NewFormatter(tt.config)
 			got := j.Format(tt.args.entry)
-			var gotObj interface{}
+			gotObj := map[string]interface{}{}
 			err := json.Unmarshal(got, &gotObj)
 			if err != nil {
 				t.Errorf("Format() = %s error:%v", string(got), err)
