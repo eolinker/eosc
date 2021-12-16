@@ -1,4 +1,4 @@
-package formatter
+package eosc
 
 type IEntry interface {
 	Read(pattern string) string
