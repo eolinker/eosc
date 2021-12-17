@@ -40,7 +40,7 @@ message WorkerLoadArg{
   map<string,string> extenderSetting= 3;
   repeated ProfessionConfig  professions = 4;
   repeated WorkerConfig workers = 5;
-  int32 level = 6;
+  string level = 6;
 }
 
 message ResetRequest{

@@ -46,7 +46,7 @@ import (
 )
 
 func Process() {
-	logWriter := utils.InitLogTransport("error", eosc.ProcessMaster)
+	logWriter := utils.InitLogTransport(eosc.ProcessMaster)
 	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())

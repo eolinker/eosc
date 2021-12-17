@@ -2,6 +2,7 @@ package process_master
 
 import (
 	"context"
+	"github.com/eolinker/eosc/env"
 	"io"
 	"os"
 	"sync"
@@ -236,6 +237,7 @@ func (wc *WorkerController) config() (*service.WorkerLoadArg, []*os.File) {
 		ExtenderSetting: wc.extenderSetting.All(),
 		Professions:     wc.professions.All(),
 		Workers:         wc.workers.export(),
+		Level:           env.ErrorLevel().String(),
 	}, wc.trafficFiles
 }
 func (wc *WorkerController) new() error {
