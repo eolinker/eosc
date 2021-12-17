@@ -14,11 +14,9 @@ import (
 
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/log/filelog"
 )
 
 func InitLogTransport(name string) {
-	dir := env.LogDir()
 	if env.IsDebug() {
 		//dir = filepath.Base(".")
 		log.InitDebug(true)
@@ -30,14 +28,7 @@ func InitLogTransport(name string) {
 	//writer := filelog.NewFileWriteByPeriod()
 	//writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
 	//writer.Open()
-	transport := filelog.CreateTransporter(log.InfoLevel)
-	transport.Reset(&filelog.Config{
-		Dir:    dir,
-		File:   fmt.Sprintf("%s.log", name),
-		Expire: 7,
-		Period: filelog.PeriodDay,
-		Level:  log.InfoLevel,
-	}, formatter)
+	transport := log.NewTransport(os.Stderr, log.InfoLevel)
 	transport.SetFormatter(formatter)
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
