@@ -12,9 +12,6 @@ type Builder interface {
 	Logln(level Level, args ...interface{})
 	Log(level Level, args ...interface{})
 	Logf(level Level, format string, args ...interface{})
-	LoglnWithPrefix(level Level, prefix string, format string, args ...interface{})
-	LogWithPrefix(level Level, prefix string, format string, args ...interface{})
-	LogfWithPrefix(level Level, prefix string, format string, args ...interface{})
 	WithError(err error) Builder
 	WithField(key string, value interface{}) Builder
 	WithFields(fields Fields) Builder
