@@ -27,13 +27,13 @@ import (
 )
 
 func Process() {
-
-	utils.InitStdTransport(eosc.ProcessWorker)
+	arg := readArg()
+	utils.InitStdTransport(eosc.ProcessWorker,arg.)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")
 
 	log.Debug("create worker...")
-	w, err := NewProcessWorker()
+	w, err := NewProcessWorker(arg)
 	if err != nil {
 		log.Error("new process worker error: ", err)
 		return
@@ -84,8 +84,8 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker() (*ProcessWorker, error) {
-	arg := readArg()
+func NewProcessWorker(arg *service.WorkerLoadArg) (*ProcessWorker, error) {
+
 	register := loadPluginEnv(arg.ExtenderSetting)
 
 	tf := createTraffic(arg.Traffic)

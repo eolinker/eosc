@@ -2,11 +2,10 @@ package process_master
 
 import (
 	"context"
+	"io"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/eolinker/eosc/log/filelog"
 
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
@@ -44,13 +43,13 @@ type WorkerController struct {
 	cancelFunc context.CancelFunc
 
 	restartChan    chan int
-	transport      *filelog.Transporter
+	logWriter      io.Writer
 	startedChannel chan int
 	onceStartDo    sync.Once
 	errChan        chan []byte
 }
 
-func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy) *WorkerController {
+func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy, logWriter io.Writer) *WorkerController {
 	traffics, files := traffic.Export(3)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -67,6 +66,7 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 		restartChan:        make(chan int, 1),
 		startedChannel:     make(chan int),
 		errChan:            make(chan []byte, 1),
+		logWriter:          logWriter,
 	}
 	go wc.doControl()
 	return wc
@@ -110,26 +110,6 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 		for i, v := range wc.expireWorkers {
 			if v == w {
 				wc.expireWorkers = append(wc.expireWorkers[:i], wc.expireWorkers[i+1:]...)
-			}
-		}
-	}
-}
-
-func (wc *WorkerController) writeErr() {
-	for {
-		select {
-		case <-wc.ctx.Done():
-			{
-				return
-			}
-		case data, ok := <-wc.errChan:
-			{
-				if !ok {
-					continue
-				}
-				if wc.transport != nil {
-					wc.transport.Output().Write(data)
-				}
 			}
 		}
 	}
@@ -263,7 +243,7 @@ func (wc *WorkerController) new() error {
 
 	arg, files := wc.config()
 
-	workerProcess, err := newWorkerProcess(arg, files, wc.errChan)
+	workerProcess, err := newWorkerProcess(arg, files, wc.logWriter)
 	if err != nil {
 		log.Warn("new worker process:", err)
 		return err
