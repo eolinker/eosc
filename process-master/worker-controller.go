@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eolinker/eosc/log/filelog"
+
 	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
 	"github.com/eolinker/eosc/config"
@@ -41,10 +43,11 @@ type WorkerController struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 
-	restartChan chan int
-
+	restartChan    chan int
+	transport      *filelog.Transporter
 	startedChannel chan int
 	onceStartDo    sync.Once
+	errChan        chan []byte
 }
 
 func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy) *WorkerController {
@@ -63,6 +66,7 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 		cancelFunc:         cancelFunc,
 		restartChan:        make(chan int, 1),
 		startedChannel:     make(chan int),
+		errChan:            make(chan []byte, 1),
 	}
 	go wc.doControl()
 	return wc
@@ -106,6 +110,26 @@ func (wc *WorkerController) check(w *WorkerProcess) {
 		for i, v := range wc.expireWorkers {
 			if v == w {
 				wc.expireWorkers = append(wc.expireWorkers[:i], wc.expireWorkers[i+1:]...)
+			}
+		}
+	}
+}
+
+func (wc *WorkerController) writeErr() {
+	for {
+		select {
+		case <-wc.ctx.Done():
+			{
+				return
+			}
+		case data, ok := <-wc.errChan:
+			{
+				if !ok {
+					continue
+				}
+				if wc.transport != nil {
+					wc.transport.Output().Write(data)
+				}
 			}
 		}
 	}
@@ -239,7 +263,7 @@ func (wc *WorkerController) new() error {
 
 	arg, files := wc.config()
 
-	workerProcess, err := newWorkerProcess(arg, files)
+	workerProcess, err := newWorkerProcess(arg, files, wc.errChan)
 	if err != nil {
 		log.Warn("new worker process:", err)
 		return err

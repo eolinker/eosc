@@ -59,7 +59,16 @@ func (w *WorkerProcess) createClient() service.WorkerServiceClient {
 	return w.client
 }
 
-func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*WorkerProcess, error) {
+type writer struct {
+	data chan []byte
+}
+
+func (w *writer) Write(p []byte) (n int, err error) {
+	w.data <- p
+	return len(p), nil
+}
+
+func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File, c chan []byte) (*WorkerProcess, error) {
 	cmd, err := process.Cmd(eosc.ProcessWorker, nil)
 	if err != nil {
 		return nil, err
@@ -77,7 +86,7 @@ func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*Work
 	cmd.Stdin = bytes.NewReader(utils.EncodeFrame(argData))
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = &writer{data: c}
 	err = cmd.Start()
 	if err != nil {
 		return nil, err
