@@ -38,7 +38,6 @@ func InitLogTransport(name string) {
 		Period: filelog.PeriodDay,
 		Level:  log.InfoLevel,
 	}, formatter)
-
 	transport.SetFormatter(formatter)
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))

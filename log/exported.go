@@ -81,19 +81,16 @@ func DebugF(format string, args ...interface{}) {
 
 // Info logs a message at level Info on the standard logger.
 func Info(args ...interface{}) {
-
 	logger.Info(args...)
 }
 
 // Warn logs a message at level Warn on the standard logger.
 func Warn(args ...interface{}) {
-
 	logger.Warn(args...)
 }
 
 // Error logs a message at level Error on the standard logger.
 func Error(args ...interface{}) {
-
 	logger.Error(args...)
 }
 func panicOut(args ...interface{}) string {

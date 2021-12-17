@@ -8,20 +8,7 @@ message helloRequest {
 message helloResponse{
   string name =1;
 }
-
-message logRequest {
-  int32 level = 1;
-  string message = 2;
-  string prefix = 3;
-  int32 pid = 4;
-}
-
-message logResponse {
-  string status = 1;
-}
-
 service Master {
  rpc Hello(helloRequest) returns(helloResponse){};
- rpc SendLog(logRequest) returns(logResponse){};
 }
 
