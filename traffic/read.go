@@ -53,7 +53,7 @@ func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {
 		//	return nil, err
 		//}
 		//
-		log.Debugf("read traffic:%s=%d", name, pt.GetFD())
+		log.DebugF("read traffic:%s=%d", name, pt.GetFD())
 		switch pt.Network {
 		//case "udp","udp4","udp8":
 		//

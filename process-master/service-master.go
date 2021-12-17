@@ -30,3 +30,7 @@ func (m *MasterServiceServer) Hello(ctx context.Context, request *service.HelloR
 	}, nil
 
 }
+
+func (m *MasterServiceServer) Error(ctx context.Context, request *service.ErrorRequest) (*service.ErrorResponse, error) {
+	return nil, nil
+}

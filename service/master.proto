@@ -8,7 +8,20 @@ message helloRequest {
 message helloResponse{
   string name =1;
 }
+
+message errorRequest {
+  int32 level = 1;
+  string message = 2;
+  string prefix = 3;
+  int32 pid = 4;
+}
+
+message errorResponse {
+  string status = 1;
+}
+
 service Master {
- rpc  Hello(helloRequest)returns(helloResponse){};
+ rpc Hello(helloRequest) returns(helloResponse){};
+ rpc Error(errorRequest) returns(errorResponse){};
 }
 
