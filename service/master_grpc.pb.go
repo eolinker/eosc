@@ -19,7 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterClient interface {
 	Hello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
-	Error(ctx context.Context, in *ErrorRequest, opts ...grpc.CallOption) (*ErrorResponse, error)
+	SendLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
 }
 
 type masterClient struct {
@@ -39,9 +39,9 @@ func (c *masterClient) Hello(ctx context.Context, in *HelloRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *masterClient) Error(ctx context.Context, in *ErrorRequest, opts ...grpc.CallOption) (*ErrorResponse, error) {
-	out := new(ErrorResponse)
-	err := c.cc.Invoke(ctx, "/service.Master/Error", in, out, opts...)
+func (c *masterClient) SendLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error) {
+	out := new(LogResponse)
+	err := c.cc.Invoke(ctx, "/service.Master/SendLog", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (c *masterClient) Error(ctx context.Context, in *ErrorRequest, opts ...grpc
 // for forward compatibility
 type MasterServer interface {
 	Hello(context.Context, *HelloRequest) (*HelloResponse, error)
-	Error(context.Context, *ErrorRequest) (*ErrorResponse, error)
+	SendLog(context.Context, *LogRequest) (*LogResponse, error)
 	mustEmbedUnimplementedMasterServer()
 }
 
@@ -64,8 +64,8 @@ type UnimplementedMasterServer struct {
 func (UnimplementedMasterServer) Hello(context.Context, *HelloRequest) (*HelloResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Hello not implemented")
 }
-func (UnimplementedMasterServer) Error(context.Context, *ErrorRequest) (*ErrorResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Error not implemented")
+func (UnimplementedMasterServer) SendLog(context.Context, *LogRequest) (*LogResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendLog not implemented")
 }
 func (UnimplementedMasterServer) mustEmbedUnimplementedMasterServer() {}
 
@@ -98,20 +98,20 @@ func _Master_Hello_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Master_Error_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ErrorRequest)
+func _Master_SendLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServer).Error(ctx, in)
+		return srv.(MasterServer).SendLog(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/service.Master/Error",
+		FullMethod: "/service.Master/SendLog",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).Error(ctx, req.(*ErrorRequest))
+		return srv.(MasterServer).SendLog(ctx, req.(*LogRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -128,8 +128,8 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Master_Hello_Handler,
 		},
 		{
-			MethodName: "Error",
-			Handler:    _Master_Error_Handler,
+			MethodName: "SendLog",
+			Handler:    _Master_SendLog_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
