@@ -1,22 +1,26 @@
 package formatter
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/eolinker/eosc"
+)
 
 var manager = NewManager()
 
 type Manager struct {
-	factory map[string]IFormatterFactory
+	factory map[string]eosc.IFormatterFactory
 	locker  sync.RWMutex
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		factory: make(map[string]IFormatterFactory),
+		factory: make(map[string]eosc.IFormatterFactory),
 		locker:  sync.RWMutex{},
 	}
 }
 
-func (m *Manager) Get(name string) (IFormatterFactory, bool) {
+func (m *Manager) Get(name string) (eosc.IFormatterFactory, bool) {
 	m.locker.RLock()
 
 	defer m.locker.RUnlock()
@@ -26,16 +30,16 @@ func (m *Manager) Get(name string) (IFormatterFactory, bool) {
 	return nil, false
 }
 
-func (m *Manager) Set(name string, factory IFormatterFactory) {
+func (m *Manager) Set(name string, factory eosc.IFormatterFactory) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 	m.factory[name] = factory
 }
 
-func Register(name string, factory IFormatterFactory) {
+func Register(name string, factory eosc.IFormatterFactory) {
 	manager.Set(name, factory)
 }
 
-func GetFormatterFactory(name string) (IFormatterFactory, bool) {
+func GetFormatterFactory(name string) (eosc.IFormatterFactory, bool) {
 	return manager.Get(name)
 }
