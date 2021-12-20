@@ -28,8 +28,7 @@ import (
 
 func Process() {
 	arg := readArg()
-	level, _ := log.ParseLevel(arg.Level)
-	utils.InitStdTransport(eosc.ProcessWorker, level)
+	utils.InitStdTransport(eosc.ProcessWorker)
 	//log.Debug("load plugin env...")
 	log.Info("worker process start...")
 

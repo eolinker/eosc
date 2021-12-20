@@ -40,7 +40,7 @@ func InitLogTransport(name string) io.Writer {
 	return writer
 }
 
-func InitStdTransport(name string, level log.Level) {
+func InitStdTransport(name string) {
 	if env.IsDebug() {
 		log.InitDebug(true)
 	}
@@ -48,7 +48,7 @@ func InitStdTransport(name string, level log.Level) {
 		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
-	transport := log.NewTransport(os.Stderr, level)
+	transport := log.NewTransport(os.Stderr, env.ErrorLevel())
 	transport.SetFormatter(formatter)
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
