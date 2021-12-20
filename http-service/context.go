@@ -86,11 +86,14 @@ type IBodyDataWriter interface {
 
 type IStatusGet interface {
 	StatusCode() int
+	ProxyStatusCode() int
+	ProxyStatus() string
 	Status() string
 }
 
 type IStatusSet interface {
 	SetStatus(code int, status string)
+	SetProxyStatus(code int, status string)
 }
 
 type IQueryReader interface {
