@@ -170,7 +170,7 @@ func DataDir() string {
 	return dataDirPath
 }
 func ErrorName() string {
-	return errorLogName
+	return strings.TrimSuffix(errorLogName, ".log")
 }
 func ErrorLevel() log.Level {
 	l, err := log.ParseLevel(errorLogLevel)
