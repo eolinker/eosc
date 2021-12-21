@@ -1,6 +1,8 @@
 package formatter
 
 import (
+	"github.com/eolinker/eosc/formatter/json"
+	"github.com/eolinker/eosc/formatter/line"
 	"sync"
 
 	"github.com/eolinker/eosc"
@@ -11,6 +13,11 @@ var manager = NewManager()
 type Manager struct {
 	factory map[string]eosc.IFormatterFactory
 	locker  sync.RWMutex
+}
+
+func init() {
+	Register(line.Name, line.NewFactory())
+	Register(json.Name, json.NewFactory())
 }
 
 func NewManager() *Manager {

@@ -2,14 +2,9 @@ package json
 
 import (
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/formatter"
 )
 
 const Name = "json"
-
-func init() {
-	formatter.Register(Name, NewFactory())
-}
 
 type Factory struct {
 }
