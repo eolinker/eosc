@@ -124,17 +124,21 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 		case constant:
 			data[i] = ext.key
 		case variable:
-			data[i] = entry.Read(ext.key)
+			value := entry.Read(ext.key)
+			if value == "" {
+				value = "-"
+			}
+			data[i] = value
 		case object:
 			fs, ok := l.executors[ext.key]
-			var value string
+			value := "-"
 			if ok && separatorLen > level+1 {
 				result := l.recursionField(fs, entry, level+1)
 				value = left + strings.Join(result, separators[level+1]) + right
 			}
 			data[i] = value
 		case arr:
-			var value string
+			value := "-"
 			fs, ok := l.executors[ext.key]
 			if ok && separatorLen > level+1 {
 				entryList := entry.Children(ext.child)
@@ -153,7 +157,7 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 						results[idx] = arrLeft + strings.Join(result, separators[level+2]) + arrRight
 						continue
 					}
-					results[idx] = ""
+					results[idx] = "-"
 				}
 				value = left + strings.Join(results, separators[level+1]) + right
 			}
