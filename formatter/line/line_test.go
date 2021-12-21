@@ -1,7 +1,7 @@
 package line
 
 import (
-	"github.com/eolinker/eosc/formatter"
+	"github.com/eolinker/eosc"
 	"reflect"
 	"testing"
 )
@@ -14,17 +14,17 @@ func (m *myEntry) Read(pattern string) string {
 	return m.data[pattern]
 }
 
-func (m *myEntry) Children(child string) []formatter.IEntry {
+func (m *myEntry) Children(child string) []eosc.IEntry {
 	//默认返回proxies
 	return childEntries
 }
 
 var (
-	childEntries []formatter.IEntry
+	childEntries []eosc.IEntry
 )
 
 func init() {
-	childEntries = []formatter.IEntry{
+	childEntries = []eosc.IEntry{
 		&myEntry{data: map[string]string{"proxy_username": "user1", "proxy_password": "pwd1"}},
 		&myEntry{data: map[string]string{"proxy_username": "user2", "proxy_password": "pwd2"}},
 	}
@@ -33,8 +33,8 @@ func init() {
 func TestLine_Format(t *testing.T) {
 
 	type args struct {
-		conf  formatter.Config
-		entry formatter.IEntry
+		conf  eosc.FormatterConfig
+		entry eosc.IEntry
 	}
 	tests := []struct {
 		name   string
@@ -46,7 +46,7 @@ func TestLine_Format(t *testing.T) {
 			"示例1",
 			nil,
 			args{
-				formatter.Config{
+				eosc.FormatterConfig{
 					"fields":  {"$id as", "@http", "@service as t", "@proxy", "@proxy#"},
 					"http":    {"$request_method", "$request_uri", "@service", "@proxy", "@proxy# as proxy2"},
 					"service": {"abc as service_name"},
@@ -60,7 +60,7 @@ func TestLine_Format(t *testing.T) {
 			"示例2  超过第四层的不显示， 备注，在第四层能显示的只有$变量和常量，若是object或arr则显示为空字符串，依旧是用分隔符隔开",
 			nil,
 			args{
-				formatter.Config{
+				eosc.FormatterConfig{
 					"fields": {"@layer1"},
 					"layer1": {"@layer2"},
 					"layer2": {"@layer3"},
@@ -75,7 +75,7 @@ func TestLine_Format(t *testing.T) {
 			"示例3  service pattern不存在的情况",
 			nil,
 			args{
-				formatter.Config{
+				eosc.FormatterConfig{
 					"fields": {"$id as", "@http"},
 					"http":   {"$request_method", "@service", "@tmp", "@proxy# as proxy2"},
 					"tmp":    {"@service", "@proxy#"},
