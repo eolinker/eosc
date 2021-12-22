@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/formatter"
 )
 
 type Entry struct {
@@ -47,16 +46,16 @@ func (e *Entry) Read(pattern string) string {
 	return ""
 }
 
-func (e *Entry) Children(name string) []formatter.IEntry {
-	res := make([]formatter.IEntry, 0)
+func (e *Entry) Children(name string) []eosc.IEntry {
+	res := make([]eosc.IEntry, 0)
 	for _, child := range e.children.List() {
-		c, _ := child.(formatter.IEntry)
+		c, _ := child.(eosc.IEntry)
 		res = append(res, c)
 	}
 	return res
 }
 
-var config = formatter.Config{
+var config = eosc.FormatterConfig{
 	"fields": []string{
 		"$id",
 		"@http",
@@ -88,11 +87,11 @@ var config = formatter.Config{
 func Test_json_Format(t *testing.T) {
 
 	type args struct {
-		entry formatter.IEntry
+		entry eosc.IEntry
 	}
 	tests := []struct {
 		name   string
-		config formatter.Config
+		config eosc.FormatterConfig
 		args   args
 		want   map[string]interface{}
 	}{
