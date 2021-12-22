@@ -16,7 +16,7 @@ func restartProcess() error {
 		return err
 	}
 
-	log.Debugf("app %s pid:%d is restart,please wait...\n", env.AppName(), pid)
+	log.DebugF("app %s pid:%d is restart,please wait...\n", env.AppName(), pid)
 
 	p, err := os.FindProcess(pid)
 	if err != nil {
@@ -27,7 +27,7 @@ func restartProcess() error {
 
 func stopProcess() error {
 	pidDir := env.PidFileDir()
-	log.Debugf("app %s is stopping,please wait...\n", env.AppName())
+	log.DebugF("app %s is stopping,please wait...\n", env.AppName())
 	pid, err := readPid(pidDir)
 	if err != nil {
 		return err

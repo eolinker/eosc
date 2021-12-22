@@ -2,6 +2,7 @@ package process_master
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -59,7 +60,7 @@ func (w *WorkerProcess) createClient() service.WorkerServiceClient {
 	return w.client
 }
 
-func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*WorkerProcess, error) {
+func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File, logWriter io.Writer) (*WorkerProcess, error) {
 	cmd, err := process.Cmd(eosc.ProcessWorker, nil)
 	if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func newWorkerProcess(args *service.WorkerLoadArg, extraFiles []*os.File) (*Work
 	cmd.Stdin = bytes.NewReader(utils.EncodeFrame(argData))
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = logWriter
 	err = cmd.Start()
 	if err != nil {
 		return nil, err

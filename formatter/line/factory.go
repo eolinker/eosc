@@ -2,14 +2,9 @@ package line
 
 import (
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/formatter"
 )
 
-var Name = "line"
-
-func init() {
-	formatter.Register(Name, NewFactory())
-}
+const Name = "line"
 
 type Factory struct {
 }
