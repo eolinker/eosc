@@ -106,7 +106,7 @@ func NewLine(cfg eosc.FormatterConfig) (*Line, error) {
 
 func (l *Line) Format(entry eosc.IEntry) []byte {
 	fields, ok := l.executors["fields"]
-	if !ok || len(fields) == 0{
+	if !ok || len(fields) == 0 {
 		return []byte("")
 	}
 
@@ -138,11 +138,11 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 			data[i] = ext.key
 		case variable:
 			value := entry.Read(ext.key)
-			if value == "" {
-				value = "-"
-			}
 			if objFields[ext.key] {
 				value = base64.StdEncoding.EncodeToString([]byte(value))
+			}
+			if value == "" {
+				value = "-"
 			}
 			data[i] = value
 		case object:
