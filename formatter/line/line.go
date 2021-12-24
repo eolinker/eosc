@@ -106,7 +106,7 @@ func NewLine(cfg eosc.FormatterConfig) (*Line, error) {
 
 func (l *Line) Format(entry eosc.IEntry) []byte {
 	fields, ok := l.executors["fields"]
-	if !ok {
+	if !ok || len(fields) == 0{
 		return []byte("")
 	}
 
