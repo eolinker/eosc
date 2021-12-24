@@ -9,6 +9,6 @@ message helloResponse{
   string name =1;
 }
 service Master {
- rpc  Hello(helloRequest)returns(helloResponse){};
+ rpc Hello(helloRequest) returns(helloResponse){};
 }
 

@@ -3,11 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
+	"io"
+	"io/ioutil"
 
 	"google.golang.org/protobuf/proto"
 
@@ -98,7 +97,7 @@ var defaultPath = "config.yml"
 func GetConfig() (*Config, error) {
 	path := env.ConfigPath()
 	if path == "" {
-		path = fmt.Sprintf(defaultPath, env.AppName())
+		path = defaultPath
 	}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {

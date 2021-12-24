@@ -16,14 +16,16 @@ type IHttpContext interface {
 	Request() IRequestReader // 读取原始请求
 	Proxy() IRequest         // 读写转发请求
 	Response() IResponse     // 处理返回结果，可读可写
-	ResponseError() error
 	SendTo(address string, timeout time.Duration) error
+	Proxies() []IRequest
 }
 
 type IHeaderReader interface {
+	RawHeader() string
 	GetHeader(name string) string
 	Headers() http.Header
 	Host() string
+	GetCookie(key string) string
 }
 
 type IHeaderWriter interface {
@@ -37,12 +39,14 @@ type IHeaderWriter interface {
 type IResponseHeader interface {
 	GetHeader(name string) string
 	Headers() http.Header
+	HeadersString() string
 	SetHeader(key, value string)
 	AddHeader(key, value string)
 	DelHeader(key string)
 }
 type IBodyGet interface {
 	GetBody() []byte
+	BodyLen() int
 }
 
 type IBodySet interface {
@@ -82,11 +86,14 @@ type IBodyDataWriter interface {
 
 type IStatusGet interface {
 	StatusCode() int
+	ProxyStatusCode() int
+	ProxyStatus() string
 	Status() string
 }
 
 type IStatusSet interface {
 	SetStatus(code int, status string)
+	SetProxyStatus(code int, status string)
 }
 
 type IQueryReader interface {
@@ -125,10 +132,12 @@ type IRequestReader interface {
 	Header() IHeaderReader
 	Body() IBodyDataReader
 	RemoteAddr() string
+	RemotePort() string
 	ReadIP() string
 	ForwardIP() string
 	URI() IURIReader
 	Method() string
+	String() string
 }
 
 // 用于组装转发的request
@@ -142,6 +151,9 @@ type IRequest interface {
 
 // 返回给client端的
 type IResponse interface {
+	ResponseError() error
+	ClearError()
+	String() string
 	IStatusGet
 	IResponseHeader
 	IStatusSet // 设置返回状态
