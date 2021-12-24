@@ -11,6 +11,7 @@ package process_master
 import (
 	"context"
 	"crypto/tls"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -45,13 +46,13 @@ import (
 )
 
 func Process() {
-	utils.InitLogTransport(eosc.ProcessMaster)
+	logWriter := utils.InitLogTransport(eosc.ProcessMaster)
 	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-	master := NewMasterHandle()
+	master := NewMasterHandle(logWriter)
 	if err := master.Start(nil); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
@@ -73,8 +74,8 @@ type Master struct {
 	cancelFunc    context.CancelFunc
 
 	//PID           *pidfile.PidFile
-	httpserver *http.Server
-
+	httpserver          *http.Server
+	logWriter           io.Writer
 	admin               *admin.Admin
 	extenderSettingRaft *ExtenderSettingRaft
 	workerController    *WorkerController
@@ -107,7 +108,7 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	m.extenderSettingRaft = extenderRaft
 	workerRaft := NewWorkersRaft(workersConfig, handler.Professions, workerServiceProxy, raftService)
 
-	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy)
+	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy, m.logWriter)
 
 	m.admin = admin.NewAdmin(handler.Professions, workerRaft)
 	raftService.AddEventHandler(m.workerController.raftEvent)
@@ -265,11 +266,12 @@ func (m *Master) close() {
 
 }
 
-func NewMasterHandle() *Master {
+func NewMasterHandle(logWriter io.Writer) *Master {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
 		cancelFunc: cancelFunc,
 		ctx:        cancel,
+		logWriter:  logWriter,
 	}
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("init traffic from stdin")

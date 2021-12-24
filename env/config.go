@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 )
@@ -21,6 +24,10 @@ const (
 	envExtendsDirName   = "EXTENDS_DIR"
 	envExtenderMarkName = "EXTENDS_MARK"
 	envConfigNameForEnv = "ENV"
+	envErrorLogName     = "ERROR_LOG_NAME"
+	envErrorLogLevel    = "ERROR_LOG_LEVEL"
+	envErrorLogExpire   = "ERROR_LOG_EXPIRE"
+	envErrorLogPeriod   = "ERROR_LOG_PERIOD"
 )
 
 var (
@@ -31,6 +38,10 @@ var (
 	logDirPath           = ""
 	extendsBaseDir       = ""
 	extendsMark          = ""
+	errorLogName         = ""
+	errorLogLevel        = ""
+	errorLogExpire       = ""
+	errorLogPeriod       = ""
 )
 
 func init() {
@@ -55,6 +66,13 @@ func init() {
 
 	extendsMark = GetDefault(envExtenderMarkName, "https://market.gokuapi.com")
 	// todo 如有必要，这里增加对 mark地址格式的校验
+
+	// error log
+	errorLogName = GetDefault(envErrorLogName, "error.log")
+	errorLogLevel = GetDefault(envErrorLogLevel, "debug")
+	errorLogExpire = GetDefault(envErrorLogExpire, "7d")
+	errorLogPeriod = GetDefault(envErrorLogPeriod, "day")
+
 }
 func GetConfig() map[string]string {
 	return map[string]string{
@@ -65,6 +83,10 @@ func GetConfig() map[string]string {
 		envLogDirName:       logDirPath,
 		envExtendsDirName:   extendsBaseDir,
 		envExtenderMarkName: extendsMark,
+		envErrorLogName:     errorLogName,
+		envErrorLogLevel:    errorLogLevel,
+		envErrorLogExpire:   errorLogExpire,
+		envErrorLogPeriod:   errorLogPeriod,
 	}
 }
 func tryReadEnv(name string) {
@@ -75,6 +97,10 @@ func tryReadEnv(name string) {
 		envSocketDirName:  fmt.Sprintf("/tmp/%s", name),
 		envLogDirName:     fmt.Sprintf("/var/log/%s", name),
 		envExtendsDirName: fmt.Sprintf("/var/lib/%s/extends", name),
+		envErrorLogName:   "error.log",
+		envErrorLogLevel:  "debug",
+		envErrorLogExpire: "7d",
+		envErrorLogPeriod: "day",
 	}
 	en := strings.ToUpper(name)
 	path := ""
@@ -142,6 +168,40 @@ func PidFileDir() string {
 }
 func DataDir() string {
 	return dataDirPath
+}
+func ErrorName() string {
+	return strings.TrimSuffix(errorLogName, ".log")
+}
+func ErrorLevel() log.Level {
+	l, err := log.ParseLevel(errorLogLevel)
+	if err != nil {
+		l = log.DebugLevel
+	}
+	return l
+}
+func ErrorPeriod() string {
+	if errorLogPeriod != "hour" {
+		return "day"
+	}
+	return errorLogPeriod
+}
+func ErrorExpire() time.Duration {
+	if strings.HasSuffix(errorLogExpire, "h") {
+		d, err := time.ParseDuration(errorLogExpire)
+		if err != nil {
+			return 7 * time.Hour
+		}
+		return d
+	}
+	if strings.HasSuffix(errorLogExpire, "d") {
+
+		d, err := strconv.Atoi(strings.Split(errorLogExpire, "d")[0])
+		if err != nil {
+			return 7 * 24 * time.Hour
+		}
+		return time.Duration(d) * time.Hour
+	}
+	return 7 * 24 * time.Hour
 }
 
 func ExtendersDir() string {

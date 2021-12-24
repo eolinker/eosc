@@ -16,7 +16,6 @@ type Worker struct {
 	Driver     string
 	body       []byte
 
-	//profession *Profession
 	driver eosc.IExtenderDriver
 }
 
@@ -32,10 +31,6 @@ func NewWorker(id, professionName, name, driverName string, body []byte, target 
 		driver: driver,
 	}
 }
-
-//func (w *Worker) GetProfession() *Profession {
-//	return w.profession
-//}
 
 func (w *Worker) Id() string {
 	return w.id

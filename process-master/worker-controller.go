@@ -2,6 +2,7 @@ package process_master
 
 import (
 	"context"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -41,13 +42,14 @@ type WorkerController struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 
-	restartChan chan int
-
+	restartChan    chan int
+	logWriter      io.Writer
 	startedChannel chan int
 	onceStartDo    sync.Once
+	errChan        chan []byte
 }
 
-func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy) *WorkerController {
+func NewWorkerController(traffic traffic.IController, config *config.Config, extenderSetting extenders.ITypedExtenderSetting, professions eosc.IProfessions, workers *WorkerConfigs, workerServiceProxy *WorkerServiceProxy, logWriter io.Writer) *WorkerController {
 	traffics, files := traffic.Export(3)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -63,6 +65,8 @@ func NewWorkerController(traffic traffic.IController, config *config.Config, ext
 		cancelFunc:         cancelFunc,
 		restartChan:        make(chan int, 1),
 		startedChannel:     make(chan int),
+		errChan:            make(chan []byte, 1),
+		logWriter:          logWriter,
 	}
 	go wc.doControl()
 	return wc
@@ -239,7 +243,7 @@ func (wc *WorkerController) new() error {
 
 	arg, files := wc.config()
 
-	workerProcess, err := newWorkerProcess(arg, files)
+	workerProcess, err := newWorkerProcess(arg, files, wc.logWriter)
 	if err != nil {
 		log.Warn("new worker process:", err)
 		return err

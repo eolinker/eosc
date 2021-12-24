@@ -27,7 +27,7 @@ import (
 
 func Process() {
 	// 从stdin中读取配置，获取拓展列表
-	utils.InitLogTransport(eosc.ProcessHelper)
+	utils.InitStdTransport(eosc.ProcessHelper)
 	inData, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		log.Error("read stdin data error: ", err)
