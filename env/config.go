@@ -69,7 +69,7 @@ func init() {
 
 	// error log
 	errorLogName = GetDefault(envErrorLogName, "error.log")
-	errorLogLevel = GetDefault(envErrorLogLevel, "debug")
+	errorLogLevel = GetDefault(envErrorLogLevel, "error")
 	errorLogExpire = GetDefault(envErrorLogExpire, "7d")
 	errorLogPeriod = GetDefault(envErrorLogPeriod, "day")
 
@@ -98,7 +98,7 @@ func tryReadEnv(name string) {
 		envLogDirName:     fmt.Sprintf("/var/log/%s", name),
 		envExtendsDirName: fmt.Sprintf("/var/lib/%s/extends", name),
 		envErrorLogName:   "error.log",
-		envErrorLogLevel:  "debug",
+		envErrorLogLevel:  "error",
 		envErrorLogExpire: "7d",
 		envErrorLogPeriod: "day",
 	}
@@ -175,7 +175,7 @@ func ErrorName() string {
 func ErrorLevel() log.Level {
 	l, err := log.ParseLevel(errorLogLevel)
 	if err != nil {
-		l = log.DebugLevel
+		l = log.ErrorLevel
 	}
 	return l
 }
