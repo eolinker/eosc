@@ -1,35 +1,30 @@
 package line
 
 import (
+	"encoding/base64"
 	"strings"
 
 	"github.com/eolinker/eosc"
 )
 
-var separators = []string{
-	"\t",
-	" ",
-	",",
-	":",
-}
-
-var containers = []Container{
-	{
-		left:  '"',
-		right: '"',
-	},
-	{
-		left:  '[',
-		right: ']',
-	},
-	{
-		left:  '<',
-		right: '>',
-	},
-}
-
 var (
-	separatorLen = len(separators)
+	containers = []Container{
+		{
+			left:  '"',
+			right: '"',
+		},
+		{
+			left:  '[',
+			right: ']',
+		},
+		{
+			left:  '<',
+			right: '>',
+		},
+	}
+	objFields                = toSet([]string{"request_body", "header", "proxy_header", "proxy_body", "response", "response_body", "response_header"})
+	separators, separatorLen = toArr("\t ,:")
+
 	containerLen = len(containers)
 )
 
@@ -39,6 +34,21 @@ const (
 	object
 	arr
 )
+
+func toArr(v string) ([]string, int) {
+	ls := make([]string, len(v))
+	for i := 0; i < len(v); i++ {
+		ls[i] = v[i : i+1]
+	}
+	return ls, len(ls)
+}
+func toSet(arr []string) map[string]bool {
+	set := make(map[string]bool)
+	for _, k := range arr {
+		set[k] = true
+	}
+	return set
+}
 
 type Container struct {
 	left  rune
@@ -67,7 +77,7 @@ func NewLine(cfg eosc.FormatterConfig) (*Line, error) {
 			//对str进行处理，分类四种类型
 			if strings.HasPrefix(newStr, "$") {
 				ext.fieldType = variable
-				ext.key = strings.Trim(newStr, "$")
+				ext.key = strings.TrimPrefix(newStr, "$")
 			} else if strings.HasPrefix(newStr, "@") {
 				newStr = strings.TrimPrefix(newStr, "@")
 				if idx := strings.Index(newStr, "#"); idx != -1 {
@@ -95,7 +105,7 @@ func NewLine(cfg eosc.FormatterConfig) (*Line, error) {
 
 func (l *Line) Format(entry eosc.IEntry) []byte {
 	fields, ok := l.executors["fields"]
-	if !ok {
+	if !ok || len(fields) == 0 {
 		return []byte("")
 	}
 
@@ -117,6 +127,8 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 		left = string(cta.left)
 		right = string(cta.right)
 	}
+	nextLevel := level + 1
+	arrayLevel := level + 2
 
 	for i, ext := range fields {
 
@@ -125,6 +137,9 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 			data[i] = ext.key
 		case variable:
 			value := entry.Read(ext.key)
+			if objFields[ext.key] {
+				value = base64.StdEncoding.EncodeToString([]byte(value))
+			}
 			if value == "" {
 				value = "-"
 			}
@@ -132,9 +147,10 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 		case object:
 			fs, ok := l.executors[ext.key]
 			value := "-"
-			if ok && separatorLen > level+1 {
-				result := l.recursionField(fs, entry, level+1)
-				value = left + strings.Join(result, separators[level+1]) + right
+			if ok && separatorLen > nextLevel {
+
+				result := l.recursionField(fs, entry, nextLevel)
+				value = left + strings.Join(result, separators[nextLevel]) + right
 			}
 			data[i] = value
 		case arr:
@@ -150,16 +166,15 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 					arrLeft = string(cta.left)
 					arrRight = string(cta.right)
 				}
-
 				for idx, e := range entryList {
-					if separatorLen > level+2 {
-						result := l.recursionField(fs, e, level+2)
-						results[idx] = arrLeft + strings.Join(result, separators[level+2]) + arrRight
+					if separatorLen > arrayLevel {
+						result := l.recursionField(fs, e, arrayLevel)
+						results[idx] = arrLeft + strings.Join(result, separators[arrayLevel]) + arrRight
 						continue
 					}
 					results[idx] = "-"
 				}
-				value = left + strings.Join(results, separators[level+1]) + right
+				value = left + strings.Join(results, separators[nextLevel]) + right
 			}
 			data[i] = value
 		}
