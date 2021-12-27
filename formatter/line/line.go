@@ -8,8 +8,7 @@ import (
 )
 
 var (
-	separatorsOrg = "\t ,:"
-	containers    = []Container{
+	containers = []Container{
 		{
 			left:  '"',
 			right: '"',
@@ -23,9 +22,8 @@ var (
 			right: '>',
 		},
 	}
-	objFields    = toSet([]string{"request_body", "header", "proxy_header", "proxy_body", "response", "response_body", "response_header"})
-	separators   []string
-	separatorLen = len(separators)
+	objFields                = toSet([]string{"request_body", "header", "proxy_header", "proxy_body", "response", "response_body", "response_header"})
+	separators, separatorLen = toArr("\t ,:")
 
 	containerLen = len(containers)
 )
@@ -37,11 +35,12 @@ const (
 	arr
 )
 
-func init() {
-	for i := 0; i < separatorLen; i++ {
-		separators[i] = separatorsOrg[i : i+1]
+func toArr(v string) ([]string, int) {
+	ls := make([]string, len(v))
+	for i := 0; i < len(v); i++ {
+		ls[i] = v[i : i+1]
 	}
-
+	return ls, len(ls)
 }
 func toSet(arr []string) map[string]bool {
 	set := make(map[string]bool)
@@ -106,7 +105,7 @@ func NewLine(cfg eosc.FormatterConfig) (*Line, error) {
 
 func (l *Line) Format(entry eosc.IEntry) []byte {
 	fields, ok := l.executors["fields"]
-	if !ok || len(fields) == 0{
+	if !ok || len(fields) == 0 {
 		return []byte("")
 	}
 
@@ -138,11 +137,11 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 			data[i] = ext.key
 		case variable:
 			value := entry.Read(ext.key)
-			if value == "" {
-				value = "-"
-			}
 			if objFields[ext.key] {
 				value = base64.StdEncoding.EncodeToString([]byte(value))
+			}
+			if value == "" {
+				value = "-"
 			}
 			data[i] = value
 		case object:
