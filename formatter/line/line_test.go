@@ -55,7 +55,7 @@ func TestLine_Format(t *testing.T) {
 				},
 				&myEntry{data: map[string]string{"id": "123", "request_method": "POST", "request_uri": "/path?a=1", "proxy_username": "user1", "proxy_password": "pwd1"}},
 			},
-			[]byte("123\t\"POST /path?a=1 [abc] [user1,pwd1,<123>] [<user1:pwd1:->,<user2:pwd2:->]\"\t\"abc\"\t\"user1 pwd1 [123]\"\t\"[user1,pwd1,<123>] [user2,pwd2,<123>]\""),
+			[]byte("123\t\"POST /path?a=1 [abc] [user1,pwd1,<123>] [<user1|pwd1|->,<user2|pwd2|->]\"\t\"abc\"\t\"user1 pwd1 [123]\"\t\"[user1,pwd1,<123>] [user2,pwd2,<123>]\""),
 		}, {
 			"示例2  超过第四层的不显示， 备注，在第四层能显示的只有$变量和常量，若是object或arr则显示为空字符串，依旧是用分隔符隔开",
 			nil,
@@ -70,7 +70,7 @@ func TestLine_Format(t *testing.T) {
 				},
 				&myEntry{data: map[string]string{"id": "123", "proxy_username": "user1", "proxy_password": "pwd1"}},
 			},
-			[]byte("\"[<123:456:-:-:->]\""),
+			[]byte("\"[<123|456|-|-|->]\""),
 		}, {
 			"示例3  service pattern不存在的情况",
 			nil,
@@ -84,7 +84,7 @@ func TestLine_Format(t *testing.T) {
 				},
 				&myEntry{data: map[string]string{"id": "123", "request_method": "POST", "proxy_username": "user1", "proxy_password": "pwd1"}},
 			},
-			[]byte("123\t\"POST - [-,<-:->] [<user1:pwd1:->,<user2:pwd2:->]\""),
+			[]byte("123\t\"POST - [-,<-|->] [<user1|pwd1|->,<user2|pwd2|->]\""),
 		},
 	}
 	for _, tt := range tests {
