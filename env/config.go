@@ -205,7 +205,6 @@ func ErrorExpire() time.Duration {
 }
 
 func ExtendersDir() string {
-	return "/var/lib/goku/extends"
 	return extendsBaseDir
 }
 func ExtenderMarkAddr() string {
