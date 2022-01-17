@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/eolinker/eosc/log"
 
 	"github.com/ghodss/yaml"
 )
@@ -64,7 +65,7 @@ func init() {
 	extendsBaseDir = GetDefault(envExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
 	extendsBaseDir = formatPath(extendsBaseDir)
 
-	extendsMark = GetDefault(envExtenderMarkName, "https://market.gokuapi.com")
+	extendsMark = GetDefault(envExtenderMarkName, "https://market.apinto.com")
 	// todo 如有必要，这里增加对 mark地址格式的校验
 
 	// error log
