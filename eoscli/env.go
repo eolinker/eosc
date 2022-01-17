@@ -2,6 +2,7 @@ package eoscli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/eolinker/eosc/env"
 
@@ -18,10 +19,13 @@ func Env() *cli.Command {
 
 func EnvFunc(c *cli.Context) error {
 	for _, name := range env.Envs() {
-		fmt.Println(name, ":\t", env.GenEnv(name, env.GetDefault(name, "")))
+		fmt.Println(env.GenEnv(name, env.GetDefault(name, "")))
 	}
 	for k, v := range env.GetConfig() {
-		fmt.Println(k, ":\t", v)
+		if k == "" {
+			continue
+		}
+		fmt.Println(fmt.Sprintf("%s_%s=%s", strings.ToUpper(env.AppName()), k, v))
 	}
 	return nil
 }

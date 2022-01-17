@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/eolinker/eosc/log"
 
 	"github.com/ghodss/yaml"
 )
@@ -64,12 +65,12 @@ func init() {
 	extendsBaseDir = GetDefault(envExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
 	extendsBaseDir = formatPath(extendsBaseDir)
 
-	extendsMark = GetDefault(envExtenderMarkName, "https://market.gokuapi.com")
+	extendsMark = GetDefault(envExtenderMarkName, "https://market.apinto.com")
 	// todo 如有必要，这里增加对 mark地址格式的校验
 
 	// error log
 	errorLogName = GetDefault(envErrorLogName, "error.log")
-	errorLogLevel = GetDefault(envErrorLogLevel, "debug")
+	errorLogLevel = GetDefault(envErrorLogLevel, "error")
 	errorLogExpire = GetDefault(envErrorLogExpire, "7d")
 	errorLogPeriod = GetDefault(envErrorLogPeriod, "day")
 
@@ -98,7 +99,7 @@ func tryReadEnv(name string) {
 		envLogDirName:     fmt.Sprintf("/var/log/%s", name),
 		envExtendsDirName: fmt.Sprintf("/var/lib/%s/extends", name),
 		envErrorLogName:   "error.log",
-		envErrorLogLevel:  "debug",
+		envErrorLogLevel:  "error",
 		envErrorLogExpire: "7d",
 		envErrorLogPeriod: "day",
 	}
@@ -175,7 +176,7 @@ func ErrorName() string {
 func ErrorLevel() log.Level {
 	l, err := log.ParseLevel(errorLogLevel)
 	if err != nil {
-		l = log.DebugLevel
+		l = log.ErrorLevel
 	}
 	return l
 }
@@ -205,7 +206,6 @@ func ErrorExpire() time.Duration {
 }
 
 func ExtendersDir() string {
-	return "/var/lib/goku/extends"
 	return extendsBaseDir
 }
 func ExtenderMarkAddr() string {
