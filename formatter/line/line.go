@@ -22,8 +22,8 @@ var (
 			right: '>',
 		},
 	}
-	objFields                = toSet([]string{"request_body", "header", "proxy_header", "proxy_body", "response", "response_body", "response_header"})
-	separators, separatorLen = toArr("\t ,:")
+	objFields                = toSet([]string{"request_body", "proxy_body", "response", "response_body"})
+	separators, separatorLen = toArr("\t ,|")
 
 	containerLen = len(containers)
 )

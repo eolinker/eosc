@@ -1,11 +1,16 @@
 package eoscli
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+
+	"github.com/eolinker/eosc/env"
+	"github.com/urfave/cli/v2"
+)
 
 func Restart() *cli.Command {
 	return &cli.Command{
 		Name:  "restart",
-		Usage: "restart goku server",
+		Usage: fmt.Sprintf("restart %s server", env.AppName()),
 
 		Action: RestartFunc,
 	}
