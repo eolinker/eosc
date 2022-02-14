@@ -221,8 +221,8 @@ func (w *FileWriterByPeriod) dropHistory() {
 	}
 }
 func (w *FileWriterByPeriod) initFile() {
-	err:= os.MkdirAll(w.dir, os.ModeDir)
-	if err!= nil{
+	err := os.MkdirAll(w.dir, 0755)
+	if err != nil {
 		log.Println(err)
 	}
 	path := filepath.Join(w.dir, fmt.Sprintf("%s.log", w.file))
