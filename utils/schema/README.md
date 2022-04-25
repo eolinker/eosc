@@ -1,10 +1,16 @@
 ### 简介
 
-该schema包用于将Go Struct中的注解用反射的方式生成json schema。
+该schema包用于将Go Struct中的注解用反射的方式生成json schema，用于render。
 
 来自于 `github.com/danielgtaylor/huma/schema`
 
-需要对源码进行修改。
+为保持go结构体字段顺序以及map键值对的顺序，需要对源码进行修改。
+
+#### 主要修改
+
+* properties改成数组，并且子schema需要包含name和required,同时required从数组改成布尔值
+* 新类型map，实际为数组
+* 新增dependencies关键字
 
 ### 使用说明
 
@@ -37,31 +43,30 @@ Generate(reflect.TypeOf(myDate{}), &Schema{Dependencies: map[string][]string{"da
 
 ```go
 type MyObject struct {
-	ID     string    `json:"id,omitempty"`
-    Rate   float64   `json:"rate"`
-	Coords []int
+    ID     string  `json:"id,omitempty" required:"true"`
+    Rate   float64 `json:"rate" required:"true"`
+    Coords []int
 }
 /*  生成如下
 {
 	"type": "object",
-	"properties": {
-		"coords": {
-			"type": "array",
-			"items": {
-				"type": "integer",
-				"format": "int32"
-			}
-		},
-		"id": {
-			"type": "string"
-		},
-		"rate": {
-			"type": "number",
-			"format": "double"
+	"properties": [{
+		"name": "id",
+		"type": "string",
+		"required": true
+	}, {
+		"name": "rate",
+		"type": "number",
+		"required": true,
+		"format": "double"
+	}, {
+		"name": "coords",
+		"type": "array",
+		"items": {
+			"type": "integer",
+			"format": "int32"
 		}
-	},
-	"additionalProperties": false,
-	"required": ["rate", "coords"]
+	}]
 }
 */
 ```
@@ -304,7 +309,13 @@ type不需要手动填写，会根据该struct field的类型去决定type。
 
 #### required
 
-根据json标签的omitempty来决定是否必须。
+表示值是否为必须
+
+```go
+type Example struct {
+	Foo string `json:"foo" required:"true"`
+}
+```
 
 
 
@@ -349,18 +360,19 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 ```json
 {
 	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string"
+	"properties": [
+        {
+			"type": "string",
+            "name": "name"
 		},
-		"credit_card": {
-			"type": "number"
+		{
+			"type": "number",
+        	"name": "credit_card"
 		},
-		"billing_address": {
-			"type": "string"
-		}
-	},
-	"required": ["name"],
+		{
+			"type": "string",
+        	"name": "billing_address"
+		}],
 	"dependencies": {
 		"credit_card": ["billing_address"] //单向约束
 	}
@@ -384,7 +396,7 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 //这个json是非法的
 {
 	"name": "John Doe",
-	"billing_address": "555 Debtor's Lane"
+    "credit_card": 5555555555555555
 }
 ```
 

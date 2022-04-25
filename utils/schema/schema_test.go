@@ -576,22 +576,6 @@ func TestHasValidation(t *testing.T) {
 	assert.Equal(t, true, s.HasValidation())
 }
 
-func TestRemoveProperty(t *testing.T) {
-	s := Schema{
-		Type: "object",
-		Properties: map[string]*Schema{
-			"foo": {Type: "string"},
-			"bar": {Type: "number"},
-		},
-		Required: []string{"foo", "bar"},
-	}
-
-	s.RemoveProperty("foo")
-
-	assert.Nil(t, s.Properties["foo"])
-	assert.NotContains(t, "foo", s.Required)
-}
-
 func TestEmbedded(t *testing.T) {
 	type Foo struct {
 		A string `json:"a"`
