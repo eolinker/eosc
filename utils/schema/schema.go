@@ -497,6 +497,7 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 			}
 
 			properties = append(properties, s)
+			propertiesSet[name] = struct{}{}
 
 		}
 
