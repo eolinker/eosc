@@ -23,21 +23,3 @@ func professionConfig(oc map[string][]byte) []*eosc.ProfessionConfig {
 
 	return configs
 }
-func workersConfig(oc map[string][]byte) []*eosc.WorkerConfig {
-
-	if oc == nil || len(oc) == 0 {
-		return nil
-	}
-	configs := make([]*eosc.WorkerConfig, 0, len(oc))
-	for _, v := range oc {
-		c := new(eosc.WorkerConfig)
-		err := json.Unmarshal(v, c)
-		if err != nil {
-			log.Error("read profession config:", err)
-			continue
-		}
-		configs = append(configs, c)
-	}
-
-	return configs
-}

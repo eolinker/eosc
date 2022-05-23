@@ -71,7 +71,8 @@ func (s *Service) ResetSnap(data []byte) error {
 	for _, op := range s.initOps {
 		all = op(all)
 	}
-	s.data.DoEvent(&Event{
+
+	s.IDispatchCenter.Send(&Event{
 		namespace: "",
 		cmd:       eosc.EventReset,
 		key:       "",
