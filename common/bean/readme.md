@@ -8,7 +8,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/eolinker/goku-standard/common/bean"
+	"github.com/eolinker/apinto-standard/common/bean"
 )
 
 type AutowiredTester interface {

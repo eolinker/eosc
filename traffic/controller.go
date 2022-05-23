@@ -35,6 +35,10 @@ type Controller struct {
 	data   *tTrafficData
 }
 
+func (c *Controller) IsStop() bool {
+	return false
+}
+
 func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 	log.Debug("traffic controller: Export:")
 	ts := c.All()
@@ -94,12 +98,6 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 		}
 	}
 	for n, o := range old.All() {
-
-		//l, ok := o.(*net.TCPListener)
-		//if !ok {
-		//	log.Warn("unknown error while try close  port-reqiure:", n)
-		//	continue
-		//}
 		log.Debug("close old : ", n)
 		o.shutdown()
 		log.Debug("close old done:", n)

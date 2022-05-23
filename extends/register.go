@@ -6,6 +6,11 @@ import (
 	"github.com/eolinker/eosc"
 )
 
+type IExtenderRegister interface {
+	eosc.IExtenderDriverManager
+	eosc.IExtenderDrivers
+}
+
 type ExtenderRegister struct {
 	group   string
 	project string
@@ -32,10 +37,6 @@ func (r *ExtenderRegister) RegisterTo(register eosc.IExtenderDriverRegister) {
 	}
 }
 
-func (r *ExtenderRegister) All() []string {
-	rs := make([]string, 0, len(r.data))
-	for n := range r.data {
-		rs = append(rs, n)
-	}
-	return rs
+func (r *ExtenderRegister) All() map[string]eosc.IExtenderDriverFactory {
+	return r.data
 }

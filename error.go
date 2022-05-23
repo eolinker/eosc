@@ -6,7 +6,7 @@ var (
 	ErrorDriverNotExist             = errors.New("driver not exist")
 	ErrorProfessionNotExist         = errors.New("profession not exist")
 	ErrorNotAllowCreateForSingleton = errors.New("not allow create for singleton profession")
-	ErrorWorkerNotExits             = errors.New("workers not exits")
+	ErrorWorkerNotExits             = errors.New("worker-data not exits")
 	ErrorRegisterConflict           = errors.New("conflict of register")
 	ErrorNotGetSillForRequire       = errors.New("not get skill for require")
 	ErrorTargetNotImplementSkill    = errors.New("require of skill not implement")

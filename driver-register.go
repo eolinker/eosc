@@ -44,5 +44,5 @@ type IExtenderDrivers interface {
 }
 type IExtenderDriverManager interface {
 	IExtenderDriverRegister
-	Remove(name string)
+
 }

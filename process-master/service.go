@@ -12,6 +12,10 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/eolinker/eosc"
+
+	"github.com/eolinker/eosc/process-master/cli"
+
 	"github.com/eolinker/eosc/service"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
@@ -22,7 +26,7 @@ import (
 //startService 开启master
 func (m *Master) startService() error {
 
-	addr := service.MasterServerAddr(os.Getpid())
+	addr := service.ServerAddr(os.Getpid(), eosc.ProcessMaster)
 	// 移除unix socket
 	syscall.Unlink(addr)
 
@@ -35,8 +39,8 @@ func (m *Master) startService() error {
 
 	grpcServer := grpc.NewServer()
 
-	service.RegisterCtiServiceServer(grpcServer, NewMasterCliServer(m.node, m.extenderSettingRaft))
-	service.RegisterMasterServer(grpcServer, NewMasterServiceServer())
+	service.RegisterCtiServiceServer(grpcServer, cli.NewMasterCliServer(m.node))
+	service.RegisterMasterDispatcherServer(grpcServer, m.dispatcherServe)
 	go func() {
 		err := grpcServer.Serve(l)
 		if err != nil {
@@ -50,6 +54,5 @@ func (m *Master) startService() error {
 
 func (m *Master) stopService() {
 	m.masterSrv.GracefulStop()
-	//addr := service.MasterServerAddr(env.AppName())
 	//syscall.Unlink(addr)
 }
