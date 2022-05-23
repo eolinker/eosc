@@ -56,7 +56,7 @@ func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status 
 			Driver: drivers,
 		})
 	}
-	return 200, nil, nil, body
+	return 200, nil, nil, res
 }
 
 func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
@@ -95,7 +95,12 @@ func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (sta
 
 func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 	professionName := params.ByName("profession")
+
 	driverName := r.URL.Query().Get("name")
+	if driverName == "" {
+		return http.StatusInternalServerError, nil, nil, "invalid driver name"
+
+	}
 	profession, has := pi.data.Get(professionName)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist

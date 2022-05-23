@@ -24,11 +24,15 @@ type AdminController struct {
 }
 
 func (ac *AdminController) doEvent(event dispatcher.IEvent) error {
+
 	ac.data.DoEvent(event)
-	if event.Event() == eosc.NamespaceExtender {
+	if event.Event() == eosc.EventReset {
+		ac.restart()
+	} else if event.Namespace() == eosc.NamespaceExtender {
 		// 变更插件配置时
 		ac.checkExtender()
 	}
+
 	return nil
 }
 
