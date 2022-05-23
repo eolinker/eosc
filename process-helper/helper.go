@@ -9,7 +9,7 @@
 package process_helper
 
 import (
-	"fmt"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 
@@ -27,19 +27,19 @@ import (
 
 func Process() {
 	// 从stdin中读取配置，获取拓展列表
-	utils.InitLogTransport(eosc.ProcessHelper)
+	utils.InitStdTransport(eosc.ProcessHelper)
 	inData, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		log.Error("read stdin data error: ", err)
 		return
 	}
-	request := new(service.ExtendsRequest)
-	err = proto.Unmarshal(inData, request)
+	request := make([]string, 0)
+	err = json.Unmarshal(inData, &request)
 	if err != nil {
 		log.Error("data unmarshal error: ", err)
 		return
 	}
-	data, err := proto.Marshal(getExtenders(request.Extends))
+	data, err := proto.Marshal(getExtenders(request))
 	if err != nil {
 		log.Error("data marshal error: ", err)
 		return
@@ -47,41 +47,62 @@ func Process() {
 	os.Stdout.Write(data)
 }
 
-func getExtenders(es []*service.ExtendsBasicInfo) *service.ExtendsResponse {
+func getExtenders(args []string) *service.ExtendsResponse {
+
+	es := make([]*service.ExtendsBasicInfo, 0, len(args))
+
 	data := &service.ExtendsResponse{
 		Msg:         "",
 		Code:        "000000",
 		Extends:     make([]*service.ExtendsInfo, 0, len(es)),
 		FailExtends: make([]*service.ExtendsBasicInfo, 0, len(es)),
 	}
-	for _, ex := range es {
+	for _, ex := range args {
 		// 遍历拓展名称，加载拓展
-		register, err := extends.ReadExtenderProject(ex.Group, ex.Project, ex.Version)
+		group, project, version, err := extends.DecodeExtenderId(ex)
 		if err != nil {
 			data.FailExtends = append(data.FailExtends, &service.ExtendsBasicInfo{
-				Group:   ex.Group,
-				Project: ex.Project,
-				Version: ex.Version,
+				Name:    extends.FormatProject(group, project),
+				Group:   group,
+				Project: project,
+				Version: version,
+				Msg:     err.Error(),
+			})
+			continue
+		}
+		register, err := extends.ReadExtenderProject(group, project, version)
+		if err != nil {
+			data.FailExtends = append(data.FailExtends, &service.ExtendsBasicInfo{
+				Name:    extends.FormatProject(group, project),
+				Group:   group,
+				Project: project,
+				Version: version,
 				Msg:     err.Error(),
 			})
 			continue
 		}
 		names := register.All()
+
 		extender := &service.ExtendsInfo{
-			Id:      fmt.Sprintf("%s:%s:%s", ex.Group, ex.Project, ex.Version),
-			Name:    fmt.Sprintf("%s:%s", ex.Group, ex.Project),
-			Group:   ex.Group,
-			Project: ex.Project,
-			Version: ex.Version,
+			Id:      extends.FormatFileName(group, project, version),
+			Name:    extends.FormatProject(group, project),
+			Group:   group,
+			Project: project,
+			Version: version,
 			Plugins: make([]*service.Plugin, 0, len(names)),
 		}
-		for _, n := range names {
+		for n, df := range names {
+			render := df.Render()
+			renderData, _ := json.Marshal(render)
+
 			extender.Plugins = append(extender.Plugins, &service.Plugin{
-				Id:      extends.FormatDriverId(ex.Group, ex.Project, n),
+				Id:      extends.FormatDriverId(group, project, n),
 				Name:    n,
-				Group:   ex.Group,
-				Project: ex.Project,
+				Group:   group,
+				Project: project,
+				Render:  string(renderData),
 			})
+
 		}
 		data.Extends = append(data.Extends, extender)
 	}

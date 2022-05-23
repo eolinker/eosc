@@ -11,26 +11,25 @@ package process_master
 import (
 	"context"
 	"crypto/tls"
+	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/utils"
+	"google.golang.org/protobuf/proto"
+	"io"
 	"net"
 	"net/http"
 	"strings"
 
-	"github.com/eolinker/eosc/process-master/extenders"
+	"github.com/eolinker/eosc/process-master/extender"
+
+	open_api "github.com/eolinker/eosc/process-master/open-api"
+
+	raft_service "github.com/eolinker/eosc/process-master/raft-service"
 
 	"github.com/eolinker/eosc/config"
 
 	"github.com/eolinker/eosc/env"
 
-	"github.com/eolinker/eosc/utils"
-
 	"github.com/eolinker/eosc"
-
-	"github.com/eolinker/eosc/process-master/admin"
-	"github.com/eolinker/eosc/process-master/professions"
-
-	"github.com/eolinker/eosc/process-master/workers"
-
-	raft_service "github.com/eolinker/eosc/raft/raft-service"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
@@ -45,14 +44,18 @@ import (
 )
 
 func Process() {
-	utils.InitLogTransport(eosc.ProcessMaster)
+	ProcessDo(nil)
+}
+func ProcessDo(handler *MasterHandler) {
+	logWriter := utils.InitMasterLog()
 	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-	master := NewMasterHandle()
-	if err := master.Start(nil); err != nil {
+
+	master := NewMasterHandle(logWriter)
+	if err := master.Start(handler); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
@@ -67,27 +70,27 @@ type Master struct {
 	node          *raft.Node
 	masterTraffic traffic.IController
 	workerTraffic traffic.IController
-	raftService   raft.IService
+	raftService   raft.IRaftService
 	masterSrv     *grpc.Server
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
 
 	//PID           *pidfile.PidFile
-	httpserver *http.Server
-
-	admin               *admin.Admin
-	extenderSettingRaft *ExtenderSettingRaft
-	workerController    *WorkerController
+	httpserver       *http.Server
+	logWriter        io.Writer
+	dataController   *DataController
+	workerController *WorkerController
+	adminController  *AdminController
+	dispatcherServe  *DispatcherServer
+	openApiProxy     *UnixAdminProcess
 }
 
 type MasterHandler struct {
-	Professions eosc.IProfessions
+	InitProfession func() []*eosc.ProfessionConfig
 }
 
 func (mh *MasterHandler) initHandler() {
-	if mh.Professions == nil {
-		mh.Professions = professions.NewProfessions()
-	}
+
 }
 
 func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
@@ -97,28 +100,34 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 	}
 
 	handler.initHandler()
-	workerServiceProxy := NewWorkerServiceProxy()
-	raftService := raft_service.NewService()
 
-	workersConfig := NewWorkerConfigs()
+	raftService := raft_service.NewService(func(config map[string]map[string][]byte) map[string]map[string][]byte {
+		if handler.InitProfession != nil {
+			if config == nil {
+				config = make(map[string]map[string][]byte)
+			}
+			if ps, has := config[eosc.NamespaceProfession]; !has || len(ps) == 0 {
 
-	professionRaft := NewProfessionRaft(handler.Professions)
-	extenderRaft := NewExtenderRaft(raftService)
-	m.extenderSettingRaft = extenderRaft
-	workerRaft := NewWorkersRaft(workersConfig, handler.Professions, workerServiceProxy, raftService)
+				pl := handler.InitProfession()
+				for _, p := range pl {
+					data, _ := proto.Marshal(p)
+					ps[p.Name] = data
+				}
+				config[eosc.NamespaceProfession] = ps
+			}
+		}
+		return config
+	})
 
-	m.workerController = NewWorkerController(m.workerTraffic, cfg, extenderRaft.data, handler.Professions, workersConfig, workerServiceProxy)
+	m.openApiProxy = NewUnixClient()
+	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.openApiProxy))
+	m.workerController = NewWorkerController(m.workerTraffic, cfg, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
 
-	m.admin = admin.NewAdmin(handler.Professions, workerRaft)
-	raftService.AddEventHandler(m.workerController.raftEvent)
-	raftService.AddCommitEventHandler(m.workerController.raftCommitEvent)
+	m.dispatcherServe = NewDispatcherServer()
+	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
+	m.dataController = NewDataController(raftService, extenderManager, m.dispatcherServe)
 
-	raftService.SetHandlers(
-		raft_service.NewCreateHandler(workers.SpaceWorker, workerRaft),
-		raft_service.NewCreateHandler(professions.SpaceProfession, professionRaft),
-		raft_service.NewCreateHandler(extenders.NamespaceExtenders, extenderRaft),
-	)
-	node, err := raft.NewNode(raftService)
+	node, err := raft.NewNode(raftService, m.adminController)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -165,7 +174,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 		l = tls.NewListener(l, &tls.Config{GetCertificate: cert.GetCertificate})
 	}
 
-	m.startHttp(l)
+	m.startOpenApi(l)
 
 	log.Info("process-master start grpc service")
 	err = m.startService()
@@ -173,16 +182,19 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("process-master start  grpc server error: ", err.Error())
 		return err
 	}
-	m.workerController.WaitStart()
+
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
 	}
 	return nil
 
 }
-func (m *Master) startHttp(l net.Listener) {
+func (m *Master) startOpenApi(l net.Listener) {
+	sm := open_api.NewOpenApiProxy(m.node, m.openApiProxy)
+	sm.ExcludeHandlers("/raft", m.node)
+
 	m.httpserver = &http.Server{
-		Handler: m.handler(),
+		Handler: sm,
 	}
 
 	go func() {
@@ -193,19 +205,6 @@ func (m *Master) startHttp(l net.Listener) {
 	}()
 }
 
-func (m *Master) handler() http.Handler {
-	sm := http.NewServeMux()
-	sm.Handle("/raft", m.node)
-	sm.Handle("/raft/", m.node)
-
-	sm.Handle("/api/", m.admin)
-	sm.Handle("/api", m.admin)
-
-	sm.Handle("/extender/", m.extenderSettingRaft)
-	sm.Handle("/extenders", m.extenderSettingRaft)
-
-	return sm
-}
 func (m *Master) Wait(pFile *pidfile.PidFile) error {
 
 	sigc := make(chan os.Signal, 1)
@@ -262,17 +261,18 @@ func (m *Master) close() {
 	log.Debug("try remove pid")
 
 	m.workerController.Stop()
-
+	m.adminController.Stop()
 }
 
-func NewMasterHandle() *Master {
+func NewMasterHandle(logWriter io.Writer) *Master {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
 		cancelFunc: cancelFunc,
 		ctx:        cancel,
+		logWriter:  logWriter,
 	}
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
-		log.Info("init traffic from stdin")
+		log.Info("Reset traffic from stdin")
 		m.masterTraffic = traffic.NewController(os.Stdin)
 		m.workerTraffic = traffic.NewController(os.Stdin)
 	} else {

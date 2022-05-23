@@ -10,36 +10,63 @@ package utils
 
 import (
 	"fmt"
-	"os"
-
+	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
+	"io"
+	"os"
 )
 
-func InitLogTransport(name string) {
+func InitMasterLog() io.Writer {
 	dir := env.LogDir()
-	if env.IsDebug() {
-		//dir = filepath.Base(".")
-		log.InitDebug(true)
-	}
+
 	formatter := &log.LineFormatter{
 		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
-	//writer := filelog.NewFileWriteByPeriod()
-	//writer.Set(dir, fmt.Sprintf("%s.log", name), filelog.PeriodDay, 7*24*time.Hour)
-	//writer.Open()
-	transport := filelog.CreateTransporter(log.InfoLevel)
-	transport.Reset(&filelog.Config{
-		Dir:    dir,
-		File:   fmt.Sprintf("%s.log", name),
-		Expire: 7,
-		Period: filelog.PeriodDay,
-		Level:  log.InfoLevel,
-	}, formatter)
+	fileWriter := filelog.NewFileWriteByPeriod()
+	period, _ := filelog.ParsePeriod(env.ErrorPeriod())
+	fileWriter.Set(dir, fmt.Sprintf("%s.log", env.ErrorName()), period, env.ErrorExpire())
+	fileWriter.Open()
+	var writer io.Writer = fileWriter
+	level := env.ErrorLevel()
 
+	if env.IsDebug() {
+		writer = ToCopyToIoWriter(os.Stdout, fileWriter)
+		level = log.DebugLevel
+	}
+	transport := log.NewTransport(writer, level)
 	transport.SetFormatter(formatter)
+
+	log.Reset(transport)
+	log.SetPrefix(fmt.Sprintf("[%s-%d]", eosc.ProcessMaster, os.Getpid()))
+
+	return writer
+}
+
+type writes []io.Writer
+
+func ToCopyToIoWriter(ws ...io.Writer) io.Writer {
+	return writes(ws)
+}
+func (ws writes) Write(p []byte) (n int, err error) {
+	for _, w := range ws {
+		n, err = w.Write(p)
+	}
+	return
+}
+
+func InitStdTransport(name string) {
+	level := env.ErrorLevel()
+	if env.IsDebug() {
+		level = log.DebugLevel
+	}
+	transport := log.NewTransport(os.Stderr, level)
+	transport.SetFormatter(&log.LineFormatter{
+		TimestampFormat:  "2006-01-02 15:04:05",
+		CallerPrettyfier: nil,
+	})
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
 }

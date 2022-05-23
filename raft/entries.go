@@ -2,6 +2,8 @@ package raft
 
 import (
 	"encoding/json"
+	"github.com/eolinker/eosc"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -13,11 +15,9 @@ import (
 // whether all entries could be published.
 // 日志提交处理
 func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
-	if len(ents) == 0 {
-		rc.walIndex = 0
+	if len(ents) == 0{
 		return true
 	}
-	isInit := false
 	for i := range ents {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
@@ -25,23 +25,30 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				// ignore empty messages
 				continue
 			}
-			m := &Message{}
-			var err error
-			err = m.Decode(ents[i].Data)
+			cmd := new(Command)
+			err := proto.Unmarshal(ents[i].Data, cmd)
 			if err != nil {
-				log.Error(err)
+				log.Errorf("unmarshal raft message :%w", err)
 				continue
 			}
-
-			if m.Type == PROPOSE && m.From == rc.nodeID {
-				if ents[i].Index > rc.walIndex {
-					continue
-				} else {
-					isInit = true
-				}
+			type basic struct {
+				ID string `json:"id"`
 			}
 
-			err = rc.service.Commit(m.Data)
+			if cmd.Version == "" {// 兼容旧版本数据
+				switch cmd.Cmd {
+				case eosc.EventSet:
+					b := new(basic)
+					err = json.Unmarshal(cmd.Body, b)
+					if err != nil {
+						continue
+					}
+					cmd.Key = b.ID
+				case eosc.EventDel:
+					cmd.Key = string(cmd.Body)
+				}
+			}
+			err = rc.service.Commit(cmd.Cmd, cmd.Namespace,	cmd.Key, cmd.Body)
 			if err != nil {
 				log.Error(err)
 			}
@@ -104,10 +111,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 	}
 	// after commit, update appliedIndex
 	rc.appliedIndex = ents[len(ents)-1].Index
-	if isInit {
-		// 避免加入其他集群导致的问题
-		rc.walIndex = 0
-	}
+
 	return true
 }
 
@@ -118,7 +122,7 @@ func (rc *Node) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 	}
 	firstIdx := ents[0].Index
 	if firstIdx > rc.appliedIndex+1 {
-		log.Fatalf("first index of committed entry[%d] should <= progress.appliedIndex[%d]+1", firstIdx, rc.appliedIndex)
+		log.Fatalf("first index of c.ommitted entry[%d] should <= progress.appliedIndex[%d]+1", firstIdx, rc.appliedIndex)
 	}
 	if rc.appliedIndex-firstIdx+1 < uint64(len(ents)) {
 		nents = ents[rc.appliedIndex-firstIdx+1:]

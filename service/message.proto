@@ -17,30 +17,11 @@ message ProfessionConfig{
   }
   ProfessionMod mod=7;
 }
+
 message ProfessionConfigs{
   repeated ProfessionConfig data = 1;
 }
 
-message ProfessionInfo {
-  string name = 1;//
-  string label = 2;//
-  string desc = 3 ;//
-}
-message ProfessionDetail{
-  string name = 1;
-  string label = 2;
-  string desc = 3 ;
-  repeated string dependencies = 4;
-  repeated string appendLabels = 5;
-  repeated DriverDetail drivers = 6;
-}
-message DriverInfo{
-  string id = 1;
-  string name = 2;
-  string label = 3;
-  string desc = 4;
-  //  string profession=5;
-}
 message DriverConfig{
   string id = 1;
   string name = 2;
@@ -48,30 +29,6 @@ message DriverConfig{
   string desc = 4;
   map<string,string> params = 5;
 }
-message PluginInfo {
-  string group = 6;
-  string project = 7;
-  string name = 8; // 插件名
-}
-// 驱动详情
-message DriverDetail{
-  string id = 1;
-  string driver = 2; // 驱动名 = driverConfig.name
-  string label = 3;
-  string desc = 4;
-  //  string profession=5;
-  map<string, string> params = 5;
-  PluginInfo plugin = 6;
-}
-//
-//message WorkerInfo{
-//  string id = 1;
-//  string profession = 2;
-//  string name = 3;
-//  string driver = 4;
-//  string create = 5;
-//  string update = 6;
-//}
 
 message WorkerConfig{
   string id = 1;
@@ -82,10 +39,13 @@ message WorkerConfig{
   string update = 6;
   bytes body = 7;
 }
-message WorkerConfigs{
-  repeated WorkerConfig data = 1;
-}
 
 message ExtendersSettings{
   map<string,string> Extenders=1;
+}
+
+message ProcessStatus {
+  int32 status = 1;
+  string msg = 2;
+  bytes data = 3;
 }

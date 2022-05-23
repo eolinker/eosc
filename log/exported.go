@@ -2,18 +2,14 @@ package log
 
 import (
 	"fmt"
-
 	"os"
 	"time"
 )
 
 var (
-	logger          *Logger
-	transport       *Complex
-	lineFormatter   *LineFormatter
-	stdoutTransport *Transporter
-	isDebug         = false
-	transportsCache []EntryTransporter
+	logger        *Logger
+	transport     *Complex
+	lineFormatter *LineFormatter
 )
 
 func init() {
@@ -21,34 +17,20 @@ func init() {
 	lineFormatter = &LineFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 	}
-	stdoutTransport = NewTransport(os.Stderr, InfoLevel)
-	stdoutTransport.SetFormatter(lineFormatter)
+
 	transport = NewComplex()
 	logger = NewLogger(transport, false, "")
-	Reset()
+
 	RegisterExitHandler(func() {
 		Close()
 	})
 }
-func InitDebug(d bool) {
-	isDebug = d
-	if isDebug {
-		stdoutTransport.SetLevel(DebugLevel)
-	} else {
-		transport.setLevel(InfoLevel)
-	}
-	Reset(transportsCache...)
+func SetLevel(level Level) {
+	transport.setLevel(level)
 }
 
 func Reset(transports ...EntryTransporter) {
-	transportsCache = transports
-	if isDebug || len(transports) == 0 {
-		transportsTmp := append(transportsCache, stdoutTransport)
-		transport.Reset(transportsTmp...)
-	} else {
-		transport.Reset(transports...)
-	}
-
+	transport.Reset(transports...)
 }
 
 //Close 关闭
@@ -74,29 +56,26 @@ func Debug(args ...interface{}) {
 }
 
 // Debug logs a message at level Debug on the standard logger.
-func Debugf(format string, args ...interface{}) {
+func DebugF(format string, args ...interface{}) {
 
 	logger.Debugf(format, args...)
 }
 
 // Info logs a message at level Info on the standard logger.
 func Info(args ...interface{}) {
-
 	logger.Info(args...)
 }
 
 // Warn logs a message at level Warn on the standard logger.
 func Warn(args ...interface{}) {
-
 	logger.Warn(args...)
 }
 
 // Error logs a message at level Error on the standard logger.
 func Error(args ...interface{}) {
-
 	logger.Error(args...)
 }
-func panicout(args ...interface{}) string {
+func panicOut(args ...interface{}) string {
 	defer func() {
 		if e := recover(); e != nil {
 			Close()
@@ -110,7 +89,7 @@ func panicout(args ...interface{}) string {
 
 // Panic logs a message at level Panic on the standard logger.
 func Panic(args ...interface{}) {
-	panic(panicout(args...))
+	panic(panicOut(args...))
 }
 
 // Fatal logs a message at level Fatal on the standard logger then the process will exit with status set to 1.
@@ -129,7 +108,7 @@ func Infof(format string, args ...interface{}) {
 	logger.Infof(format, args...)
 }
 
-// Infof logs a message at level Info on the standard logger.
+// Warnf logs a message at level Info on the standard logger.
 func Warnf(format string, args ...interface{}) {
 
 	logger.Warnf(format, args...)

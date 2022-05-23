@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/traffic"
 )
 
 var _ IHttpTraffic = (*HttpTraffic)(nil)
@@ -19,7 +18,6 @@ type IHttpTraffic interface {
 
 type HttpTraffic struct {
 	locker sync.Mutex
-	tf     traffic.ITraffic
 	srvs   map[int]*HttpService
 }
 
@@ -64,16 +62,6 @@ func (h *HttpTraffic) Get(port int) (IService, bool) {
 		return srv, true
 	}
 	return nil, false
-	//log.Debug("http traffic get:", port)
-	//listener, err := h.tf.ListenTcp("", port)
-	//
-	//if err != nil {
-	//	srv = NewHttpService(nil)
-	//} else {
-	//	srv = NewHttpService(listener)
-	//}
-	//h.srvs[port] = srv
-	//return srv
 }
 
 func (h *HttpTraffic) All() map[int]IService {
@@ -86,10 +74,9 @@ func (h *HttpTraffic) All() map[int]IService {
 	return srv
 }
 
-func NewHttpTraffic(tf traffic.ITraffic) *HttpTraffic {
+func NewHttpTraffic() *HttpTraffic {
 	return &HttpTraffic{
 		locker: sync.Mutex{},
-		tf:     tf,
 		srvs:   make(map[int]*HttpService),
 	}
 }

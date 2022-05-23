@@ -1,11 +1,12 @@
 package raft
 
 import (
-	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"github.com/eolinker/eosc"
+	"google.golang.org/protobuf/proto"
 	"net/http"
 	"net/url"
 	"os"
@@ -32,14 +33,21 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	transport  = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: false}}
+	httpClient = &http.Client{
+		Transport: transport,
+	}
+)
+
 // raft节点结构
 type Node struct {
 	// 节点ID
 	nodeID uint64
 	once   sync.Once
 	// eosc 服务相关
-	service IService
-
+	service       IRaftService
+	stateHandler IRaftStateHandler
 	// 节点相关
 	node raft.Node
 
@@ -52,9 +60,6 @@ type Node struct {
 	broadcastPort int
 
 	protocol string
-
-	// 当前leader
-	lead uint64
 
 	// 节点状态
 	confState raftpb.ConfState
@@ -75,7 +80,6 @@ type Node struct {
 	// 日志与内存
 	raftStorage  *MemoryStorage
 	wal          *wal.WAL
-	walIndex     uint64
 	waldir       string // path to WAL directory
 	appliedIndex uint64
 
@@ -135,17 +139,6 @@ func (rc *Node) writeConfig() {
 	cfg.Set(env.Port, strconv.Itoa(rc.broadcastPort))
 	cfg.Save()
 }
-
-//func (rc *Node) clearConfig() {
-//	cfg := env.NewConfig(fmt.Sprintf("%s_node.args", env.AppName()))
-//	cfg.Save()
-//	rc.nodeID = 0
-//	rc.nodeKey = ""
-//	rc.broadcastIP = ""
-//	rc.broadcastPort = 0
-//	rc.active, rc.join = false, false
-//	rc.transportHandler = rc.genHandler()
-//}
 
 // startRaft 启动raft服务，在集群模式下启动或join模式下启动
 // 非集群模式下启动的节点不会调用该start函数
@@ -236,15 +229,15 @@ func (rc *Node) serveChannels() {
 	// 心跳定时器
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
 			rc.node.Tick()
 		case rd := <-rc.node.Ready():
-			if rd.SoftState != nil {
-				rc.lead = rd.SoftState.Lead
-			}
+
 			//islead = rd.RaftState == raft.StateLeader
+
 			rc.saveToStorage(rd)
 
 			// 将信息发给其他节点
@@ -267,6 +260,12 @@ func (rc *Node) serveChannels() {
 			rc.maybeTriggerSnapshot()
 			// 告知底层raft该Ready已处理完
 			rc.node.Advance()
+
+			// 通知业务状态变更leader变更
+			if rd.SoftState != nil{
+				rc.stateHandler.SetState(rd.RaftState)
+			}
+
 		// transport出错
 		case err = <-rc.transport.ErrorC:
 			log.Info(err.Error())
@@ -306,40 +305,25 @@ func (rc *Node) Status() raft.Status {
 }
 
 // Send 客户端发送propose请求的处理
-// 由客户端API调用或Leader收到转发后调用
-// 如果是非集群模式(isCluster为false)，直接处理(即service.ProcessHandler后直接service.Commit)
-// 如果是集群模式，分两种情况
-// 1、当前节点是leader，经service.ProcessHandler后由node.Propose处理后返回，
-// 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-// 2、当前节点不是leader，获取当前leader节点地址，转发至leader进行处理(rc.proposeHandler)，
-// leader收到请求后经service.ProcessHandler后由node.Propose处理后返回，
-// 后续会由各个节点的node.Ready读取后进行Commit时由service.CommitHandler处理
-func (rc *Node) Send(msg []byte) (interface{}, error) {
+func (rc *Node) Send(event string, namespace string, key string, data []byte) error {
 
-	// 集群模式下的处理
-	isLeader, err := rc.isLeader()
-	if err != nil {
-		return nil, err
-	}
-	log.Infof("msg:leader is node(%d)", rc.lead)
-	// 如果自己本身就是leader，直接处理，否则转发由leader处理
-	if isLeader {
-		// service.ProcessHandler要么leader执行，要么非集群模式下自己执行
-		obj, data, err := rc.service.PreProcessData(msg)
-		if err != nil {
-			return nil, err
-		}
+	msg:= &Command{
 
-		if err := rc.ProcessData(data); err != nil {
-			return nil, err
-		}
-		if err := rc.service.Commit(data); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	} else {
-		return rc.postMessageToLeader(msg)
+		Namespace:     namespace,
+		Cmd:           event,
+		Body:          data,
+		Key:           key,
+		Version:       "1",
 	}
+	msgData,_:=proto.Marshal(msg)
+	log.DebugF("process data:%s", string(event))
+	if err := rc.ProcessData(msgData); err != nil {
+		log.Warnf("process data error:%s", err)
+		return err
+	}
+
+	return nil
+
 }
 
 // GetPeers 获取集群的peer列表，供API调用
@@ -401,7 +385,7 @@ func (rc *Node) InitSend() error {
 	if err != nil {
 		return err
 	}
-	return rc.ProcessInitData(data)
+	return 	rc.Send(eosc.EventReset,"","",data)
 }
 
 // 切换回单例集群
@@ -496,62 +480,22 @@ func (rc *Node) UpdateHostInfo(addr string) error {
 	return nil
 }
 
-// 工具方法
-// postMessageToLeader 转发消息，基于json
-func (rc *Node) postMessageToLeader(body []byte) ([]byte, error) {
-	leader, err := rc.getLeader()
-	if err != nil {
-		return nil, err
-	}
-	// 转给leader
-	b, err := encodeProposeMsg(rc.nodeID, body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := http.Post(fmt.Sprintf("%s/raft/node/propose", leader.Addr), "application/json;charset=utf-8", bytes.NewBuffer(b))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != 200 {
-		res, err := decodeResponse(content)
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf(res.Msg)
-	}
-	return content, nil
+func (rc *Node) IsLeader() (bool, *NodeInfo, error) {
 
-}
-
-// getLeader 获取leader地址以及判断当前节点是不是leader
-func (rc *Node) getLeader() (*NodeInfo, error) {
-	if rc.lead == raft.None {
-		if rc.node.Status().Lead == raft.None {
-			return nil, fmt.Errorf("current node(%d) has no leader", rc.lead)
-		} else {
-			rc.lead = rc.node.Status().Lead
-		}
+	lead := rc.node.Status().Lead
+	if lead == raft.None {
+		log.Warnf("current node(%d) has no leader", rc.nodeID)
+		return false, nil, fmt.Errorf("current node(%d) has no leader", rc.nodeID)
 	}
 
-	v, ok := rc.peers.GetPeerByID(rc.lead)
-	if !ok {
-		return nil, fmt.Errorf("current node has no leader(%d) host", rc.lead)
-	}
-	return v, nil
-}
-func (rc *Node) isLeader() (bool, error) {
-	if rc.lead == raft.None {
-		if rc.node.Status().Lead == raft.None {
-			return false, fmt.Errorf("current node(%d) has no leader", rc.lead)
-		} else {
-			rc.lead = rc.node.Status().Lead
+	if rc.nodeID != lead {
+		v, ok := rc.peers.GetPeerByID(lead)
+		if !ok {
+			return false, nil, fmt.Errorf("current node has no leader(%d) host", lead)
 		}
+		return true, v, nil
 	}
-	return rc.nodeID == rc.lead, nil
+
+	return true, nil, nil
 
 }
