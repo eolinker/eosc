@@ -11,9 +11,9 @@ package process_master
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"net/http"
@@ -107,10 +107,10 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 				config = make(map[string]map[string][]byte)
 			}
 			if ps, has := config[eosc.NamespaceProfession]; !has || len(ps) == 0 {
-
+				ps = make(map[string][]byte)
 				pl := handler.InitProfession()
 				for _, p := range pl {
-					data, _ := proto.Marshal(p)
+					data, _ := json.Marshal(p)
 					ps[p.Name] = data
 				}
 				config[eosc.NamespaceProfession] = ps
