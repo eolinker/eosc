@@ -19,7 +19,7 @@ import (
 const (
 	envConfigName       = "CONFIG"
 	envDataDirName      = "DATA_DIR"
-	envPidFileName      = "PID_FILE"
+	envPidFileName      = "PID_DIR"
 	envSocketDirName    = "SOCKET_DIR"
 	envLogDirName       = "LOG_DIR"
 	envExtendsDirName   = "EXTENDS_DIR"

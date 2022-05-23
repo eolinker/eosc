@@ -169,7 +169,7 @@ func ExtenderInstall(c *cli.Context) error {
 	}
 
 	if len(response.Extends) > 0 {
-		fmt.Println("the extenders which are installed are below:")
+		fmt.Println("the extender which are installed are below:")
 		for _, ext := range response.Extends {
 			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 			if len(ext.Plugins) < 1 {
@@ -185,7 +185,7 @@ func ExtenderInstall(c *cli.Context) error {
 	}
 
 	if len(response.FailExtends) > 0 {
-		fmt.Println("the extenders which are installed failed are below:")
+		fmt.Println("the extender which are installed failed are below:")
 		for _, ext := range response.FailExtends {
 			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 		}
@@ -220,7 +220,7 @@ func ExtenderUpgrade(c *cli.Context) error {
 		return errors.New(response.Msg)
 	}
 	if len(response.Extends) > 0 {
-		fmt.Println("the extenders which are upgraded are below：")
+		fmt.Println("the extender which are upgraded are below：")
 		for _, ext := range response.Extends {
 			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 			if len(ext.Plugins) < 1 {
@@ -236,7 +236,7 @@ func ExtenderUpgrade(c *cli.Context) error {
 	}
 
 	if len(response.FailExtends) > 0 {
-		fmt.Println("the extenders which are upgraded failed are below:")
+		fmt.Println("the extender which are upgraded failed are below:")
 		for _, ext := range response.FailExtends {
 			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 		}
@@ -274,13 +274,13 @@ func ExtenderUninstall(c *cli.Context) error {
 		return nil
 	}
 	if len(response.Extends) > 0 {
-		fmt.Println("the extenders which are uninstall are below：")
+		fmt.Println("the extender which are uninstall are below：")
 		for _, ext := range response.Extends {
 			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 		}
 	}
 	if len(response.FailExtends) > 0 {
-		fmt.Println("the extenders which are uninstall failed are below：")
+		fmt.Println("the extender which are uninstall failed are below：")
 		for _, ext := range response.FailExtends {
 			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 		}

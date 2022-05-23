@@ -1,0 +1,11 @@
+syntax = "proto3";
+option go_package = "github.com/eolinker/eosc/raft";
+package raft_service;
+
+message Command {
+  string namespace=1;
+  string cmd=2;
+  bytes body=3;
+  optional string key=4;
+  string version=5 ;
+}

@@ -6,6 +6,8 @@ import (
 	"github.com/eolinker/eosc"
 )
 
+const InNertVersion = "innert"
+
 var (
 	innerLock     sync.Mutex
 	innerExtender = make(map[string]map[string][]RegisterFunc)
@@ -72,9 +74,9 @@ func IsInner(group, project string) bool {
 	innerLock.Lock()
 	defer innerLock.Unlock()
 
-	if projects, has := innerExtender[group]; has {
-		_, has := projects[project]
-		return has
+	if projects, hasGroup := innerExtender[group]; hasGroup {
+		_, hasProject := projects[project]
+		return hasProject
 	}
 	return false
 }

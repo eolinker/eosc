@@ -16,3 +16,4 @@
 /.idea/
 /vendor/
 /out/
+*.DS_Store

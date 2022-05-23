@@ -1,14 +1,14 @@
 syntax = "proto3";
 option go_package = "github.com/eolinker/eosc/service";
 package service;
+import "event.proto";
 
-message helloRequest {
-  string name =1;
+message EmptyRequest {
 }
-message helloResponse{
-  string name =1;
+
+
+service MasterDispatcher {
+ rpc Listen(EmptyRequest) returns(stream Event){};
 }
-service Master {
- rpc Hello(helloRequest) returns(helloResponse){};
-}
+
 
