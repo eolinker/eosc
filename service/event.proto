@@ -1,0 +1,10 @@
+syntax = "proto3";
+option go_package = "github.com/eolinker/eosc/service";
+package service;
+
+message Event {
+  string namespace = 1;
+  string command = 2 ;
+  string key = 3;
+  bytes data = 4;
+}

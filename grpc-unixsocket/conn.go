@@ -56,7 +56,7 @@ func Connect(addr string) (*grpc.ClientConn, error) {
 }
 
 func Listener(addr string) (net.Listener, error) {
-	defer utils.Timeout(fmt.Sprint("port-reqiure unix:", addr))()
+	defer utils.TimeSpend(fmt.Sprint("port-reqiure unix:", addr))()
 	serverAddress, err := net.ResolveUnixAddr("unix", addr)
 	if err != nil {
 		return nil, err
