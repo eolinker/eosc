@@ -15,10 +15,11 @@ message ExtendsResponse {
 }
 
 message ExtendsBasicInfo {
-  string group = 1;
-  string project = 2;
-  string version = 3;
-  string msg = 4;
+  string name = 1;
+  string group = 2;
+  string project = 3;
+  string version = 4;
+  string msg = 5;
 }
 
 message ExtendsInfo {
@@ -50,4 +51,5 @@ message Plugin {
   string name = 2;
   string group = 3;
   string project = 4;
+  string render = 5;
 }

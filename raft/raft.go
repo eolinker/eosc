@@ -105,14 +105,15 @@ func startRaft(rc *Node, peers map[uint64]*NodeInfo) error {
 }
 
 //NewNode 新建raft节点
-func NewNode(service IService) (*Node, error) {
+func NewNode(service IRaftService, stateHandler ...IRaftStateHandler) (*Node, error) {
+
 	logger, _ := zap.NewProduction()
 	rc := &Node{
-		peers:     NewPeers(),
-		service:   service,
-		snapCount: defaultSnapshotCount,
-		logger:    logger,
-		lead:      0,
+		peers:        NewPeers(),
+		service:      service,
+		stateHandler: CreateRaftStateHandlers(stateHandler...),
+		snapCount:    defaultSnapshotCount,
+		logger:       logger,
 		transport: &rafthttp.Transport{
 			Logger:             logger,
 			ClusterID:          0x1000,
@@ -127,34 +128,12 @@ func NewNode(service IService) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	service.SetRaft(rc)
+
 	return rc, nil
 }
 
-func (rc *Node) ProcessInitData(data []byte) error {
-	m := &Message{
-		From: rc.nodeID,
-		Type: INIT,
-		Data: data,
-	}
-	b, err := m.Encode()
-	if err != nil {
-		return err
-	}
-	return rc.node.Propose(context.TODO(), b)
-}
-
 func (rc *Node) ProcessData(data []byte) error {
-	m := &Message{
-		From: rc.nodeID,
-		Type: PROPOSE,
-		Data: data,
-	}
-	b, err := m.Encode()
-	if err != nil {
-		return err
-	}
-	return rc.node.Propose(context.TODO(), b)
+	return rc.node.Propose(context.TODO(), data)
 }
 func (rc *Node) Process(ctx context.Context, m raftpb.Message) error {
 	if rc.node == nil {

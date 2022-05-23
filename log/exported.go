@@ -2,18 +2,14 @@ package log
 
 import (
 	"fmt"
-
 	"os"
 	"time"
 )
 
 var (
-	logger          *Logger
-	transport       *Complex
-	lineFormatter   *LineFormatter
-	stdoutTransport *Transporter
-	isDebug         = false
-	transportsCache []EntryTransporter
+	logger        *Logger
+	transport     *Complex
+	lineFormatter *LineFormatter
 )
 
 func init() {
@@ -21,34 +17,20 @@ func init() {
 	lineFormatter = &LineFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 	}
-	stdoutTransport = NewTransport(os.Stderr, InfoLevel)
-	stdoutTransport.SetFormatter(lineFormatter)
+
 	transport = NewComplex()
 	logger = NewLogger(transport, false, "")
-	Reset()
+
 	RegisterExitHandler(func() {
 		Close()
 	})
 }
-func InitDebug(d bool) {
-	isDebug = d
-	if isDebug {
-		stdoutTransport.SetLevel(DebugLevel)
-	} else {
-		transport.setLevel(InfoLevel)
-	}
-	Reset(transportsCache...)
+func SetLevel(level Level) {
+	transport.setLevel(level)
 }
 
 func Reset(transports ...EntryTransporter) {
-	transportsCache = transports
-	if isDebug || len(transports) == 0 {
-		transportsTmp := append(transportsCache, stdoutTransport)
-		transport.Reset(transportsTmp...)
-	} else {
-		transport.Reset(transports...)
-	}
-
+	transport.Reset(transports...)
 }
 
 //Close 关闭

@@ -40,7 +40,6 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter, init bool) error {
 
 			return rc.service.ResetSnap(nil)
 		}
-
 	}
 
 	// 快照不为空的话写进service
