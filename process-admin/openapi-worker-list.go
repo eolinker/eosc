@@ -1,6 +1,8 @@
 package process_admin
 
 import (
+	"encoding/json"
+	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
@@ -17,7 +19,9 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 	for _, e := range es {
 		rs = append(rs, e.toAttr())
 	}
-	return 200, nil, nil, es
+	out, _ := json.Marshal(rs)
+	log.Debug("getEmployeesByProfession:", string(out))
+	return 200, nil, nil, out
 }
 
 func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
