@@ -129,13 +129,15 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 		router:     httprouter.New(),
 	}
 	register := initExtender(arg[eosc.NamespaceExtender])
-	NewExtenderOpenApi(NewExtenderData(arg[eosc.NamespaceExtender])).Register(p.router)
+	extenderData := NewExtenderData(arg[eosc.NamespaceExtender])
+	NewExtenderOpenApi(extenderData).Register(p.router)
 
 	professionData := professions.NewProfessions(register)
 	professionData.Reset(professionConfig(arg[eosc.NamespaceProfession]))
 	NewProfessionApi(professionData).Register(p.router)
-	NewWorkerApi(professionData, arg[eosc.NamespaceWorker]).Register(p.router)
-
+	workers := NewWorkers(professionData, arg[eosc.NamespaceWorker])
+	NewWorkerApi(workers).Register(p.router)
+	NewExportApi(extenderData, professionData, workers).Register(p.router)
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
 			StatusCode: 404,

@@ -190,20 +190,26 @@ func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, e
 }
 
 type ExtenderItemInfo struct {
-	Group   string `json:"group"`
-	Project string `json:"project"`
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Group   string `json:"group" yaml:"group" `
+	Project string `json:"project" yaml:"project"`
+	Name    string `json:"name" yaml:"name"`
+	Version string `json:"version" yaml:"version"`
 }
 type ExtenderItem struct {
 	ExtenderItemInfo
-	Id string `json:"id"`
+	Id string `json:"id" yaml:"id"`
 }
 type ExtenderItemRender struct {
 	ExtenderItemInfo
-	Render interface{} `json:"render"`
+	Render interface{} `json:"render" yaml:"render"`
 }
 
+func (e *ExtenderData) versions() map[string]string {
+	e.locker.RLock()
+	defer e.locker.RUnlock()
+	d := e.Versions
+	return d
+}
 func (e *ExtenderData) List() []*ExtenderItem {
 	rs := make([]*ExtenderItem, 0, len(e.Versions))
 	e.locker.RLock()
