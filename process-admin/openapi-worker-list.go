@@ -8,9 +8,7 @@ import (
 
 func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
-	if profession == "_export" {
-		return oe.export(r, params)
-	}
+
 	es, err := oe.workers.ListEmployees(profession)
 	if err != nil {
 		return 500, nil, nil, err
