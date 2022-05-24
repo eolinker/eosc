@@ -2,6 +2,7 @@ package open_api
 
 import (
 	"encoding/json"
+	"github.com/eolinker/eosc/log"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
@@ -24,25 +25,38 @@ func CreateHandler(handler OpenApiHandler) httprouter.Handle {
 
 		response := &Response{
 			StatusCode: status,
-			Header:     header,
 			Data:       nil,
 			Event:      event,
 		}
-
+		if header == nil {
+			header = make(http.Header)
+			header.Set("content-type", "application/json")
+		} else {
+			if header.Get("content-type") == "" {
+				header.Set("content-type", "application/json")
+			}
+		}
+		response.Header = header
 		if body != nil {
 			switch d := body.(type) {
 			case error:
 				response.Data = []byte(d.Error())
+				log.Debug("handler write err:", d)
+
 			case string:
 				response.Data = []byte(d)
+				log.Debug("handler write string:", string(d))
+
 			case []byte:
 				response.Data = d
+				log.Debug("handler write []byte:", string(d))
 			default:
 				response.Data, _ = json.Marshal(body)
+				log.Debug("handler write default:", string(response.Data))
 			}
 		}
 		data, _ := json.Marshal(response)
-		w.Header().Set("content-type", "application/json")
+
 		w.WriteHeader(200)
 		w.Write(data)
 	}
