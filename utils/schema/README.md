@@ -11,6 +11,8 @@
 * properties改成数组，并且子schema需要包含name和required,同时required从数组改成布尔值
 * 新类型map，实际为数组
 * 新增dependencies关键字
+* 新增skill关键字
+* type关键字可以通过标签手动修改
 
 ### 使用说明
 
@@ -401,4 +403,48 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 ```
 
 
+
+#### type
+
+通用类型关键字，表示类型，现可以通过标签进行修改
+
+##### 注解规则及使用
+
+注意：Target类型为eosc.RequiredId， 而eosc.RequiredId底层类型为string，如果不在标签指定type，则会被自动判断为string。
+
+```go
+type Config struct {
+	id          string
+	Name        string `json:"name"`
+	Driver      string `json:"driver"`
+    Target    eosc.RequireId   `json:"target" type:"requireid" skill: "github.com/eolinker/apinto/upstream.upstream.IUpstream"` 
+}
+```
+
+转化json为：
+
+```json
+{
+    "type": "object",
+    "properties": [
+        {
+            "name": "id",
+            "type": "string"
+        },
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "driver",
+            "type": "string"
+        },
+        {
+            "name": "target",
+            "type": "requireid",
+            "skill": "github.com/eolinker/apinto/upstream.upstream.IUpstream"
+        }
+    ]
+}
+```
 
