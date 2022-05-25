@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc"
 	"net"
 	"net/url"
 	"reflect"
@@ -34,13 +35,14 @@ const (
 
 // JSON Schema type constants
 const (
-	TypeBoolean = "boolean"
-	TypeInteger = "integer"
-	TypeNumber  = "number"
-	TypeString  = "string"
-	TypeArray   = "array"
-	TypeObject  = "object"
-	TypeMap     = "map"
+	TypeBoolean   = "boolean"
+	TypeInteger   = "integer"
+	TypeNumber    = "number"
+	TypeString    = "string"
+	TypeArray     = "array"
+	TypeObject    = "object"
+	TypeMap       = "map"
+	TypeRequireId = "require"
 )
 
 var (
@@ -148,6 +150,15 @@ type Schema struct {
 	ContentEncoding      string              `json:"contentEncoding,omitempty"`
 	Ref                  string              `json:"$ref,omitempty"`
 	Dependencies         map[string][]string `json:"dependencies,omitempty"`
+}
+
+func (s *Schema) findProperties(name string) *Schema {
+	for _, p := range s.Properties {
+		if p.Name == name {
+			return p
+		}
+	}
+	return nil
 }
 
 // HasValidation returns true if at least one validator is set on the schema.
@@ -451,7 +462,11 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 	if schema == nil {
 		schema = &Schema{}
 	}
-
+	if t == reflect.TypeOf(eosc.RequireId("")) {
+		return &Schema{
+			Type: TypeRequireId,
+		}, nil
+	}
 	if t == ipType {
 		// Special case: IP address.
 		return &Schema{Type: TypeString, Format: "ipv4"}, nil
