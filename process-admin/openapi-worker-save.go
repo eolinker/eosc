@@ -46,6 +46,48 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		Data:      eventData,
 	}, obj.toAttr()
 }
+func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+	profession := params.ByName("profession")
+	name := params.ByName("name")
+	if name == "" {
+		return http.StatusInternalServerError, nil, nil, "require name"
+	}
+	decoder, err := GetData(r)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, err
+	}
+
+	options := make(map[string]interface{})
+	workerInfo, err := oe.workers.GetEmployee(profession, name)
+	if err != nil {
+		return 0, nil, nil, nil
+	}
+	current := make(map[string]interface{})
+	json.Unmarshal(workerInfo.config.Body, &current)
+
+	for k, v := range options {
+
+		if v != nil {
+			current[k] = v
+		} else {
+			delete(current, k)
+		}
+	}
+	data, _ := json.Marshal(current)
+	decoder = JsonData(data)
+	obj, err := oe.workers.Update(profession, name, workerInfo.config.Driver, decoder)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, err
+	}
+
+	eventData, _ := json.Marshal(obj.config)
+	return http.StatusOK, nil, &open_api.EventResponse{
+		Event:     eosc.EventSet,
+		Namespace: eosc.NamespaceWorker,
+		Key:       obj.config.Id,
+		Data:      eventData,
+	}, nil
+}
 func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
@@ -62,16 +104,12 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-
 	obj, err := oe.workers.Update(profession, name, cb.Driver, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
-	}
-	eventData, _ := json.Marshal(obj)
 
+	eventData, _ := json.Marshal(obj.config)
 	return http.StatusOK, nil, &open_api.EventResponse{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
