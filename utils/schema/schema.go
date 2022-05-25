@@ -170,6 +170,24 @@ func (s *Schema) hasProperties(name string) bool {
 	}
 	return false
 }
+func (s *Schema) checkDependencies() error {
+	//判断scheme的dependencies存不存在，存在则校验里面的key及其依赖在properties里存在
+	if s.Type == TypeObject && s.Dependencies != nil {
+
+		for key, dps := range s.Dependencies {
+			if !s.hasProperties(key) {
+				return fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", key)
+			}
+			for _, dp := range dps {
+				if !s.hasProperties(dp) {
+					return fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", dp)
+				}
+			}
+		}
+	}
+
+	return nil
+}
 
 // HasValidation returns true if at least one validator is set on the schema.
 // This excludes the schema's type but includes most other fields and can be
@@ -185,8 +203,16 @@ func (s *Schema) HasValidation() bool {
 // Generate creates a JSON schema for a Go type. Struct field tags
 // can be used to provide additional metadata such as descriptions and
 // validation.
-func Generate(t reflect.Type, schema *Schema) (*Schema, error) {
-	return GenerateWithMode(t, ModeAll, schema)
+func Generate(t reflect.Type, dependencies map[string][]string) (*Schema, error) {
+	sc, err := generateWithMode(t, ModeAll, &Schema{Dependencies: dependencies})
+	if err != nil {
+		return nil, err
+	}
+	err = sc.checkDependencies()
+	if err != nil {
+		return nil, err
+	}
+	return sc, nil
 }
 
 // getFields performs a breadth-first search for all fields including embedded
@@ -237,7 +263,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	schema := &Schema{Name: name}
 
 	//生成field 类型的对应schema
-	s, err := GenerateWithMode(f.Type, mode, schema)
+	s, err := generateWithMode(f.Type, mode, schema)
 	if err != nil {
 		return nil, err
 	}
@@ -267,21 +293,8 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 			dependencies[key] = dps
 		}
 		schema.Dependencies = dependencies
-
-		//判断scheme的dependencies存不存在，存在则校验里面的key及其依赖在properties里存在
-		if schema.Type == TypeObject {
-			if dependencies != nil {
-				for key, dps := range dependencies {
-					if schema.hasProperties(key) {
-						return nil, fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", key)
-					}
-					for _, dp := range dps {
-						if schema.hasProperties(dp) {
-							return nil, fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", dp)
-						}
-					}
-				}
-			}
+		if err = schema.checkDependencies(); err != nil {
+			return nil, err
 		}
 	}
 
@@ -480,17 +493,17 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	return s, nil
 }
 
-// GenerateWithMode creates a JSON schema for a Go type. Struct field
+// generateWithMode creates a JSON schema for a Go type. Struct field
 // tags can be used to provide additional metadata such as descriptions and
 // validation. The mode can be all, read, or write. In read or write mode
 // any field that is marked as the opposite will be excluded, e.g. a
 // write-only field would not be included in read mode. If a schema is given
 // as input, add to it, otherwise creates a new schema.
-func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error) {
+func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error) {
 	if schema == nil {
 		schema = &Schema{}
 	}
-	if t == reflect.TypeOf(requireType) {
+	if t == requireType {
 		schema.Type = TypeRequireId
 		return schema, nil
 	}
@@ -524,12 +537,6 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 				continue
 			}
 
-			//if _, ok := propertiesSet[name]; ok {
-			//	// Item already exists, ignore it since we process embedded fields
-			//	// after top-level ones.
-			//	continue
-			//}
-
 			if s.ReadOnly && mode == ModeWrite {
 				continue
 			}
@@ -549,7 +556,7 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 
 	case reflect.Map:
 		schema.Type = TypeMap
-		s, err := GenerateWithMode(t.Elem(), mode, nil)
+		s, err := generateWithMode(t.Elem(), mode, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -560,7 +567,7 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 			schema.Type = TypeString
 		} else {
 			schema.Type = TypeArray
-			s, err := GenerateWithMode(t.Elem(), mode, nil)
+			s, err := generateWithMode(t.Elem(), mode, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -592,7 +599,7 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 	case reflect.String:
 		schema.Type = TypeString
 	case reflect.Ptr:
-		return GenerateWithMode(t.Elem(), mode, schema)
+		return generateWithMode(t.Elem(), mode, schema)
 	case reflect.Interface:
 		// Interfaces can be any type.
 	case reflect.Uintptr, reflect.UnsafePointer, reflect.Func:
