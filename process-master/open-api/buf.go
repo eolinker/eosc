@@ -12,10 +12,14 @@ type _ProxyWriterBuffer struct {
 }
 
 func NewTemplateWriter() *_ProxyWriterBuffer {
-	return &_ProxyWriterBuffer{
-		statusCode: 200,
-		header:     make(http.Header),
-	}
+	b := &_ProxyWriterBuffer{}
+	b.Reset()
+	return b
+}
+func (t *_ProxyWriterBuffer) Reset() {
+	t.buf.Reset()
+	t.statusCode = 200
+	t.header = make(http.Header)
 }
 func (t *_ProxyWriterBuffer) WriteTo(w http.ResponseWriter) {
 

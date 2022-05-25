@@ -16,6 +16,8 @@ func (oe *WorkerApi) Register(router *httprouter.Router) {
 	router.PUT("/api/:profession/:name", open_api.CreateHandleFunc(oe.Save))
 	router.POST("/api/:profession/:name", open_api.CreateHandleFunc(oe.Save))
 	router.DELETE("/api/:profession/:name", open_api.CreateHandleFunc(oe.delete))
+	router.PATCH("/api/:profession/:name", open_api.CreateHandleFunc(oe.Patch))
+
 }
 
 func NewWorkerApi(workers *Workers) *WorkerApi {

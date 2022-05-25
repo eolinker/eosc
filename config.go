@@ -2,11 +2,12 @@ package eosc
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/utils/schema"
 	"reflect"
 	"strings"
 )
 
-type RequireId string
+type RequireId = schema.RequireId
 
 var (
 	_RequireTypeName      = TypeNameOf(RequireId(""))
