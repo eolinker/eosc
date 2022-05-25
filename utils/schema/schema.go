@@ -148,6 +148,7 @@ type Schema struct {
 	ContentEncoding      string              `json:"contentEncoding,omitempty"`
 	Ref                  string              `json:"$ref,omitempty"`
 	Dependencies         map[string][]string `json:"dependencies,omitempty"`
+	Skill                string              `json:"skill,omitempty"`
 }
 
 // HasValidation returns true if at least one validator is set on the schema.
@@ -257,6 +258,10 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 
 	if tag, ok := f.Tag.Lookup("doc"); ok {
 		s.Description = tag
+	}
+
+	if tag, ok := f.Tag.Lookup("type"); ok {
+		s.Type = tag
 	}
 
 	if tag, ok := f.Tag.Lookup("format"); ok {
@@ -436,6 +441,11 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 			return name, nil, fmt.Errorf("%s deprecated: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.Deprecated = tag == "true"
+	}
+
+	//eosc target skill
+	if tag, ok := f.Tag.Lookup("skill"); ok {
+		s.Skill = tag
 	}
 
 	return name, s, nil
