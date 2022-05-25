@@ -11,7 +11,7 @@ import (
 func Example() {
 	type MyConfig struct {
 		Id     string    `json:"id" require:"" readonly:"true"`
-		Target RequireId `json:"target" Skill:"service.service.IService"`
+		Target RequireId `json:"target" skill:"service.service.IService"`
 	}
 	sc, err := schema.Generate(reflect.TypeOf(MyConfig{}), nil)
 	if err != nil {
