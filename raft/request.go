@@ -116,7 +116,7 @@ func joinClusterRequest(id uint64, key string, ip string, port int, protocol, ad
 	return fmt.Errorf(res.Err)
 }
 
-//joinClusterRequest 发送加入集群请求
+//callbackSNRequest
 func callbackSNRequest(address string) (string, error) {
 	uri, err := url.Parse(fmt.Sprintf("%s/raft/node/join/callback", address))
 	if err != nil {

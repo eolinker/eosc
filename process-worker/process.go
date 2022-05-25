@@ -9,10 +9,15 @@
 package process_worker
 
 import (
+	"github.com/eolinker/eosc/professions"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/eolinker/eosc/process"
+
+	"github.com/eolinker/eosc/extends"
 
 	"github.com/eolinker/eosc/service"
 	"google.golang.org/protobuf/proto"
@@ -27,31 +32,41 @@ import (
 )
 
 func Process() {
-	arg := readArg()
+
 	utils.InitStdTransport(eosc.ProcessWorker)
-	//log.Debug("load plugin env...")
+	arg := readArg()
 	log.Info("worker process start...")
 
 	log.Debug("create worker...")
 	w, err := NewProcessWorker(arg)
 	if err != nil {
+		writeOutput(process.StatusExit, err.Error())
 		log.Error("new process worker error: ", err)
 		return
 	}
 
 	w.Start()
-
+	writeOutput(process.StatusRunning, "")
 	w.wait()
 	log.Info("worker process end")
+}
+
+func writeOutput(status int, msg string) {
+	data := new(eosc.ProcessStatus)
+	data.Status = int32(status)
+	data.Msg = msg
+	d, _ := proto.Marshal(data)
+	err := utils.WriteFrame(os.Stdout, d)
+	if err != nil {
+		log.Error("write output error: ", err)
+	}
 }
 
 type ProcessWorker struct {
 	tf traffic.ITraffic
 
-	workers IWorkers
-
-	once         sync.Once
-	workerServer *WorkerServer
+	once   sync.Once
+	server *WorkerServer
 }
 
 func (w *ProcessWorker) wait() {
@@ -73,7 +88,7 @@ func (w *ProcessWorker) wait() {
 			}
 		case syscall.SIGUSR1:
 			{
-
+				w.close()
 			}
 		default:
 			continue
@@ -84,65 +99,47 @@ func (w *ProcessWorker) wait() {
 
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
-func NewProcessWorker(arg *service.WorkerLoadArg) (*ProcessWorker, error) {
+func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 
-	register := loadPluginEnv(arg.ExtenderSetting)
+	register := extends.InitRegister()
+	extends.LoadPlugins(arg.Extends, register)
+	profession := professions.NewProfessions(register)
 
-	tf := createTraffic(arg.Traffic)
-	professions := NewProfessions()
-	professions.Reset(arg.Professions, register)
-	wm := NewWorkerManager(professions)
-	workerServer, err := NewWorkerServer(wm, register, professions)
+	server, err := NewWorkerServer(os.Getppid(), register)
 	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
+
+	tf := createTraffic(arg.Traffic)
 	w := &ProcessWorker{
-		workerServer: workerServer,
-		workers:      wm,
-		tf:           tf,
+		server: server,
+		tf:     tf,
 	}
+
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
 	bean.Injection(&tf)
-	bean.Injection(&professions)
-
-	var iWorkers eosc.IWorkers = w.workers
-	bean.Injection(&iWorkers)
+	bean.Injection(&profession)
 	bean.Injection(&arg.ListensMsg)
 	bean.Check()
 
-	err = wm.Reset(arg.Workers)
-	if err != nil {
-		log.Warn("worker configs error:", err)
-		return nil, err
-	}
-
-	w.workers = wm
-	//ports32 := wm.portsRequire.All()
-	//ports := make([]int, len(ports32))
-	//for i, v := range ports32 {
-	//	ports[i] = int(v)
-	//}
-	//w.tf.Expire(ports)
 	return w, nil
 }
 
 func (w *ProcessWorker) close() {
-
 	w.once.Do(func() {
 		w.tf.Close()
-		w.workerServer.Stop()
+		w.server.Stop()
 	})
-
 }
 
 func (w *ProcessWorker) Start() error {
-
 	return nil
 }
 
-func readArg() *service.WorkerLoadArg {
-	arg := new(service.WorkerLoadArg)
+func readArg() *service.ProcessLoadArg {
+	arg := new(service.ProcessLoadArg)
 	frame, err := utils.ReadFrame(os.Stdin)
 	if err != nil {
 		log.Warn("read arg fail:", err)
@@ -156,6 +153,7 @@ func readArg() *service.WorkerLoadArg {
 	log.Debug("read arg: ", arg)
 	return arg
 }
+
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
 	t := traffic.NewTraffic()
 

@@ -25,28 +25,6 @@ func GetRealIP(r *http.Request) string {
 	return realIP
 }
 
-func ToDriverDetails(config []*DriverConfig) []*DriverDetail {
-	rs := make([]*DriverDetail, len(config))
-	for i, c := range config {
-		rs[i] = ToDriverDetail(c)
-	}
-	return rs
-}
-func ToDriverDetail(config *DriverConfig) *DriverDetail {
-	group, project, name := readDriverId(config.Id)
-	return &DriverDetail{
-		Id:     config.Id,
-		Driver: config.Name,
-		Label:  config.Label,
-		Desc:   config.Desc,
-		Plugin: &PluginInfo{
-			Group:   group,
-			Project: project,
-			Name:    name,
-		},
-		Params: config.Params,
-	}
-}
 func readDriverId(id string) (group, project, name string) {
 	vs := strings.Split(id, ":")
 
@@ -66,16 +44,16 @@ func readDriverId(id string) (group, project, name string) {
 	return
 }
 
-func ToWorkerId(value, profession string) (string, bool) {
-	value = strings.ToLower(value)
-	index := strings.Index(value, "@")
+func ToWorkerId(name, profession string) (string, bool) {
+	name = strings.ToLower(name)
+	index := strings.Index(name, "@")
 	if index < 0 {
-		return fmt.Sprintf("%s@%s", value, profession), true
+		return fmt.Sprintf("%s@%s", name, profession), true
 	}
-	if profession != value[index+1:] {
+	if profession != name[index+1:] {
 		return "", false
 	}
-	return value, true
+	return name, true
 }
 
 //Decompress 解压文件

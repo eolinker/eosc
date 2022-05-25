@@ -3,16 +3,19 @@ package process_worker
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
-	"syscall"
+	"github.com/eolinker/eosc/common/bean"
+	"github.com/eolinker/eosc/professions"
+	"io"
+	"time"
+
+	"github.com/eolinker/eosc"
+
+	"github.com/eolinker/eosc/workers"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc/extends"
-
-	"github.com/eolinker/eosc"
 
 	"google.golang.org/grpc"
 
@@ -20,200 +23,113 @@ import (
 	"github.com/eolinker/eosc/service"
 )
 
-var (
-	_ service.WorkerServiceServer = (*WorkerServer)(nil)
-)
-
-type ExtenderRegister interface {
-	eosc.IExtenderDriverManager
-	eosc.IExtenderDrivers
-}
 type WorkerServer struct {
-	service.UnimplementedWorkerServiceServer
-	*grpc.Server
-	workers     IWorkers
-	extends     ExtenderRegister
-	professions IProfessions
+	ctx               context.Context
+	cancel            context.CancelFunc
+	workers           workers.IWorkers
+	professionManager professions.IProfessions
+
+	masterPid int
 }
 
-func NewWorkerServer(workers IWorkers, extends ExtenderRegister, professions IProfessions) (*WorkerServer, error) {
-	defer utils.Timeout("NewWorkerServer")()
-	addr := service.WorkerServerAddr(os.Getpid())
-	// 移除unix socket
-	syscall.Unlink(addr)
-	log.Info("start worker :", addr)
-	l, err := grpc_unixsocket.Listener(addr)
-	if err != nil {
-		return nil, err
-	}
+func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerServer, error) {
+	defer utils.TimeSpend("NewWorkerServer")()
+	ctx, cancel := context.WithCancel(context.Background())
 	ws := &WorkerServer{
-		Server:      grpc.NewServer(),
-		workers:     workers,
-		extends:     extends,
-		professions: professions,
+		ctx:       ctx,
+		cancel:    cancel,
+		masterPid: masterPid,
+
+		professionManager: professions.NewProfessions(extends),
 	}
-	service.RegisterWorkerServiceServer(ws.Server, ws)
-	go func() {
-		err := ws.Server.Serve(l)
-		if err != nil {
-			log.Info("grpc server:", err)
-			return
-		}
-	}()
+
+	ws.workers = workers.NewWorkerManager(ws.professionManager)
+	bean.Injection(&ws.workers)
+	ws.listenMaster()
 	return ws, nil
-
-}
-
-func (ws *WorkerServer) AddExtender(ctx context.Context, extender *service.WorkerAddExtender) (*service.WorkerResponse, error) {
-	invalidId := make([]string, 0, len(extender.Extenders))
-	errors := strings.Builder{}
-	for id, version := range extender.Extenders {
-		group, project, ok := readProject(id)
-		if !ok {
-			invalidId = append(invalidId, id)
-			continue
-		}
-		rg, err := extends.ReadExtenderProject(group, project, version)
-		if err != nil {
-			errors.WriteString(fmt.Sprint(id, ":", err, "\n"))
-			continue
-		}
-		rg.RegisterTo(ws.extends)
-	}
-	return &service.WorkerResponse{
-		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: errors.String(),
-	}, nil
-}
-
-func (ws *WorkerServer) DelExtenderCheck(ctx context.Context, extender *service.WorkerDelExtender) (*service.WorkerResponse, error) {
-
-	if extender != nil {
-		for _, id := range extender.Extenders {
-			ws.extends.Remove(id)
-		}
-	}
-
-	return &service.WorkerResponse{
-		Status: service.WorkerStatusCode_SUCCESS,
-	}, nil
-}
-
-func (ws *WorkerServer) Reset(ctx context.Context, request *service.ResetRequest) (*service.WorkerResponse, error) {
-	if request.Professions != nil {
-		ws.professions.Reset(request.Professions, ws.extends)
-	}
-	if request.Workers != nil {
-		ws.workers.Reset(request.Workers)
-	}
-	return &service.WorkerResponse{
-		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: "",
-	}, nil
-}
-
-func (ws *WorkerServer) Status(ctx context.Context, request *service.StatusRequest) (*service.StatusResponse, error) {
-	return &service.StatusResponse{}, nil
-
 }
 
 func (ws *WorkerServer) Stop() {
-	ws.Server.Stop()
-	addr := service.WorkerServerAddr(os.Getpid())
-	// 移除unix socket
-	syscall.Unlink(addr)
+	ws.cancel()
 }
 
-func (ws *WorkerServer) DeleteCheck(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerResponse, error) {
-	log.Debug("delete check: ", request.Id)
-	if ws.workers == nil {
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: "Initializing",
-		}, nil
+func (ws *WorkerServer) listenMaster() {
+	conn, client, err := ws.createClient()
+	if err == nil {
+
+		go ws.listen(conn, client)
+	} else {
+		ws.retryConn()
 	}
-	count := ws.workers.RequiredCount(request.Id)
-	if count > 0 {
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: "requiring",
-		}, nil
-	}
-	return &service.WorkerResponse{
-		Status: service.WorkerStatusCode_SUCCESS,
-	}, nil
 }
 
-func (ws *WorkerServer) SetCheck(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerResponse, error) {
-	log.Debug("set check: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
-	err := ws.workers.Check(req.Id, req.Profession, req.Name, req.Driver, req.Body)
-	if ws.workers == nil {
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: "Initializing",
-		}, nil
+func (ws *WorkerServer) retryConn() {
+	left, right := 1, 1
+	ticker := time.NewTicker(time.Duration(left*5) * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			{
+				conn, c, err := ws.createClient()
+				if err != nil {
+					log.Error("create conn error: ", err)
+					left, right = right, left+right
+					ticker.Reset(time.Duration(left*5) * time.Second)
+					continue
+				}
+
+				go ws.listen(conn, c)
+				return
+			}
+		}
 	}
+}
+
+func (ws *WorkerServer) createClient() (*grpc.ClientConn, service.MasterDispatcher_ListenClient, error) {
+	addr := service.ServerAddr(ws.masterPid, eosc.ProcessMaster)
+	conn, err := grpc_unixsocket.Connect(addr)
 	if err != nil {
-		log.Info("serivce set :", err)
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: err.Error(),
-		}, nil
+		return nil, nil, fmt.Errorf("connect master grpc addr error: %w,pid: %d\n", err, ws.masterPid)
 	}
-	return &service.WorkerResponse{
-		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: "",
-	}, nil
-}
 
-func (ws *WorkerServer) Delete(ctx context.Context, request *service.WorkerDeleteRequest) (*service.WorkerResponse, error) {
-	log.Debug("delete: ", request.Id)
-	if ws.workers == nil {
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: "Initializing",
-		}, nil
-	}
-	err := ws.workers.Del(request.Id)
-
+	client := service.NewMasterDispatcherClient(conn)
+	c, err := client.Listen(ws.ctx, &service.EmptyRequest{})
 	if err != nil {
-		log.Info("delete fail:", err)
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: err.Error(),
-		}, nil
+		return nil, nil, fmt.Errorf("listen master service error: %w,pid: %d\n", err, ws.masterPid)
 	}
-	return &service.WorkerResponse{
-		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: "",
-	}, nil
+	return conn, c, nil
 }
 
-func (ws *WorkerServer) Set(ctx context.Context, req *service.WorkerSetRequest) (*service.WorkerResponse, error) {
-	log.Debug("worker server set: ", req.Id, " ", req.Profession, " ", req.Name, " ", req.Driver, " ", string(req.Body))
-	if ws.workers == nil {
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: "Initializing",
-		}, nil
+func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher_ListenClient) {
+	defer conn.Close()
+	for {
+		event, err := c.Recv()
+		if err != nil {
+			if err == io.EOF {
+				log.Debug("listen closed... ", err)
+				return
+			}
+			ws.retryConn()
+			return
+		}
+		switch event.Command {
+		case eosc.EventInit, eosc.EventReset:
+			{
+				err := ws.resetEvent(event.Data)
+				if err != nil {
+					log.Error("reset server error: ", err)
+					continue
+				}
+			}
+		case eosc.EventSet:
+			{
+				ws.setEvent(event.Namespace, event.Key, event.Data)
+			}
+		case eosc.EventDel:
+			{
+				ws.delEvent(event.Namespace, event.Key)
+			}
+		}
 	}
-	err := ws.workers.Set(req.Id, req.Profession, req.Name, req.Driver, req.Body)
-	if err != nil {
-		log.Info("worker server set error:", err)
-		return &service.WorkerResponse{
-			Status:  service.WorkerStatusCode_FAIL,
-			Message: err.Error(),
-		}, nil
-	}
-	return &service.WorkerResponse{
-		Status:  service.WorkerStatusCode_SUCCESS,
-		Message: "",
-	}, nil
-}
-
-func (ws *WorkerServer) Ping(ctx context.Context, request *service.WorkerHelloRequest) (*service.WorkerResponse, error) {
-	if ws.workers == nil {
-		return &service.WorkerResponse{}, nil
-	}
-	return &service.WorkerResponse{}, nil
 }

@@ -18,13 +18,19 @@ import (
 )
 
 var (
-	ErrorInvalidListener = errors.New("invalid port-reqiure")
+	ErrorInvalidListener          = errors.New("invalid port-reqiure")
+	_                    ITraffic = (*Traffic)(nil)
+	_                    ITraffic = (*EmptyTraffic)(nil)
 )
-var _ ITraffic = (*Traffic)(nil)
 
 type Traffic struct {
 	locker sync.Mutex
 	data   *tTrafficData
+	stop   bool
+}
+
+func (t *Traffic) IsStop() bool {
+	return t.stop
 }
 
 func (t *Traffic) Expire(ports []int) {
@@ -79,14 +85,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 
 	log.Debug("traffic listen:", name)
 	if o, has := t.data.get(name); has {
-
-		//if !ok {
-		//	log.Debug("traffic ListenTcp:", ip, ":", port, ", not port-reqiure")
-		//
-		//	return nil, ErrorInvalidListener
-		//}
 		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
-
 		return o, nil
 	}
 	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
@@ -96,6 +95,7 @@ func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
 
 type ITraffic interface {
 	ListenTcp(ip string, port int) (net.Listener, error)
+	IsStop() bool
 	Close()
 }
 
@@ -140,4 +140,23 @@ func toName(ln net.Listener) string {
 func addrToName(addr net.Addr) string {
 	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
 
+}
+
+type EmptyTraffic struct {
+}
+
+func NewEmptyTraffic() *EmptyTraffic {
+	return &EmptyTraffic{}
+}
+
+func (e *EmptyTraffic) ListenTcp(ip string, port int) (net.Listener, error) {
+	return nil, nil
+}
+
+func (e *EmptyTraffic) IsStop() bool {
+	return true
+}
+
+func (e *EmptyTraffic) Close() {
+	return
 }

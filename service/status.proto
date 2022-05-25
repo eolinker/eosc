@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option go_package = "github.com/eolinker/eosc/service";
+
+enum StatusCode{
+  SUCCESS = 0;
+  FAIL = 1;
+  SKILL = 2;
+}

@@ -36,8 +36,9 @@ func (rc *Node) genHandler() http.Handler {
 	sm.HandleFunc("/raft/node/join/try", rc.joinTry)
 
 	sm.HandleFunc("/raft/node/join/callback", rc.joinCallback)
+
 	// 其他节点转发到leader的处理
-	sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
+	//sm.HandleFunc("/raft/node/propose", rc.proposeHandler)
 
 	sm.Handle("/", rc.transport.Handler())
 	return sm
@@ -189,92 +190,6 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// proposeHandler 其他节点转发到leader的propose处理，由rc.Send触发
-func (rc *Node) proposeHandler(w http.ResponseWriter, r *http.Request) {
-	// 只有leader才会收到该消息
-
-	defer r.Body.Close()
-
-	isLeader, err := rc.isLeader()
-	if err != nil {
-		return
-	}
-	if !isLeader {
-		writeError(w, "120001", "can not find leader", "can not find leader")
-		return
-	}
-
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, "120002", "fail to read body", err.Error())
-		return
-	}
-
-	msg, err := decodeProposeMsg(b)
-	if err != nil {
-		w.WriteHeader(503)
-		writeError(w, "120003", "fail to parse propose message", err.Error())
-		return
-	}
-	obj, data, err := rc.service.PreProcessData(msg.Body)
-	if err != nil {
-		w.WriteHeader(503)
-		writeError(w, "120004", "fail to send propose message", err.Error())
-		return
-	}
-	err = rc.ProcessData(data)
-	if err != nil {
-		w.WriteHeader(503)
-		writeError(w, "120005", "fail to send propose message", err.Error())
-		return
-	}
-	err = rc.service.Commit(data)
-	if err != nil {
-		w.WriteHeader(503)
-		writeError(w, "120005", "fail to commit message", err.Error())
-		return
-	}
-	writeTo(w, obj)
-}
-
-func encodeProposeMsg(from uint64, data []byte) ([]byte, error) {
-	msg := &ProposeMsg{
-		Body: data,
-		From: from,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-
-}
-func decodeProposeMsg(data []byte) (*ProposeMsg, error) {
-	msg := &ProposeMsg{}
-	err := json.Unmarshal(data, msg)
-	if err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
-func decodeResponse(data []byte) (*Response, error) {
-	res := &Response{}
-	err := json.Unmarshal(data, res)
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-func decodeSNRequest(data []byte) (*SNRequest, error) {
-	snRequest := new(SNRequest)
-	err := json.Unmarshal(data, snRequest)
-	if err != nil {
-		return nil, err
-	}
-	return snRequest, nil
-}
 
 func decodeSNResponse(data []byte) (*SNResponse, error) {
 	snRequest := new(SNResponse)
