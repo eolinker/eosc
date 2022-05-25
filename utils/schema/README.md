@@ -338,7 +338,7 @@ type myDate struct {
 
 //MyObject内的Date属性依赖性表示：day存在则month和year均必须存在，month存在则year必须存在。
 type MyObject struct {
-	ID     string            `json:"id,omitempty" doc:"Object ID" readOnly:"true" dependencies:"vca:qwe;vcx iqwe:asd"`
+	ID     string            `json:"id,omitempty" doc:"Object ID" readOnly:"true"`
 	Rate   float64           `doc:"Rate of change" minimum:"0"`
 	Coords []int             `doc:"X,Y coordinates" minItems:"2" maxItems:"2"`
 	Date   myDate            `json:"date,omitempty" dependencies:"day:month;year month:year"`
