@@ -26,13 +26,14 @@ func Example() {
 		Coords []int                  `doc:"X,Y coordinates" minItems:"2" maxItems:"2"`
 		Date   myDate                 `json:"date,omitempty" dependencies:"day:month;year month:year"`
 		Bucket map[string]interface{} `json:"bucket,omitempty" dependencies:"apple:banana;peach banana:melon"`
+		Target RequireId              `json:"target" skill:"github.com/eolinker/apinto/service.service.IService"`
 	}
 
-	generated, err := Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"id": {"rate"}, "rate": {"coords", "date"}}})
+	generated, err := Generate(reflect.TypeOf(MyObject{}), nil)
 	if err != nil {
 		panic(err)
 	}
-	bytes, _ := json.Marshal(generated)
+	bytes, _ := json.MarshalIndent(generated, "", "\t")
 	fmt.Println(string(bytes))
 	// output: {"type":"object","properties":{"bucket":{"type":"object","additionalProperties":{},"dependencies":{"apple":["banana","peach"],"banana":["melon"]}},"coords":{"type":"array","description":"X,Y coordinates","items":{"type":"integer","format":"int32"},"minItems":2,"maxItems":2},"date":{"type":"object","properties":{"day":{"type":"string"},"month":{"type":"string"},"year":{"type":"string"}},"additionalProperties":false,"dependencies":{"day":["month","year"],"month":["year"]}},"id":{"type":"string","description":"Object ID","readOnly":true},"rate":{"type":"number","description":"Rate of change","format":"double","minimum":0}},"additionalProperties":false,"required":["rate","coords"],"dependencies":{"id":["rate"],"rate":["coords","date"]}}
 }
@@ -660,7 +661,7 @@ func TestGenerate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Generate(tt.args.t, tt.args.schema)
+			got, err := Generate(tt.args.t, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Generate() error = %v, wantErr %v", err, tt.wantErr)
 				return
