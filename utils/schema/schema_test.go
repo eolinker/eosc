@@ -93,8 +93,8 @@ func TestSchemaRenameField(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Empty(t, s.Properties["foo"])
-	assert.NotEmpty(t, s.Properties["bar"])
+	assert.Empty(t, s.findProperties("foo"))
+	assert.NotEmpty(t, s.findProperties("bar"))
 }
 
 func TestSchemaDescription(t *testing.T) {
@@ -104,7 +104,7 @@ func TestSchemaDescription(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "I am a test", s.Properties["foo"].Description)
+	assert.Equal(t, "I am a test", s.Properties[0].Description)
 }
 
 func TestSchemaFormat(t *testing.T) {
@@ -114,7 +114,7 @@ func TestSchemaFormat(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "date-time", s.Properties["foo"].Format)
+	assert.Equal(t, "date-time", s.Properties[0].Format)
 }
 
 func TestSchemaEnum(t *testing.T) {
@@ -124,7 +124,7 @@ func TestSchemaEnum(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, []interface{}{"one", "two", "three"}, s.Properties["foo"].Enum)
+	assert.Equal(t, []interface{}{"one", "two", "three"}, s.findProperties("foo").Enum)
 }
 
 func TestSchemaArrayEnum(t *testing.T) {
@@ -136,10 +136,10 @@ func TestSchemaArrayEnum(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Array itself should not have an enum member set.
-	assert.Equal(t, []interface{}{}, s.Properties["foo"].Enum)
+	assert.Equal(t, []interface{}{}, s.findProperties("foo").Enum)
 
 	// Items in the array should be one of the allowed enum values.
-	assert.Equal(t, []interface{}{"one", "two", "three"}, s.Properties["foo"].Items.Enum)
+	assert.Equal(t, []interface{}{"one", "two", "three"}, s.findProperties("foo").Items.Enum)
 }
 
 func TestSchemaDefault(t *testing.T) {
@@ -149,7 +149,7 @@ func TestSchemaDefault(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "def", s.Properties["foo"].Default)
+	assert.Equal(t, "def", s.findProperties("foo").Default)
 }
 
 func TestSchemaExample(t *testing.T) {
@@ -159,7 +159,7 @@ func TestSchemaExample(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "ex", s.Properties["foo"].Example)
+	assert.Equal(t, "ex", s.findProperties("foo").Example)
 }
 
 func TestSchemaNullable(t *testing.T) {
@@ -169,7 +169,7 @@ func TestSchemaNullable(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, true, s.Properties["foo"].Nullable)
+	assert.Equal(t, true, s.findProperties("foo").Nullable)
 }
 
 func TestSchemaNullableError(t *testing.T) {
@@ -188,7 +188,7 @@ func TestSchemaReadOnly(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, true, s.Properties["foo"].ReadOnly)
+	assert.Equal(t, true, s.findProperties("foo").ReadOnly)
 }
 
 func TestSchemaReadOnlyError(t *testing.T) {
@@ -207,7 +207,7 @@ func TestSchemaWriteOnly(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, true, s.Properties["foo"].WriteOnly)
+	assert.Equal(t, true, s.findProperties("foo").WriteOnly)
 }
 
 func TestSchemaWriteOnlyError(t *testing.T) {
@@ -226,7 +226,7 @@ func TestSchemaDeprecated(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, true, s.Properties["foo"].Deprecated)
+	assert.Equal(t, true, s.findProperties("foo").Deprecated)
 }
 
 func TestSchemaDeprecatedError(t *testing.T) {
@@ -245,7 +245,7 @@ func TestSchemaMinimum(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 1.0, *s.Properties["foo"].Minimum)
+	assert.Equal(t, 1.0, *s.findProperties("foo").Minimum)
 }
 
 func TestSchemaMinimumError(t *testing.T) {
@@ -264,8 +264,8 @@ func TestSchemaExclusiveMinimum(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 1.0, *s.Properties["foo"].Minimum)
-	assert.Equal(t, true, *s.Properties["foo"].ExclusiveMinimum)
+	assert.Equal(t, 1.0, *s.findProperties("foo").Minimum)
+	assert.Equal(t, true, *s.findProperties("foo").ExclusiveMinimum)
 }
 
 func TestSchemaExclusiveMinimumError(t *testing.T) {
@@ -284,7 +284,7 @@ func TestSchemaMaximum(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 0.0, *s.Properties["foo"].Maximum)
+	assert.Equal(t, 0.0, *s.findProperties("foo").Maximum)
 }
 
 func TestSchemaMaximumError(t *testing.T) {
@@ -303,8 +303,8 @@ func TestSchemaExclusiveMaximum(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 0.0, *s.Properties["foo"].Maximum)
-	assert.Equal(t, true, *s.Properties["foo"].ExclusiveMaximum)
+	assert.Equal(t, 0.0, *s.findProperties("foo").Maximum)
+	assert.Equal(t, true, *s.findProperties("foo").ExclusiveMaximum)
 }
 
 func TestSchemaExclusiveMaximumError(t *testing.T) {
@@ -323,7 +323,7 @@ func TestSchemaMultipleOf(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 10.0, s.Properties["foo"].MultipleOf)
+	assert.Equal(t, 10.0, s.findProperties("foo").MultipleOf)
 }
 
 func TestSchemaMultipleOfError(t *testing.T) {
@@ -342,7 +342,7 @@ func TestSchemaMinLength(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), *s.Properties["foo"].MinLength)
+	assert.Equal(t, uint64(10), *s.findProperties("foo").MinLength)
 }
 
 func TestSchemaMinLengthError(t *testing.T) {
@@ -361,7 +361,7 @@ func TestSchemaMaxLength(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), *s.Properties["foo"].MaxLength)
+	assert.Equal(t, uint64(10), *s.findProperties("foo").MaxLength)
 }
 
 func TestSchemaMaxLengthError(t *testing.T) {
@@ -380,7 +380,7 @@ func TestSchemaPattern(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "a-z+", s.Properties["foo"].Pattern)
+	assert.Equal(t, "a-z+", s.findProperties("foo").Pattern)
 }
 
 func TestSchemaPatternError(t *testing.T) {
@@ -399,7 +399,7 @@ func TestSchemaMinItems(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), *s.Properties["foo"].MinItems)
+	assert.Equal(t, uint64(10), *s.findProperties("foo").MinItems)
 }
 
 func TestSchemaMinItemsError(t *testing.T) {
@@ -418,7 +418,7 @@ func TestSchemaMaxItems(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), *s.Properties["foo"].MaxItems)
+	assert.Equal(t, uint64(10), *s.findProperties("foo").MaxItems)
 }
 
 func TestSchemaMaxItemsError(t *testing.T) {
@@ -437,7 +437,7 @@ func TestSchemaUniqueItems(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, true, s.Properties["foo"].UniqueItems)
+	assert.Equal(t, true, s.findProperties("foo").UniqueItems)
 }
 
 func TestSchemaUniqueItemsError(t *testing.T) {
@@ -456,7 +456,7 @@ func TestSchemaMinProperties(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), *s.Properties["foo"].MinProperties)
+	assert.Equal(t, uint64(10), *s.findProperties("foo").MinProperties)
 }
 
 func TestSchemaMinPropertiesError(t *testing.T) {
@@ -475,7 +475,7 @@ func TestSchemaMaxProperties(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), *s.Properties["foo"].MaxProperties)
+	assert.Equal(t, uint64(10), *s.findProperties("foo").MaxProperties)
 }
 
 func TestSchemaMaxPropertiesError(t *testing.T) {
@@ -527,7 +527,7 @@ func TestSchemaNonStringExample(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(10), s.Properties["foo"].Example)
+	assert.Equal(t, uint32(10), s.findProperties("foo").Example)
 }
 
 func TestSchemaNonStringExampleErrorUnmarshal(t *testing.T) {
@@ -592,7 +592,7 @@ func TestEmbedded(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, s.Properties, 3)
-	assert.Equal(t, "integer", s.Properties["b"].Type)
+	assert.Equal(t, "integer", s.findProperties("b").Type)
 }
 
 func TestStringArrayExample(t *testing.T) {
@@ -604,8 +604,8 @@ func TestStringArrayExample(t *testing.T) {
 	s, err := Generate(reflect.TypeOf(Foo{}), nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, s.Properties["a"].Example, []string{"a", "b", "c"})
-	assert.Equal(t, s.Properties["b"].Example, []string{"a", "b", "c"})
+	assert.Equal(t, s.findProperties("a").Example, []string{"a", "b", "c"})
+	assert.Equal(t, s.findProperties("b").Example, []string{"a", "b", "c"})
 }
 
 func TestExampleBadJSON(t *testing.T) {
