@@ -54,7 +54,7 @@ func (s *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (stat
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
 	dependencies := pn.Dependencies
-	ws := make([]*eosc.WorkerConfig, 0, s.workerData.Count())
+	ws := make([]interface{}, 0, s.workerData.Count())
 	all := s.workerData.All()
 	dps := make(map[string]bool)
 	for _, dependency := range dependencies {
@@ -63,7 +63,7 @@ func (s *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (stat
 	for _, w := range all {
 		if w.worker != nil {
 			if w.worker.CheckSkill(skill) {
-				ws = append(ws, w.toInfo())
+				ws = append(ws, w.Info())
 			}
 		}
 	}

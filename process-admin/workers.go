@@ -41,7 +41,7 @@ func (oe *Workers) ListEmployees(profession string) ([]*WorkerInfo, error) {
 		return nil, eosc.ErrorProfessionNotExist
 	}
 	all := oe.data.All()
-	vs := make([]*WorkerInfo, len(all))
+	vs := make([]*WorkerInfo, 0, len(all))
 	for _, w := range all {
 		if w.config.Profession == p.Name {
 			vs = append(vs, w)
@@ -72,15 +72,13 @@ func (oe *Workers) Export() map[string][]*WorkerInfo {
 	}
 	return all
 }
-func (oe *Workers) Delete(profession, name string) (*WorkerInfo, error) {
-	id, ok := eosc.ToWorkerId(name, profession)
-	if !ok {
-		return nil, fmt.Errorf("%s %w", profession, ErrorNotMatch)
-	}
+func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
+
 	worker, has := oe.data.GetInfo(id)
 	if !has {
 		return nil, eosc.ErrorWorkerNotExits
 	}
+
 	if oe.requireManager.RequireByCount(id) > 0 {
 		return nil, eosc.ErrorRequire
 	}
@@ -159,7 +157,7 @@ func (oe *Workers) set(id, profession, name, driverName string, data IData) (*Wo
 		return nil, e
 	}
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, eosc.Now(), eosc.Now(), conf)
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, eosc.Now(), eosc.Now(), conf, p.AppendLabels)
 	} else {
 		wInfo.reset(driverName, conf, worker)
 	}
