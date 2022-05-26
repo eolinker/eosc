@@ -45,8 +45,11 @@ func NewUnixClient() *UnixAdminProcess {
 	return ul
 }
 func (uc *UnixAdminProcess) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	log.Debug("proxy:", request.RequestURI)
+
 	if uc.addr == "" {
 		writer.WriteHeader(http.StatusBadGateway)
+
 		fmt.Fprintf(writer, "%v", ErrorAdminProcessNotInit)
 		return
 	}

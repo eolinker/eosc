@@ -2,6 +2,9 @@ package process_master
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process-master/extender"
 	"sync"
 
@@ -81,6 +84,7 @@ func (c *CtxManager) Stop(namespace string) {
 
 func (d *DispatcherServer) Listen(request *service.EmptyRequest, server service.MasterDispatcher_ListenServer) error {
 	ctx := d.ctxManager.Get("")
+	log.Debug("worker listen start")
 	listener := d.datacenter.Listener()
 	defer listener.Leave()
 	for {
@@ -95,7 +99,13 @@ func (d *DispatcherServer) Listen(request *service.EmptyRequest, server service.
 				Key:       e.Key(),
 				Data:      e.Data(),
 			}
+			if e.Event() == eosc.EventReset || e.Event() == eosc.EventInit {
+				event.Data, _ = json.Marshal(e.All())
+			} else {
+				event.Data = e.Data()
+			}
 			err := server.Send(event)
+			log.Debug("send listen to worker:", event.String())
 			if err != nil {
 				return err
 			}

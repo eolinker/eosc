@@ -127,6 +127,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig) error {
 
 	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
+		log.Debug("init profession:", p.Name)
 		for _, wd := range pm[p.Name] {
 			old, has := olddata.Del(wd.Id)
 			if has {

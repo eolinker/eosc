@@ -509,7 +509,9 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 	}
 	if t == ipType {
 		// Special case: IP address.
-		return &Schema{Type: TypeString, Format: "ipv4"}, nil
+		schema.Type = TypeString
+		schema.Format = "ipv4"
+		return schema, nil
 	}
 
 	switch t.Kind() {
@@ -517,9 +519,13 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 		// Handle special cases.
 		switch t {
 		case timeType:
-			return &Schema{Type: TypeString, Format: "date-time"}, nil
+			schema.Type = TypeString
+			schema.Format = "date-time"
+			return schema, nil
 		case uriType:
-			return &Schema{Type: TypeString, Format: "uri"}, nil
+			schema.Type = TypeString
+			schema.Format = "uri"
+			return schema, nil
 		}
 
 		properties := make([]*Schema, 0)
