@@ -31,7 +31,7 @@ type Workers struct {
 	locker         sync.Mutex
 	professions    professions.IProfessions
 	data           *WorkerDatas
-	requireManager require.IWorkerRequireManager
+	requireManager require.IRequires
 	//portsRequire   port_reqiure.IPortsRequire
 }
 
@@ -106,7 +106,7 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 		professions:    profession,
 		locker:         sync.Mutex{},
 		data:           NewTypedWorkers(),
-		requireManager: require.NewWorkerRequireManager(),
+		requireManager: require.NewRequireManager(),
 		//portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }

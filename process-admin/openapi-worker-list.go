@@ -17,7 +17,7 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 	}
 	rs := make([]interface{}, 0, len(es))
 	for _, e := range es {
-		rs = append(rs, e.toAttr())
+		rs = append(rs, e.toInfo())
 	}
 	out, _ := json.Marshal(rs)
 	log.Debug("getEmployeesByProfession:", string(out))
@@ -31,5 +31,5 @@ func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params
 	if err != nil {
 		return 404, nil, nil, err
 	}
-	return 200, nil, nil, eo.toAttr()
+	return 200, nil, nil, eo.toDetail()
 }

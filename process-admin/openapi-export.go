@@ -84,7 +84,7 @@ func (oe *ExportApi) allWorker() map[string][]interface{} {
 	for key, pl := range ps {
 		list := make([]interface{}, 0, len(pl))
 		for _, p := range pl {
-			list = append(list, p.toAttr())
+			list = append(list, p.toDetail())
 		}
 		data[key] = list
 	}

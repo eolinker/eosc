@@ -44,7 +44,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.toAttr()
+	}, obj.toDetail()
 }
 func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
@@ -135,5 +135,5 @@ func (oe *WorkerApi) delete(r *http.Request, params httprouter.Params) (status i
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
 		Data:      nil,
-	}, wInfo.toAttr()
+	}, wInfo.toDetail()
 }

@@ -9,6 +9,7 @@ type WorkerInfo struct {
 	worker eosc.IWorker
 	config *eosc.WorkerConfig
 	attr   interface{}
+	info   *eosc.WorkerConfig
 }
 
 func NewWorkerInfo(worker eosc.IWorker, id, profession, name, driver, create, update string, config interface{}) *WorkerInfo {
@@ -30,14 +31,16 @@ func NewWorkerInfo(worker eosc.IWorker, id, profession, name, driver, create, up
 	}
 }
 
-func (w *WorkerInfo) reset(driver string, config interface{}) {
+func (w *WorkerInfo) reset(driver string, config interface{}, worker eosc.IWorker) {
 	w.config.Update = eosc.Now()
 	w.config.Driver = driver
 	w.config.Body, _ = json.Marshal(config)
+	w.worker = worker
+	w.info = nil
 	w.attr = nil
 }
 
-func (w *WorkerInfo) toAttr() interface{} {
+func (w *WorkerInfo) toDetail() interface{} {
 	if w.attr != nil {
 		return w.attr
 	}
@@ -52,4 +55,18 @@ func (w *WorkerInfo) toAttr() interface{} {
 
 	w.attr = m
 	return m
+}
+func (w *WorkerInfo) toInfo() *eosc.WorkerConfig {
+	if w.info == nil {
+		w.info = &eosc.WorkerConfig{
+			Id:         w.config.Id,
+			Profession: w.config.Profession,
+			Name:       w.config.Name,
+			Driver:     w.config.Driver,
+			Create:     w.config.Create,
+			Update:     w.config.Update,
+			Body:       nil,
+		}
+	}
+	return w.info
 }
