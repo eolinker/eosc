@@ -47,10 +47,21 @@ func (ps *Professions) Sort() []*Profession {
 	sl := make([]*Profession, 0, len(list))
 	sm := make(map[string]int)
 	index := 0
-
+	for i, p := range list {
+		if p.Mod == eosc.ProfessionConfig_Singleton {
+			sl = append(sl, p)
+			sm[p.Name] = index
+			index++
+			list[i] = nil
+		}
+	}
 	for len(list) > 0 {
 		sc := 0
 		for i, v := range list {
+			if v == nil {
+				sc++
+				continue
+			}
 			dependenciesHas := 0
 			for _, dep := range v.Dependencies {
 				if _, has := sm[dep]; !has {

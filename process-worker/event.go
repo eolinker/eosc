@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
-
-	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/log"
 
 	"github.com/eolinker/eosc"
 )
 
 func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) error {
+
 	switch namespace {
 	case eosc.NamespaceProfession:
 		{
@@ -68,27 +66,26 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
 
-	professionTyp := reflect.TypeOf(&eosc.ProfessionConfig{})
-	workerTyp := reflect.TypeOf(&eosc.WorkerConfig{})
 	for namespace, config := range eventData {
 		for _, c := range config {
 			switch namespace {
 			case eosc.NamespaceProfession:
 				{
-
-					p, err := toConfig(c, professionTyp)
+					p := new(eosc.ProfessionConfig)
+					err := json.Unmarshal(c, p)
 					if err != nil {
 						continue
 					}
-					pc = append(pc, p.(*eosc.ProfessionConfig))
+					pc = append(pc, p)
 				}
 			case eosc.NamespaceWorker:
 				{
-					w, err := toConfig(c, workerTyp)
+					w := new(eosc.WorkerConfig)
+					err := json.Unmarshal(c, w)
 					if err != nil {
 						continue
 					}
-					wc = append(wc, w.(*eosc.WorkerConfig))
+					wc = append(wc, w)
 				}
 			}
 		}
@@ -96,19 +93,6 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 
 	ws.professionManager.Reset(pc)
 	ws.workers.Reset(wc)
-	bean.Injection(&ws.workers)
+
 	return nil
-}
-
-func toConfig(data []byte, typ reflect.Type) (interface{}, error) {
-	cfg := newConfig(typ)
-	err := json.Unmarshal(data, cfg)
-	return cfg, err
-}
-
-func newConfig(t reflect.Type) interface{} {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return reflect.New(t).Interface()
 }
