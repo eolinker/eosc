@@ -2,6 +2,7 @@ package process_admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/eolinker/eosc"
 	open_api "github.com/eolinker/eosc/open-api"
 
@@ -44,7 +45,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.toAttr()
+	}, obj.Detail()
 }
 func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
@@ -118,15 +119,23 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	}, nil
 }
 
-func (oe *WorkerApi) delete(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
-		return http.StatusNotFound, nil, nil, "invalid id"
+		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid name:%s for %s", name, profession)
 	}
-	wInfo, err := oe.workers.Delete(profession, name)
+	p, has := oe.workers.professions.Get(profession)
+	if !has {
+		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid profession:%s", profession)
+	}
+	if p.Mod == eosc.ProfessionConfig_Singleton {
+		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
+
+	}
+	wInfo, err := oe.workers.Delete(id)
 	if err != nil {
 		return 404, nil, nil, err
 	}
@@ -135,5 +144,5 @@ func (oe *WorkerApi) delete(r *http.Request, params httprouter.Params) (status i
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
 		Data:      nil,
-	}, wInfo.toAttr()
+	}, wInfo.Detail()
 }

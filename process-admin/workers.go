@@ -1,7 +1,6 @@
 package process_admin
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -13,24 +12,14 @@ import (
 type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
-	requireManager require.IWorkerRequireManager
+	requireManager require.IRequires
 }
 
-func NewWorkers(professions professions.IProfessions, initData map[string][]byte) *Workers {
-	data := NewWorkerDatas()
-	for id, d := range initData {
-		cf := new(eosc.WorkerConfig)
-		e := json.Unmarshal(d, cf)
-		if e != nil {
-			continue
-		}
-		data.Set(id, &WorkerInfo{
-			worker: nil,
-			config: cf,
-			attr:   nil,
-		})
-	}
-	return &Workers{professions: professions, data: data}
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas) *Workers {
+
+	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager()}
+	ws.init()
+	return ws
 }
 func (oe *Workers) init() {
 	ps := oe.professions.Sort()
@@ -52,7 +41,7 @@ func (oe *Workers) ListEmployees(profession string) ([]*WorkerInfo, error) {
 		return nil, eosc.ErrorProfessionNotExist
 	}
 	all := oe.data.All()
-	vs := make([]*WorkerInfo, len(all))
+	vs := make([]*WorkerInfo, 0, len(all))
 	for _, w := range all {
 		if w.config.Profession == p.Name {
 			vs = append(vs, w)
@@ -83,15 +72,13 @@ func (oe *Workers) Export() map[string][]*WorkerInfo {
 	}
 	return all
 }
-func (oe *Workers) Delete(profession, name string) (*WorkerInfo, error) {
-	id, ok := eosc.ToWorkerId(name, profession)
-	if !ok {
-		return nil, fmt.Errorf("%s %w", profession, ErrorNotMatch)
-	}
+func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
+
 	worker, has := oe.data.GetInfo(id)
 	if !has {
 		return nil, eosc.ErrorWorkerNotExits
 	}
+
 	if oe.requireManager.RequireByCount(id) > 0 {
 		return nil, eosc.ErrorRequire
 	}
@@ -154,7 +141,7 @@ func (oe *Workers) set(id, profession, name, driverName string, data IData) (*Wo
 			return nil, e
 		}
 		oe.requireManager.Set(id, getIds(requires))
-		wInfo.reset(driverName, conf)
+		wInfo.reset(driverName, conf, wInfo.worker)
 		return wInfo, nil
 	}
 	// create
@@ -170,9 +157,9 @@ func (oe *Workers) set(id, profession, name, driverName string, data IData) (*Wo
 		return nil, e
 	}
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, eosc.Now(), eosc.Now(), conf)
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, eosc.Now(), eosc.Now(), conf, p.AppendLabels)
 	} else {
-		wInfo.reset(driverName, conf)
+		wInfo.reset(driverName, conf, worker)
 	}
 	// store
 	oe.data.Set(id, wInfo)
