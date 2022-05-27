@@ -152,6 +152,7 @@ type Schema struct {
 	Ref                  string              `json:"$ref,omitempty"`
 	Dependencies         map[string][]string `json:"dependencies,omitempty"`
 	Skill                string              `json:"skill,omitempty"`
+	Switch               string              `json:"switch,omitempty"`
 }
 
 func (s *Schema) findProperties(name string) *Schema {
@@ -490,6 +491,9 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 		s.Skill = tag
 	}
 
+	if tag, ok := f.Tag.Lookup("switch"); ok {
+		s.Switch = tag
+	}
 	return s, nil
 }
 
