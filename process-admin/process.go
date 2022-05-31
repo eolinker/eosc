@@ -11,10 +11,13 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/service"
+	"github.com/eolinker/eosc/traffic"
+	"github.com/eolinker/eosc/workers/require"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"os"
@@ -25,10 +28,6 @@ import (
 	"github.com/eolinker/eosc/process"
 
 	"github.com/eolinker/eosc/extends"
-
-	"github.com/eolinker/eosc/config"
-
-	"github.com/eolinker/eosc/traffic"
 
 	"github.com/eolinker/eosc/common/bean"
 
@@ -122,17 +121,26 @@ func (pa *ProcessAdmin) wait() {
 //启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
 
+	cfg := &config.ListensMsg{}
+	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
+	bean.Injection(&tf)
+	bean.Injection(&cfg)
+	register := initExtender(arg[eosc.NamespaceExtender])
+	var extenderDrivers eosc.IExtenderDrivers = register
+	bean.Injection(&extenderDrivers)
+
 	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{
 		ctx:        ctx,
 		cancelFunc: cancelFunc,
 		router:     httprouter.New(),
 	}
-	register := initExtender(arg[eosc.NamespaceExtender])
-	extenderData := NewExtenderData(arg[eosc.NamespaceExtender])
+	extenderRequire := require.NewRequireManager()
+	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 	NewExtenderOpenApi(extenderData).Register(p.router)
 
 	ps := professions.NewProfessions(register)
+	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
 
 	wd := NewWorkerDatas(arg[eosc.NamespaceWorker])
@@ -156,15 +164,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	})
 
 	p.OpenApiServer()
-
-	cfg := &config.ListensMsg{}
-	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
-	bean.Injection(&tf)
-	bean.Injection(&cfg)
-
-	bean.Injection(&register)
 	bean.Check()
-
 	return p, nil
 }
 

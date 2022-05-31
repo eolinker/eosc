@@ -36,13 +36,13 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerS
 	defer utils.TimeSpend("NewWorkerServer")()
 	ctx, cancel := context.WithCancel(context.Background())
 	ws := &WorkerServer{
-		ctx:       ctx,
-		cancel:    cancel,
-		masterPid: masterPid,
-
+		ctx:               ctx,
+		cancel:            cancel,
+		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
 	}
 
+	bean.Injection(&ws.professionManager)
 	ws.workers = workers.NewWorkerManager(ws.professionManager)
 	bean.Injection(&ws.workers)
 	ws.listenMaster()

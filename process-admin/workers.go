@@ -113,6 +113,9 @@ func (oe *Workers) set(id, profession, name, driverName string, data IData) (*Wo
 	if !has {
 		return nil, fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
 	}
+	if p.Mod == eosc.ProfessionConfig_Singleton {
+		driverName = name
+	}
 	driver, has := p.GetDriver(driverName)
 	if !has {
 		return nil, fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
