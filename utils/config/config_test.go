@@ -1,4 +1,4 @@
-package eosc
+package config
 
 import (
 	"encoding/json"

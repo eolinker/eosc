@@ -12,35 +12,32 @@ type IRaftService interface {
 	GetInit() (data []byte, err error)
 
 	// ResetSnap 读取快照，用于恢复service数据
-	ResetSnap(data []byte) (err error)
+	ResetSnap(data []byte, isInit bool) (err error)
 
 	// GetSnapshot 生成快照，用于快照文件的生成
 	GetSnapshot() (data []byte, err error)
-
 }
 type IRaftStateHandler interface {
 	SetState(stateType raft.StateType)
 }
 
-
 type IRaftStateHandlers []IRaftStateHandler
 
 func (hs IRaftStateHandlers) SetState(stateType raft.StateType) {
-	for _,h:=range hs{
+	for _, h := range hs {
 		h.SetState(stateType)
 	}
 }
 
 type emptyIRaftStateHandlers struct {
-
 }
 
 func (e *emptyIRaftStateHandlers) SetState(stateType raft.StateType) {
 
 }
 
-func CreateRaftStateHandlers(handlers ...IRaftStateHandler)IRaftStateHandler {
-	if len(handlers) >0{
+func CreateRaftStateHandlers(handlers ...IRaftStateHandler) IRaftStateHandler {
+	if len(handlers) > 0 {
 		return IRaftStateHandlers(handlers)
 	}
 	return new(emptyIRaftStateHandlers)
