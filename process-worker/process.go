@@ -9,7 +9,6 @@
 package process_worker
 
 import (
-	"github.com/eolinker/eosc/professions"
 	"os"
 	"os/signal"
 	"sync"
@@ -100,10 +99,14 @@ func (w *ProcessWorker) wait() {
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
 func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
-
 	register := extends.InitRegister()
+	tf := createTraffic(arg.Traffic)
+	bean.Injection(&tf)
+	bean.Injection(&arg.ListensMsg)
+
 	extends.LoadPlugins(arg.Extends, register)
-	profession := professions.NewProfessions(register)
+	var extenderDrivers eosc.IExtenderDrivers = register
+	bean.Injection(&extenderDrivers)
 
 	server, err := NewWorkerServer(os.Getppid(), register)
 	if err != nil {
@@ -111,17 +114,11 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 		return nil, err
 	}
 
-	tf := createTraffic(arg.Traffic)
 	w := &ProcessWorker{
 		server: server,
 		tf:     tf,
 	}
 
-	var extenderDrivers eosc.IExtenderDrivers = register
-	bean.Injection(&extenderDrivers)
-	bean.Injection(&tf)
-	bean.Injection(&profession)
-	bean.Injection(&arg.ListensMsg)
 	bean.Check()
 
 	return w, nil

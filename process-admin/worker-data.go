@@ -1,6 +1,7 @@
 package process_admin
 
 import (
+	"encoding/json"
 	"github.com/eolinker/eosc"
 )
 
@@ -16,8 +17,22 @@ func (w *WorkerDatas) Get(id string) (eosc.IWorker, bool) {
 	return nil, false
 }
 
-func NewWorkerDatas() *WorkerDatas {
-	return &WorkerDatas{data: eosc.NewUntyped()}
+func NewWorkerDatas(initData map[string][]byte) *WorkerDatas {
+	data := &WorkerDatas{data: eosc.NewUntyped()}
+	for id, d := range initData {
+		cf := new(eosc.WorkerConfig)
+		e := json.Unmarshal(d, cf)
+		if e != nil {
+			continue
+		}
+		data.Set(id, &WorkerInfo{
+			worker: nil,
+			config: cf,
+			attr:   nil,
+			info:   nil,
+		})
+	}
+	return data
 }
 
 func (w *WorkerDatas) Set(name string, v *WorkerInfo) {

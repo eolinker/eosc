@@ -7,30 +7,30 @@ import (
 )
 
 var (
-	_ IWorkerRequireManager = (*WorkerRequireManager)(nil)
+	_ IRequires = (*Manager)(nil)
 )
 
-type IWorkerRequireManager interface {
+type IRequires interface {
 	Set(id string, requires []string)
 	Del(id string)
 	RequireByCount(requireId string) int
 }
 
-type WorkerRequireManager struct {
+type Manager struct {
 	locker    sync.Mutex
 	requireBy eosc.IUntyped
 	workerIds eosc.IUntyped
 }
 
-func NewWorkerRequireManager() *WorkerRequireManager {
-	return &WorkerRequireManager{
+func NewRequireManager() IRequires {
+	return &Manager{
 		locker:    sync.Mutex{},
 		requireBy: eosc.NewUntyped(),
 		workerIds: eosc.NewUntyped(),
 	}
 }
 
-func (w *WorkerRequireManager) Set(id string, requiresIds []string) {
+func (w *Manager) Set(id string, requiresIds []string) {
 	w.locker.Lock()
 	defer w.locker.Unlock()
 	w.del(id)
@@ -48,13 +48,13 @@ func (w *WorkerRequireManager) Set(id string, requiresIds []string) {
 	}
 }
 
-func (w *WorkerRequireManager) Del(id string) {
+func (w *Manager) Del(id string) {
 	w.locker.Lock()
 	w.del(id)
 	w.locker.Unlock()
 
 }
-func (w *WorkerRequireManager) del(id string) {
+func (w *Manager) del(id string) {
 	if r, has := w.workerIds.Del(id); has {
 		rs := r.([]string)
 		for _, rid := range rs {
@@ -63,7 +63,7 @@ func (w *WorkerRequireManager) del(id string) {
 	}
 }
 
-func (w *WorkerRequireManager) removeBy(id string, requireId string) {
+func (w *Manager) removeBy(id string, requireId string) {
 	if d, has := w.requireBy.Get(requireId); has {
 		rs := d.([]string)
 		for i, rid := range rs {
@@ -80,7 +80,7 @@ func (w *WorkerRequireManager) removeBy(id string, requireId string) {
 	}
 }
 
-func (w *WorkerRequireManager) RequireByCount(requireId string) int {
+func (w *Manager) RequireByCount(requireId string) int {
 	w.locker.Lock()
 	rs, has := w.requireBy.Get(requireId)
 	w.locker.Unlock()

@@ -11,8 +11,8 @@
 * properties改成数组，并且子schema需要包含name和required,同时required从数组改成布尔值
 * 新类型map，实际为数组
 * 新增dependencies关键字
-* 新增skill关键字
-* type关键字可以通过标签手动修改
+* 新增skill自定义关键字
+* 新增switch自定义关键字
 
 ### 使用说明
 
@@ -391,22 +391,22 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 //这个json是合法的
 {
 	"name": "John Doe",
-	"credit_card": 5555555555555555,
+	"credit_card": 123456,
 	"billing_address": "555 Debtor's Lane"
 }
 
 //这个json是非法的
 {
 	"name": "John Doe",
-    "credit_card": 5555555555555555
+    "credit_card": 123456
 }
 ```
 
 
 
-#### type
+#### skill
 
-通用类型关键字，表示类型，现可以通过标签进行修改
+自定义的关键字，用于指定target,upstream...的skill
 
 ##### 注解规则及使用
 
@@ -414,10 +414,10 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 
 ```go
 type Config struct {
-	id          string
+	Id          string
 	Name        string `json:"name"`
 	Driver      string `json:"driver"`
-    Target    eosc.RequireId   `json:"target" type:"requireid" skill: "github.com/eolinker/apinto/upstream.upstream.IUpstream"` 
+    Target      RequireId   `json:"target" type:"requireid" skill: "github.com/eolinker/apinto/upstream.upstream.IUpstream"` 
 }
 ```
 
@@ -441,10 +441,64 @@ type Config struct {
         },
         {
             "name": "target",
-            "type": "requireid",
+            "type": "require",
             "skill": "github.com/eolinker/apinto/upstream.upstream.IUpstream"
         }
     ]
 }
 ```
 
+
+
+#### switch
+
+自定义的关键字，用于判断结构体中某个变量为特定值时才使当前变量生效
+
+##### 注解规则及使用
+
+以下结构体表示以Schema和Health均以health_on为开关，当health_on为true时，health能够生效，schema不能生效; health_on为false时则相反。
+
+```go
+type Config struct {
+    Id          string 			  `json:"id"`
+	Driver      string 			  `json:"driver"`
+    Schema      string 			  `json:"schema" switch:"health_on=false"`
+    HealthOn    bool 			  `json:"health_on"`
+    Health      map[string]string `json:"health" switch:"health_on=true"`
+}
+```
+
+转化json为：
+
+```json
+{
+	"type": "object",
+	"properties": [
+		{
+			"name": "id",
+			"type": "string"
+		},
+		{
+			"name": "driver",
+			"type": "string"
+		},
+		{
+			"name": "schema",
+			"type": "string",
+			"switch": "health_on=false"
+		},
+		{
+			"name": "health_on",
+			"type": "boolean"
+		},
+		{
+			"name": "health",
+			"type": "map",
+			"items": {
+				"type": "string"
+			},
+			"switch": "health_on=true"
+		}
+	]
+}
+```

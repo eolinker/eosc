@@ -23,6 +23,7 @@ func (p *ExtenderRegister) RegisterExtenderDriver(name string, factory IExtender
 }
 
 func (p *ExtenderRegister) GetDriver(name string) (IExtenderDriverFactory, bool) {
+
 	if v, has := p.data.Get(name); has {
 		return v.(IExtenderDriverFactory), true
 	}
@@ -44,5 +45,4 @@ type IExtenderDrivers interface {
 }
 type IExtenderDriverManager interface {
 	IExtenderDriverRegister
-
 }

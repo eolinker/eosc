@@ -8,6 +8,7 @@ import (
 	"github.com/eolinker/eosc/extends"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/schema"
+	"github.com/eolinker/eosc/workers/require"
 	"strings"
 	"sync"
 )
@@ -49,9 +50,11 @@ type ExtenderData struct {
 	Infos    map[string]*ExtenderProject
 	history  map[string]bool
 	locker   sync.RWMutex
+
+	extenderRequire require.IRequires
 }
 
-func NewExtenderData(conf map[string][]byte) *ExtenderData {
+func NewExtenderData(conf map[string][]byte, extenderRequire require.IRequires) *ExtenderData {
 	vs := make(map[string]string)
 	for k, v := range conf {
 		vs[k] = string(v)
@@ -61,10 +64,11 @@ func NewExtenderData(conf map[string][]byte) *ExtenderData {
 	}
 
 	ed := &ExtenderData{
-		Versions: vs,
-		Infos:    make(map[string]*ExtenderProject),
-		history:  map[string]bool{},
-		locker:   sync.RWMutex{},
+		extenderRequire: extenderRequire,
+		Versions:        vs,
+		Infos:           make(map[string]*ExtenderProject),
+		history:         map[string]bool{},
+		locker:          sync.RWMutex{},
 	}
 	ed.init()
 	return ed
@@ -216,12 +220,17 @@ func (e *ExtenderData) List() []*ExtenderItem {
 	defer e.locker.RUnlock()
 	for k, version := range e.Versions {
 		id := idVersion(k, version)
+
 		info, has := e.Infos[id]
 		if has && info.isWork {
 			group, project := readProject(k)
 			for _, name := range info.renders.Keys() {
+				extenderItemID := fmt.Sprint(group, ":", project, ":", name)
+				if e.extenderRequire.RequireByCount(extenderItemID) > 0 {
+					continue
+				}
 				rs = append(rs, &ExtenderItem{
-					Id: fmt.Sprint(group, ":", project, ":", name),
+					Id: extenderItemID,
 					ExtenderItemInfo: ExtenderItemInfo{
 						Group:   group,
 						Project: project,

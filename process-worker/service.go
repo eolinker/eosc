@@ -36,13 +36,13 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerS
 	defer utils.TimeSpend("NewWorkerServer")()
 	ctx, cancel := context.WithCancel(context.Background())
 	ws := &WorkerServer{
-		ctx:       ctx,
-		cancel:    cancel,
-		masterPid: masterPid,
-
+		ctx:               ctx,
+		cancel:            cancel,
+		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
 	}
 
+	bean.Injection(&ws.professionManager)
 	ws.workers = workers.NewWorkerManager(ws.professionManager)
 	bean.Injection(&ws.workers)
 	ws.listenMaster()
@@ -102,9 +102,11 @@ func (ws *WorkerServer) createClient() (*grpc.ClientConn, service.MasterDispatch
 }
 
 func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher_ListenClient) {
+	log.Debug("start listen")
 	defer conn.Close()
 	for {
 		event, err := c.Recv()
+		log.Debug("recv:", err)
 		if err != nil {
 			if err == io.EOF {
 				log.Debug("listen closed... ", err)
@@ -113,6 +115,7 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			ws.retryConn()
 			return
 		}
+		log.Debug("recv:", event.String())
 		switch event.Command {
 		case eosc.EventInit, eosc.EventReset:
 			{
@@ -132,4 +135,5 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			}
 		}
 	}
+	log.Debug("stop listen")
 }

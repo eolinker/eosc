@@ -1,9 +1,11 @@
 package http_service
 
-import "github.com/eolinker/eosc"
+import (
+	"github.com/eolinker/eosc/utils/config"
+)
 
 var (
-	FilterSkillName = eosc.TypeNameOf((*IFilter)(nil))
+	FilterSkillName = config.TypeNameOf((*IFilter)(nil))
 )
 
 type IFilter interface {

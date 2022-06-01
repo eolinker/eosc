@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc"
 	"net"
 	"net/url"
 	"reflect"
@@ -18,7 +19,7 @@ import (
 // ErrSchemaInvalid is sent when there is a problem building the schema.
 var ErrSchemaInvalid = errors.New("schema is invalid")
 
-type RequireId string
+type RequireId eosc.RequireId
 
 // Mode defines whether the schema is being generated for read or
 // write mode. Read-only fields are dropped when in write mode, for example.
@@ -115,43 +116,41 @@ func getTagValue(s *Schema, t reflect.Type, value string) (interface{}, error) {
 
 // Schema represents a JSON Schema which can be generated from Go structs
 type Schema struct {
-	Name                 string              `json:"name,omitempty"`
-	Type                 string              `json:"type,omitempty"`
-	Description          string              `json:"description,omitempty"`
-	Items                *Schema             `json:"items,omitempty"`
-	Properties           []*Schema           `json:"properties,omitempty"`
-	AdditionalProperties interface{}         `json:"additionalProperties,omitempty"`
-	PatternProperties    map[string]*Schema  `json:"patternProperties,omitempty"`
-	Required             bool                `json:"required,omitempty"`
-	Format               string              `json:"format,omitempty"`
-	Enum                 []interface{}       `json:"enum,omitempty"`
-	Default              interface{}         `json:"default,omitempty"`
-	Example              interface{}         `json:"example,omitempty"`
-	Minimum              *float64            `json:"minimum,omitempty"`
-	ExclusiveMinimum     *bool               `json:"exclusiveMinimum,omitempty"`
-	Maximum              *float64            `json:"maximum,omitempty"`
-	ExclusiveMaximum     *bool               `json:"exclusiveMaximum,omitempty"`
-	MultipleOf           float64             `json:"multipleOf,omitempty"`
-	MinLength            *uint64             `json:"minLength,omitempty"`
-	MaxLength            *uint64             `json:"maxLength,omitempty"`
-	Pattern              string              `json:"pattern,omitempty"`
-	MinItems             *uint64             `json:"minItems,omitempty"`
-	MaxItems             *uint64             `json:"maxItems,omitempty"`
-	UniqueItems          bool                `json:"uniqueItems,omitempty"`
-	MinProperties        *uint64             `json:"minProperties,omitempty"`
-	MaxProperties        *uint64             `json:"maxProperties,omitempty"`
-	AllOf                []*Schema           `json:"allOf,omitempty"`
-	AnyOf                []*Schema           `json:"anyOf,omitempty"`
-	OneOf                []*Schema           `json:"oneOf,omitempty"`
-	Not                  *Schema             `json:"not,omitempty"`
-	Nullable             bool                `json:"nullable,omitempty"`
-	ReadOnly             bool                `json:"readOnly,omitempty"`
-	WriteOnly            bool                `json:"writeOnly,omitempty"`
-	Deprecated           bool                `json:"deprecated,omitempty"`
-	ContentEncoding      string              `json:"contentEncoding,omitempty"`
-	Ref                  string              `json:"$ref,omitempty"`
-	Dependencies         map[string][]string `json:"dependencies,omitempty"`
-	Skill                string              `json:"skill,omitempty"`
+	Name             string              `json:"name,omitempty"`
+	Type             string              `json:"type,omitempty"`
+	Description      string              `json:"description,omitempty"`
+	Items            *Schema             `json:"items,omitempty"`
+	Properties       []*Schema           `json:"properties,omitempty"`
+	Required         bool                `json:"required,omitempty"`
+	Format           string              `json:"format,omitempty"`
+	Enum             []interface{}       `json:"enum,omitempty"`
+	Default          interface{}         `json:"default,omitempty"`
+	Example          interface{}         `json:"example,omitempty"`
+	Minimum          *float64            `json:"minimum,omitempty"`
+	ExclusiveMinimum *bool               `json:"exclusiveMinimum,omitempty"`
+	Maximum          *float64            `json:"maximum,omitempty"`
+	ExclusiveMaximum *bool               `json:"exclusiveMaximum,omitempty"`
+	MultipleOf       float64             `json:"multipleOf,omitempty"`
+	MinLength        *uint64             `json:"minLength,omitempty"`
+	MaxLength        *uint64             `json:"maxLength,omitempty"`
+	Pattern          string              `json:"pattern,omitempty"`
+	MinItems         *uint64             `json:"minItems,omitempty"`
+	MaxItems         *uint64             `json:"maxItems,omitempty"`
+	UniqueItems      bool                `json:"uniqueItems,omitempty"`
+	MinProperties    *uint64             `json:"minProperties,omitempty"`
+	MaxProperties    *uint64             `json:"maxProperties,omitempty"`
+	AllOf            []*Schema           `json:"allOf,omitempty"`
+	AnyOf            []*Schema           `json:"anyOf,omitempty"`
+	OneOf            []*Schema           `json:"oneOf,omitempty"`
+	Not              *Schema             `json:"not,omitempty"`
+	Nullable         bool                `json:"nullable,omitempty"`
+	ReadOnly         bool                `json:"readOnly,omitempty"`
+	WriteOnly        bool                `json:"writeOnly,omitempty"`
+	Deprecated       bool                `json:"deprecated,omitempty"`
+	Ref              string              `json:"$ref,omitempty"`
+	Dependencies     map[string][]string `json:"dependencies,omitempty"`
+	Skill            string              `json:"skill,omitempty"`
+	Switch           string              `json:"switch,omitempty"`
 }
 
 func (s *Schema) findProperties(name string) *Schema {
@@ -193,7 +192,7 @@ func (s *Schema) checkDependencies() error {
 // This excludes the schema's type but includes most other fields and can be
 // used to trigger additional slow validation steps when needed.
 func (s *Schema) HasValidation() bool {
-	if s.Items != nil || len(s.Properties) > 0 || s.AdditionalProperties != nil || len(s.PatternProperties) > 0 || len(s.Enum) > 0 || s.Minimum != nil || s.ExclusiveMinimum != nil || s.Maximum != nil || s.ExclusiveMaximum != nil || s.MultipleOf != 0 || s.MinLength != nil || s.MaxLength != nil || s.Pattern != "" || s.MinItems != nil || s.MaxItems != nil || s.UniqueItems || s.MinProperties != nil || s.MaxProperties != nil || len(s.AllOf) > 0 || len(s.AnyOf) > 0 || len(s.OneOf) > 0 || s.Not != nil || s.Ref != "" {
+	if s.Items != nil || len(s.Properties) > 0 || len(s.Enum) > 0 || s.Minimum != nil || s.ExclusiveMinimum != nil || s.Maximum != nil || s.ExclusiveMaximum != nil || s.MultipleOf != 0 || s.MinLength != nil || s.MaxLength != nil || s.Pattern != "" || s.MinItems != nil || s.MaxItems != nil || s.UniqueItems || s.MinProperties != nil || s.MaxProperties != nil || len(s.AllOf) > 0 || len(s.AnyOf) > 0 || len(s.OneOf) > 0 || s.Not != nil || s.Ref != "" {
 		return true
 	}
 
@@ -490,6 +489,9 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 		s.Skill = tag
 	}
 
+	if tag, ok := f.Tag.Lookup("switch"); ok {
+		s.Switch = tag
+	}
 	return s, nil
 }
 
@@ -509,7 +511,9 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 	}
 	if t == ipType {
 		// Special case: IP address.
-		return &Schema{Type: TypeString, Format: "ipv4"}, nil
+		schema.Type = TypeString
+		schema.Format = "ipv4"
+		return schema, nil
 	}
 
 	switch t.Kind() {
@@ -517,9 +521,13 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 		// Handle special cases.
 		switch t {
 		case timeType:
-			return &Schema{Type: TypeString, Format: "date-time"}, nil
+			schema.Type = TypeString
+			schema.Format = "date-time"
+			return schema, nil
 		case uriType:
-			return &Schema{Type: TypeString, Format: "uri"}, nil
+			schema.Type = TypeString
+			schema.Format = "uri"
+			return schema, nil
 		}
 
 		properties := make([]*Schema, 0)

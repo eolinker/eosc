@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/utils/config"
 	"github.com/eolinker/eosc/workers/require"
 	"reflect"
 	"sync"
@@ -31,7 +32,7 @@ type Workers struct {
 	locker         sync.Mutex
 	professions    professions.IProfessions
 	data           *WorkerDatas
-	requireManager require.IWorkerRequireManager
+	requireManager require.IRequires
 	//portsRequire   port_reqiure.IPortsRequire
 }
 
@@ -57,7 +58,7 @@ func (wm *Workers) Check(id, profession, name, driverName string, body []byte) e
 	if err != nil {
 		return err
 	}
-	requires, err := eosc.CheckConfig(conf, wm)
+	requires, err := config.CheckConfig(conf, wm)
 	if err != nil {
 		return err
 	}
@@ -106,7 +107,7 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 		professions:    profession,
 		locker:         sync.Mutex{},
 		data:           NewTypedWorkers(),
-		requireManager: require.NewWorkerRequireManager(),
+		requireManager: require.NewRequireManager(),
 		//portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
@@ -127,6 +128,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig) error {
 
 	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
+		log.Debug("init profession:", p.Name)
 		for _, wd := range pm[p.Name] {
 			old, has := olddata.Del(wd.Id)
 			if has {
@@ -170,7 +172,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte) err
 		log.Debug(string(body))
 		return err
 	}
-	requires, err := eosc.CheckConfig(conf, wm)
+	requires, err := config.CheckConfig(conf, wm)
 	if err != nil {
 		return err
 	}
