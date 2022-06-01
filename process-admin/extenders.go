@@ -88,6 +88,7 @@ func (e *ExtenderData) init() {
 
 	for k, v := range e.Versions {
 		group, project := readProject(k)
+
 		e.load(group, project, v)
 	}
 
@@ -144,6 +145,7 @@ func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProj
 }
 
 func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, error) {
+	log.DebugF("load extender:%s:%s@%s", group, project, version)
 	id := toVersion(group, project, version)
 
 	if e.history[toProject(group, project)] {

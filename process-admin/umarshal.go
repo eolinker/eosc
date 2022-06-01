@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -68,7 +69,7 @@ func GetData(req *http.Request) (IData, error) {
 			return nil, e
 		}
 		req.Body.Close()
-
+		log.Debug("GetData:JsonData:", string(data))
 		return JsonData(data), nil
 	case "application/yaml":
 		data, e := ioutil.ReadAll(req.Body)
@@ -76,6 +77,7 @@ func GetData(req *http.Request) (IData, error) {
 			return nil, e
 		}
 		req.Body.Close()
+		log.Debug("GetData:YamlData:", string(data))
 
 		return YamlData(data), nil
 

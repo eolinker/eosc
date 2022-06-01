@@ -38,7 +38,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	eventData, _ := json.Marshal(obj)
+	eventData, _ := json.Marshal(obj.config)
 
 	return http.StatusOK, nil, &open_api.EventResponse{
 		Event:     eosc.EventSet,

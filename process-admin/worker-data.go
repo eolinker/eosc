@@ -3,6 +3,7 @@ package process_admin
 import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 )
 
 type WorkerDatas struct {
@@ -36,6 +37,7 @@ func NewWorkerDatas(initData map[string][]byte) *WorkerDatas {
 }
 
 func (w *WorkerDatas) Set(name string, v *WorkerInfo) {
+	log.DebugF("worker set:%s==>%v", name, v.config)
 	w.data.Set(name, v)
 }
 
