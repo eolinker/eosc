@@ -19,9 +19,6 @@ import (
 // ErrSchemaInvalid is sent when there is a problem building the schema.
 var ErrSchemaInvalid = errors.New("schema is invalid")
 
-type RequireId eosc.RequireId
-type Formatter eosc.FormatterConfig
-
 // Mode defines whether the schema is being generated for read or
 // write mode. Read-only fields are dropped when in write mode, for example.
 type Mode int
