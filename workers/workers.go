@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/utils/config"
 	"github.com/eolinker/eosc/workers/require"
 	"reflect"
 	"sync"
@@ -57,7 +58,7 @@ func (wm *Workers) Check(id, profession, name, driverName string, body []byte) e
 	if err != nil {
 		return err
 	}
-	requires, err := eosc.CheckConfig(conf, wm)
+	requires, err := config.CheckConfig(conf, wm)
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte) err
 		log.Debug(string(body))
 		return err
 	}
-	requires, err := eosc.CheckConfig(conf, wm)
+	requires, err := config.CheckConfig(conf, wm)
 	if err != nil {
 		return err
 	}

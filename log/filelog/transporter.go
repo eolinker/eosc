@@ -2,9 +2,8 @@ package filelog
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/utils/config"
 	"time"
-
-	"github.com/eolinker/eosc"
 
 	eosc_log "github.com/eolinker/eosc/log"
 )
@@ -25,7 +24,7 @@ func (t *Transporter) Close() error {
 func (t *Transporter) Reset(c interface{}, f eosc_log.Formatter) error {
 	conf, ok := c.(*Config)
 	if !ok {
-		return fmt.Errorf("need %s,now %s", eosc.TypeNameOf((*Config)(nil)), eosc.TypeNameOf(c))
+		return fmt.Errorf("need %s,now %s", config.TypeNameOf((*Config)(nil)), config.TypeNameOf(c))
 	}
 
 	t.Transporter.SetFormatter(f)

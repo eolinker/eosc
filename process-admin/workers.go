@@ -5,6 +5,7 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/utils/config"
 	require "github.com/eolinker/eosc/workers/require"
 	"reflect"
 )
@@ -127,7 +128,7 @@ func (oe *Workers) set(id, profession, name, driverName string, data IData) (*Wo
 	if err != nil {
 		return nil, err
 	}
-	requires, err := eosc.CheckConfig(conf, oe.data)
+	requires, err := config.CheckConfig(conf, oe.data)
 	if err != nil {
 		return nil, err
 	}
