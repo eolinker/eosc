@@ -51,7 +51,7 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 		json.Unmarshal(w.config.Body, &m)
 		m["id"] = w.config.Id
 		m["profession"] = w.config.Profession
-		m["name"] = w.config.Profession
+		m["name"] = w.config.Name
 		m["driver"] = w.config.Driver
 		m["update"] = w.config.Update
 		m["create"] = w.config.Create
@@ -70,7 +70,7 @@ func (w *WorkerInfo) Info() interface{} {
 		}
 		w.info["id"] = w.config.Id
 		w.info["profession"] = w.config.Profession
-		w.info["name"] = w.config.Profession
+		w.info["name"] = w.config.Name
 		w.info["driver"] = w.config.Driver
 		w.info["update"] = w.config.Update
 		w.info["create"] = w.config.Create
