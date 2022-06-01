@@ -13,6 +13,7 @@
 * 新增dependencies关键字
 * 新增skill自定义关键字
 * 新增switch自定义关键字
+* 新增label自定义关键字
 
 ### 使用说明
 
@@ -502,3 +503,35 @@ type Config struct {
 	]
 }
 ```
+
+
+
+#### label
+
+自定义的关键字，用于给变量赋予标签
+
+##### 注解规则及使用
+
+label仅仅为字符串
+
+```json
+type MyObject struct {
+ID string `json:"id,omitempty" label:"myID"`
+}
+```
+
+转化为json为：
+
+```json
+{
+	"type": "object",
+	"properties": [
+		{
+			"name": "id",
+			"type": "string",
+			"label": "myID"
+		}
+	]
+}
+```
+
