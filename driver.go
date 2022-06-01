@@ -1,12 +1,11 @@
 package eosc
 
 import (
-	"github.com/eolinker/eosc/utils/schema"
 	"reflect"
 )
 
 type IExtenderDriverFactory interface {
-	Render() *schema.Schema
+	Render() interface{}
 	Create(profession string, name string, label string, desc string, params map[string]interface{}) (IExtenderDriver, error)
 }
 

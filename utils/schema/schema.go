@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc"
 	"net"
 	"net/url"
 	"reflect"
@@ -18,7 +19,7 @@ import (
 // ErrSchemaInvalid is sent when there is a problem building the schema.
 var ErrSchemaInvalid = errors.New("schema is invalid")
 
-type RequireId string
+type RequireId eosc.RequireId
 
 // Mode defines whether the schema is being generated for read or
 // write mode. Read-only fields are dropped when in write mode, for example.

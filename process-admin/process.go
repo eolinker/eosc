@@ -195,7 +195,7 @@ func readConfig() map[string]map[string][]byte {
 	if err != nil {
 		log.Warn("unmarshal arg fail:", err)
 	}
-	log.Debug("read arg:")
+	log.Debug("read arg:", string(data))
 	for namespace, vs := range conf {
 		for k, v := range vs {
 			log.DebugF("read:[%s:%s]=%s\n", namespace, k, string(v))
