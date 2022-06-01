@@ -22,6 +22,8 @@ var ErrSchemaInvalid = errors.New("schema is invalid")
 // Mode defines whether the schema is being generated for read or
 // write mode. Read-only fields are dropped when in write mode, for example.
 type Mode int
+type RequireId = eosc.RequireId
+type FormatterConfigType = eosc.FormatterConfig
 
 const (
 	// ModeAll is for general purpose use and includes all fields.
@@ -47,8 +49,8 @@ const (
 )
 
 var (
-	requireType   = reflect.TypeOf(eosc.RequireId(""))
-	formatterType = reflect.TypeOf(eosc.FormatterConfig{})
+	requireType   = reflect.TypeOf(RequireId(""))
+	formatterType = reflect.TypeOf(FormatterConfigType{})
 	timeType      = reflect.TypeOf(time.Time{})
 	ipType        = reflect.TypeOf(net.IP{})
 	uriType       = reflect.TypeOf(url.URL{})
