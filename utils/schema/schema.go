@@ -19,8 +19,6 @@ import (
 // ErrSchemaInvalid is sent when there is a problem building the schema.
 var ErrSchemaInvalid = errors.New("schema is invalid")
 
-type RequireId eosc.RequireId
-
 // Mode defines whether the schema is being generated for read or
 // write mode. Read-only fields are dropped when in write mode, for example.
 type Mode int
@@ -45,13 +43,15 @@ const (
 	TypeObject    = "object"
 	TypeMap       = "map"
 	TypeRequireId = "require"
+	TypeFormatter = "formatter"
 )
 
 var (
-	requireType = reflect.TypeOf(RequireId(""))
-	timeType    = reflect.TypeOf(time.Time{})
-	ipType      = reflect.TypeOf(net.IP{})
-	uriType     = reflect.TypeOf(url.URL{})
+	requireType   = reflect.TypeOf(eosc.RequireId(""))
+	formatterType = reflect.TypeOf(eosc.FormatterConfig{})
+	timeType      = reflect.TypeOf(time.Time{})
+	ipType        = reflect.TypeOf(net.IP{})
+	uriType       = reflect.TypeOf(url.URL{})
 )
 
 // I returns a pointer to the given int. Useful helper function for pointer
@@ -151,6 +151,7 @@ type Schema struct {
 	Dependencies     map[string][]string `json:"dependencies,omitempty"`
 	Skill            string              `json:"skill,omitempty"`
 	Switch           string              `json:"switch,omitempty"`
+	Label            string              `json:"label,omitempty"`
 }
 
 func (s *Schema) findProperties(name string) *Schema {
@@ -492,6 +493,11 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("switch"); ok {
 		s.Switch = tag
 	}
+
+	if tag, ok := f.Tag.Lookup("label"); ok {
+		s.Label = tag
+	}
+
 	return s, nil
 }
 
@@ -509,6 +515,12 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 		schema.Type = TypeRequireId
 		return schema, nil
 	}
+
+	if t == formatterType {
+		schema.Type = TypeFormatter
+		return schema, nil
+	}
+
 	if t == ipType {
 		// Special case: IP address.
 		schema.Type = TypeString
