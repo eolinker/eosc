@@ -118,63 +118,59 @@ func getTagValue(s *Schema, t reflect.Type, value string) (interface{}, error) {
 
 // Schema represents a JSON Schema which can be generated from Go structs
 type Schema struct {
-	Name             string              `json:"name,omitempty"`
-	Type             string              `json:"type,omitempty"`
-	Description      string              `json:"description,omitempty"`
-	Items            *Schema             `json:"items,omitempty"`
-	Properties       []*Schema           `json:"properties,omitempty"`
-	Required         bool                `json:"required,omitempty"`
-	Format           string              `json:"format,omitempty"`
-	Enum             []interface{}       `json:"enum,omitempty"`
-	Default          interface{}         `json:"default,omitempty"`
-	Example          interface{}         `json:"example,omitempty"`
-	Minimum          *float64            `json:"minimum,omitempty"`
-	ExclusiveMinimum *bool               `json:"exclusiveMinimum,omitempty"`
-	Maximum          *float64            `json:"maximum,omitempty"`
-	ExclusiveMaximum *bool               `json:"exclusiveMaximum,omitempty"`
-	MultipleOf       float64             `json:"multipleOf,omitempty"`
-	MinLength        *uint64             `json:"minLength,omitempty"`
-	MaxLength        *uint64             `json:"maxLength,omitempty"`
-	Pattern          string              `json:"pattern,omitempty"`
-	MinItems         *uint64             `json:"minItems,omitempty"`
-	MaxItems         *uint64             `json:"maxItems,omitempty"`
-	UniqueItems      bool                `json:"uniqueItems,omitempty"`
-	MinProperties    *uint64             `json:"minProperties,omitempty"`
-	MaxProperties    *uint64             `json:"maxProperties,omitempty"`
-	AllOf            []*Schema           `json:"allOf,omitempty"`
-	AnyOf            []*Schema           `json:"anyOf,omitempty"`
-	OneOf            []*Schema           `json:"oneOf,omitempty"`
-	Not              *Schema             `json:"not,omitempty"`
-	Nullable         bool                `json:"nullable,omitempty"`
-	ReadOnly         bool                `json:"readOnly,omitempty"`
-	WriteOnly        bool                `json:"writeOnly,omitempty"`
-	Deprecated       bool                `json:"deprecated,omitempty"`
-	Ref              string              `json:"$ref,omitempty"`
-	Dependencies     map[string][]string `json:"dependencies,omitempty"`
-	Skill            string              `json:"skill,omitempty"`
-	Switch           string              `json:"switch,omitempty"`
-	Label            string              `json:"label,omitempty"`
+	//Name                 string              `json:"name,omitempty"`
+	Type                 string              `json:"type,omitempty"`
+	EOType               string              `json:"eo:type,omitempty"`
+	Description          string              `json:"description,omitempty"`
+	Items                *Schema             `json:"items,omitempty"`
+	Properties           map[string]*Schema  `json:"properties,omitempty"`
+	AdditionalProperties *Schema             `json:"additionalProperties"`
+	UISort               []string            `json:"ui:sort"`
+	Required             bool                `json:"required,omitempty"`
+	Format               string              `json:"format,omitempty"`
+	Enum                 []interface{}       `json:"enum,omitempty"`
+	Default              interface{}         `json:"default,omitempty"`
+	Example              interface{}         `json:"example,omitempty"`
+	Minimum              *float64            `json:"minimum,omitempty"`
+	ExclusiveMinimum     *bool               `json:"exclusiveMinimum,omitempty"`
+	Maximum              *float64            `json:"maximum,omitempty"`
+	ExclusiveMaximum     *bool               `json:"exclusiveMaximum,omitempty"`
+	MultipleOf           float64             `json:"multipleOf,omitempty"`
+	MinLength            *uint64             `json:"minLength,omitempty"`
+	MaxLength            *uint64             `json:"maxLength,omitempty"`
+	Pattern              string              `json:"pattern,omitempty"`
+	MinItems             *uint64             `json:"minItems,omitempty"`
+	MaxItems             *uint64             `json:"maxItems,omitempty"`
+	UniqueItems          bool                `json:"uniqueItems,omitempty"`
+	MinProperties        *uint64             `json:"minProperties,omitempty"`
+	MaxProperties        *uint64             `json:"maxProperties,omitempty"`
+	AllOf                []*Schema           `json:"allOf,omitempty"`
+	AnyOf                []*Schema           `json:"anyOf,omitempty"`
+	OneOf                []*Schema           `json:"oneOf,omitempty"`
+	Not                  *Schema             `json:"not,omitempty"`
+	Nullable             bool                `json:"nullable,omitempty"`
+	ReadOnly             bool                `json:"readOnly,omitempty"`
+	WriteOnly            bool                `json:"writeOnly,omitempty"`
+	Deprecated           bool                `json:"deprecated,omitempty"`
+	Ref                  string              `json:"$ref,omitempty"`
+	Dependencies         map[string][]string `json:"dependencies,omitempty"`
+	Skill                string              `json:"skill,omitempty"`
+	Switch               string              `json:"switch,omitempty"`
+	Label                string              `json:"label,omitempty"`
 }
 
 func (s *Schema) findProperties(name string) *Schema {
-	for _, p := range s.Properties {
-		if p.Name == name {
-			return p
-		}
-	}
-	return nil
+
+	return s.Properties[name]
 }
 func (s *Schema) hasProperties(name string) bool {
-	for _, p := range s.Properties {
-		if p.Name == name {
-			return true
-		}
-	}
-	return false
+
+	_, has := s.Properties[name]
+	return has
 }
 func (s *Schema) checkDependencies() error {
 	//判断scheme的dependencies存不存在，存在则校验里面的key及其依赖在properties里存在
-	if s.Type == TypeObject && s.Dependencies != nil {
+	if s.EOType == TypeObject && s.Dependencies != nil {
 
 		for key, dps := range s.Dependencies {
 			if !s.hasProperties(key) {
@@ -250,24 +246,24 @@ func getFields(typ reflect.Type) []reflect.StructField {
 // generateFromField generates a schema for a single struct field. It returns
 // the computed field name, whether it is optional, its schema, and any error
 // which may have occurred.
-func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
+func generateFromField(f reflect.StructField, mode Mode) (name string, s *Schema, err error) {
 	jsonTags := strings.Split(f.Tag.Get("json"), ",")
-	name := strings.ToLower(f.Name)
+	name = strings.ToLower(f.Name)
 	if len(jsonTags) > 0 && jsonTags[0] != "" {
 		name = jsonTags[0]
 	}
 
 	if name == "-" {
 		// Skip deliberately filtered out items
-		return nil, nil
+		return name, nil, nil
 	}
 
-	schema := &Schema{Name: name}
+	schema := &Schema{}
 
 	//生成field 类型的对应schema
-	s, err := generateWithMode(f.Type, mode, schema)
+	s, err = generateWithMode(f.Type, mode, schema)
 	if err != nil {
-		return nil, err
+		return name, nil, err
 	}
 	if tag, ok := f.Tag.Lookup("required"); ok {
 		schema.Required = tag != "false"
@@ -282,21 +278,21 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 		for _, attrs := range attrList {
 			idx := strings.Index(attrs, ":")
 			if idx == -1 {
-				return nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
+				return name, nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
 			}
 			key := attrs[:idx]
 			dps := strings.Split(attrs[idx+1:], ";")
 
 			for _, dp := range dps {
 				if dp == "" {
-					return nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
+					return name, nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
 				}
 			}
 			dependencies[key] = dps
 		}
 		schema.Dependencies = dependencies
 		if err = schema.checkDependencies(); err != nil {
-			return nil, err
+			return name, nil, err
 		}
 	}
 
@@ -327,7 +323,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 		for _, v := range strings.Split(tag, ",") {
 			parsed, err := getTagValue(enumSchema, enumType, v)
 			if err != nil {
-				return nil, err
+				return name, nil, err
 			}
 
 			enumSchema.Enum = append(enumSchema.Enum, parsed)
@@ -337,7 +333,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("default"); ok {
 		v, err := getTagValue(s, f.Type, tag)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 
 		s.Default = v
@@ -346,7 +342,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("example"); ok {
 		v, err := getTagValue(s, f.Type, tag)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 
 		s.Example = v
@@ -355,7 +351,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("minimum"); ok {
 		min, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.Minimum = &min
 	}
@@ -363,7 +359,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("exclusiveMinimum"); ok {
 		min, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.Minimum = &min
 		t := true
@@ -373,7 +369,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("maximum"); ok {
 		max, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.Maximum = &max
 	}
@@ -381,7 +377,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("exclusiveMaximum"); ok {
 		max, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.Maximum = &max
 		t := true
@@ -391,7 +387,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("multipleOf"); ok {
 		mof, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MultipleOf = mof
 	}
@@ -399,7 +395,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("minLength"); ok {
 		min, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MinLength = &min
 	}
@@ -407,7 +403,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("maxLength"); ok {
 		max, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MaxLength = &max
 	}
@@ -416,14 +412,14 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 		s.Pattern = tag
 
 		if _, err := regexp.Compile(s.Pattern); err != nil {
-			return nil, err
+			return name, nil, err
 		}
 	}
 
 	if tag, ok := f.Tag.Lookup("minItems"); ok {
 		min, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MinItems = &min
 	}
@@ -431,14 +427,14 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("maxItems"); ok {
 		max, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MaxItems = &max
 	}
 
 	if tag, ok := f.Tag.Lookup("uniqueItems"); ok {
 		if !(tag == "true" || tag == "false") {
-			return nil, fmt.Errorf("%s uniqueItems: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, nil, fmt.Errorf("%s uniqueItems: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.UniqueItems = tag == "true"
 	}
@@ -446,7 +442,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("minProperties"); ok {
 		min, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MinProperties = &min
 	}
@@ -454,35 +450,35 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 	if tag, ok := f.Tag.Lookup("maxProperties"); ok {
 		max, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return nil, err
+			return name, nil, err
 		}
 		s.MaxProperties = &max
 	}
 
 	if tag, ok := f.Tag.Lookup("nullable"); ok {
 		if !(tag == "true" || tag == "false") {
-			return nil, fmt.Errorf("%s nullable: boolean should be true or false but got %s: %w", f.Name, tag, ErrSchemaInvalid)
+			return name, nil, fmt.Errorf("%s nullable: boolean should be true or false but got %s: %w", f.Name, tag, ErrSchemaInvalid)
 		}
 		s.Nullable = tag == "true"
 	}
 
 	if tag, ok := f.Tag.Lookup("readOnly"); ok {
 		if !(tag == "true" || tag == "false") {
-			return nil, fmt.Errorf("%s readOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, nil, fmt.Errorf("%s readOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.ReadOnly = tag == "true"
 	}
 
 	if tag, ok := f.Tag.Lookup("writeOnly"); ok {
 		if !(tag == "true" || tag == "false") {
-			return nil, fmt.Errorf("%s writeOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, nil, fmt.Errorf("%s writeOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.WriteOnly = tag == "true"
 	}
 
 	if tag, ok := f.Tag.Lookup("deprecated"); ok {
 		if !(tag == "true" || tag == "false") {
-			return nil, fmt.Errorf("%s deprecated: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, nil, fmt.Errorf("%s deprecated: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.Deprecated = tag == "true"
 	}
@@ -500,7 +496,7 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 		s.Label = tag
 	}
 
-	return s, nil
+	return name, s, nil
 }
 
 // generateWithMode creates a JSON schema for a Go type. Struct field
@@ -509,10 +505,26 @@ func generateFromField(f reflect.StructField, mode Mode) (*Schema, error) {
 // any field that is marked as the opposite will be excluded, e.g. a
 // write-only field would not be included in read mode. If a schema is given
 // as input, add to it, otherwise creates a new schema.
-func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error) {
+func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (r *Schema, err error) {
+
 	if schema == nil {
 		schema = &Schema{}
 	}
+	r = schema
+	defer func() {
+		if r != nil {
+			r.EOType = r.Type
+			switch r.Type {
+			case TypeFormatter:
+				r.Type = TypeObject
+				r.AdditionalProperties = &Schema{Type: TypeArray, Items: &Schema{Type: TypeString}}
+			case TypeRequireId:
+				r.Type = TypeString
+			case TypeMap:
+				r.Type = TypeObject
+			}
+		}
+	}()
 	if t == requireType {
 		schema.Type = TypeRequireId
 		return schema, nil
@@ -544,12 +556,12 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 			return schema, nil
 		}
 
-		properties := make([]*Schema, 0)
-		//propertiesSet := make(map[string]struct{})
+		properties := make(map[string]*Schema, 0)
+		uiSort := make([]string, 0)
 		schema.Type = TypeObject
 
 		for _, f := range getFields(t) {
-			s, err := generateFromField(f, mode)
+			name, s, err := generateFromField(f, mode)
 			if err != nil {
 				return nil, err
 			}
@@ -567,12 +579,14 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 				continue
 			}
 
-			properties = append(properties, s)
+			properties[name] = s
+			uiSort = append(uiSort, name)
 			//propertiesSet[name] = struct{}{}
 
 		}
 
 		if len(properties) > 0 {
+			schema.UISort = uiSort
 			schema.Properties = properties
 		}
 
@@ -582,7 +596,7 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 		if err != nil {
 			return nil, err
 		}
-		schema.Items = s
+		schema.AdditionalProperties = s
 	case reflect.Slice, reflect.Array:
 		if t.Elem().Kind() == reflect.Uint8 {
 			// Special case: `[]byte` should be a Base-64 string.
