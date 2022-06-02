@@ -124,8 +124,8 @@ type Schema struct {
 	Description          string              `json:"description,omitempty"`
 	Items                *Schema             `json:"items,omitempty"`
 	Properties           map[string]*Schema  `json:"properties,omitempty"`
-	AdditionalProperties *Schema             `json:"additionalProperties"`
-	UISort               []string            `json:"ui:sort"`
+	AdditionalProperties *Schema             `json:"additionalProperties,omitempty"`
+	UISort               []string            `json:"ui:sort,omitempty"`
 	Required             bool                `json:"required,omitempty"`
 	Format               string              `json:"format,omitempty"`
 	Enum                 []interface{}       `json:"enum,omitempty"`
