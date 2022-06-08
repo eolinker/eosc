@@ -52,6 +52,6 @@ func (a *App) Default() {
 		Leave(),
 		Restart(),
 		Env(),
-		Plugin(),
+		//Plugin(),
 	)
 }

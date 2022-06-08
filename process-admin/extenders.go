@@ -19,6 +19,7 @@ var (
 	ErrorNotExist                = errors.New("not exist")
 	ErrorDuplicatePath           = errors.New("path duplicate")
 	ErrorNotMatch                = errors.New("not match profession")
+	ErrorExtenderVersionIsChange = errors.New("the version of extender has changed")
 )
 
 type ExtenderProject struct {
@@ -93,7 +94,7 @@ func (e *ExtenderData) init() {
 	}
 
 }
-func (e *ExtenderData) Delete(group, project string) (*ExtenderProject, error) {
+func (e *ExtenderData) Delete(group, project, version string) (*ExtenderProject, error) {
 	e.locker.RLock()
 	defer e.locker.RUnlock()
 	if extends.IsInner(group, project) {
@@ -104,6 +105,11 @@ func (e *ExtenderData) Delete(group, project string) (*ExtenderProject, error) {
 	v, has := e.Versions[name]
 	if !has {
 		return nil, ErrorNotExist
+	}
+	if version != "" {
+		if v != version {
+			return nil, ErrorExtenderVersionIsChange
+		}
 	}
 	extenderProject, _ := e.load(group, project, v)
 	delete(e.Versions, name)
@@ -120,28 +126,34 @@ func (e *ExtenderData) getVersion(group, project string) (version string, has bo
 
 }
 
-func (e *ExtenderData) setVersion(group, project, version string) {
+func (e *ExtenderData) setVersion(group, project, version string) bool {
 	id := toProject(group, project)
+	o, has := e.Versions[id]
+	if has && o == version {
+		return false
+	}
 	e.Versions[id] = version
+	return true
 }
-func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProject, error) {
+func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProject, bool, error) {
 	log.Debug("SetVersion:", group, ":", project, ":", version)
 	e.locker.Lock()
 	defer e.locker.Unlock()
 
 	if extends.IsInner(group, project) {
-		return nil, fmt.Errorf("%s:%s %w", group, project, ErrorInnerExtenderCantChange)
+		return nil, false, fmt.Errorf("%s:%s %w", group, project, ErrorInnerExtenderCantChange)
 	}
 
 	load, err := e.load(group, project, version)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !load.isWork {
-		return nil, fmt.Errorf("%s:%s:%s %w", group, project, version, ErrorExtenderNotWork)
+		return nil, false, fmt.Errorf("%s:%s:%s %w", group, project, version, ErrorExtenderNotWork)
 	}
-	e.setVersion(group, project, version)
-	return load, nil
+
+	ok := e.setVersion(group, project, version)
+	return load, ok, nil
 }
 
 func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, error) {

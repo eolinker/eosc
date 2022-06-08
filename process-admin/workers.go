@@ -58,6 +58,14 @@ func (oe *Workers) Update(profession, name string, driver string, data IData) (*
 		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
 	}
 	log.Debug("update:", id, profession, name, driver, data)
+	if driver == "" {
+
+		employee, err := oe.GetEmployee(profession, name)
+		if err != nil {
+			return nil, err
+		}
+		driver = employee.config.Driver
+	}
 	w, err := oe.set(id, profession, name, driver, data)
 	if err != nil {
 		return nil, err
