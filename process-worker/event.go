@@ -92,6 +92,11 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 	}
 
 	ws.professionManager.Reset(pc)
+	ws.onceInit.Do(func() {
+		for _, h := range ws.initHandler {
+			h()
+		}
+	})
 	ws.workers.Reset(wc)
 
 	return nil
