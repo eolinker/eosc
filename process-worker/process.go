@@ -108,7 +108,9 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
 
-	server, err := NewWorkerServer(os.Getppid(), register)
+	server, err := NewWorkerServer(os.Getppid(), register, func() {
+		bean.Check()
+	})
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -118,8 +120,6 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 		server: server,
 		tf:     tf,
 	}
-
-	bean.Check()
 
 	return w, nil
 }

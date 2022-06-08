@@ -142,6 +142,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	ps := professions.NewProfessions(register)
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
+	bean.Check()
 
 	wd := NewWorkerDatas(arg[eosc.NamespaceWorker])
 	ws := NewWorkers(ps, wd)
@@ -164,7 +165,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	})
 
 	p.OpenApiServer()
-	bean.Check()
+
 	return p, nil
 }
 
