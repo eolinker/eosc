@@ -2,7 +2,6 @@ syntax = "proto3";
 option go_package = "github.com/eolinker/eosc/service";
 package service;
 
-import "extender.proto";
 //cli service : 提供管理接口给 cli
 
 message JoinRequest {
