@@ -9,6 +9,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 var (
@@ -24,6 +25,7 @@ type OpenApiProxy struct {
 	excludeRouter *httprouter.Router
 	leaderHandler http.Handler
 	raftSender    IRaftSender
+	pool          sync.Pool
 }
 
 func NewOpenApiProxy(sender IRaftSender, leaderHandler http.Handler) *OpenApiProxy {
@@ -31,6 +33,9 @@ func NewOpenApiProxy(sender IRaftSender, leaderHandler http.Handler) *OpenApiPro
 		excludeRouter: httprouter.New(),
 		leaderHandler: leaderHandler,
 		raftSender:    sender,
+		pool: sync.Pool{New: func() interface{} {
+			return NewTemplateWriter()
+		}},
 	}
 	return p
 }
@@ -98,7 +103,9 @@ func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
-	buf := NewTemplateWriter()
+	buf := p.pool.Get().(*_ProxyWriterBuffer)
+	buf.Reset()
+	defer p.pool.Put(buf)
 	handler, params, has := p.excludeRouter.Lookup(r.Method, r.URL.Path)
 	if has {
 		handler(buf, r, params)
@@ -109,7 +116,7 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 		buf.WriteTo(w)
 		return
 	}
-	buf.WriteHeaderTo(w)
+	//buf.WriteHeaderTo(w)
 
 	res := new(open_api.Response)
 	err := json.Unmarshal(buf.buf.Bytes(), res)
@@ -120,15 +127,15 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if res.Event != nil {
-		err := p.raftSender.Send(res.Event.Event, res.Event.Namespace,res.Event.Key, res.Event.Data)
+		err := p.raftSender.Send(res.Event.Event, res.Event.Namespace, res.Event.Key, res.Event.Data)
 		log.Debug("open api send:", res.Event)
 		if err != nil {
 			log.Errorf("open api raft:%v", err)
 		}
 	}
-	if res.Header != nil{
-		for k:=range res.Header{
-			w.Header().Set(k,res.Header.Get(k))
+	if res.Header != nil {
+		for k := range res.Header {
+			w.Header().Set(k, res.Header.Get(k))
 		}
 	}
 

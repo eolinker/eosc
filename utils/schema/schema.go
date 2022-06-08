@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc"
 	"net"
 	"net/url"
 	"reflect"
@@ -21,6 +22,8 @@ var ErrSchemaInvalid = errors.New("schema is invalid")
 // Mode defines whether the schema is being generated for read or
 // write mode. Read-only fields are dropped when in write mode, for example.
 type Mode int
+type RequireId = eosc.RequireId
+type FormatterConfigType = eosc.FormatterConfig
 
 const (
 	// ModeAll is for general purpose use and includes all fields.
@@ -34,20 +37,23 @@ const (
 
 // JSON Schema type constants
 const (
-	TypeBoolean = "boolean"
-	TypeInteger = "integer"
-	TypeNumber  = "number"
-	TypeString  = "string"
-	TypeArray   = "array"
-	TypeObject  = "object"
-	TypeMap     = "map"
+	TypeBoolean   = "boolean"
+	TypeInteger   = "integer"
+	TypeNumber    = "number"
+	TypeString    = "string"
+	TypeArray     = "array"
+	TypeObject    = "object"
+	TypeMap       = "map"
+	TypeRequireId = "require"
+	TypeFormatter = "formatter"
 )
 
 var (
+	requireType   = reflect.TypeOf(RequireId(""))
+	formatterType = reflect.TypeOf(FormatterConfigType{})
 	timeType      = reflect.TypeOf(time.Time{})
 	ipType        = reflect.TypeOf(net.IP{})
 	uriType       = reflect.TypeOf(url.URL{})
-	byteSliceType = reflect.TypeOf([]byte(nil))
 )
 
 // I returns a pointer to the given int. Useful helper function for pointer
@@ -112,14 +118,15 @@ func getTagValue(s *Schema, t reflect.Type, value string) (interface{}, error) {
 
 // Schema represents a JSON Schema which can be generated from Go structs
 type Schema struct {
-	Name                 string              `json:"name,omitempty"`
+	//Name                 string              `json:"name,omitempty"`
 	Type                 string              `json:"type,omitempty"`
+	EOType               string              `json:"eo:type,omitempty"`
 	Description          string              `json:"description,omitempty"`
 	Items                *Schema             `json:"items,omitempty"`
-	Properties           []*Schema           `json:"properties,omitempty"`
-	AdditionalProperties interface{}         `json:"additionalProperties,omitempty"`
-	PatternProperties    map[string]*Schema  `json:"patternProperties,omitempty"`
-	Required             bool                `json:"required,omitempty"`
+	Properties           map[string]*Schema  `json:"properties,omitempty"`
+	AdditionalProperties *Schema             `json:"additionalProperties,omitempty"`
+	UISort               []string            `json:"ui:sort,omitempty"`
+	Required             []string            `json:"required,omitempty"`
 	Format               string              `json:"format,omitempty"`
 	Enum                 []interface{}       `json:"enum,omitempty"`
 	Default              interface{}         `json:"default,omitempty"`
@@ -145,16 +152,46 @@ type Schema struct {
 	ReadOnly             bool                `json:"readOnly,omitempty"`
 	WriteOnly            bool                `json:"writeOnly,omitempty"`
 	Deprecated           bool                `json:"deprecated,omitempty"`
-	ContentEncoding      string              `json:"contentEncoding,omitempty"`
 	Ref                  string              `json:"$ref,omitempty"`
 	Dependencies         map[string][]string `json:"dependencies,omitempty"`
+	Skill                string              `json:"skill,omitempty"`
+	Switch               string              `json:"switch,omitempty"`
+	Label                string              `json:"label,omitempty"`
+}
+
+func (s *Schema) findProperties(name string) *Schema {
+
+	return s.Properties[name]
+}
+func (s *Schema) hasProperties(name string) bool {
+
+	_, has := s.Properties[name]
+	return has
+}
+func (s *Schema) checkDependencies() error {
+	//判断scheme的dependencies存不存在，存在则校验里面的key及其依赖在properties里存在
+	if s.EOType == TypeObject && s.Dependencies != nil {
+
+		for key, dps := range s.Dependencies {
+			if !s.hasProperties(key) {
+				return fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", key)
+			}
+			for _, dp := range dps {
+				if !s.hasProperties(dp) {
+					return fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", dp)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // HasValidation returns true if at least one validator is set on the schema.
 // This excludes the schema's type but includes most other fields and can be
 // used to trigger additional slow validation steps when needed.
 func (s *Schema) HasValidation() bool {
-	if s.Items != nil || len(s.Properties) > 0 || s.AdditionalProperties != nil || len(s.PatternProperties) > 0 || len(s.Enum) > 0 || s.Minimum != nil || s.ExclusiveMinimum != nil || s.Maximum != nil || s.ExclusiveMaximum != nil || s.MultipleOf != 0 || s.MinLength != nil || s.MaxLength != nil || s.Pattern != "" || s.MinItems != nil || s.MaxItems != nil || s.UniqueItems || s.MinProperties != nil || s.MaxProperties != nil || len(s.AllOf) > 0 || len(s.AnyOf) > 0 || len(s.OneOf) > 0 || s.Not != nil || s.Ref != "" {
+	if s.Items != nil || len(s.Properties) > 0 || len(s.Enum) > 0 || s.Minimum != nil || s.ExclusiveMinimum != nil || s.Maximum != nil || s.ExclusiveMaximum != nil || s.MultipleOf != 0 || s.MinLength != nil || s.MaxLength != nil || s.Pattern != "" || s.MinItems != nil || s.MaxItems != nil || s.UniqueItems || s.MinProperties != nil || s.MaxProperties != nil || len(s.AllOf) > 0 || len(s.AnyOf) > 0 || len(s.OneOf) > 0 || s.Not != nil || s.Ref != "" {
 		return true
 	}
 
@@ -164,8 +201,16 @@ func (s *Schema) HasValidation() bool {
 // Generate creates a JSON schema for a Go type. Struct field tags
 // can be used to provide additional metadata such as descriptions and
 // validation.
-func Generate(t reflect.Type, schema *Schema) (*Schema, error) {
-	return GenerateWithMode(t, ModeAll, schema)
+func Generate(t reflect.Type, dependencies map[string][]string) (*Schema, error) {
+	sc, err := generateWithMode(t, ModeAll, &Schema{Dependencies: dependencies})
+	if err != nil {
+		return nil, err
+	}
+	err = sc.checkDependencies()
+	if err != nil {
+		return nil, err
+	}
+	return sc, nil
 }
 
 // getFields performs a breadth-first search for all fields including embedded
@@ -201,25 +246,27 @@ func getFields(typ reflect.Type) []reflect.StructField {
 // generateFromField generates a schema for a single struct field. It returns
 // the computed field name, whether it is optional, its schema, and any error
 // which may have occurred.
-func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error) {
+func generateFromField(f reflect.StructField, mode Mode) (name string, required bool, s *Schema, err error) {
 	jsonTags := strings.Split(f.Tag.Get("json"), ",")
-	name := strings.ToLower(f.Name)
+	name = strings.ToLower(f.Name)
 	if len(jsonTags) > 0 && jsonTags[0] != "" {
 		name = jsonTags[0]
 	}
 
 	if name == "-" {
 		// Skip deliberately filtered out items
-		return name, nil, nil
+		return name, required, nil, nil
 	}
 
-	schema := &Schema{Name: name}
+	schema := &Schema{}
 
+	//生成field 类型的对应schema
+	s, err = generateWithMode(f.Type, mode, schema)
+	if err != nil {
+		return name, required, nil, err
+	}
 	if tag, ok := f.Tag.Lookup("required"); ok {
-		if !(tag == "true" || tag == "false") {
-			return name, nil, fmt.Errorf("%s required: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
-		}
-		schema.Required = tag == "true"
+		required = tag != "false"
 	}
 
 	//找到dependencies并且生成
@@ -230,25 +277,22 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 		for _, attrs := range attrList {
 			idx := strings.Index(attrs, ":")
 			if idx == -1 {
-				return name, nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
+				return name, required, nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
 			}
 			key := attrs[:idx]
 			dps := strings.Split(attrs[idx+1:], ";")
 
 			for _, dp := range dps {
 				if dp == "" {
-					return name, nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
+					return name, required, nil, fmt.Errorf("Create Json Schema Fail. StructField %s: dependencies tag format err: %s. ", name, tag)
 				}
 			}
 			dependencies[key] = dps
 		}
 		schema.Dependencies = dependencies
-	}
-
-	//生成field 类型的对应schema
-	s, err := GenerateWithMode(f.Type, mode, schema)
-	if err != nil {
-		return name, nil, err
+		if err = schema.checkDependencies(); err != nil {
+			return name, required, nil, err
+		}
 	}
 
 	if tag, ok := f.Tag.Lookup("description"); ok {
@@ -278,7 +322,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 		for _, v := range strings.Split(tag, ",") {
 			parsed, err := getTagValue(enumSchema, enumType, v)
 			if err != nil {
-				return name, nil, err
+				return name, required, nil, err
 			}
 
 			enumSchema.Enum = append(enumSchema.Enum, parsed)
@@ -288,7 +332,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("default"); ok {
 		v, err := getTagValue(s, f.Type, tag)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 
 		s.Default = v
@@ -297,7 +341,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("example"); ok {
 		v, err := getTagValue(s, f.Type, tag)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 
 		s.Example = v
@@ -306,7 +350,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("minimum"); ok {
 		min, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.Minimum = &min
 	}
@@ -314,7 +358,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("exclusiveMinimum"); ok {
 		min, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.Minimum = &min
 		t := true
@@ -324,7 +368,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("maximum"); ok {
 		max, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.Maximum = &max
 	}
@@ -332,7 +376,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("exclusiveMaximum"); ok {
 		max, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.Maximum = &max
 		t := true
@@ -342,7 +386,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("multipleOf"); ok {
 		mof, err := strconv.ParseFloat(tag, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MultipleOf = mof
 	}
@@ -350,7 +394,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("minLength"); ok {
 		min, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MinLength = &min
 	}
@@ -358,7 +402,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("maxLength"); ok {
 		max, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MaxLength = &max
 	}
@@ -367,14 +411,14 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 		s.Pattern = tag
 
 		if _, err := regexp.Compile(s.Pattern); err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 	}
 
 	if tag, ok := f.Tag.Lookup("minItems"); ok {
 		min, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MinItems = &min
 	}
@@ -382,14 +426,14 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("maxItems"); ok {
 		max, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MaxItems = &max
 	}
 
 	if tag, ok := f.Tag.Lookup("uniqueItems"); ok {
 		if !(tag == "true" || tag == "false") {
-			return name, nil, fmt.Errorf("%s uniqueItems: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, required, nil, fmt.Errorf("%s uniqueItems: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.UniqueItems = tag == "true"
 	}
@@ -397,7 +441,7 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("minProperties"); ok {
 		min, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MinProperties = &min
 	}
@@ -405,56 +449,96 @@ func generateFromField(f reflect.StructField, mode Mode) (string, *Schema, error
 	if tag, ok := f.Tag.Lookup("maxProperties"); ok {
 		max, err := strconv.ParseUint(tag, 10, 64)
 		if err != nil {
-			return name, nil, err
+			return name, required, nil, err
 		}
 		s.MaxProperties = &max
 	}
 
 	if tag, ok := f.Tag.Lookup("nullable"); ok {
 		if !(tag == "true" || tag == "false") {
-			return name, nil, fmt.Errorf("%s nullable: boolean should be true or false but got %s: %w", f.Name, tag, ErrSchemaInvalid)
+			return name, required, nil, fmt.Errorf("%s nullable: boolean should be true or false but got %s: %w", f.Name, tag, ErrSchemaInvalid)
 		}
 		s.Nullable = tag == "true"
 	}
 
 	if tag, ok := f.Tag.Lookup("readOnly"); ok {
 		if !(tag == "true" || tag == "false") {
-			return name, nil, fmt.Errorf("%s readOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, required, nil, fmt.Errorf("%s readOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.ReadOnly = tag == "true"
 	}
 
 	if tag, ok := f.Tag.Lookup("writeOnly"); ok {
 		if !(tag == "true" || tag == "false") {
-			return name, nil, fmt.Errorf("%s writeOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, required, nil, fmt.Errorf("%s writeOnly: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.WriteOnly = tag == "true"
 	}
 
 	if tag, ok := f.Tag.Lookup("deprecated"); ok {
 		if !(tag == "true" || tag == "false") {
-			return name, nil, fmt.Errorf("%s deprecated: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
+			return name, required, nil, fmt.Errorf("%s deprecated: boolean should be true or false: %w", f.Name, ErrSchemaInvalid)
 		}
 		s.Deprecated = tag == "true"
 	}
 
-	return name, s, nil
+	//eosc target skill
+	if tag, ok := f.Tag.Lookup("skill"); ok {
+		s.Skill = tag
+	}
+
+	if tag, ok := f.Tag.Lookup("switch"); ok {
+		s.Switch = tag
+	}
+
+	if tag, ok := f.Tag.Lookup("label"); ok {
+		s.Label = tag
+	}
+
+	return name, required, s, nil
 }
 
-// GenerateWithMode creates a JSON schema for a Go type. Struct field
+// generateWithMode creates a JSON schema for a Go type. Struct field
 // tags can be used to provide additional metadata such as descriptions and
 // validation. The mode can be all, read, or write. In read or write mode
 // any field that is marked as the opposite will be excluded, e.g. a
 // write-only field would not be included in read mode. If a schema is given
 // as input, add to it, otherwise creates a new schema.
-func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error) {
+func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (r *Schema, err error) {
+
 	if schema == nil {
 		schema = &Schema{}
+	}
+	r = schema
+	defer func() {
+		if r != nil {
+			r.EOType = r.Type
+			switch r.Type {
+			case TypeFormatter:
+				r.Type = TypeObject
+				r.AdditionalProperties = &Schema{Type: TypeArray, Items: &Schema{Type: TypeString}}
+			case TypeRequireId:
+				r.Type = TypeString
+			case TypeMap:
+				r.Type = TypeObject
+			}
+		}
+	}()
+	if t == requireType {
+		schema.Type = TypeRequireId
+		return schema, nil
+	}
+
+	if t == formatterType {
+		schema.Type = TypeFormatter
+		return schema, nil
 	}
 
 	if t == ipType {
 		// Special case: IP address.
-		return &Schema{Type: TypeString, Format: "ipv4"}, nil
+		schema.Type = TypeString
+		schema.Format = "ipv4"
+		return schema, nil
 	}
 
 	switch t.Kind() {
@@ -462,29 +546,28 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 		// Handle special cases.
 		switch t {
 		case timeType:
-			return &Schema{Type: TypeString, Format: "date-time"}, nil
+			schema.Type = TypeString
+			schema.Format = "date-time"
+			return schema, nil
 		case uriType:
-			return &Schema{Type: TypeString, Format: "uri"}, nil
+			schema.Type = TypeString
+			schema.Format = "uri"
+			return schema, nil
 		}
 
-		properties := make([]*Schema, 0)
-		propertiesSet := make(map[string]struct{})
+		properties := make(map[string]*Schema, 0)
+		requiredList := make([]string, 0)
+		uiSort := make([]string, 0)
 		schema.Type = TypeObject
 
 		for _, f := range getFields(t) {
-			name, s, err := generateFromField(f, mode)
+			name, required, s, err := generateFromField(f, mode)
 			if err != nil {
 				return nil, err
 			}
 
 			if s == nil {
 				// Skip deliberately filtered out items
-				continue
-			}
-
-			if _, ok := propertiesSet[name]; ok {
-				// Item already exists, ignore it since we process embedded fields
-				// after top-level ones.
 				continue
 			}
 
@@ -496,44 +579,39 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 				continue
 			}
 
-			properties = append(properties, s)
-			propertiesSet[name] = struct{}{}
+			properties[name] = s
+			uiSort = append(uiSort, name)
+			//propertiesSet[name] = struct{}{}
+
+			if required {
+				requiredList = append(requiredList, name)
+			}
 
 		}
 
 		if len(properties) > 0 {
+			schema.UISort = uiSort
 			schema.Properties = properties
 		}
 
-		//判断scheme的dependencies存不存在，存在则校验里面的key及其依赖在properties里存在
-		dependencies := schema.Dependencies
-		if dependencies != nil {
-			for key, dps := range dependencies {
-				if _, has := propertiesSet[key]; !has {
-					return nil, fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", key)
-				}
-				for _, dp := range dps {
-					if _, has := propertiesSet[dp]; !has {
-						return nil, fmt.Errorf("Create Json Schema Fail: dependencies key:%s is not exist in properties. ", dp)
-					}
-				}
-			}
+		if len(requiredList) > 0 {
+			schema.Required = requiredList
 		}
 
 	case reflect.Map:
 		schema.Type = TypeMap
-		s, err := GenerateWithMode(t.Elem(), mode, nil)
+		s, err := generateWithMode(t.Elem(), mode, nil)
 		if err != nil {
 			return nil, err
 		}
-		schema.Items = s
+		schema.AdditionalProperties = s
 	case reflect.Slice, reflect.Array:
 		if t.Elem().Kind() == reflect.Uint8 {
 			// Special case: `[]byte` should be a Base-64 string.
 			schema.Type = TypeString
 		} else {
 			schema.Type = TypeArray
-			s, err := GenerateWithMode(t.Elem(), mode, nil)
+			s, err := generateWithMode(t.Elem(), mode, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -565,7 +643,7 @@ func GenerateWithMode(t reflect.Type, mode Mode, schema *Schema) (*Schema, error
 	case reflect.String:
 		schema.Type = TypeString
 	case reflect.Ptr:
-		return GenerateWithMode(t.Elem(), mode, schema)
+		return generateWithMode(t.Elem(), mode, schema)
 	case reflect.Interface:
 		// Interfaces can be any type.
 	case reflect.Uintptr, reflect.UnsafePointer, reflect.Func:

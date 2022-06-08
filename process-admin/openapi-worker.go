@@ -2,7 +2,6 @@ package process_admin
 
 import (
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/eolinker/eosc/professions"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -16,10 +15,12 @@ func (oe *WorkerApi) Register(router *httprouter.Router) {
 	router.POST("/api/:profession", open_api.CreateHandleFunc(oe.Add))
 	router.PUT("/api/:profession/:name", open_api.CreateHandleFunc(oe.Save))
 	router.POST("/api/:profession/:name", open_api.CreateHandleFunc(oe.Save))
-	router.DELETE("/api/:profession/:name", open_api.CreateHandleFunc(oe.delete))
+	router.DELETE("/api/:profession/:name", open_api.CreateHandleFunc(oe.Delete))
+	router.PATCH("/api/:profession/:name", open_api.CreateHandleFunc(oe.Patch))
+
 }
 
-func NewWorkerApi(professions professions.IProfessions, initData map[string][]byte) *WorkerApi {
+func NewWorkerApi(workers *Workers) *WorkerApi {
 
-	return &WorkerApi{workers: NewWorkers(professions, initData)}
+	return &WorkerApi{workers: workers}
 }

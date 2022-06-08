@@ -1,12 +1,13 @@
-package eosc
+package config
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc"
 	"reflect"
 	"strings"
 )
 
-type RequireId string
+type RequireId = eosc.RequireId
 
 var (
 	_RequireTypeName      = TypeNameOf(RequireId(""))
@@ -25,7 +26,7 @@ func TypeName(t reflect.Type) string {
 	return fmt.Sprintf("%s.%s", t.PkgPath(), t.String())
 }
 
-func CheckConfig(v interface{}, workers IWorkers) (map[RequireId]interface{}, error) {
+func CheckConfig(v interface{}, workers eosc.IWorkers) (map[RequireId]interface{}, error) {
 
 	value := reflect.ValueOf(v)
 	ws, err := checkConfig(value, workers)
@@ -40,7 +41,7 @@ func CheckConfig(v interface{}, workers IWorkers) (map[RequireId]interface{}, er
 
 }
 
-func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, error) {
+func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]interface{}, error) {
 	kind := v.Kind()
 	switch kind {
 	case reflect.Ptr:
@@ -86,10 +87,10 @@ func checkConfig(v reflect.Value, workers IWorkers) (map[RequireId]interface{}, 
 	default:
 		return nil, nil
 	}
-	return nil, ErrorConfigFieldUnknown
+	return nil, eosc.ErrorConfigFieldUnknown
 }
 
-func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[RequireId]interface{}, error) {
+func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (map[RequireId]interface{}, error) {
 
 	typeName := TypeName(v.Type())
 	switch typeName {
@@ -99,7 +100,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 			if id == "" {
 				require, has := f.Tag.Lookup("require")
 				if !has || strings.ToLower(require) != "false" {
-					return nil, fmt.Errorf("%s:%w", f.Name, ErrorRequire)
+					return nil, fmt.Errorf("%s:%w", f.Name, eosc.ErrorRequire)
 				}
 				return nil, nil
 			}
@@ -108,17 +109,17 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 			if !has {
 				require, has := f.Tag.Lookup("require")
 				if !has || strings.ToLower(require) != "false" {
-					return nil, fmt.Errorf("require %s:%w", id, ErrorWorkerNotExits)
+					return nil, fmt.Errorf("require %s:%w", id, eosc.ErrorWorkerNotExits)
 				}
 				return nil, nil
 			}
 
 			skill, has := f.Tag.Lookup("skill")
 			if !has {
-				return nil, fmt.Errorf("field %s type %s :%w", f.Name, typeName, ErrorNotGetSillForRequire)
+				return nil, fmt.Errorf("field %s type %s :%w", f.Name, typeName, eosc.ErrorNotGetSillForRequire)
 			}
 			if !target.CheckSkill(skill) {
-				return nil, fmt.Errorf(" %s type %s value %s:%w", f.Name, typeName, id, ErrorTargetNotImplementSkill)
+				return nil, fmt.Errorf(" %s type %s value %s:%w", f.Name, typeName, id, eosc.ErrorTargetNotImplementSkill)
 			}
 			return map[RequireId]interface{}{RequireId(id): target}, nil
 		}
@@ -126,7 +127,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 		{
 			skill, has := f.Tag.Lookup("skill")
 			if !has {
-				return nil, fmt.Errorf("field %s type %s :%w", f.Name, typeName, ErrorNotGetSillForRequire)
+				return nil, fmt.Errorf("field %s type %s :%w", f.Name, typeName, eosc.ErrorNotGetSillForRequire)
 			}
 			require, requireHas := f.Tag.Lookup("require")
 
@@ -140,11 +141,11 @@ func checkField(f reflect.StructField, v reflect.Value, workers IWorkers) (map[R
 				target, has := workers.Get(id)
 				if !has {
 					if !requireHas || strings.ToLower(require) != "false" {
-						return nil, fmt.Errorf("require %s:%w", id, ErrorWorkerNotExits)
+						return nil, fmt.Errorf("require %s:%w", id, eosc.ErrorWorkerNotExits)
 					}
 				}
 				if !target.CheckSkill(skill) {
-					return nil, fmt.Errorf(" %s type %s value %s:%w", f.Name, typeName, id, ErrorTargetNotImplementSkill)
+					return nil, fmt.Errorf(" %s type %s value %s:%w", f.Name, typeName, id, eosc.ErrorTargetNotImplementSkill)
 				}
 				requires[RequireId(id)] = target
 			}

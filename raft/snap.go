@@ -38,7 +38,7 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter, init bool) error {
 		if init {
 			log.Infof("reset snapshot")
 
-			return rc.service.ResetSnap(nil)
+			return rc.service.ResetSnap(nil, true)
 		}
 	}
 
@@ -46,7 +46,7 @@ func (rc *Node) ReadSnap(snapshotter *snap.Snapshotter, init bool) error {
 	if snapshot != nil {
 		// 将快照内容缓存到service中
 		log.Infof("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		err = rc.service.ResetSnap(snapshot.Data)
+		err = rc.service.ResetSnap(snapshot.Data, init)
 		if err != nil {
 			return err
 		}

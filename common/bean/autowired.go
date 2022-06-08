@@ -36,13 +36,17 @@ type container struct {
 	initializingBean    []InitializingBeanHandler
 	lock                sync.Mutex
 	once                sync.Once
-	isCheckDone         bool
 }
 
 func (m *container) AddInitializingBean(handler InitializingBeanHandler) {
 	m.lock.Lock()
+	defer m.lock.Unlock()
+	if need := m.check(); len(need) == 0 {
+		handler.AfterPropertiesSet()
+		return
+	}
 	m.initializingBean = append(m.initializingBean, handler)
-	m.lock.Unlock()
+
 }
 
 func (m *container) AddInitializingBeanFunc(handler func()) {
@@ -62,19 +66,17 @@ func NewContainer() Container {
 
 func (m *container) add(key string, v reflect.Value) {
 
-	if m.isCheckDone {
-		if e, has := m.cache[key]; has {
-			v.Set(e)
-			return
-		}
-		if ed, has := m.defaultInterface[key]; has {
-			v.Set(ed)
-
-		}
-	} else {
-		m.autowiredInterfaces[key] = append(m.autowiredInterfaces[key], v)
+	if e, has := m.cache[key]; has {
+		log.DebugF("autowired set:%s,%v", key, e)
+		v.Set(e)
+		return
 	}
-
+	if ed, has := m.defaultInterface[key]; has {
+		log.DebugF("autowired set default:%s,%v", key, ed)
+		v.Set(ed)
+	}
+	log.DebugF("autowired cache :%s,%v", key, v)
+	m.autowiredInterfaces[key] = append(m.autowiredInterfaces[key], v)
 }
 
 func (m *container) set(key string, v reflect.Value) {
@@ -90,8 +92,9 @@ func (m *container) check() []string {
 
 	r := make([]string, 0, len(m.autowiredInterfaces))
 	for pkg := range m.autowiredInterfaces {
-
-		r = append(r, pkg)
+		if _, has := m.defaultInterface[pkg]; !has {
+			r = append(r, pkg)
+		}
 	}
 
 	return r
@@ -163,13 +166,14 @@ func (m *container) Check() error {
 	defer m.lock.Unlock()
 	var err error = nil
 	m.once.Do(func() {
+
 		m.injectionAll()
 		rs := m.check()
 		if len(rs) > 0 {
 			err = fmt.Errorf("need:%v", rs)
 			return
 		}
-		m.isCheckDone = true
+
 		m.dispatchAfterPropertiesSet()
 	})
 

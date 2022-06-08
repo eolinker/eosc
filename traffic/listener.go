@@ -2,11 +2,10 @@ package traffic
 
 import (
 	"errors"
+	"github.com/eolinker/eosc/utils/config"
 	"net"
 	"os"
 	"sync"
-
-	"github.com/eolinker/eosc"
 
 	"github.com/eolinker/eosc/log"
 )
@@ -41,7 +40,7 @@ func (t *tListener) Addr() net.Addr {
 
 func newTTcpListener(listener *net.TCPListener) *tListener {
 	addr := listener.Addr()
-	log.Debug("new tcp port-require...", eosc.TypeNameOf(listener), " ", addrToName(addr))
+	log.Debug("new tcp port-require...", config.TypeNameOf(listener), " ", addrToName(addr))
 	return &tListener{listener: listener, addr: addr, name: addrToName(addr)}
 }
 func (t *tListener) shutdown() {

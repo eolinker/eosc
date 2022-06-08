@@ -26,9 +26,6 @@ type CtiServiceClient interface {
 	Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
-	ExtendsInstall(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsResponse, error)
-	ExtendsUpdate(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsResponse, error)
-	ExtendsUninstall(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsUninstallResponse, error)
 }
 
 type ctiServiceClient struct {
@@ -75,33 +72,6 @@ func (c *ctiServiceClient) Info(ctx context.Context, in *InfoRequest, opts ...gr
 	return out, nil
 }
 
-func (c *ctiServiceClient) ExtendsInstall(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsResponse, error) {
-	out := new(ExtendsResponse)
-	err := c.cc.Invoke(ctx, "/service.CtiService/ExtendsInstall", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ctiServiceClient) ExtendsUpdate(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsResponse, error) {
-	out := new(ExtendsResponse)
-	err := c.cc.Invoke(ctx, "/service.CtiService/ExtendsUpdate", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ctiServiceClient) ExtendsUninstall(ctx context.Context, in *ExtendsRequest, opts ...grpc.CallOption) (*ExtendsUninstallResponse, error) {
-	out := new(ExtendsUninstallResponse)
-	err := c.cc.Invoke(ctx, "/service.CtiService/ExtendsUninstall", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // CtiServiceServer is the server API for CtiService service.
 // All implementations must embed UnimplementedCtiServiceServer
 // for forward compatibility
@@ -110,9 +80,6 @@ type CtiServiceServer interface {
 	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
 	Info(context.Context, *InfoRequest) (*InfoResponse, error)
-	ExtendsInstall(context.Context, *ExtendsRequest) (*ExtendsResponse, error)
-	ExtendsUpdate(context.Context, *ExtendsRequest) (*ExtendsResponse, error)
-	ExtendsUninstall(context.Context, *ExtendsRequest) (*ExtendsUninstallResponse, error)
 	mustEmbedUnimplementedCtiServiceServer()
 }
 
@@ -131,15 +98,6 @@ func (UnimplementedCtiServiceServer) List(context.Context, *ListRequest) (*ListR
 }
 func (UnimplementedCtiServiceServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
-}
-func (UnimplementedCtiServiceServer) ExtendsInstall(context.Context, *ExtendsRequest) (*ExtendsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExtendsInstall not implemented")
-}
-func (UnimplementedCtiServiceServer) ExtendsUpdate(context.Context, *ExtendsRequest) (*ExtendsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExtendsUpdate not implemented")
-}
-func (UnimplementedCtiServiceServer) ExtendsUninstall(context.Context, *ExtendsRequest) (*ExtendsUninstallResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExtendsUninstall not implemented")
 }
 func (UnimplementedCtiServiceServer) mustEmbedUnimplementedCtiServiceServer() {}
 
@@ -226,60 +184,6 @@ func _CtiService_Info_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CtiService_ExtendsInstall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExtendsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CtiServiceServer).ExtendsInstall(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/service.CtiService/ExtendsInstall",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CtiServiceServer).ExtendsInstall(ctx, req.(*ExtendsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CtiService_ExtendsUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExtendsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CtiServiceServer).ExtendsUpdate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/service.CtiService/ExtendsUpdate",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CtiServiceServer).ExtendsUpdate(ctx, req.(*ExtendsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CtiService_ExtendsUninstall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExtendsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CtiServiceServer).ExtendsUninstall(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/service.CtiService/ExtendsUninstall",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CtiServiceServer).ExtendsUninstall(ctx, req.(*ExtendsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // CtiService_ServiceDesc is the grpc.ServiceDesc for CtiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -302,18 +206,6 @@ var CtiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Info",
 			Handler:    _CtiService_Info_Handler,
-		},
-		{
-			MethodName: "ExtendsInstall",
-			Handler:    _CtiService_ExtendsInstall_Handler,
-		},
-		{
-			MethodName: "ExtendsUpdate",
-			Handler:    _CtiService_ExtendsUpdate_Handler,
-		},
-		{
-			MethodName: "ExtendsUninstall",
-			Handler:    _CtiService_ExtendsUninstall_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

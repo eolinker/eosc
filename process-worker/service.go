@@ -6,6 +6,7 @@ import (
 	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/professions"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/eolinker/eosc"
@@ -28,21 +29,23 @@ type WorkerServer struct {
 	cancel            context.CancelFunc
 	workers           workers.IWorkers
 	professionManager professions.IProfessions
-
-	masterPid int
+	masterPid         int
+	onceInit          sync.Once
+	initHandler       []func()
 }
 
-func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerServer, error) {
+func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandlers ...func()) (*WorkerServer, error) {
 	defer utils.TimeSpend("NewWorkerServer")()
 	ctx, cancel := context.WithCancel(context.Background())
 	ws := &WorkerServer{
-		ctx:       ctx,
-		cancel:    cancel,
-		masterPid: masterPid,
-
+		ctx:               ctx,
+		cancel:            cancel,
+		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
+		initHandler:       initHandlers,
 	}
 
+	bean.Injection(&ws.professionManager)
 	ws.workers = workers.NewWorkerManager(ws.professionManager)
 	bean.Injection(&ws.workers)
 	ws.listenMaster()
@@ -102,9 +105,11 @@ func (ws *WorkerServer) createClient() (*grpc.ClientConn, service.MasterDispatch
 }
 
 func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher_ListenClient) {
+	log.Debug("start listen")
 	defer conn.Close()
 	for {
 		event, err := c.Recv()
+		log.Debug("recv:", err)
 		if err != nil {
 			if err == io.EOF {
 				log.Debug("listen closed... ", err)
@@ -113,6 +118,7 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			ws.retryConn()
 			return
 		}
+		log.Debug("recv:", event.String())
 		switch event.Command {
 		case eosc.EventInit, eosc.EventReset:
 			{
@@ -132,4 +138,5 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			}
 		}
 	}
+	log.Debug("stop listen")
 }

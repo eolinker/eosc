@@ -13,11 +13,12 @@ import (
 )
 
 type ProfessionApi struct {
-	data professions.IProfessions
+	data       professions.IProfessions
+	workerData *WorkerDatas
 }
 
-func NewProfessionApi(data professions.IProfessions) *ProfessionApi {
-	return &ProfessionApi{data: data}
+func NewProfessionApi(data professions.IProfessions, ws *WorkerDatas) *ProfessionApi {
+	return &ProfessionApi{data: data, workerData: ws}
 }
 
 func (pi *ProfessionApi) Register(router *httprouter.Router) {
@@ -31,6 +32,7 @@ func (pi *ProfessionApi) Register(router *httprouter.Router) {
 	router.Handle(http.MethodPut, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.SetDriver))
 	router.Handle(http.MethodPost, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.AddDriver))
 	router.Handle(http.MethodDelete, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.Delete))
+	router.GET("/profession/:profession/skill", open_api.CreateHandleFunc(pi.Skill))
 
 }
 
@@ -39,6 +41,33 @@ type ProfessionInfo struct {
 	Label  string   `json:"label,omitempty"`
 	Desc   string   `json:"desc,omitempty"`
 	Driver []string `json:"driver,omitempty"`
+}
+
+func (s *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+	name := params.ByName("profession")
+	skill := req.URL.Query().Get("skill")
+	if skill == "" {
+		return http.StatusBadRequest, nil, nil, "skill invalid"
+	}
+	pn, has := s.data.Get(name)
+	if !has {
+		return http.StatusNotFound, nil, nil, ErrorNotExist
+	}
+	dependencies := pn.Dependencies
+	ws := make([]interface{}, 0, s.workerData.Count())
+	all := s.workerData.All()
+	dps := make(map[string]bool)
+	for _, dependency := range dependencies {
+		dps[dependency] = true
+	}
+	for _, w := range all {
+		if w.worker != nil {
+			if w.worker.CheckSkill(skill) {
+				ws = append(ws, w.Info())
+			}
+		}
+	}
+	return http.StatusOK, nil, nil, ws
 }
 
 func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
@@ -56,7 +85,7 @@ func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status 
 			Driver: drivers,
 		})
 	}
-	return 200, nil, nil, body
+	return 200, nil, nil, res
 }
 
 func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
@@ -95,7 +124,12 @@ func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (sta
 
 func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 	professionName := params.ByName("profession")
+
 	driverName := r.URL.Query().Get("name")
+	if driverName == "" {
+		return http.StatusInternalServerError, nil, nil, "invalid driver name"
+
+	}
 	profession, has := pi.data.Get(professionName)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
