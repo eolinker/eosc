@@ -32,7 +32,10 @@ func (oe *Workers) init() {
 
 	for _, pw := range ps {
 		for _, v := range pm[pw.Name] {
-			oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, JsonData(v.config.Body))
+			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, JsonData(v.config.Body))
+			if err != nil {
+				log.Errorf("init %s:%s", v.config.Id, err.Error())
+			}
 		}
 	}
 }
