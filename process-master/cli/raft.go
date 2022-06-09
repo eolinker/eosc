@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"errors"
+	"github.com/eolinker/eosc/env"
+	"strconv"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/raft"
@@ -13,7 +15,18 @@ import (
 func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
 	for _, address := range request.ClusterAddress {
-		err := raft.JoinCluster(m.node, request.BroadcastIP, int(request.BroadcastPort), address, request.Protocol)
+		port := int(request.BroadcastPort)
+		if port < 1 {
+			p, has := env.GetEnv(env.Port)
+			if !has {
+				return &service.JoinResponse{
+					Msg:  "fail",
+					Code: "100000",
+				}, errors.New("no port")
+			}
+			port, _ = strconv.Atoi(p)
+		}
+		err := raft.JoinCluster(m.node, request.BroadcastIP, port, address, request.Protocol)
 		if err != nil {
 			log.Errorf("fail to join: addr is %s, error is %s", address, err.Error())
 			continue
