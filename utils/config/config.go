@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strings"
 )
@@ -98,7 +99,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 		{
 			id := v.String()
 			if id == "" {
-				require, has := f.Tag.Lookup("require")
+				require, has := f.Tag.Lookup("required")
 				if !has || strings.ToLower(require) != "false" {
 					return nil, fmt.Errorf("%s:%w", f.Name, eosc.ErrorRequire)
 				}
@@ -118,6 +119,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 			if !has {
 				return nil, fmt.Errorf("field %s type %s :%w", f.Name, typeName, eosc.ErrorNotGetSillForRequire)
 			}
+			log.DebugF("check skill:%s on %s:%v", skill, id, target)
 			if !target.CheckSkill(skill) {
 				return nil, fmt.Errorf(" %s type %s value %s:%w", f.Name, typeName, id, eosc.ErrorTargetNotImplementSkill)
 			}
