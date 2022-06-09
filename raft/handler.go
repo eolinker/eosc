@@ -190,7 +190,6 @@ func (rc *Node) joinHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-
 func decodeSNResponse(data []byte) (*SNResponse, error) {
 	snRequest := new(SNResponse)
 	err := json.Unmarshal(data, snRequest)

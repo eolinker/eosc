@@ -280,9 +280,10 @@ func (m *Master) close() {
 
 	m.cancelFunc()
 	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
+	
 	m.masterTraffic.Close()
-
 	m.workerTraffic.Close()
+	m.dispatcherServe.Close()
 
 	m.stopService()
 	log.Debug("try remove pid")

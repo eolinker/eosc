@@ -103,15 +103,16 @@ func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
+
+	handler, params, _ := p.excludeRouter.Lookup(r.Method, r.URL.Path)
+	if handler != nil {
+		handler(w, r, params)
+		return
+	}
 	buf := p.pool.Get().(*_ProxyWriterBuffer)
 	buf.Reset()
 	defer p.pool.Put(buf)
-	handler, params, has := p.excludeRouter.Lookup(r.Method, r.URL.Path)
-	if has {
-		handler(buf, r, params)
-	} else {
-		p.leaderHandler.ServeHTTP(buf, r)
-	}
+	p.leaderHandler.ServeHTTP(buf, r)
 	if buf.statusCode != http.StatusOK {
 		buf.WriteTo(w)
 		return
