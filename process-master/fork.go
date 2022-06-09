@@ -33,9 +33,10 @@ var runningMasterForked = new(ForkStatus)
 
 //Fork Master fork 子进程，入参为子进程需要的内容
 func (m *Master) Fork(pFile *pidfile.PidFile) error {
-	if runningMasterForked.Start() {
+	if !runningMasterForked.Start() {
 		return errors.New("Another process already forked. Ignoring this one.")
 	}
+
 	err := pFile.TryFork()
 	if err != nil {
 		return err
