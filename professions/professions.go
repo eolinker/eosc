@@ -111,7 +111,7 @@ func (ps *Professions) Set(name string, c *eosc.ProfessionConfig) error {
 }
 func (ps *Professions) Reset(configs []*eosc.ProfessionConfig) {
 	data := eosc.NewUntyped()
-
+	log.Debug("reset profession:", configs)
 	for _, c := range configs {
 		log.Debug("add profession config:", c)
 		p := NewProfession(c, ps.extends)
