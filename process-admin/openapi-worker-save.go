@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 
 	"github.com/julienschmidt/httprouter"
@@ -59,6 +60,14 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}
 
 	options := make(map[string]interface{})
+	err = decoder.UnMarshal(&options)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, err
+	}
+	if len(options) == 0 {
+		return http.StatusInternalServerError, nil, nil, "nothing to patch"
+
+	}
 	workerInfo, err := oe.workers.GetEmployee(profession, name)
 	if err != nil {
 		return 0, nil, nil, nil
@@ -67,14 +76,18 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	json.Unmarshal(workerInfo.config.Body, &current)
 
 	for k, v := range options {
-
 		if v != nil {
+			log.Debug("patch set:", k, "=", v)
 			current[k] = v
 		} else {
+			log.Debug("patch delete:", k)
+
 			delete(current, k)
 		}
 	}
 	data, _ := json.Marshal(current)
+	log.Debug("patch betfor:", string(workerInfo.config.Body))
+	log.Debug("patch after:", string(data))
 	decoder = JsonData(data)
 	obj, err := oe.workers.Update(profession, name, workerInfo.config.Driver, decoder)
 	if err != nil {
