@@ -108,9 +108,9 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 
 			target, has := workers.Get(id)
 			if !has {
-				require, has := f.Tag.Lookup("require")
+				require, has := f.Tag.Lookup("required")
 				if !has || strings.ToLower(require) != "false" {
-					return nil, fmt.Errorf("require %s:%w", id, eosc.ErrorWorkerNotExits)
+					return nil, fmt.Errorf("required %s:%w", id, eosc.ErrorWorkerNotExits)
 				}
 				return nil, nil
 			}
