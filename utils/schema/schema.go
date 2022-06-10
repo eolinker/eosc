@@ -268,6 +268,8 @@ func generateFromField(f reflect.StructField, mode Mode) (name string, required 
 	}
 	if tag, ok := f.Tag.Lookup("required"); ok {
 		required = tag != "false"
+	} else if s.Type == TypeRequireId {
+		required = true
 	}
 	if tag, ok := f.Tag.Lookup("empty_label"); ok {
 		s.EmptyLabel = tag
