@@ -228,6 +228,7 @@ func (pc *ProcessController) doControl() {
 	for {
 		select {
 		case <-pc.ctx.Done():
+			pc.Shutdown()
 			return
 		case arg, ok := <-pc.restartChan:
 			if ok {

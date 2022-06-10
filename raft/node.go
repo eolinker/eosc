@@ -46,7 +46,7 @@ type Node struct {
 	nodeID uint64
 	once   sync.Once
 	// eosc 服务相关
-	service       IRaftService
+	service      IRaftService
 	stateHandler IRaftStateHandler
 	// 节点相关
 	node raft.Node
@@ -262,7 +262,7 @@ func (rc *Node) serveChannels() {
 			rc.node.Advance()
 
 			// 通知业务状态变更leader变更
-			if rd.SoftState != nil{
+			if rd.SoftState != nil {
 				rc.stateHandler.SetState(rd.RaftState)
 			}
 
@@ -307,15 +307,15 @@ func (rc *Node) Status() raft.Status {
 // Send 客户端发送propose请求的处理
 func (rc *Node) Send(event string, namespace string, key string, data []byte) error {
 
-	msg:= &Command{
+	msg := &Command{
 
-		Namespace:     namespace,
-		Cmd:           event,
-		Body:          data,
-		Key:           key,
-		Version:       "1",
+		Namespace: namespace,
+		Cmd:       event,
+		Body:      data,
+		Key:       key,
+		Version:   "1",
 	}
-	msgData,_:=proto.Marshal(msg)
+	msgData, _ := proto.Marshal(msg)
 	log.DebugF("process data:%s", string(event))
 	if err := rc.ProcessData(msgData); err != nil {
 		log.Warnf("process data error:%s", err)
@@ -385,7 +385,7 @@ func (rc *Node) InitSend() error {
 	if err != nil {
 		return err
 	}
-	return 	rc.Send(eosc.EventReset,"","",data)
+	return rc.Send(eosc.EventReset, "", "", data)
 }
 
 // 切换回单例集群
@@ -493,7 +493,7 @@ func (rc *Node) IsLeader() (bool, *NodeInfo, error) {
 		if !ok {
 			return false, nil, fmt.Errorf("current node has no leader(%d) host", lead)
 		}
-		return true, v, nil
+		return false, v, nil
 	}
 
 	return true, nil, nil
