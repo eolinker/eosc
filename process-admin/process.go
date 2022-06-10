@@ -140,11 +140,18 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	NewExtenderOpenApi(extenderData).Register(p.router)
 
 	ps := professions.NewProfessions(register)
+
+	bean.Injection(&ps)
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
-	bean.Check()
 
 	wd := NewWorkerDatas(arg[eosc.NamespaceWorker])
+	var iWorkers eosc.IWorkers = wd
+	bean.Injection(&iWorkers)
+
+	bean.Check()
+
+
 	ws := NewWorkers(ps, wd)
 
 	NewProfessionApi(ps, wd).Register(p.router)

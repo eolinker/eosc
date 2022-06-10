@@ -103,8 +103,9 @@ func (m *container) check() []string {
 //AutowiredManager 声明
 func (m *container) Autowired(p interface{}) {
 	pkg, e := pkg(p)
-	log.Debug("autowired: ", pkg, " point: ", p)
 	m.lock.Lock()
+	log.Debug("autowired: ", pkg, " point: ", p)
+
 	m.add(pkg, e)
 	m.lock.Unlock()
 }
@@ -113,9 +114,10 @@ func (m *container) Autowired(p interface{}) {
 func (m *container) Injection(i interface{}) {
 
 	pkg, v := pkg(i)
-	log.Debug("injection: ", pkg, " point: ", i)
 
 	m.lock.Lock()
+	log.Debug("injection: ", pkg, " point: ", i)
+
 	m.cache[pkg] = v
 	m.set(pkg, v)
 	m.lock.Unlock()
