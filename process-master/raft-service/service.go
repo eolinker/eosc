@@ -77,6 +77,7 @@ func (s *Service) myEventLoop() {
 		}
 	}
 }
+
 func (s *Service) sendEvent(namespace, cmd, key string, data []byte) error {
 	event := &Event{
 		namespace: namespace,
