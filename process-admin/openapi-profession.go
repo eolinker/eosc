@@ -43,19 +43,19 @@ type ProfessionInfo struct {
 	Driver []string `json:"driver,omitempty"`
 }
 
-func (s *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	skill := req.URL.Query().Get("skill")
 	if skill == "" {
 		return http.StatusBadRequest, nil, nil, "skill invalid"
 	}
-	pn, has := s.data.Get(name)
+	pn, has := pi.data.Get(name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
 	dependencies := pn.Dependencies
-	ws := make([]interface{}, 0, s.workerData.Count())
-	all := s.workerData.All()
+	ws := make([]interface{}, 0, pi.workerData.Count())
+	all := pi.workerData.All()
 	dps := make(map[string]bool)
 	for _, dependency := range dependencies {
 		dps[dependency] = true
