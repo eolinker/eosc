@@ -488,16 +488,16 @@ func TestSchemaMaxPropertiesError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestSchemaMap(t *testing.T) {
-	s, err := Generate(reflect.TypeOf(map[string]string{}), nil)
-	assert.NoError(t, err)
-	assert.Equal(t, &Schema{
-		Type: "object",
-		AdditionalProperties: &Schema{
-			Type: "string",
-		},
-	}, s)
-}
+//func TestSchemaMap(t *testing.T) {
+//	s, err := Generate(reflect.TypeOf(map[string]string{}), nil)
+//	assert.NoError(t, err)
+//	assert.Equal(t, &Schema{
+//		Type: "object",
+//		AdditionalProperties: &Schema{
+//			Type: "string",
+//		},
+//	}, s)
+//}
 
 func TestSchemaSlice(t *testing.T) {
 	s, err := Generate(reflect.TypeOf([]string{}), nil)

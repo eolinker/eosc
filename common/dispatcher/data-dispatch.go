@@ -53,7 +53,6 @@ func (d *DataDispatchCenter) doEventLoop() {
 		select {
 		case event, ok := <-d.eventChannel:
 			if ok {
-
 				next := channels[:0]
 				for _, c := range channels {
 					if err := c.handler(event); err != nil {

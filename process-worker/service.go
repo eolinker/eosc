@@ -6,6 +6,7 @@ import (
 	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/professions"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/eolinker/eosc"
@@ -28,11 +29,12 @@ type WorkerServer struct {
 	cancel            context.CancelFunc
 	workers           workers.IWorkers
 	professionManager professions.IProfessions
-
-	masterPid int
+	masterPid         int
+	onceInit          sync.Once
+	initHandler       []func()
 }
 
-func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerServer, error) {
+func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandlers ...func()) (*WorkerServer, error) {
 	defer utils.TimeSpend("NewWorkerServer")()
 	ctx, cancel := context.WithCancel(context.Background())
 	ws := &WorkerServer{
@@ -40,11 +42,12 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerS
 		cancel:            cancel,
 		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
+		initHandler:       initHandlers,
 	}
 
-	bean.Injection(&ws.professionManager)
 	ws.workers = workers.NewWorkerManager(ws.professionManager)
-	bean.Injection(&ws.workers)
+	var iw eosc.IWorkers = ws.workers
+	bean.Injection(&iw)
 	ws.listenMaster()
 	return ws, nil
 }

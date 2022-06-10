@@ -7,6 +7,7 @@ import (
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/raft"
 	"github.com/julienschmidt/httprouter"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -89,12 +90,19 @@ func (p *OpenApiProxy) ExcludeHandlers(path string, handler http.Handler) {
 }
 
 func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	handler, params, _ := p.excludeRouter.Lookup(r.Method, r.URL.Path)
+	if handler != nil {
+		handler(w, r, params)
+		return
+	}
+
 	isLeader, leadNode, err := p.raftSender.IsLeader()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		log.Warnf("apinto no leader")
 		return
 	}
+
 	if isLeader {
 		p.doProxy(w, r)
 	} else {
@@ -103,15 +111,11 @@ func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
+
 	buf := p.pool.Get().(*_ProxyWriterBuffer)
 	buf.Reset()
 	defer p.pool.Put(buf)
-	handler, params, has := p.excludeRouter.Lookup(r.Method, r.URL.Path)
-	if has {
-		handler(buf, r, params)
-	} else {
-		p.leaderHandler.ServeHTTP(buf, r)
-	}
+	p.leaderHandler.ServeHTTP(buf, r)
 	if buf.statusCode != http.StatusOK {
 		buf.WriteTo(w)
 		return
@@ -155,8 +159,12 @@ func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request,
 		fmt.Fprintf(w, `{"code":%d,"error":"%s"}`, http.StatusBadGateway, err.Error())
 		return
 	}
-
-	response.Write(w)
+	defer response.Body.Close()
+	for key, value := range response.Header {
+		w.Header().Set(key, strings.Join(value, ","))
+	}
+	w.WriteHeader(response.StatusCode)
+	io.Copy(w, response.Body)
 
 }
 

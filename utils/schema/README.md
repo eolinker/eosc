@@ -13,6 +13,9 @@
 * 新增dependencies关键字
 * 新增skill自定义关键字
 * 新增switch自定义关键字
+* 新增label自定义关键字
+* 新增eo:type自定义关键字
+* 新增ui:sort自定义关键字
 
 ### 使用说明
 
@@ -49,28 +52,44 @@ type MyObject struct {
     Rate   float64 `json:"rate" required:"true"`
     Coords []int
 }
-/*  生成如下
+```
+
+生成的json
+
+```json
 {
 	"type": "object",
-	"properties": [{
-		"name": "id",
-		"type": "string",
-		"required": true
-	}, {
-		"name": "rate",
-		"type": "number",
-		"required": true,
-		"format": "double"
-	}, {
-		"name": "coords",
-		"type": "array",
-		"items": {
-			"type": "integer",
-			"format": "int32"
+	"eo:type": "object",
+	"properties": {
+		"coords": {
+			"type": "array",
+			"eo:type": "array",
+			"items": {
+				"type": "integer",
+				"eo:type": "integer",
+				"format": "int32"
+			}
+		},
+		"id": {
+			"type": "string",
+			"eo:type": "string"
+		},
+		"rate": {
+			"type": "number",
+			"eo:type": "number",
+			"format": "double"
 		}
-	}]
+	},
+	"ui:sort": [
+		"id",
+		"rate",
+		"coords"
+	],
+	"required": [
+		"id",
+		"rate"
+	]
 }
-*/
 ```
 
 
@@ -502,3 +521,46 @@ type Config struct {
 	]
 }
 ```
+
+
+
+#### label
+
+自定义的关键字，用于给变量赋予标签
+
+##### 注解规则及使用
+
+label仅仅为字符串
+
+```json
+type MyObject struct {
+ID string `json:"id,omitempty" label:"myID"`
+}
+```
+
+转化为json为：
+
+```json
+{
+	"type": "object",
+	"properties": [
+		{
+			"name": "id",
+			"type": "string",
+			"label": "myID"
+		}
+	]
+}
+```
+
+
+
+#### eo:type
+
+自定义的关键字，用于给变量赋予eo类型
+
+
+
+#### ui:sort
+
+自定义的关键字，用于给properties排序

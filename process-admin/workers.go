@@ -32,7 +32,10 @@ func (oe *Workers) init() {
 
 	for _, pw := range ps {
 		for _, v := range pm[pw.Name] {
-			oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, JsonData(v.config.Body))
+			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, JsonData(v.config.Body))
+			if err != nil {
+				log.Errorf("init %s:%s", v.config.Id, err.Error())
+			}
 		}
 	}
 }
@@ -56,6 +59,15 @@ func (oe *Workers) Update(profession, name string, driver string, data IData) (*
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
 		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
+	}
+	log.Debug("update:", id, profession, name, driver, data)
+	if driver == "" {
+
+		employee, err := oe.GetEmployee(profession, name)
+		if err != nil {
+			return nil, err
+		}
+		driver = employee.config.Driver
 	}
 	w, err := oe.set(id, profession, name, driver, data)
 	if err != nil {
