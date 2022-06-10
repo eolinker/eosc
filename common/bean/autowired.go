@@ -71,6 +71,7 @@ func (m *container) add(key string, v reflect.Value) {
 		v.Set(e)
 		return
 	}
+
 	if ed, has := m.defaultInterface[key]; has {
 		log.DebugF("autowired set default:%s,%v", key, ed)
 		v.Set(ed)

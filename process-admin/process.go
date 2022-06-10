@@ -141,7 +141,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	ps := professions.NewProfessions(register)
 
-	bean.Injection(&ps)
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
 
@@ -150,7 +149,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	bean.Injection(&iWorkers)
 
 	bean.Check()
-
 
 	ws := NewWorkers(ps, wd)
 

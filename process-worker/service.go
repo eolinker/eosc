@@ -45,9 +45,9 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandl
 		initHandler:       initHandlers,
 	}
 
-	bean.Injection(&ws.professionManager)
 	ws.workers = workers.NewWorkerManager(ws.professionManager)
-	bean.Injection(&ws.workers)
+	var iw eosc.IWorkers = ws.workers
+	bean.Injection(&iw)
 	ws.listenMaster()
 	return ws, nil
 }
