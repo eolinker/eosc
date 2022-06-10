@@ -87,7 +87,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, nil
+	}, obj.Detail()
 }
 func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
 
