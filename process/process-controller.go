@@ -44,11 +44,9 @@ type ProcessController struct {
 	callback    IProcessUpdates
 	restartChan chan *StartArgs
 	locker      sync.Mutex
-	//expireProcesses []*ProcessCmd
-
-	isStop     bool
-	isShutDown int32
-	logWriter  io.Writer
+	isStop      bool
+	isShutDown  int32
+	logWriter   io.Writer
 }
 
 func NewProcessController(ctx context.Context, name string, logWriter io.Writer, callback ...IProcessUpdate) *ProcessController {
@@ -60,8 +58,7 @@ func NewProcessController(ctx context.Context, name string, logWriter io.Writer,
 		ctx:         newCtx,
 		cancel:      cancel,
 		restartChan: make(chan *StartArgs),
-		//configBuild:     configBuild,
-		logWriter: logWriter,
+		logWriter:   logWriter,
 	}
 	atomic.StoreInt32(&c.isShutDown, 1)
 	go c.doControl()
@@ -192,6 +189,7 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 		ticker.Reset(5 * time.Millisecond)
 	}
 }
+
 func (pc *ProcessController) Start(configData []byte, extraFiles []*os.File) error {
 	pc.locker.Lock()
 	defer pc.locker.Unlock()

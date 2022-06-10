@@ -15,7 +15,7 @@ import (
 // whether all entries could be published.
 // 日志提交处理
 func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
-	if len(ents) == 0{
+	if len(ents) == 0 {
 		return true
 	}
 	for i := range ents {
@@ -35,7 +35,7 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				ID string `json:"id"`
 			}
 
-			if cmd.Version == "" {// 兼容旧版本数据
+			if cmd.Version == "" { // 兼容旧版本数据
 				switch cmd.Cmd {
 				case eosc.EventSet:
 					b := new(basic)
@@ -47,8 +47,13 @@ func (rc *Node) publishEntries(ents []raftpb.Entry) bool {
 				case eosc.EventDel:
 					cmd.Key = string(cmd.Body)
 				}
+
 			}
-			err = rc.service.Commit(cmd.Cmd, cmd.Namespace,	cmd.Key, cmd.Body)
+			if cmd.Cmd == eosc.EventReset {
+				err = rc.service.ResetSnap(cmd.Body, false)
+			} else {
+				err = rc.service.Commit(cmd.Cmd, cmd.Namespace, cmd.Key, cmd.Body)
+			}
 			if err != nil {
 				log.Error(err)
 			}
