@@ -120,7 +120,6 @@ func (pa *ProcessAdmin) wait() {
 //NewProcessAdmin 创建新的admin进程
 //启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
-
 	cfg := &config.ListensMsg{}
 	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
 	bean.Injection(&tf)
@@ -140,11 +139,16 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	NewExtenderOpenApi(extenderData).Register(p.router)
 
 	ps := professions.NewProfessions(register)
+
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
-	bean.Check()
 
 	wd := NewWorkerDatas(arg[eosc.NamespaceWorker])
+	var iWorkers eosc.IWorkers = wd
+	bean.Injection(&iWorkers)
+
+	bean.Check()
+
 	ws := NewWorkers(ps, wd)
 
 	NewProfessionApi(ps, wd).Register(p.router)

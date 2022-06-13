@@ -127,6 +127,7 @@ type Schema struct {
 	AdditionalProperties *Schema             `json:"additionalProperties,omitempty"`
 	UISort               []string            `json:"ui:sort,omitempty"`
 	Required             []string            `json:"required,omitempty"`
+	EmptyLabel           string              `json:"empty_label,omitempty"`
 	Format               string              `json:"format,omitempty"`
 	Enum                 []interface{}       `json:"enum,omitempty"`
 	Default              interface{}         `json:"default,omitempty"`
@@ -267,8 +268,12 @@ func generateFromField(f reflect.StructField, mode Mode) (name string, required 
 	}
 	if tag, ok := f.Tag.Lookup("required"); ok {
 		required = tag != "false"
+	} else if s.Type == TypeRequireId {
+		required = true
 	}
-
+	if tag, ok := f.Tag.Lookup("empty_label"); ok {
+		s.EmptyLabel = tag
+	}
 	//找到dependencies并且生成
 	if tag, ok := f.Tag.Lookup("dependencies"); ok {
 		attrList := strings.Split(tag, " ")
