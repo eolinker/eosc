@@ -12,10 +12,10 @@ import (
 )
 
 type BaseArg struct {
-	Id string `json:"id,omitempty" yaml:"id"`
-	//Profession string `json:"profession,omitempty" yaml:"profession"`
-	Name   string `json:"name,omitempty" yaml:"name"`
-	Driver string `json:"driver,omitempty" yaml:"driver"`
+	Id          string `json:"id,omitempty" yaml:"id"`
+	Name        string `json:"name,omitempty" yaml:"name"`
+	Driver      string `json:"driver,omitempty" yaml:"driver"`
+	Description string `json:"description" yaml:"description"`
 }
 
 func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
@@ -32,7 +32,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 
 	name := cb.Name
 
-	obj, err := oe.workers.Update(profession, name, cb.Driver, decoder)
+	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -85,11 +85,15 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 			delete(current, k)
 		}
 	}
+	description := workerInfo.config.Description
+	if v, has := options["description"]; has {
+		description = v.(string)
+	}
 	data, _ := json.Marshal(current)
 	log.Debug("patch betfor:", string(workerInfo.config.Body))
 	log.Debug("patch after:", string(data))
 	decoder = JsonData(data)
-	obj, err := oe.workers.Update(profession, name, workerInfo.config.Driver, decoder)
+	obj, err := oe.workers.Update(profession, name, workerInfo.config.Driver, description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -118,7 +122,7 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	obj, err := oe.workers.Update(profession, name, cb.Driver, decoder)
+	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
