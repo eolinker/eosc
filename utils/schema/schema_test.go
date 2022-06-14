@@ -105,7 +105,7 @@ func TestSchemaDescription(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "I am a test", s.Properties[0].Description)
+	assert.Equal(t, "I am a test", s.Properties["foo"].Description)
 }
 
 func TestSchemaFormat(t *testing.T) {
@@ -115,7 +115,7 @@ func TestSchemaFormat(t *testing.T) {
 
 	s, err := Generate(reflect.ValueOf(Example{}).Type(), nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "date-time", s.Properties[0].Format)
+	assert.Equal(t, "date-time", s.Properties["foo"].Format)
 }
 
 func TestSchemaEnum(t *testing.T) {
