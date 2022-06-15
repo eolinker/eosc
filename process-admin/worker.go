@@ -13,13 +13,13 @@ type WorkerInfo struct {
 	info         map[string]interface{}
 }
 
-func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, desc, create, update string, config interface{}, appendLabels []string) *WorkerInfo {
+func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, desc, create, update string, config interface{}) *WorkerInfo {
 
 	body, _ := json.Marshal(config)
 
 	return &WorkerInfo{
-		appendLabels: appendLabels,
-		worker:       worker,
+
+		worker: worker,
 		config: &eosc.WorkerConfig{
 			Id:          id,
 			Profession:  profession,
@@ -63,11 +63,11 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 
 	return w.attr
 }
-func (w *WorkerInfo) Info() interface{} {
+func (w *WorkerInfo) Info(appendLabels ...string) interface{} {
 	if w.info == nil {
 		detail := w.toDetails()
 		w.info = make(map[string]interface{})
-		for _, label := range w.appendLabels {
+		for _, label := range appendLabels {
 			w.info[label] = detail[label]
 		}
 		w.info["id"] = w.config.Id
