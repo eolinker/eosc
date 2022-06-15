@@ -54,16 +54,17 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
 	dependencies := pn.Dependencies
-	ws := make([]interface{}, 0, pi.workerData.Count())
-	all := pi.workerData.All()
 	dps := make(map[string]bool)
 	for _, dependency := range dependencies {
 		dps[dependency] = true
 	}
+	ws := make([]interface{}, 0, pi.workerData.Count())
+	all := pi.workerData.All()
+
 	for _, w := range all {
 		if w.worker != nil {
 			if w.worker.CheckSkill(skill) {
-				ws = append(ws, w.Info())
+				ws = append(ws, w.Info(pn.AppendLabels...))
 			}
 		}
 	}

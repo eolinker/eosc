@@ -39,16 +39,17 @@ func (oe *Workers) init() {
 		}
 	}
 }
-func (oe *Workers) ListEmployees(profession string) ([]*WorkerInfo, error) {
+func (oe *Workers) ListEmployees(profession string) ([]interface{}, error) {
 	p, has := oe.professions.Get(profession)
 	if !has {
 		return nil, eosc.ErrorProfessionNotExist
 	}
+	appendLabels := p.AppendLabels
 	all := oe.data.All()
-	vs := make([]*WorkerInfo, 0, len(all))
+	vs := make([]interface{}, 0, len(all))
 	for _, w := range all {
 		if w.config.Profession == p.Name {
-			vs = append(vs, w)
+			vs = append(vs, w.Info(appendLabels...))
 		}
 	}
 	return vs, nil
@@ -173,7 +174,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		return nil, e
 	}
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), conf, p.AppendLabels)
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), conf)
 	} else {
 		wInfo.reset(driverName, desc, conf, worker)
 	}
