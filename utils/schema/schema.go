@@ -259,6 +259,11 @@ func generateFromField(f reflect.StructField, mode Mode) (name string, required 
 		return name, required, nil, nil
 	}
 
+	// 跳过，兼容不导出schema，又需要使用到json标签的结构体字段
+	if _, ok := f.Tag.Lookup("skip"); ok {
+		return name, required, nil, nil
+	}
+
 	schema := &Schema{}
 
 	//生成field 类型的对应schema
