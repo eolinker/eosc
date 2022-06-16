@@ -108,13 +108,14 @@ func GenInitWorkerConfig(ps []*ProfessionConfig) []*WorkerConfig {
 			for _, d := range p.Drivers {
 				id, _ := ToWorkerId(d.Name, p.Name)
 				wc := &WorkerConfig{
-					Id:         id,
-					Profession: p.Name,
-					Name:       d.Name,
-					Driver:     d.Name,
-					Create:     Now(),
-					Update:     Now(),
-					Body:       nil,
+					Id:          id,
+					Profession:  p.Name,
+					Name:        d.Name,
+					Driver:      d.Name,
+					Description: d.Desc,
+					Create:      Now(),
+					Update:      Now(),
+					Body:        nil,
 				}
 
 				wc.Body = []byte("{}")

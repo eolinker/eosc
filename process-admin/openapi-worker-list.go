@@ -15,12 +15,8 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 	if err != nil {
 		return 500, nil, nil, err
 	}
-	rs := make([]interface{}, 0, len(es))
-	for _, e := range es {
-		log.Debug("toInfo:", e)
-		rs = append(rs, e.Info())
-	}
-	out, _ := json.Marshal(rs)
+
+	out, _ := json.Marshal(es)
 	log.Debug("getEmployeesByProfession:", string(out))
 	return 200, nil, nil, out
 }
