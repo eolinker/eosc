@@ -111,17 +111,25 @@ func tryReadEnv(name string) {
 	commandline.SetOutput(&bytes.Buffer{})
 	commandline.StringVar(&path, "env", "", "env")
 	commandline.Parse(os.Args[1:])
+
 	if path == "" {
-
 		path = os.Getenv(createEnvName(en, envConfigNameForEnv))
-		if path == "" {
-			path = fmt.Sprintf("/etc/%s/%s.yml", name, name)
-		}
-
 	}
-	m, err := read(path)
-	if err != nil {
-		return
+	var m map[string]string
+	var err error
+	if path != "" {
+		m, err = read(path)
+		if err != nil {
+			return
+		}
+	} else {
+		m, err = read(fmt.Sprintf("%s.yml", name))
+		if err != nil {
+			m, err = read(fmt.Sprintf("/etc/%s/%s.yml", name, name))
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	for k, nv := range m {
