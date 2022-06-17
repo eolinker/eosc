@@ -13,29 +13,31 @@ type WorkerInfo struct {
 	info         map[string]interface{}
 }
 
-func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, create, update string, config interface{}, appendLabels []string) *WorkerInfo {
+func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, desc, create, update string, config interface{}) *WorkerInfo {
 
 	body, _ := json.Marshal(config)
 
 	return &WorkerInfo{
-		appendLabels: appendLabels,
-		worker:       worker,
+
+		worker: worker,
 		config: &eosc.WorkerConfig{
-			Id:         id,
-			Profession: profession,
-			Name:       name,
-			Driver:     driver,
-			Create:     create,
-			Update:     update,
-			Body:       body,
+			Id:          id,
+			Profession:  profession,
+			Name:        name,
+			Driver:      driver,
+			Create:      create,
+			Update:      update,
+			Description: desc,
+			Body:        body,
 		},
 		attr: nil,
 	}
 }
 
-func (w *WorkerInfo) reset(driver string, config interface{}, worker eosc.IWorker) {
+func (w *WorkerInfo) reset(driver, desc string, config interface{}, worker eosc.IWorker) {
 	w.config.Update = eosc.Now()
 	w.config.Driver = driver
+	w.config.Description = desc
 	w.config.Body, _ = json.Marshal(config)
 	w.worker = worker
 	w.info = nil
@@ -53,25 +55,26 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 		m["profession"] = w.config.Profession
 		m["name"] = w.config.Name
 		m["driver"] = w.config.Driver
+		m["description"] = w.config.Description
 		m["update"] = w.config.Update
 		m["create"] = w.config.Create
-
 		w.attr = m
 	}
 
 	return w.attr
 }
-func (w *WorkerInfo) Info() interface{} {
+func (w *WorkerInfo) Info(appendLabels ...string) interface{} {
 	if w.info == nil {
 		detail := w.toDetails()
 		w.info = make(map[string]interface{})
-		for _, label := range w.appendLabels {
+		for _, label := range appendLabels {
 			w.info[label] = detail[label]
 		}
 		w.info["id"] = w.config.Id
 		w.info["profession"] = w.config.Profession
 		w.info["name"] = w.config.Name
 		w.info["driver"] = w.config.Driver
+		w.info["description"] = w.config.Description
 		w.info["update"] = w.config.Update
 		w.info["create"] = w.config.Create
 	}
