@@ -61,7 +61,7 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 	if !ok {
 		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
 	}
-	log.Debug("update:", id, profession, name, driver, data)
+	log.Debug("update:", id, " ", profession, ",", name, ",", driver, ",", data)
 	if driver == "" {
 
 		employee, err := oe.GetEmployee(profession, name)
