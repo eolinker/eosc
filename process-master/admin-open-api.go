@@ -32,8 +32,9 @@ func (uc *UnixAdminProcess) DialContext(ctx context.Context, network, addr strin
 func (uc *UnixAdminProcess) Update(process *exec.Cmd) {
 	if process == nil {
 		uc.addr = ""
+	}else{
+		uc.addr = service.ServerUnixAddr(process.Process.Pid, "admin")
 	}
-	uc.addr = service.ServerUnixAddr(process.Process.Pid, "admin")
 }
 
 func NewUnixClient() *UnixAdminProcess {
