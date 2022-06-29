@@ -24,10 +24,10 @@ func (e *EtcdServer) members() map[string][]string {
 	return list
 }
 
-func (e *EtcdServer) addMember(urls []string) (map[string][]string, error) {
+func (e *EtcdServer) addMember(urls []string) (map[string][]string, string, error) {
 	purls, err := types.NewURLs(urls)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	now := time.Now()
 	member := membership.NewMember("", purls, defaultClusterName, &now)
@@ -41,7 +41,7 @@ func (e *EtcdServer) addMember(urls []string) (map[string][]string, error) {
 	for _, m := range members {
 		res[m.Name] = m.PeerURLs
 	}
-	return res, nil
+	return res, member.Name, nil
 }
 
 func (e *EtcdServer) updateSelfInfo(peers []string) error {

@@ -81,7 +81,6 @@ func startEtcdServer(cfg *embed.Config) (*etcdserver.EtcdServer, error) {
 		ExperimentalEnableDistributedTracing:     cfg.ExperimentalEnableDistributedTracing,
 		UnsafeNoFsync:                            cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                    cfg.ExperimentalEnableLeaseCheckpoint,
-		LeaseCheckpointPersist:                   cfg.ExperimentalEnableLeaseCheckpointPersist,
 		CompactionBatchLimit:                     cfg.ExperimentalCompactionBatchLimit,
 		WatchProgressNotifyInterval:              cfg.ExperimentalWatchProgressNotifyInterval,
 		DowngradeCheckTime:                       cfg.ExperimentalDowngradeCheckTime,
@@ -108,12 +107,14 @@ func startEtcdServer(cfg *embed.Config) (*etcdserver.EtcdServer, error) {
 	return server, nil
 }
 
-// NewEtcdServer 新建etcd服务，isExisting为true表示加入一个新的集群
-func NewEtcdServer(name string, clients []string, peers []string, clusters map[string][]string) (*etcdserver.EtcdServer, error) {
+// NewEtcdServer 新建etcd服务，isJoin为true表示加入一个新的集群
+func NewEtcdServer(name string, clients []string, peers []string, clusters map[string][]string, isJoin bool) (*etcdserver.EtcdServer, error) {
 	var err error
 	cfg := embed.NewConfig()
 	cfg.Name = name
-
+	if isJoin {
+		cfg.ClusterState = embed.ClusterStateFlagExisting
+	}
 	cfg.InitialClusterToken = defaultClusterName
 	cfg.Dir = defaultDir
 	cfg.AutoCompactionMode = defaultAutoCompactionMode
