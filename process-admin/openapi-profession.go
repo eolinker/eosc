@@ -241,7 +241,7 @@ func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params)
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	driverConfigs := make([]*eosc.DriverConfig, 0, len(profession.Drivers))
-	err = json.Unmarshal(bodyData, driverConfigs)
+	err = json.Unmarshal(bodyData, &driverConfigs)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
