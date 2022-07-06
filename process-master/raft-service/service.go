@@ -3,6 +3,7 @@ package raft_service
 import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/etcdRaft"
 	"sync"
 	"time"
 
@@ -17,6 +18,19 @@ type Service struct {
 
 	eventChan chan dispatcher.IEvent
 }
+
+func (s *Service) Put(key, value string) error {
+	panic("implement me")
+}
+
+func (s *Service) Delete(key string) error {
+	panic("implement me")
+}
+
+func (s *Service) Reset(values []*etcdRaft.KValue) {
+	panic("implement me")
+}
+
 type InitOp func(map[string]map[string][]byte) map[string]map[string][]byte
 
 func NewService(ops ...InitOp) *Service {

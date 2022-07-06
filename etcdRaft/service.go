@@ -6,7 +6,7 @@ type Etcd interface {
 	http.Handler
 	IsLeader() (bool, []string, error)
 	KV
-	//Watch(prefix string,handler ServiceHandler)
+	Watch(prefix string, handler ServiceHandler)
 }
 type KValue struct {
 	Key   []byte

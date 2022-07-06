@@ -19,12 +19,16 @@ require (
 )
 
 require (
+	github.com/google/uuid v1.1.2
+	github.com/json-iterator/go v1.1.11
+	github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d
 	go.etcd.io/bbolt v1.3.6
 	go.etcd.io/etcd/api/v3 v3.5.4
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4
 	go.etcd.io/etcd/client/v3 v3.5.4
 	go.etcd.io/etcd/raft/v3 v3.5.4
 	go.etcd.io/etcd/server/v3 v3.5.4
+	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
 )
 
 require (
@@ -44,7 +48,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
-	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/klauspost/compress v1.13.4 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -76,7 +79,6 @@ require (
 	go.opentelemetry.io/proto/otlp v0.7.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect

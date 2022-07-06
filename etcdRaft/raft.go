@@ -30,6 +30,10 @@ type EtcdServer struct {
 	peers []net.Listener
 }
 
+func (e *EtcdServer) Watch(prefix string, handler ServiceHandler) {
+	panic("implement me")
+}
+
 func NewEtcdNode(name string, clients []string, peers []string, clusters map[string][]string) (*EtcdServer, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	s := &EtcdServer{
@@ -83,6 +87,7 @@ func (e *EtcdServer) start(name string, clients []string, peers []string, cluste
 	}
 
 	e.client = v3client.New(e.server)
+
 	return nil
 }
 

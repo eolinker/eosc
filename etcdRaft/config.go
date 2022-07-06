@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+
+
 func startEtcdServer(cfg *embed.Config) (*etcdserver.EtcdServer, error) {
 	var (
 		urlsmap types.URLsMap
@@ -106,6 +108,7 @@ func startEtcdServer(cfg *embed.Config) (*etcdserver.EtcdServer, error) {
 	server.Start()
 	return server, nil
 }
+
 
 // NewEtcdServer 新建etcd服务，isJoin为true表示加入一个新的集群
 func NewEtcdServer(name string, clients []string, peers []string, clusters map[string][]string, isJoin bool) (*etcdserver.EtcdServer, error) {
