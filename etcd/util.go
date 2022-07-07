@@ -11,9 +11,9 @@ import (
 )
 
 func (s *_Server) cleanWalFile() error {
-	dir:=env.DataDir()
+	dir:=filepath.Join(env.DataDir(),"member")
 
-	if fileutil.Exist(filepath.Join(dir,"member")) {
+	if fileutil.Exist(dir) {
 		err := os.RemoveAll(dir)
 		if err != nil {
 			return fmt.Errorf("eosc: cannot remove old dir for wal (%w)", err)

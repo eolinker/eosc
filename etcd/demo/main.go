@@ -43,7 +43,9 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
+	mux.HandleFunc("/do/leave", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w,server.Leave())
+	})
 	mux.HandleFunc("/do/join", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		target := r.FormValue("target")

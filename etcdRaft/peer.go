@@ -84,6 +84,7 @@ func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, "GET") {
 		return
 	}
+
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
 	if r.URL.Path != peerMembersPath {
