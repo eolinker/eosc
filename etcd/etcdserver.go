@@ -23,7 +23,7 @@ func (s *_Server) initEtcdServer() error{
 	s.raftHandler = srv.RaftHandler()
 	s.leaseHandler = srv.LeaseHandler()
 	s.downgradeEnabledHandler = srv.DowngradeEnabledHandler()
-
+	s.hashKVHandler = srv.HashKVHandler()
 	s.server = srv
 
 	<-s.server.ReadyNotify()
@@ -171,7 +171,7 @@ func (s *_Server) getAllData() (map[string][]byte, error) {
 	resp, err := func() (*clientv3.GetResponse, error) {
 		ctx, cancel := s.requestContext()
 		defer cancel()
-		return client.Get(ctx, dataPrefixKey, clientv3.WithPrefix())
+		return client.Get(ctx, "/", clientv3.WithPrefix())
 	}()
 	if err != nil {
 		return nil, err

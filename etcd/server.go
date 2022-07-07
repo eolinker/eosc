@@ -33,6 +33,8 @@ func NewServer(ctx context.Context,mux *http.ServeMux) (*_Server,error) {
 		cancel: cancel,
 		requestTimeout: 10 * time.Second,
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.addHandler(mux)
 
 	err := s.initEtcdServer()

@@ -21,8 +21,6 @@ const (
 
 func (s *_Server) addHandler(mux *http.ServeMux)  {
 
-
-
 	mux.HandleFunc("/raft/node/join", s.join)
 
 	mux.HandleFunc(rafthttp.RaftPrefix, func(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +65,6 @@ func (s *_Server) addHandler(mux *http.ServeMux)  {
 
 	mux.HandleFunc(etcdserver.DowngradeEnabledPath, downgradeEnabledHandler)
 
-
-
 		mux.HandleFunc(etcdserver.PeerHashKVPath, func(w http.ResponseWriter, r *http.Request) {
 			s.mu.RLock()
 			defer  s.mu.RUnlock()
@@ -79,7 +75,7 @@ func (s *_Server) addHandler(mux *http.ServeMux)  {
 
 	//mux.HandleFunc("/version", versionHandler(s.server.Cluster(), serveVersion))
 	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
-		s.mu.RUnlock()
+		s.mu.RLock()
 		defer s.mu.RUnlock()
 		if s.server != nil{
 			v:=	s.server.Cluster().Version()
@@ -148,8 +144,8 @@ func (s *_Server) addMember(name string,urls []string) (map[string][]string,  er
 		return nil, err
 	}
 	now := time.Now()
-	member := membership.NewMember("", purls, "apinto", &now)
-	member.Name = name
+	member := membership.NewMember(name, purls, "APINTO_CLUSTER", &now)
+
 	ctx, _ := s.requestContext()
 	members, err := s.server.AddMember(ctx, *member)
 

@@ -6,11 +6,10 @@ import (
 	"github.com/eolinker/eosc/config"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/log"
-	"os"
-	"time"
-
 	"net"
 	"net/http"
+	"os"
+	"strings"
 )
 
 func main() {
@@ -37,20 +36,30 @@ func main() {
 	ser:=http.Server{
 		Handler: mux,
 	}
+
 	go ser.Serve(listen)
 	server, err := etcd.NewServer(context.Background(),mux)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	server.Put("/abc","name")
+
+	mux.HandleFunc("/do/join", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		target := r.FormValue("target")
+		if target == ""{
+			return
+		}
+		if !strings.HasPrefix(target,"http"){
+			target = "http://"+target
+		}
+		fmt.Fprint(w,server.Join(target))
+
+	})
+
 	server.Watch("/",new(DemoHandler))
 
-	t:=time.NewTicker(time.Second)
-	for{
-		<-t.C
-		server.Put("/ab/time",fmt.Sprint(time.Now().Unix()))
-	}
+	select {}
 
 }
 
