@@ -20,6 +20,7 @@ type _Server struct {
 	raftHandler 	http.Handler
 	leaseHandler 	http.Handler
 	downgradeEnabledHandler 	http.Handler
+	hashKVHandler http.Handler
 	client 			*clientv3.Client
 	requestTimeout  time.Duration
 	name 			string

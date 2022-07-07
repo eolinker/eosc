@@ -52,6 +52,7 @@ const (
 	DefaultEnableV2 = false
 )
 
+var etcdInitPath = filepath.Join(env.DataDir(), "cluster", "etcd.init")
 func CreatePeerUrl() (types.URLs, error) {
 	c, err := eoscConfig.GetConfig()
 	if err != nil {
@@ -106,6 +107,7 @@ func readAllIp() []string {
 func etcdServerConfig() config.ServerConfig {
 
 	dataDir := env.DataDir()
+
 	peerUrl, err := CreatePeerUrl()
 	if err != nil {
 		log.Fatal(err)
@@ -186,19 +188,19 @@ func initialClusterString(clusters map[string][]string) string {
 
 }
 func resetCluster(InitialCluster string){
-	dataDir:= env.DataDir()
-	etcdConfig := env.NewConfig(filepath.Join(dataDir, "cluster", "etcd.init"))
-	etcdConfig.ReadFile(filepath.Join(dataDir, "cluster", "etcd.init"))
-	defer etcdConfig.Save()
+	etcdConfig := env.NewConfig(etcdInitPath)
+	etcdConfig.ReadFile(etcdInitPath)
+ 	defer etcdConfig.Save()
 	etcdConfig.Set("cluster",InitialCluster)
 }
+
 func clearCluster()  {
 	resetCluster("")
 }
 func readCluster(peerUrl types.URLs)(name,InitialCluster string,isNew bool)  {
-	dataDir:= env.DataDir()
-	etcdConfig := env.NewConfig(filepath.Join(dataDir, "cluster", "etcd.init"))
-	etcdConfig.ReadFile(filepath.Join(dataDir, "cluster", "etcd.init"))
+
+	etcdConfig := env.NewConfig(etcdInitPath)
+	etcdConfig.ReadFile(etcdInitPath)
 	defer etcdConfig.Save()
 
 	var has bool

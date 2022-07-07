@@ -2,6 +2,8 @@ package etcd
 
 import (
 	"encoding/json"
+	"fmt"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -65,11 +67,43 @@ func (s *_Server) addHandler(mux *http.ServeMux)  {
 
 	mux.HandleFunc(etcdserver.DowngradeEnabledPath, downgradeEnabledHandler)
 
-	hashKVHandler:= s.server.HashKVHandler()
-	if hashKVHandler != nil {
-		mux.Handle(etcdserver.PeerHashKVPath, hashKVHandler)
-	}
-	mux.HandleFunc("/version", versionHandler(s.server.Cluster(), serveVersion))
+
+
+		mux.HandleFunc(etcdserver.PeerHashKVPath, func(w http.ResponseWriter, r *http.Request) {
+			s.mu.RLock()
+			defer  s.mu.RUnlock()
+			if s.hashKVHandler != nil{
+				s.hashKVHandler.ServeHTTP(w,r)
+			}
+		})
+
+	//mux.HandleFunc("/version", versionHandler(s.server.Cluster(), serveVersion))
+	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		s.mu.RUnlock()
+		defer s.mu.RUnlock()
+		if s.server != nil{
+			v:=	s.server.Cluster().Version()
+			strv := "not_decided"
+			if v != nil {
+				strv =  v.String()
+			}
+			if !allowMethod(w, r, "GET") {
+				return
+			}
+			vs := version.Versions{
+				Server:  version.Version,
+				Cluster: strv,
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			b, err := json.Marshal(&vs)
+			if err != nil {
+				panic(fmt.Sprintf("cannot marshal versions to json (%v)", err))
+			}
+			w.Write(b)
+		}
+
+	})
 }
 
 

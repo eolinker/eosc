@@ -3,10 +3,8 @@ package etcd
 import (
 	"encoding/json"
 	"fmt"
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2http/httptypes"
@@ -111,34 +109,6 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 
 		}
 	}
-}
-
-
-func versionHandler(c api.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		v := c.Version()
-		if v != nil {
-			fn(w, r, v.String())
-		} else {
-			fn(w, r, "not_decided")
-		}
-	}
-}
-func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
-	if !allowMethod(w, r, "GET") {
-		return
-	}
-	vs := version.Versions{
-		Server:  version.Version,
-		Cluster: clusterV,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	b, err := json.Marshal(&vs)
-	if err != nil {
-		panic(fmt.Sprintf("cannot marshal versions to json (%v)", err))
-	}
-	w.Write(b)
 }
 func allowMethod(w http.ResponseWriter, r *http.Request, m string) bool {
 	if m == r.Method {
