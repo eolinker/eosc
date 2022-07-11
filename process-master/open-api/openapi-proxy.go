@@ -18,7 +18,7 @@ var (
 
 type IRaftSender interface {
 	Send(event string, namespace string, key string, data []byte) error
-	IsLeader() (bool, []string, error)
+	IsLeader() (bool, []string)
 }
 
 type OpenApiProxy struct {
@@ -95,12 +95,7 @@ func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isLeader, leaderPeers, err := p.raftSender.IsLeader()
-	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Warnf("apinto no leader")
-		return
-	}
+	isLeader, leaderPeers := p.raftSender.IsLeader()
 
 	if isLeader {
 		p.doProxy(w, r)
@@ -150,7 +145,7 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request, leaders []string) {
 	var err error
 	var response *http.Response
-	for _,leader:=range leaders{
+	for _, leader := range leaders {
 		r, _ := http.NewRequest(org.Method, fmt.Sprintf("%s%s", leader, org.RequestURI), org.Body)
 		r.Header = org.Header
 
@@ -166,7 +161,7 @@ func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request,
 		io.Copy(w, response.Body)
 		return
 	}
-	if err!=nil{
+	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		w.Header().Set("content-type", "application/js")
 		fmt.Fprintf(w, `{"code":%d,"error":"%s"}`, http.StatusBadGateway, err.Error())

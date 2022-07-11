@@ -26,7 +26,6 @@ func (s *Service) Delete(key string) error {
 }
 
 func (s *Service) Reset(values []*etcd.KValue) {
-
 	vs := make(map[string]map[string][]byte)
 
 	for _, v := range values {

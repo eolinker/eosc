@@ -33,7 +33,6 @@ import (
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
-	"github.com/eolinker/eosc/raft"
 	"github.com/eolinker/eosc/traffic"
 
 	"google.golang.org/grpc"
@@ -67,15 +66,12 @@ func ProcessDo(handler *MasterHandler) {
 
 type Master struct {
 	//service.UnimplementedMasterServer
- 	etcdServer  etcd.Etcd
-	masterTraffic traffic.IController
-	workerTraffic traffic.IController
-	raftService   raft.IRaftService
-	masterSrv     *grpc.Server
-	ctx           context.Context
-	cancelFunc    context.CancelFunc
-
-	//PID           *pidfile.PidFile
+	etcdServer       etcd.Etcd
+	masterTraffic    traffic.IController
+	workerTraffic    traffic.IController
+	masterSrv        *grpc.Server
+	ctx              context.Context
+	cancelFunc       context.CancelFunc
 	httpserver       *http.Server
 	logWriter        io.Writer
 	dataController   *DataController
@@ -93,7 +89,7 @@ func (mh *MasterHandler) initHandler() {
 
 }
 
-func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg,etcdServer etcd.Etcd) error {
+func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, etcdServer etcd.Etcd) error {
 
 	if handler == nil {
 		handler = new(MasterHandler)
@@ -154,8 +150,9 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg,etc
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
 	m.dataController = NewDataController(raftService, extenderManager, m.dispatcherServe)
 
-	etcdServer.Watch("/",raftService)
+	etcdServer.Watch("/", raftService)
 	etcdServer.HandlerLeader(m.adminController)
+
 	return nil
 }
 
@@ -189,19 +186,19 @@ func (m *Master) Start(handler *MasterHandler) error {
 		}
 		l = tls.NewListener(l, &tls.Config{GetCertificate: cert.GetCertificate})
 	}
-	mux:=m.startHttpServer(l)
-	etcdServer,err:=etcd.NewServer(m.ctx,mux)
-	if err!= nil{
-		log.Error("start etcd error:",err)
+	mux := m.startHttpServer(l)
+	etcdServer, err := etcd.NewServer(m.ctx, mux)
+	if err != nil {
+		log.Error("start etcd error:", err)
 		return err
 	}
 
-	err = m.start(handler, cfg.Export(),etcdServer)
+	err = m.start(handler, cfg.Export(), etcdServer)
 	if err != nil {
 		return err
 	}
 	sm := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.openApiProxy)
-	mux.Handle("/",sm)
+	mux.Handle("/", sm)
 	log.Info("process-master start grpc service")
 	err = m.startService()
 	if err != nil {
@@ -216,8 +213,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 
 }
 
-func (m *Master)startHttpServer(l net.Listener)*http.ServeMux  {
-	mux:=http.NewServeMux()
+func (m *Master) startHttpServer(l net.Listener) *http.ServeMux {
+	mux := http.NewServeMux()
 	m.httpserver = &http.Server{
 		Handler: mux,
 	}
@@ -278,7 +275,7 @@ func (m *Master) close() {
 
 	m.cancelFunc()
 	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
-	
+
 	m.masterTraffic.Close()
 	m.workerTraffic.Close()
 	m.dispatcherServe.Close()

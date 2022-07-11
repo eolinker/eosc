@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/dispatcher"
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process"
 	"strings"
 	"sync"
@@ -38,7 +39,7 @@ func (ac *AdminController) doEvent(event dispatcher.IEvent) error {
 func (ac *AdminController) checkExtender() {
 	ac.locker.Lock()
 	defer ac.locker.Unlock()
-	if !ac.isLeader{
+	if !ac.isLeader {
 		return
 	}
 	extendersData, _ := ac.data.GetNamespace(eosc.NamespaceExtender)
@@ -65,6 +66,7 @@ func (ac *AdminController) toExtends(org map[string][]byte) map[string]string {
 	return tmp
 }
 func (ac *AdminController) LeaderChange(isLeader bool) {
+	log.Debug("Leader change:", isLeader)
 	ac.locker.Lock()
 	defer ac.locker.Unlock()
 	if ac.isLeader != isLeader {

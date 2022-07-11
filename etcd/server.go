@@ -43,7 +43,7 @@ func NewServer(ctx context.Context, mux *http.ServeMux) (*_Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.server.ReadyNotify()
+
 	return s, nil
 }
 func (s *_Server) Info() Info {
@@ -54,16 +54,19 @@ func (s *_Server) Info() Info {
 	}
 	return s.server.Cluster().Member(s.server.ID())
 }
-func (s *_Server) IsLeader() (bool, []string, error) {
+func (s *_Server) IsLeader() (bool, []string) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	return s.isLeader()
+}
+func (s *_Server) isLeader() (bool, []string) {
 	server := s.server
 	lead := server.Leader()
 	if lead == server.ID() {
-		return true, nil, nil
+		return true, nil
 	}
 
-	return false, server.Cluster().Member(lead).PeerURLs, nil
+	return false, server.Cluster().Member(lead).PeerURLs
 }
 
 func (s *_Server) Put(key string, value []byte) error {

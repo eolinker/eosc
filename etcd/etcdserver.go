@@ -1,7 +1,6 @@
 package etcd
 
 import (
-
 	"github.com/eolinker/eosc/log"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/config"
@@ -11,12 +10,12 @@ import (
 	"path/filepath"
 )
 
-func (s *_Server) initEtcdServer() error{
+func (s *_Server) initEtcdServer() error {
 
-	c:=etcdServerConfig()
+	c := etcdServerConfig()
 	s.name = c.Name
-	srv,err:=createEtcdServer(c)
-	if err!= nil{
+	srv, err := createEtcdServer(c)
+	if err != nil {
 		return err
 	}
 
@@ -29,41 +28,48 @@ func (s *_Server) initEtcdServer() error{
 	<-s.server.ReadyNotify()
 	s.client = v3client.New(s.server)
 
-	return  nil
+	return nil
 
 }
-func(s *_Server) check(srv *etcdserver.EtcdServer)  {
-	for{
+func (s *_Server) check(srv *etcdserver.EtcdServer) {
+	log.Debug("start check LeaderChanged")
+	for {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-srv.LeaderChangedNotify():{
-			isLeader,_,_:=s.IsLeader()
-			hs:=s.getLeaderChangeHandlers()
-			for _,h:=range hs{
-				h.LeaderChange(isLeader)
+		case <-srv.LeaderChangedNotify():
+			{
+				log.Debug("Leader changed")
+				isLeader, _ := s.IsLeader()
+				hs := s.getLeaderChangeHandlers()
+				for _, h := range hs {
+					h.LeaderChange(isLeader)
+				}
 			}
-		}
 
 		}
 	}
 }
-func (s *_Server)getLeaderChangeHandlers()[]ILeaderStateHandler  {
+func (s *_Server) getLeaderChangeHandlers() []ILeaderStateHandler {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	hs:=s.leaderChangeHandler
+	hs := s.leaderChangeHandler
 	return hs
 }
-func (s*_Server)HandlerLeader(h ...ILeaderStateHandler)  {
+func (s *_Server) HandlerLeader(hs ...ILeaderStateHandler) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.leaderChangeHandler = append(s.leaderChangeHandler, h...)
+	isLeader, _ := s.isLeader()
+	for _, h := range hs {
+		h.LeaderChange(isLeader)
+	}
+	s.leaderChangeHandler = append(s.leaderChangeHandler, hs...)
 
 }
 func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error) {
 	memberInitialized := wal.Exist(filepath.Join(srvcfg.DataDir, "member", "wal"))
 	server, err := etcdserver.NewServer(srvcfg)
-	if  err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if memberInitialized {
@@ -100,9 +106,8 @@ func (s *_Server) Join(target string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-
 	// 	发出join请求，获取相关信息
-	 clusters, err := s.sendJoinRequest(target, urls.StringSlice())
+	clusters, err := s.sendJoinRequest(target, urls.StringSlice())
 	if err != nil {
 		return err
 	}
@@ -142,7 +147,6 @@ func (s *_Server) Leave() error {
 	s.resetAllData(allData)
 	return nil
 }
-
 
 // Close 关闭集群
 func (s *_Server) Close() error {
@@ -220,7 +224,6 @@ func (s *_Server) removeMember(id uint64) error {
 	_, err := s.server.RemoveMember(ctx, id)
 	return err
 }
-
 
 func (s *_Server) resetAllData(data map[string][]byte) {
 	client := s.client
