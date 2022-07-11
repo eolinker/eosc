@@ -25,13 +25,41 @@ func (s *_Server) initEtcdServer() error{
 	s.downgradeEnabledHandler = srv.DowngradeEnabledHandler()
 	s.hashKVHandler = srv.HashKVHandler()
 	s.server = srv
-
+	go s.check(srv)
 	<-s.server.ReadyNotify()
 	s.client = v3client.New(s.server)
+
 	return  nil
 
 }
+func(s *_Server) check(srv *etcdserver.EtcdServer)  {
+	for{
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-srv.LeaderChangedNotify():{
+			isLeader,_,_:=s.IsLeader()
+			hs:=s.getLeaderChangeHandlers()
+			for _,h:=range hs{
+				h.LeaderChange(isLeader)
+			}
+		}
 
+		}
+	}
+}
+func (s *_Server)getLeaderChangeHandlers()[]ILeaderStateHandler  {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	hs:=s.leaderChangeHandler
+	return hs
+}
+func (s*_Server)HandlerLeader(h ...ILeaderStateHandler)  {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.leaderChangeHandler = append(s.leaderChangeHandler, h...)
+
+}
 func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error) {
 	memberInitialized := wal.Exist(filepath.Join(srvcfg.DataDir, "member", "wal"))
 	server, err := etcdserver.NewServer(srvcfg)
@@ -125,6 +153,9 @@ func (s *_Server) Close() error {
 }
 func (s *_Server) close() error {
 	s.raftHandler = nil
+	s.hashKVHandler = nil
+	s.downgradeEnabledHandler = nil
+	s.leaseHandler = nil
 	s.closeClient()
 	// 关闭etcd server
 	s.closeServer()

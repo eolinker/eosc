@@ -5,7 +5,6 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/dispatcher"
 	"github.com/eolinker/eosc/process"
-	"go.etcd.io/etcd/raft/v3"
 	"strings"
 	"sync"
 )
@@ -17,7 +16,7 @@ type AdminController struct {
 	isExtenderSuccess bool
 	data              *dispatcher.Data
 
-	lastState raft.StateType
+	isLeader bool
 
 	registerChannel    chan<- int
 	lastExtenderConfig map[string]string
@@ -39,7 +38,7 @@ func (ac *AdminController) doEvent(event dispatcher.IEvent) error {
 func (ac *AdminController) checkExtender() {
 	ac.locker.Lock()
 	defer ac.locker.Unlock()
-	if ac.lastState != raft.StateLeader {
+	if !ac.isLeader{
 		return
 	}
 	extendersData, _ := ac.data.GetNamespace(eosc.NamespaceExtender)
@@ -65,13 +64,13 @@ func (ac *AdminController) toExtends(org map[string][]byte) map[string]string {
 	}
 	return tmp
 }
-func (ac *AdminController) SetState(stateType raft.StateType) {
+func (ac *AdminController) LeaderChange(isLeader bool) {
 	ac.locker.Lock()
 	defer ac.locker.Unlock()
-	if ac.lastState != stateType {
-		ac.lastState = stateType
+	if ac.isLeader != isLeader {
+		ac.isLeader = isLeader
 
-		if stateType == raft.StateLeader {
+		if isLeader {
 			configs := ac.data.GET()
 			if configs == nil {
 				configs = map[string]map[string][]byte{}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/eolinker/eosc/raft"
 	"github.com/julienschmidt/httprouter"
 	"io"
 	"net/http"
@@ -19,7 +18,7 @@ var (
 
 type IRaftSender interface {
 	Send(event string, namespace string, key string, data []byte) error
-	IsLeader() (bool, *raft.NodeInfo, error)
+	IsLeader() (bool, []string, error)
 }
 
 type OpenApiProxy struct {
@@ -96,7 +95,7 @@ func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isLeader, leadNode, err := p.raftSender.IsLeader()
+	isLeader, leaderPeers, err := p.raftSender.IsLeader()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		log.Warnf("apinto no leader")
@@ -106,7 +105,7 @@ func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if isLeader {
 		p.doProxy(w, r)
 	} else {
-		p.doProxyToLeader(w, r, leadNode.Addr)
+		p.doProxyToLeader(w, r, leaderPeers)
 	}
 }
 
@@ -148,23 +147,31 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request, leader string) {
+func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request, leaders []string) {
+	var err error
+	var response *http.Response
+	for _,leader:=range leaders{
+		r, _ := http.NewRequest(org.Method, fmt.Sprintf("%s%s", leader, org.RequestURI), org.Body)
+		r.Header = org.Header
 
-	r, _ := http.NewRequest(org.Method, fmt.Sprintf("%s%s", leader, org.RequestURI), org.Body)
-	r.Header = org.Header
-	response, err := client.Do(r)
-	if err != nil {
+		response, err = client.Do(r)
+		if err != nil {
+			continue
+		}
+		defer response.Body.Close()
+		for key, value := range response.Header {
+			w.Header().Set(key, strings.Join(value, ","))
+		}
+		w.WriteHeader(response.StatusCode)
+		io.Copy(w, response.Body)
+		return
+	}
+	if err!=nil{
 		w.WriteHeader(http.StatusBadGateway)
 		w.Header().Set("content-type", "application/js")
 		fmt.Fprintf(w, `{"code":%d,"error":"%s"}`, http.StatusBadGateway, err.Error())
 		return
 	}
-	defer response.Body.Close()
-	for key, value := range response.Header {
-		w.Header().Set(key, strings.Join(value, ","))
-	}
-	w.WriteHeader(response.StatusCode)
-	io.Copy(w, response.Body)
 
 }
 

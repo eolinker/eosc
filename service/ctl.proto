@@ -20,9 +20,9 @@ message JoinResponse{
 
 message NodeInfo {
   string nodeKey = 1;
-  int32 nodeID = 2;
-  int32 term = 3;
-  int32 leaderID = 4;
+  uint64 nodeID = 2;
+  uint64 term = 3;
+  uint64 leaderID = 4;
 
   // status 状态：running | leave | stop | timeout
   string status = 5;
@@ -33,7 +33,7 @@ message NodeInfo {
 
 message NodeSecret {
   string nodeKey = 1;
-  int32 nodeID = 2;
+  uint64 nodeID = 2;
 }
 
 message LeaveRequest{

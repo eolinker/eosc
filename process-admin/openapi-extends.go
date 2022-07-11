@@ -85,9 +85,9 @@ func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (statu
 	}
 	if ok {
 		return 200, nil, &open_api.EventResponse{
-			Event:     eosc.EventReset,
+			Event:     eosc.EventSet,
 			Namespace: eosc.NamespaceExtender,
-			Key:       fmt.Sprint(p.Group, "", p.Project),
+			Key:       fmt.Sprint(p.Group, ":", p.Project),
 			Data:      []byte(p.Version),
 		}, projectInfo.toInfo()
 	} else {

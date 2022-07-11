@@ -168,9 +168,9 @@ type NodeInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	NodeKey  string `protobuf:"bytes,1,opt,name=nodeKey,proto3" json:"nodeKey,omitempty"`
-	NodeID   int32  `protobuf:"varint,2,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
-	Term     int32  `protobuf:"varint,3,opt,name=term,proto3" json:"term,omitempty"`
-	LeaderID int32  `protobuf:"varint,4,opt,name=leaderID,proto3" json:"leaderID,omitempty"`
+	NodeID   uint64 `protobuf:"varint,2,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	Term     uint64 `protobuf:"varint,3,opt,name=term,proto3" json:"term,omitempty"`
+	LeaderID uint64 `protobuf:"varint,4,opt,name=leaderID,proto3" json:"leaderID,omitempty"`
 	// status 状态：running | leave | stop | timeout
 	Status string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	// role 角色
@@ -217,21 +217,21 @@ func (x *NodeInfo) GetNodeKey() string {
 	return ""
 }
 
-func (x *NodeInfo) GetNodeID() int32 {
+func (x *NodeInfo) GetNodeID() uint64 {
 	if x != nil {
 		return x.NodeID
 	}
 	return 0
 }
 
-func (x *NodeInfo) GetTerm() int32 {
+func (x *NodeInfo) GetTerm() uint64 {
 	if x != nil {
 		return x.Term
 	}
 	return 0
 }
 
-func (x *NodeInfo) GetLeaderID() int32 {
+func (x *NodeInfo) GetLeaderID() uint64 {
 	if x != nil {
 		return x.LeaderID
 	}
@@ -265,7 +265,7 @@ type NodeSecret struct {
 	unknownFields protoimpl.UnknownFields
 
 	NodeKey string `protobuf:"bytes,1,opt,name=nodeKey,proto3" json:"nodeKey,omitempty"`
-	NodeID  int32  `protobuf:"varint,2,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	NodeID  uint64 `protobuf:"varint,2,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
 }
 
 func (x *NodeSecret) Reset() {
@@ -307,7 +307,7 @@ func (x *NodeSecret) GetNodeKey() string {
 	return ""
 }
 
-func (x *NodeSecret) GetNodeID() int32 {
+func (x *NodeSecret) GetNodeID() uint64 {
 	if x != nil {
 		return x.NodeID
 	}
