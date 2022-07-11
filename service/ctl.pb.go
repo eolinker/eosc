@@ -25,11 +25,7 @@ type JoinRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	BroadcastIP    string      `protobuf:"bytes,1,opt,name=broadcastIP,proto3" json:"broadcastIP,omitempty"`
-	BroadcastPort  int32       `protobuf:"varint,2,opt,name=broadcastPort,proto3" json:"broadcastPort,omitempty"`
-	Protocol       string      `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	ClusterAddress []string    `protobuf:"bytes,4,rep,name=clusterAddress,proto3" json:"clusterAddress,omitempty"`
-	Secret         *NodeSecret `protobuf:"bytes,5,opt,name=secret,proto3" json:"secret,omitempty"`
+	ClusterAddress []string `protobuf:"bytes,4,rep,name=clusterAddress,proto3" json:"clusterAddress,omitempty"`
 }
 
 func (x *JoinRequest) Reset() {
@@ -64,37 +60,9 @@ func (*JoinRequest) Descriptor() ([]byte, []int) {
 	return file_ctl_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *JoinRequest) GetBroadcastIP() string {
-	if x != nil {
-		return x.BroadcastIP
-	}
-	return ""
-}
-
-func (x *JoinRequest) GetBroadcastPort() int32 {
-	if x != nil {
-		return x.BroadcastPort
-	}
-	return 0
-}
-
-func (x *JoinRequest) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
 func (x *JoinRequest) GetClusterAddress() []string {
 	if x != nil {
 		return x.ClusterAddress
-	}
-	return nil
-}
-
-func (x *JoinRequest) GetSecret() *NodeSecret {
-	if x != nil {
-		return x.Secret
 	}
 	return nil
 }

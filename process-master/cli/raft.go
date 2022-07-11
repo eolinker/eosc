@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/service"
 )
 
@@ -10,12 +12,20 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 	info := &service.NodeSecret{}
 
 	for _, address := range request.ClusterAddress {
-		err:=m.etcdServe.Join(address)
-		if err!=nil{
+		err := m.etcdServe.Join(address)
+		if err != nil && err != etcd.ErrorAlreadyInCluster {
+
 			continue
 		}
+		if err == etcd.ErrorAlreadyInCluster {
+			return &service.JoinResponse{
+				Msg:  "fail",
+				Code: "000001",
+				Info: info,
+			}, fmt.Errorf("apinto is %w", err)
+		}
 		mInfo := m.etcdServe.Info()
-		if mInfo == nil{
+		if mInfo == nil {
 			continue
 		}
 		info.NodeKey = mInfo.Name
@@ -36,18 +46,17 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 //Leave 将节点移除
 func (m *MasterCliServer) Leave(ctx context.Context, request *service.LeaveRequest) (*service.LeaveResponse, error) {
 
-	err:=m.etcdServe.Leave()
+	err := m.etcdServe.Leave()
 	if err != nil {
 		return nil, err
 	}
 
 	info := m.etcdServe.Info()
-	if info==nil{
-		return  &service.LeaveResponse{
-			Msg:    "unknown error",
-			Code:   "0000001",
-
-		},nil
+	if info == nil {
+		return &service.LeaveResponse{
+			Msg:  "unknown error",
+			Code: "0000001",
+		}, nil
 	}
 	return &service.LeaveResponse{
 		Msg:    "success",
@@ -67,12 +76,12 @@ func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest
 	status := "single"
 	raftState := "stand"
 	addr := ""
-	info:=m.etcdServe.Info()
+	info := m.etcdServe.Info()
 
 	return &service.InfoResponse{Info: &service.NodeInfo{
-		NodeKey:   info.Name,
-		NodeID:    uint64(info.ID),
-		Status:    status,
+		NodeKey: info.Name,
+		NodeID:  uint64(info.ID),
+		Status:  status,
 		//Term:      term,
 		//LeaderID:  leaderID,
 		RaftState: raftState,

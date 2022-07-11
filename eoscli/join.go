@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/utils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,17 +20,6 @@ func Join() *cli.Command {
 		Name:  CmdJoin,
 		Usage: "join the cluster",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "broadcast-ip",
-				Aliases:  []string{"ip"},
-				Usage:    "ip for the node broadcast",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:  "protocol",
-				Usage: "node listen protocol",
-				Value: "http",
-			},
 			&cli.StringSliceFlag{
 				Name:     "cluster-addr",
 				Aliases:  []string{"addr"},
@@ -45,32 +32,12 @@ func Join() *cli.Command {
 }
 
 //join 加入集群
-func join(c *cli.Context, cfg *env.Config) error {
+func join(c *cli.Context) error {
 	// 执行join操作
-	bIP := c.String("broadcast-ip")
 
-	port := env.GetDefaultArg(cfg, env.Port, "0")
-	bPort, _ := strconv.Atoi(port)
-	if !utils.ValidAddr(fmt.Sprintf("%s:%d", bIP, bPort)) {
-		ipStr, has := env.GetArg(cfg, env.BroadcastIP)
-		if !has {
-			return errors.New("start node error: missing broadcast ip")
-		}
-		bIP = ipStr
-		addr := fmt.Sprintf("%s:%d", bIP, bPort)
-		if !utils.ValidAddr(addr) {
-			return fmt.Errorf("start error: invalid ip %s\n", addr)
-		}
-	}
-	log.Info("ip:", bIP)
-	cfg.Set(env.BroadcastIP, bIP)
 	addr := c.StringSlice("addr")
 	if len(addr) < 1 {
-		addrStr, has := env.GetArg(cfg, env.ClusterAddress)
-		if !has {
-			return errors.New("start node error: empty cluster address list")
-		}
-		addr = strings.Split(addrStr, ",")
+		return errors.New("start node error: empty cluster address list")
 	}
 	validAddr := false
 	as := make([]string, 0, len(addr))
@@ -99,11 +66,8 @@ func join(c *cli.Context, cfg *env.Config) error {
 		return fmt.Errorf("join cluster error:%s", err.Error())
 	}
 	defer client.Close()
-	cfg.Set(env.ClusterAddress, strings.Join(as, ","))
+
 	response, err := client.Join(context.Background(), &service.JoinRequest{
-		BroadcastIP:    bIP,
-		BroadcastPort:  int32(bPort),
-		Protocol:       env.GetDefault(env.Protocol, "http"),
 		ClusterAddress: as,
 	})
 	if err != nil {
@@ -115,13 +79,11 @@ func join(c *cli.Context, cfg *env.Config) error {
 
 //JoinFunc 加入集群
 func JoinFunc(c *cli.Context) error {
-	argName := fmt.Sprintf("%s.args", env.AppName())
-	cfg := env.NewConfig(argName)
-	cfg.ReadFile(argName)
-	err := join(c, cfg)
+
+	err := join(c)
 	if err != nil {
 		return err
 	}
-	cfg.Save()
+
 	return nil
 }

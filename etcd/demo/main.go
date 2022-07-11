@@ -26,64 +26,62 @@ func main() {
 		fmt.Println(conf)
 		return
 	}
-	listen, err :=net.Listen("tcp",fmt.Sprintf("%s:%d",conf.Admin.IP,conf.Admin.Listen))
+	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.Admin.IP, conf.Admin.Listen))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	mux := http.NewServeMux()
-	ser:=http.Server{
+	ser := http.Server{
 		Handler: mux,
 	}
 
 	go ser.Serve(listen)
-	server, err := etcd.NewServer(context.Background(),mux)
+	server, err := etcd.NewServer(context.Background(), mux)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	mux.HandleFunc("/do/leave", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w,server.Leave())
+		fmt.Fprint(w, server.Leave())
 	})
 	mux.HandleFunc("/do/join", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		target := r.FormValue("target")
-		if target == ""{
+		if target == "" {
 			return
 		}
-		if !strings.HasPrefix(target,"http"){
-			target = "http://"+target
+		if !strings.HasPrefix(target, "http") {
+			target = "http://" + target
 		}
-		fmt.Fprint(w,server.Join(target))
+		fmt.Fprint(w, server.Join(target))
 
 	})
 
-	server.Watch("/",new(DemoHandler))
+	server.Watch("/", new(DemoHandler))
 
 	select {}
 
 }
 
 type DemoHandler struct {
-
 }
 
-func (d *DemoHandler) Put(key, value string) error {
-	fmt.Printf("put:%s=%s\n",key,value)
+func (d *DemoHandler) Put(key string, value []byte) error {
+	fmt.Printf("put:%s=%s\n", key, string(value))
 	return nil
 }
 
 func (d *DemoHandler) Delete(key string) error {
-	fmt.Printf("delete:%s\n",key)
+	fmt.Printf("delete:%s\n", key)
 	return nil
 }
 
 func (d *DemoHandler) Reset(values []*etcd.KValue) {
 	fmt.Println("reset start===============")
-	for _,v:=range values{
-		fmt.Printf("\t%s=%s\n",string(v.Key),string(v.Value))
+	for _, v := range values {
+		fmt.Printf("\t%s=%s\n", string(v.Key), string(v.Value))
 	}
 	fmt.Println("reset end=============")
 }
-

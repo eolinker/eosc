@@ -5,11 +5,7 @@ package service;
 //cli service : 提供管理接口给 cli
 
 message JoinRequest {
-  string broadcastIP = 1;
-  int32 broadcastPort = 2;
-  string protocol = 3;
   repeated string clusterAddress = 4;
-    NodeSecret secret = 5;
 }
 
 message JoinResponse{

@@ -1,13 +1,20 @@
 package etcd
 
 import (
+	"errors"
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/wal"
 	"path/filepath"
+)
+
+var (
+	ErrorAlreadyInCluster = errors.New("already in cluster")
 )
 
 func (s *_Server) initEtcdServer() error {
@@ -97,8 +104,28 @@ func (s *_Server) restart() error {
 	}
 	return s.initEtcdServer()
 }
+func checkIsJoined() bool {
+	etcdConfig := env.NewConfig(etcdInitPath)
+	etcdConfig.ReadFile(etcdInitPath)
+	InitialCluster, has := etcdConfig.Get("cluster")
+	if !has {
+		return false
+	}
 
+	urlsMap, err := types.NewURLsMap(InitialCluster)
+	if err != nil {
+		return false
+	}
+	if len(urlsMap) > 1 {
+		return true
+	}
+	return false
+}
 func (s *_Server) Join(target string) error {
+
+	if checkIsJoined() {
+		return ErrorAlreadyInCluster
+	}
 	urls, err := CreatePeerUrl()
 	if err != nil {
 		return err
