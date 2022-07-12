@@ -39,7 +39,7 @@ func (m *Master) startService() error {
 
 	grpcServer := grpc.NewServer()
 
-	service.RegisterCtiServiceServer(grpcServer, cli.NewMasterCliServer(m.node))
+	service.RegisterCtiServiceServer(grpcServer, cli.NewMasterCliServer(m.etcdServer))
 	service.RegisterMasterDispatcherServer(grpcServer, m.dispatcherServe)
 	go func() {
 		err := grpcServer.Serve(l)

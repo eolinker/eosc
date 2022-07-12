@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/eolinker/eosc/raft"
+	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/service"
 )
 
@@ -9,9 +9,9 @@ var _ service.CtiServiceServer = (*MasterCliServer)(nil)
 
 type MasterCliServer struct {
 	service.UnimplementedCtiServiceServer
-	node *raft.Node
+ 	etcdServe etcd.Etcd
 }
 
-func NewMasterCliServer(node *raft.Node) *MasterCliServer {
-	return &MasterCliServer{node: node}
+func NewMasterCliServer(etcdServe etcd.Etcd) *MasterCliServer {
+	return &MasterCliServer{etcdServe: etcdServe}
 }

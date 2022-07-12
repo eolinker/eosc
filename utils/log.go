@@ -32,10 +32,9 @@ func InitMasterLog() io.Writer {
 	var writer io.Writer = fileWriter
 	level := env.ErrorLevel()
 
-	if env.IsDebug() {
-		writer = ToCopyToIoWriter(os.Stdout, fileWriter)
-		level = log.DebugLevel
-	}
+	writer = ToCopyToIoWriter(os.Stdout, fileWriter)
+	level = log.DebugLevel
+
 	transport := log.NewTransport(writer, level)
 	transport.SetFormatter(formatter)
 
@@ -57,7 +56,7 @@ func (ws writes) Write(p []byte) (n int, err error) {
 	return
 }
 
-func InitStdTransport(name string) {
+func InitStdTransport(name ...string) {
 	level := env.ErrorLevel()
 	if env.IsDebug() {
 		level = log.DebugLevel
@@ -68,5 +67,7 @@ func InitStdTransport(name string) {
 		CallerPrettyfier: nil,
 	})
 	log.Reset(transport)
-	log.SetPrefix(fmt.Sprintf("[%s-%d]", name, os.Getpid()))
+	if len(name) > 0 {
+		log.SetPrefix(fmt.Sprintf("[%s-%d]", name[0], os.Getpid()))
+	}
 }

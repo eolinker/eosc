@@ -25,6 +25,9 @@ func init() {
 		Close()
 	})
 }
+func GetLogger() *Logger {
+	return logger
+}
 func SetLevel(level Level) {
 	transport.setLevel(level)
 }
