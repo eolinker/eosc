@@ -184,7 +184,7 @@ func ErrorName() string {
 func ErrorLevel() log.Level {
 	l, err := log.ParseLevel(errorLogLevel)
 	if err != nil {
-		l = log.ErrorLevel
+		l = log.InfoLevel
 	}
 	return l
 }

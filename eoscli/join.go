@@ -71,6 +71,7 @@ func join(c *cli.Context) error {
 		ClusterAddress: as,
 	})
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	log.Infof("join successful! node id is: %d", response.Info.NodeID)

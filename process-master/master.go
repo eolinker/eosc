@@ -192,7 +192,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("start etcd error:", err)
 		return err
 	}
-
+	m.etcdServer = etcdServer
 	err = m.start(handler, cfg.Export(), etcdServer)
 	if err != nil {
 		return err
