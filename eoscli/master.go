@@ -41,16 +41,16 @@ func Master() *cli.Command {
 				},
 			},
 			{
-				Name:  "admin",
-				Usage: "debug as admin",
+				Name:  "worker",
+				Usage: "debug as worker",
 				Action: func(context *cli.Context) error {
-					log.Info("run admin")
-					if process.RunDebug(eosc.ProcessAdmin) {
+					log.Info("run worker")
+					if process.RunDebug(eosc.ProcessWorker) {
 
-						log.Info("debug admin done")
+						log.Info("debug worker done")
 						return nil
 					} else {
-						return fmt.Errorf("debug admin done")
+						return fmt.Errorf("debug worker done")
 					}
 				},
 			},
