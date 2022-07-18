@@ -69,7 +69,7 @@ func Example_Context() {
 	var httpContext HttpContext
 	err := ctx.Assert(&httpContext)
 	if err != nil {
-		fmt.Println(err)
+		log.Debug(err)
 		return
 	}
 	// Output:

@@ -19,7 +19,7 @@ func (e *EventServer) TEST(target int) {
 		select {
 		case event := <-listener.Event():
 			index++
-			fmt.Printf("%d===>%s %s::%s=>%s\n", target, event.Event(), event.Namespace(), event.Key(), string(event.Data()))
+			log.Debugf("%d===>%s %s::%s=>%s\n", target, event.Event(), event.Namespace(), event.Key(), string(event.Data()))
 			if index > 3 {
 				return
 			}
@@ -73,14 +73,14 @@ func TestDispatcher(t *testing.T) {
 		select {
 		case <-tick.C:
 			index++
-			fmt.Println("send start", index)
+			log.Debug("send start", index)
 			eventServer.Send(&MyEvent{
 				namespace: "a",
 				key:       "b",
 				event:     "set",
 				data:      []byte(fmt.Sprint(index)),
 			})
-			fmt.Println("send end", index)
+			log.Debug("send end", index)
 		}
 	}
 }

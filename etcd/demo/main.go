@@ -23,12 +23,12 @@ func main() {
 	log.SetPrefix(fmt.Sprintf("[demo]"))
 	conf, err := config.GetConfig()
 	if err != nil {
-		fmt.Println(conf)
+		log.Debug(conf)
 		return
 	}
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.Admin.IP, conf.Admin.Listen))
 	if err != nil {
-		fmt.Println(err)
+		log.Debug(err)
 		return
 	}
 
@@ -40,7 +40,7 @@ func main() {
 	go ser.Serve(listen)
 	server, err := etcd.NewServer(context.Background(), mux)
 	if err != nil {
-		fmt.Println(err)
+		log.Debug(err)
 		return
 	}
 	mux.HandleFunc("/do/leave", func(w http.ResponseWriter, r *http.Request) {
@@ -69,19 +69,19 @@ type DemoHandler struct {
 }
 
 func (d *DemoHandler) Put(key string, value []byte) error {
-	fmt.Printf("put:%s=%s\n", key, string(value))
+	log.Debugf("put:%s=%s\n", key, string(value))
 	return nil
 }
 
 func (d *DemoHandler) Delete(key string) error {
-	fmt.Printf("delete:%s\n", key)
+	log.Debugf("delete:%s\n", key)
 	return nil
 }
 
 func (d *DemoHandler) Reset(values []*etcd.KValue) {
-	fmt.Println("reset start===============")
+	log.Debug("reset start===============")
 	for _, v := range values {
-		fmt.Printf("\t%s=%s\n", string(v.Key), string(v.Value))
+		log.Debugf("\t%s=%s\n", string(v.Key), string(v.Value))
 	}
-	fmt.Println("reset end=============")
+	log.Debug("reset end=============")
 }

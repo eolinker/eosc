@@ -53,16 +53,16 @@ const (
 )
 
 var etcdInitPath = filepath.Join(env.DataDir(), "cluster", "etcd.init")
+
 func CreatePeerUrl() (types.URLs, error) {
 	c, err := eoscConfig.GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
-	admin:=c.Admin
-	return createPeerUrl(admin.Scheme,admin.Listen,[]string{admin.IP})
+	admin := c.Admin
+	return createPeerUrl(admin.Scheme, admin.Listen, []string{admin.IP})
 }
 func createPeerUrl(schema string, port int, ips []string) (types.URLs, error) {
-
 
 	urls := make([]string, 0)
 	for _, ip := range ips {
@@ -82,7 +82,7 @@ func readAllIp() []string {
 	addrs, err := net.InterfaceAddrs()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Debug(err)
 		os.Exit(1)
 	}
 
@@ -113,11 +113,10 @@ func etcdServerConfig() config.ServerConfig {
 		log.Fatal(err)
 	}
 
-
-	name, InitialCluster,isNew := readCluster(peerUrl)
+	name, InitialCluster, isNew := readCluster(peerUrl)
 	var urlsmap types.URLsMap
 	var token string
-	if !wal.Exist(filepath.Join(dataDir, "member", "wal")){
+	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
 		urlsmap, err = types.NewURLsMap(InitialCluster)
 		token = "APINTO_CLUSTER"
 	}
@@ -187,27 +186,27 @@ func initialClusterString(clusters map[string][]string) string {
 	return strings.Join(ss, ",")
 
 }
-func resetCluster(InitialCluster string){
+func resetCluster(InitialCluster string) {
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
- 	defer etcdConfig.Save()
-	etcdConfig.Set("cluster",InitialCluster)
+	defer etcdConfig.Save()
+	etcdConfig.Set("cluster", InitialCluster)
 }
 
-func clearCluster()  {
+func clearCluster() {
 	resetCluster("")
 }
-func readCluster(peerUrl types.URLs)(name,InitialCluster string,isNew bool)  {
+func readCluster(peerUrl types.URLs) (name, InitialCluster string, isNew bool) {
 
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
 	defer etcdConfig.Save()
 
 	var has bool
-	name,has = etcdConfig.Get("name")
-	if !has{
+	name, has = etcdConfig.Get("name")
+	if !has {
 		name = createUUID()
-		etcdConfig.Set("name",name)
+		etcdConfig.Set("name", name)
 	}
 	InitialCluster, has = etcdConfig.Get("cluster")
 
@@ -217,14 +216,14 @@ func readCluster(peerUrl types.URLs)(name,InitialCluster string,isNew bool)  {
 			name: peerUrl.StringSlice(),
 		}
 		InitialCluster = initialClusterString(members)
-		etcdConfig.Set("cluster",InitialCluster)
+		etcdConfig.Set("cluster", InitialCluster)
 	}
-	return name,InitialCluster,isNew
+	return name, InitialCluster, isNew
 }
 
-func createUUID()string  {
+func createUUID() string {
 	u := uuid.New()
-	bs:=make([]byte,32)
-	hex.Encode(bs,u[:])
+	bs := make([]byte, 32)
+	hex.Encode(bs, u[:])
 	return string(bs)
 }
