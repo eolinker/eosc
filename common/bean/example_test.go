@@ -10,7 +10,7 @@ type TestImpl struct {
 }
 
 func (t *TestImpl) DO() {
-	fmt.Println("do by:", t.name)
+	log.Debug("do by:", t.name)
 }
 
 func init() {
@@ -20,7 +20,7 @@ func init() {
 	Autowired(&nameInterface)
 
 	AddInitializingBeanFunc(func() {
-		fmt.Println("auto wired done")
+		log.Debug("auto wired done")
 		nameInterface.DO()
 	})
 

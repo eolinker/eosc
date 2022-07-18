@@ -234,7 +234,7 @@ func (m *Master) Wait(pFile *pidfile.PidFile) error {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-		//fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
+		//log.Debug(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{

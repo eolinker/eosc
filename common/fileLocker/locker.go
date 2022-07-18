@@ -117,10 +117,10 @@ func (l *Locker) Lock() {
 			{
 				err := l.lock(nil)
 				if err != nil {
-					fmt.Println("lock file: ", l.path, " error: ", err)
+					log.Debug("lock file: ", l.path, " error: ", err)
 					return
 				}
-				fmt.Println("lock file: ", l.path, " successfully")
+				log.Debug("lock file: ", l.path, " successfully")
 				return
 			}
 		case <-lockTimer.C:

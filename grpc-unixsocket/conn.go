@@ -84,7 +84,7 @@ func (u *unixListener) Close() error {
 	//err = syscall.Unlink(u.Addr().String())
 	//if err != nil {
 	//	log.Warn("Unlink unix port-reqiure:", err)
-	//	fmt.Println("Unlink unix port-reqiure:", err)
+	//	log.Debug("Unlink unix port-reqiure:", err)
 	//	return err
 	//}
 	return nil

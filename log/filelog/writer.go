@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"github.com/eolinker/eosc/log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -124,7 +124,7 @@ func (w *FileWriterByPeriod) do(ctx context.Context) {
 	w.initFile()
 	f, lastTag, e := w.openFile()
 	if e != nil {
-		fmt.Printf("open log file:%s\n", e.Error())
+		log.DebugF("open log file:%s\n", e.Error())
 		return
 	}
 
@@ -223,7 +223,8 @@ func (w *FileWriterByPeriod) dropHistory() {
 func (w *FileWriterByPeriod) initFile() {
 	err := os.MkdirAll(w.dir, 0755)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
+		return
 	}
 	path := filepath.Join(w.dir, fmt.Sprintf("%s.log", w.file))
 	nowTag := w.timeTag(time.Now())

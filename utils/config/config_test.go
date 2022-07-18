@@ -15,10 +15,10 @@ func Example() {
 	}
 	sc, err := schema.Generate(reflect.TypeOf(MyConfig{}), nil)
 	if err != nil {
-		fmt.Println(err)
+		log.Debug(err)
 		return
 	}
 	data, _ := json.MarshalIndent(sc, "", "\t")
-	fmt.Println(string(data))
+	log.Debug(string(data))
 	//output: ""
 }
