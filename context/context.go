@@ -1,26 +1,29 @@
 package context
 
-type NodeAddress = string
-type APP interface {
-	GetNode(id string) (NodeAddress, bool)
-	All() map[string]NodeAddress
+import (
+	"context"
+)
+
+type CompleteHandler interface {
+	Complete(ctx Context) error
 }
-type LoadBalance interface {
-	Select(app APP) (NodeAddress, error)
-}
-type DoHandler interface {
-	DO() error
-}
+
 type FinishHandler interface {
-	Finish() error
+	Finish(ctx Context) error
 }
-type Context interface {
-	LoadBalance() LoadBalance
-	SetLoadBalance(balance LoadBalance)
-	DO() DoHandler
-	SetDoHandler(handler DoHandler)
+type ContextR interface {
+	RequestId() string
+	Context() context.Context
+	Value(key interface{}) interface{}
+	WithValue(key, val interface{})
+	Complete() CompleteHandler
+	SetCompleteHandler(handler CompleteHandler)
 	Finish() FinishHandler
 	SetFinish(handler FinishHandler)
-	Assert(i interface{}) error
 	Scheme() string
+}
+
+type Context interface {
+	ContextR
+	Assert(i interface{}) error
 }

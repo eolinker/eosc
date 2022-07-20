@@ -2,27 +2,29 @@ package context
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/config"
 	"net/http"
 )
 
 type HttpContext interface {
-	LoadBalance() LoadBalance
-	SetLoadBalance(balance LoadBalance)
-	DO() DoHandler
-	SetDoHandler(handler DoHandler)
-	Finish() FinishHandler
-	SetFinish(handler FinishHandler)
-	Scheme() string
-}
-type HttpContextAssert interface {
-	HttpContext
-	Assert(i interface{}) error
+	Context
 }
 
 type ExampleHttpContext struct {
 	w http.ResponseWriter
 	r *http.Request
+
+	complete CompleteHandler
+	finish   FinishHandler
+}
+
+func (e *ExampleHttpContext) Complete() CompleteHandler {
+	return e.complete
+}
+
+func (e *ExampleHttpContext) SetCompleteHandler(handler CompleteHandler) {
+	e.complete = handler
 }
 
 func (e *ExampleHttpContext) Assert(i interface{}) error {
@@ -33,29 +35,12 @@ func (e *ExampleHttpContext) Assert(i interface{}) error {
 	return fmt.Errorf("not suport:%s", config.TypeNameOf(i))
 }
 
-func (e *ExampleHttpContext) LoadBalance() LoadBalance {
-
-	panic("implement me")
-}
-
-func (e *ExampleHttpContext) SetLoadBalance(balance LoadBalance) {
-	panic("implement me")
-}
-
-func (e *ExampleHttpContext) DO() DoHandler {
-	panic("implement me")
-}
-
-func (e *ExampleHttpContext) SetDoHandler(handler DoHandler) {
-	panic("implement me")
-}
-
 func (e *ExampleHttpContext) Finish() FinishHandler {
-	panic("implement me")
+	return e.finish
 }
 
 func (e *ExampleHttpContext) SetFinish(handler FinishHandler) {
-	panic("implement me")
+	e.finish = handler
 }
 
 func (e *ExampleHttpContext) Scheme() string {
@@ -64,7 +49,7 @@ func (e *ExampleHttpContext) Scheme() string {
 
 func Example_Context() {
 
-	ctx := ExampleHttpContext{}
+	var ctx Context = &ExampleHttpContext{}
 
 	var httpContext HttpContext
 	err := ctx.Assert(&httpContext)
