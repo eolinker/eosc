@@ -12,11 +12,11 @@ var (
 	ErrorUnsupportedKind  = errors.New("unsupported kind")
 )
 
-func stringSet(value string, targetVal reflect.Value, variable map[string]string) error {
+func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string) error {
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}
-	builder := NewBuilder(value)
+	builder := NewBuilder(value.String())
 	val, success := builder.Replace(variable)
 	if !success {
 		return ErrorVariableNotFound

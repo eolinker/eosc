@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 func main() {
@@ -49,7 +50,7 @@ func main() {
 	                       300
 	                   ]
 	               },
-	               "${status_key}":200
+	               "status_code":200
 	           }
 	       }
 	   }
@@ -98,7 +99,6 @@ func main() {
 	}`,
 		},
 	}
-	//fmt.Println('$', '{', '}')
 
 	m := map[string]string{
 		"abd":        "replace",
@@ -125,17 +125,41 @@ func main() {
 	}
 }
 
-func interfaceDeal(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
-	value := originVal.Interface()
-	v := reflect.ValueOf(value)
-	switch v.Kind() {
+func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+	value := originVal.Elem()
+	switch value.Kind() {
 	case reflect.Map:
-		return mapDeal(v, targetVal, variable, "")
+		return mapSet(value, targetVal, variable, "")
 	case reflect.Array, reflect.Slice:
-		return arraySet(v, targetVal, variable)
+		return arraySet(value, targetVal, variable)
 	case reflect.String:
-		return stringSet(value.(string), targetVal, variable)
+		return stringSet(value, targetVal, variable)
+	case reflect.Float64:
+		return float64Set(value, targetVal)
 	default:
+		fmt.Println("interface deal", "kind", value.Kind())
+	}
+	return nil
+}
+
+func float64Set(originVal reflect.Value, targetVal reflect.Value) error {
+	if targetVal.Kind() == reflect.Ptr {
+		targetVal = targetVal.Elem()
+	}
+	switch targetVal.Kind() {
+	case reflect.Int:
+		value, err := strconv.ParseInt(fmt.Sprintf("%1.0f", originVal.Float()), 10, 64)
+		if err != nil {
+			return err
+		}
+		targetVal.SetInt(value)
+	case reflect.Float64:
+		targetVal.SetFloat(originVal.Float())
+	case reflect.String:
+		value := fmt.Sprintf("%f", originVal.Float())
+		targetVal.SetString(value)
+	default:
+		return fmt.Errorf("float64 set error:%w %s", ErrorUnsupportedKind, targetVal.Kind())
 	}
 	return nil
 }

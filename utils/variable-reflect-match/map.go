@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-func mapDeal(originVal reflect.Value, targetVal reflect.Value, variable map[string]string, name string) error {
+func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string, name string) error {
 	if originVal.Kind() != reflect.Map {
 		return fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
@@ -44,16 +44,16 @@ func mapDeal(originVal reflect.Value, targetVal reflect.Value, variable map[stri
 		}
 	case reflect.Ptr:
 		{
-			err := mapDeal(originVal, targetVal, variable, name)
+			err := mapSet(originVal, targetVal, variable, name)
 			if err != nil {
 				return err
 			}
 		}
 	case reflect.Interface:
 		{
-			val := reflect.ValueOf(Config{})
+			val := reflect.ValueOf(&Config{})
 			newVal := reflect.New(val.Type())
-			err := mapDeal(originVal, newVal, variable, "")
+			err := mapSet(originVal, newVal, variable, "")
 			if err != nil {
 				return err
 			}
@@ -69,7 +69,8 @@ func structDeal(originVal reflect.Value, targetVal reflect.Value, variable map[s
 		field := targetType.Field(i)
 		fieldValue := reflect.New(field.Type)
 		tag := field.Tag.Get("json")
-		err := recurseReflect(originVal.MapIndex(reflect.ValueOf(tag)), fieldValue, variable, "")
+		value := originVal.MapIndex(reflect.ValueOf(tag))
+		err := recurseReflect(value, fieldValue, variable, "")
 		if err != nil {
 			return err
 		}
