@@ -28,9 +28,16 @@ func (p *Parse) String() string {
 }
 
 func (p *Parse) UnmarshalJSON(bytes []byte) error {
-	err := json.Unmarshal(bytes, &p.origin)
+	var origin interface{}
+	err := json.Unmarshal(bytes, &origin)
 	if err != nil {
 		return err
 	}
+	target := reflect.New(p.typ)
+	err = recurseReflect(reflect.ValueOf(origin), target, p.variable, "")
+	if err != nil {
+		return err
+	}
+	p.origin = target.Interface()
 	return nil
 }

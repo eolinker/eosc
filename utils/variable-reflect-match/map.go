@@ -5,28 +5,22 @@ import (
 	"reflect"
 )
 
-func mapDeal(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+func mapDeal(originVal reflect.Value, targetVal reflect.Value, variable map[string]string, name string) error {
 	if originVal.Kind() != reflect.Map {
 		return fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
 	if targetVal.Kind() == reflect.Ptr {
+		if !targetVal.Elem().IsValid() {
+			targetType := targetVal.Type()
+			newVal := reflect.New(targetType.Elem())
+			targetVal.Set(newVal)
+		}
 		targetVal = targetVal.Elem()
 	}
-	fmt.Println("kind is ", targetVal.Kind())
 	switch targetVal.Kind() {
 	case reflect.Struct:
 		{
-			targetType := targetVal.Type()
-			for i := 0; i < targetType.NumField(); i++ {
-				field := targetType.Field(i)
-				fieldValue := reflect.New(field.Type)
-				tag := field.Tag.Get("json")
-				err := recurseReflect(originVal.MapIndex(reflect.ValueOf(tag)), fieldValue, variable)
-				if err != nil {
-					return err
-				}
-				targetVal.Field(i).Set(fieldValue.Elem())
-			}
+			return structDeal(originVal, targetVal, variable)
 		}
 	case reflect.Map:
 		{
@@ -34,13 +28,13 @@ func mapDeal(originVal reflect.Value, targetVal reflect.Value, variable map[stri
 			newMap := reflect.MakeMap(targetType)
 			for _, key := range originVal.MapKeys() {
 				newKey := reflect.New(targetType.Key())
-				err := recurseReflect(key, newKey, variable)
+				err := recurseReflect(key, newKey, variable, "")
 				if err != nil {
 					return err
 				}
 				value := originVal.MapIndex(key)
 				newValue := reflect.New(targetType.Elem())
-				err = recurseReflect(value, newValue, variable)
+				err = recurseReflect(value, newValue, variable, key.String())
 				if err != nil {
 					return err
 				}
@@ -50,17 +44,36 @@ func mapDeal(originVal reflect.Value, targetVal reflect.Value, variable map[stri
 		}
 	case reflect.Ptr:
 		{
-			fmt.Println("map deal", originVal, "kind", targetVal.Kind(), targetVal.Type())
-			err := mapDeal(originVal, targetVal, variable)
+			err := mapDeal(originVal, targetVal, variable, name)
 			if err != nil {
 				return err
 			}
-			fmt.Println("map deal", originVal, "value", targetVal)
 		}
 	case reflect.Interface:
 		{
-			fmt.Println("map deal interface", originVal, targetVal.Type())
+			val := reflect.ValueOf(Config{})
+			newVal := reflect.New(val.Type())
+			err := mapDeal(originVal, newVal, variable, "")
+			if err != nil {
+				return err
+			}
+			targetVal.Set(newVal.Elem())
 		}
+	}
+	return nil
+}
+
+func structDeal(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+	targetType := targetVal.Type()
+	for i := 0; i < targetType.NumField(); i++ {
+		field := targetType.Field(i)
+		fieldValue := reflect.New(field.Type)
+		tag := field.Tag.Get("json")
+		err := recurseReflect(originVal.MapIndex(reflect.ValueOf(tag)), fieldValue, variable, "")
+		if err != nil {
+			return err
+		}
+		targetVal.Field(i).Set(fieldValue.Elem())
 	}
 	return nil
 }

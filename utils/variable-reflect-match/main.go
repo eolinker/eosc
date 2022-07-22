@@ -107,7 +107,7 @@ func main() {
 		"is_close":   "true",
 		"Get":        "\"GET\"",
 		"value":      "\"abc\"",
-		"code":       "\"200\"",
+		"code":       "200",
 		"status_key": "status_code",
 	}
 	for _, str := range strArray {
@@ -120,12 +120,7 @@ func main() {
 			fmt.Println("err:", err, "str:", str.origin)
 			continue
 		}
-		targetVal := reflect.New(parse.typ)
-		err = recurseReflect(reflect.ValueOf(parse.origin), targetVal, parse.variable)
-		if err != nil {
-			panic(err)
-		}
-		marshal, _ := json.Marshal(targetVal.Interface())
+		marshal, _ := json.Marshal(parse.origin)
 		fmt.Println("finally target value:", string(marshal))
 	}
 }
@@ -135,7 +130,7 @@ func interfaceDeal(originVal reflect.Value, targetVal reflect.Value, variable ma
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Map:
-		return mapDeal(v, targetVal, variable)
+		return mapDeal(v, targetVal, variable, "")
 	case reflect.Array, reflect.Slice:
 		return arraySet(v, targetVal, variable)
 	case reflect.String:

@@ -6,27 +6,14 @@ type PluginConfig struct {
 	Config  interface{} `json:"config"`
 }
 
-type PluginInterfaceConfig struct {
-	buf []byte
-	v   interface{}
+type Config struct {
+	StatusCode int               `json:"status_code" label:"响应状态码" minimum:"100" description:"最小值：100"`
+	Body       string            `json:"body" label:"响应内容"`
+	BodyBase64 bool              `json:"body_base64" label:"是否base64加密"`
+	Headers    map[string]string `json:"headers" label:"响应头部"`
+	Match      *MatchConf        `json:"match" label:"匹配状态码列表"`
 }
 
-func (p *PluginInterfaceConfig) UnmarshalJSON(bytes []byte) error {
-	p.buf = bytes
-	return nil
+type MatchConf struct {
+	Code []int `json:"code" label:"状态码" minimum:"100" description:"最小值：100"`
 }
-
-//
-//func (p *PluginConfig) ReBuild(target reflect.Type) error {
-//
-//	if p.Config == nil {
-//		p.Config = new(PluginInterfaceConfig)
-//	}
-//	v := reflect.New(target).Interface()
-//	err := json.Unmarshal(p.Config.buf, &v)
-//	if err != nil {
-//		return err
-//	}
-//	p.Config.v = v
-//	return nil
-//}
