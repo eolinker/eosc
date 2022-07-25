@@ -1,7 +1,7 @@
 package http_context
 
 import (
-	"github.com/eolinker/eosc/context"
+	"github.com/eolinker/eosc/eocontext"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -9,7 +9,7 @@ import (
 )
 
 type IHttpContext interface {
-	context.Context
+	eocontext.EoContext
 	Request() IRequestReader // 读取原始请求
 	Proxy() IRequest         // 读写转发请求
 	Response() IResponse     // 处理返回结果，可读可写

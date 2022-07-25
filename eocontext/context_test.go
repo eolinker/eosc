@@ -1,6 +1,7 @@
-package context
+package eocontext
 
 import (
+	"context"
 	"fmt"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/config"
@@ -8,7 +9,7 @@ import (
 )
 
 type HttpContext interface {
-	Context
+	EoContext
 }
 
 type ExampleHttpContext struct {
@@ -17,6 +18,26 @@ type ExampleHttpContext struct {
 
 	complete CompleteHandler
 	finish   FinishHandler
+}
+
+func (e *ExampleHttpContext) RequestId() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) Context() context.Context {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) Value(key interface{}) interface{} {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) WithValue(key, val interface{}) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (e *ExampleHttpContext) Complete() CompleteHandler {
@@ -49,7 +70,7 @@ func (e *ExampleHttpContext) Scheme() string {
 
 func Example_Context() {
 
-	var ctx Context = &ExampleHttpContext{}
+	var ctx EoContext = &ExampleHttpContext{}
 
 	var httpContext HttpContext
 	err := ctx.Assert(&httpContext)

@@ -1,17 +1,18 @@
-package context
+package eocontext
 
 import (
 	"context"
 )
 
 type CompleteHandler interface {
-	Complete(ctx Context) error
+	Complete(ctx EoContext) error
 }
 
 type FinishHandler interface {
-	Finish(ctx Context) error
+	Finish(ctx EoContext) error
 }
-type ContextR interface {
+
+type EoContext interface {
 	RequestId() string
 	Context() context.Context
 	Value(key interface{}) interface{}
@@ -21,9 +22,5 @@ type ContextR interface {
 	Finish() FinishHandler
 	SetFinish(handler FinishHandler)
 	Scheme() string
-}
-
-type Context interface {
-	ContextR
 	Assert(i interface{}) error
 }

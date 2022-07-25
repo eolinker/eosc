@@ -1,4 +1,4 @@
-package context
+package eocontext
 
 import "github.com/eolinker/eosc/utils/config"
 
@@ -7,10 +7,10 @@ var (
 )
 
 type IFilter interface {
-	DoFilter(ctx Context, next IChain) (err error)
+	DoFilter(ctx EoContext, next IChain) (err error)
 	Destroy()
 }
 type IChain interface {
-	DoChain(ctx Context) error
+	DoChain(ctx EoContext) error
 	Destroy()
 }
