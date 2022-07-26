@@ -26,7 +26,7 @@ var (
 type IController interface {
 	ITraffic
 	Close()
-	Reset(ports []int) (isCreate bool, err error)
+	//Reset(ports []int) (isCreate bool, err error)
 	Export(int) ([]*PbTraffic, []*os.File)
 }
 
@@ -71,11 +71,10 @@ func (c *Controller) Close() {
 	}
 }
 
-func (c *Controller) Reset(ports []int) (bool, error) {
+func (c *Controller) Reset(ports []int) error {
 	c.locker.Lock()
 	defer c.locker.Unlock()
 
-	isCreate := false
 	newData := newTTrafficData()
 
 	old := c.data.clone()
@@ -91,10 +90,9 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 			l, err := net.ListenTCP("tcp", addr)
 			if err != nil {
 				log.Error("listen tcp:", err)
-				return false, err
+				return err
 			}
 			newData.add(newTTcpListener(l))
-			isCreate = true
 		}
 	}
 	for n, o := range old.All() {
@@ -103,7 +101,7 @@ func (c *Controller) Reset(ports []int) (bool, error) {
 		log.Debug("close old done:", n)
 	}
 	c.data = newData
-	return isCreate, nil
+	return nil
 }
 
 func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
@@ -130,14 +128,18 @@ func (c *Controller) All() []*tListener {
 	return list
 }
 
-func NewController(r io.Reader) IController {
+func ReadController(r io.Reader, port ...int) (IController, error) {
 	c := &Controller{
 		data: newTTrafficData(),
 	}
 	if r != nil {
 		c.data.Read(r)
 	}
-	return c
+	err := c.Reset(port)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {

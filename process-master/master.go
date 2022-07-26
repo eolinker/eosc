@@ -52,9 +52,17 @@ func ProcessDo(handler *MasterHandler) {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-
-	master := NewMasterHandle(logWriter)
-	if err := master.Start(handler); err != nil {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error("get config error: ", err)
+		return
+	}
+	master, err := NewMasterHandle(logWriter, cfg)
+	if err != nil {
+		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
+		return
+	}
+	if err := master.Start(handler, cfg); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
@@ -156,20 +164,8 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 	return nil
 }
 
-func (m *Master) Start(handler *MasterHandler) error {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error("get config error: ", err)
-		return err
-	}
-	_, err = m.masterTraffic.Reset([]int{cfg.Admin.Listen})
-	if err != nil {
-		return err
-	}
-	_, err = m.workerTraffic.Reset(cfg.Ports())
-	if err != nil {
-		return err
-	}
+func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
+
 	// 监听master监听地址，用于接口处理
 	l, err := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen)
 	if err != nil {
@@ -287,22 +283,31 @@ func (m *Master) close() {
 	m.adminController.Stop()
 }
 
-func NewMasterHandle(logWriter io.Writer) *Master {
+func NewMasterHandle(logWriter io.Writer, cfg *config.Config) (*Master, error) {
+
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
 		cancelFunc: cancelFunc,
 		ctx:        cancel,
 		logWriter:  logWriter,
 	}
+	var input io.Reader
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("Reset traffic from stdin")
-		m.masterTraffic = traffic.NewController(os.Stdin)
-		m.workerTraffic = traffic.NewController(os.Stdin)
-	} else {
-		log.Info("new traffic")
 
-		m.masterTraffic = traffic.NewController(nil)
-		m.workerTraffic = traffic.NewController(nil)
+		input = os.Stdin
+	} else {
+		input = nil
 	}
-	return m
+	masterTraffic, err := traffic.ReadController(input, cfg.Admin.Listen)
+	if err != nil {
+		return nil, err
+	}
+	m.masterTraffic = masterTraffic
+	workerTraffic, err := traffic.ReadController(input, cfg.Ports()...)
+	if err != nil {
+		return nil, err
+	}
+	m.workerTraffic = workerTraffic
+	return m, nil
 }
