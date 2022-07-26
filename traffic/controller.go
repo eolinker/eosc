@@ -9,14 +9,10 @@
 package traffic
 
 import (
+	"github.com/eolinker/eosc/log"
 	"io"
 	"net"
 	"os"
-	"sync"
-
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -25,23 +21,18 @@ var (
 
 type IController interface {
 	ITraffic
-	Close()
+	Shutdown()
 	//Reset(ports []int) (isCreate bool, err error)
 	Export(int) ([]*PbTraffic, []*os.File)
 }
 
 type Controller struct {
-	locker sync.Mutex
-	data   *tTrafficData
-}
-
-func (c *Controller) IsStop() bool {
-	return false
+	*Traffic
 }
 
 func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 	log.Debug("traffic controller: Export:")
-	ts := c.All()
+	ts := c.all()
 	pts := make([]*PbTraffic, 0, len(ts))
 	files := make([]*os.File, 0, len(ts))
 	for i, ln := range ts {
@@ -61,7 +52,7 @@ func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 	return pts, files
 }
 
-func (c *Controller) Close() {
+func (c *Controller) Shutdown() {
 	c.locker.Lock()
 	list := c.data.list()
 	c.data = newTTrafficData()
@@ -71,7 +62,7 @@ func (c *Controller) Close() {
 	}
 }
 
-func (c *Controller) Reset(ports []int) error {
+func (c *Controller) reset(addrs []*net.TCPAddr) error {
 	c.locker.Lock()
 	defer c.locker.Unlock()
 
@@ -79,8 +70,8 @@ func (c *Controller) Reset(ports []int) error {
 
 	old := c.data.clone()
 
-	for _, p := range ports {
-		addr := ResolveTCPAddr("", p)
+	for _, addr := range addrs {
+
 		name := addrToName(addr)
 		if o, has := old.Del(name); has {
 			log.Debug("move traffic:", name)
@@ -104,22 +95,7 @@ func (c *Controller) Reset(ports []int) error {
 	return nil
 }
 
-func (c *Controller) Encode(startIndex int) ([]byte, []*os.File, error) {
-
-	pt, files := c.Export(startIndex)
-	pts := &PbTraffics{
-		Traffic: pt,
-	}
-	data, err := proto.Marshal(pts)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return utils.EncodeFrame(data), files, nil
-
-}
-
-func (c *Controller) All() []*tListener {
+func (c *Controller) all() []*tListener {
 
 	c.locker.Lock()
 	list := c.data.list()
@@ -128,38 +104,40 @@ func (c *Controller) All() []*tListener {
 	return list
 }
 
-func ReadController(r io.Reader, port ...int) (IController, error) {
+func ReadController(r io.Reader, addr ...*net.TCPAddr) (IController, error) {
 	c := &Controller{
-		data: newTTrafficData(),
+		Traffic: NewTraffic(),
 	}
 	if r != nil {
 		c.data.Read(r)
 	}
-	err := c.Reset(port)
+	err := c.reset(addr)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (c *Controller) ListenTcp(ip string, port int) (net.Listener, error) {
+func (c *Controller) ListenTcp(ip string, port int, trafficType TrafficType) net.Listener {
 	tcpAddr := ResolveTCPAddr(ip, port)
+
 	c.locker.Lock()
 	defer c.locker.Unlock()
-	tcp, has := c.data.get(addrToName(tcpAddr))
-	if !has {
+	tcp := c.Traffic.get(ip, port)
+
+	if tcp == nil {
 		log.Warn("get listen tcp not exist")
-
-		//tcpAddr := ResolveTCPAddr(ip, port)
-
 		l, err := net.ListenTCP("tcp", tcpAddr)
 		if err != nil {
 			log.Warn("listen tcp:", err)
-			return nil, err
+			return nil
 		}
 		ln := newTTcpListener(l)
 		c.data.add(ln)
 		tcp = ln
 	}
-	return tcp, nil
+	if tcp != nil {
+		return c.match(tcp, trafficType)
+	}
+	return tcp
 }

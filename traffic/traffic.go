@@ -11,6 +11,7 @@ package traffic
 import (
 	"errors"
 	"fmt"
+	cmuxMatch "github.com/eolinker/eosc/traffic/cmux-match"
 	"net"
 	"sync"
 
@@ -23,9 +24,21 @@ var (
 	_                    ITraffic = (*EmptyTraffic)(nil)
 )
 
+type TrafficType = cmuxMatch.MatchType
+
+const (
+	Any TrafficType = iota
+	Http1
+	Https
+	Http2
+	Websocket
+	GRPC
+)
+
 type Traffic struct {
 	locker sync.Mutex
 	data   *tTrafficData
+	matchs map[string]cmuxMatch.CMuxMatch
 	stop   bool
 }
 
@@ -33,38 +46,11 @@ func (t *Traffic) IsStop() bool {
 	return t.stop
 }
 
-func (t *Traffic) Expire(ports []int) {
-	t.locker.Lock()
-	defer t.locker.Unlock()
-
-	newData := newTTrafficData()
-
-	old := t.data.clone()
-
-	for _, p := range ports {
-		addr := ResolveTCPAddr("", p)
-		name := addrToName(addr)
-		if o, has := old.Del(name); has {
-			log.Debug("move traffic:", name)
-			newData.add(o)
-		}
-	}
-	for n, o := range old.All() {
-
-		log.Debug("close old : ", n)
-		o.shutdown()
-		//if err := o.shutdown(); err != nil {
-		//	log.Warn("close port-reqiure:", err, " ", o.Addr())
-		//}
-		log.Debug("close old done:", n)
-	}
-
-}
-
 func NewTraffic() *Traffic {
 	return &Traffic{
 		data:   newTTrafficData(),
 		locker: sync.Mutex{},
+		matchs: map[string]cmuxMatch.CMuxMatch{},
 	}
 }
 func (t *Traffic) Read(tfConf []*PbTraffic) error {
@@ -75,26 +61,43 @@ func (t *Traffic) Read(tfConf []*PbTraffic) error {
 	t.data = data
 	return nil
 }
-
-func (t *Traffic) ListenTcp(ip string, port int) (net.Listener, error) {
-	log.Debug("traffic try ListenTcp:", ip, ":", port)
+func (t *Traffic) get(ip string, port int) net.Listener {
 	tcpAddr := ResolveTCPAddr(ip, port)
 	name := addrToName(tcpAddr)
-	t.locker.Lock()
-	defer t.locker.Unlock()
-
-	log.Debug("traffic listen:", name)
 	if o, has := t.data.get(name); has {
 		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
-		return o, nil
+		return o
 	}
-	log.Debug("traffic ListenTcp:", ip, ":", port, ", not has")
-
-	return nil, nil
+	ipv := resolve(ip)
+	if ipv.Equal(net.IPv4zero) && ipv.Equal(net.IPv6zero) {
+		return nil
+	}
+	return t.get(ipv.String(), port)
+}
+func (t *Traffic) ListenTcp(ip string, port int, trafficType TrafficType) net.Listener {
+	log.Debug("traffic try ListenTcp:", ip, ":", port)
+	//tcpAddr := ResolveTCPAddr(ip, port)
+	//name := addrToName(tcpAddr)
+	t.locker.Lock()
+	defer t.locker.Unlock()
+	l := t.get(ip, port)
+	if l == nil {
+		return nil
+	}
+	return t.match(l, trafficType)
+}
+func (t *Traffic) match(l net.Listener, trafficType TrafficType) net.Listener {
+	name := l.Addr().String()
+	matcher, has := t.matchs[name]
+	if !has {
+		matcher = cmuxMatch.NewMatch(l)
+		t.matchs[name] = matcher
+	}
+	return matcher.Match(trafficType)
 }
 
 type ITraffic interface {
-	ListenTcp(ip string, port int) (net.Listener, error)
+	ListenTcp(ip string, port int, trafficType TrafficType) net.Listener
 	IsStop() bool
 	Close()
 }
@@ -149,8 +152,8 @@ func NewEmptyTraffic() *EmptyTraffic {
 	return &EmptyTraffic{}
 }
 
-func (e *EmptyTraffic) ListenTcp(ip string, port int) (net.Listener, error) {
-	return nil, nil
+func (e *EmptyTraffic) ListenTcp(ip string, port int, trafficType TrafficType) net.Listener {
+	return nil
 }
 
 func (e *EmptyTraffic) IsStop() bool {

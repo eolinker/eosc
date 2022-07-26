@@ -1,7 +1,6 @@
 package cmuxMatch
 
 import (
-	"errors"
 	"github.com/soheilhy/cmux"
 	"io"
 	"log"
@@ -31,8 +30,7 @@ const (
 )
 
 var (
-	matchers          [][]cmux.Matcher
-	ErrorUnknownProto = errors.New("unknown protocol")
+	matchers [][]cmux.Matcher
 )
 
 func init() {
@@ -40,7 +38,7 @@ func init() {
 	matchers[Any] = []cmux.Matcher{func(reader io.Reader) bool {
 		return true
 	}}
-	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast()}
+	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast(), cmux.HTTP2()}
 	matchers[Https] = []cmux.Matcher{cmux.TLS()}
 	matchers[Http2] = []cmux.Matcher{cmux.HTTP2()}
 	matchers[Websocket] = []cmux.Matcher{cmux.HTTP1HeaderField("Upgrade", "websocket")}

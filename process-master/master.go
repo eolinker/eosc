@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
 	open_api "github.com/eolinker/eosc/process-master/open-api"
@@ -167,10 +168,10 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
 
 	// 监听master监听地址，用于接口处理
-	l, err := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen)
-	if err != nil {
-		log.Error("master listen tcp error: ", err)
-		return err
+	l := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen, traffic.Http1)
+	if l == nil {
+		log.Error("master listen tcp error: ")
+		return errors.New("not allow")
 	}
 
 	if strings.ToLower(cfg.Admin.Scheme) == "https" {
@@ -299,12 +300,22 @@ func NewMasterHandle(logWriter io.Writer, cfg *config.Config) (*Master, error) {
 	} else {
 		input = nil
 	}
-	masterTraffic, err := traffic.ReadController(input, cfg.Admin.Listen)
+	masterTraffic, err := traffic.ReadController(input, &net.TCPAddr{
+		IP:   net.ParseIP(cfg.Admin.IP),
+		Port: cfg.Admin.Listen,
+	})
 	if err != nil {
 		return nil, err
 	}
 	m.masterTraffic = masterTraffic
-	workerTraffic, err := traffic.ReadController(input, cfg.Ports()...)
+	addrs := make([]*net.TCPAddr, 0, len(cfg.Ports()))
+	for _, p := range cfg.Ports() {
+		addrs = append(addrs, &net.TCPAddr{
+			IP:   net.IPv4zero,
+			Port: p,
+		})
+	}
+	workerTraffic, err := traffic.ReadController(input, addrs...)
 	if err != nil {
 		return nil, err
 	}
