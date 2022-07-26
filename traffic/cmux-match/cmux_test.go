@@ -261,6 +261,7 @@ func TestTimeout(t *testing.T) {
 	go func() {
 		con, err := any.Accept()
 		if err != nil {
+
 			result <- handleAnyClose
 		} else {
 			_, _ = con.Write([]byte("any"))

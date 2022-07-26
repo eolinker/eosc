@@ -1,37 +1,40 @@
 package cmuxMatch
 
 import (
-	"errors"
+	"fmt"
+	"github.com/soheilhy/cmux"
 	"net"
 	"sync"
 )
 
 var (
-	ErrorListenerClosed = errors.New("closed")
+	ErrorListenerClosed = cmux.ErrListenerClosed
 )
 
 type ListenerProxy struct {
-	ch   chan net.Conn
-	root net.Listener
-	once sync.Once
-	done chan struct{}
+	ch       chan net.Conn
+	root     net.Listener
+	once     sync.Once
+	done     chan struct{}
+	shutDown chan struct{}
 }
 
-func NewListenerProxy(l net.Listener) *ListenerProxy {
+func NewListenerProxy(l net.Listener, shutDown chan struct{}) *ListenerProxy {
 
-	p := &ListenerProxy{root: l, ch: make(chan net.Conn, 10), done: make(chan struct{})}
+	p := &ListenerProxy{root: l, ch: make(chan net.Conn, 10), done: make(chan struct{}), shutDown: shutDown}
 	go p.doAccept()
 	return p
 }
 func (l *ListenerProxy) Replace() *ListenerProxy {
 
-	n := &ListenerProxy{root: l.root, ch: make(chan net.Conn, 10), done: make(chan struct{})}
+	n := &ListenerProxy{root: l.root, ch: make(chan net.Conn, 10), done: make(chan struct{}), shutDown: l.shutDown}
 
 	go func() {
 		l.Close()
 		for c := range l.ch {
 			n.ch <- c
 		}
+
 		n.doAccept()
 	}()
 	return n
@@ -39,8 +42,17 @@ func (l *ListenerProxy) Replace() *ListenerProxy {
 func (l *ListenerProxy) doAccept() {
 	defer close(l.ch)
 	for {
+		fmt.Println("proxy accept start")
 		c, err := l.root.Accept()
+		fmt.Println("proxy accept done")
 		if err != nil {
+			if ne, ok := err.(net.Error); ok {
+				if ne.Timeout() {
+					continue
+				}
+			}
+			l.root = nil
+			l.ShutDown()
 			return
 		}
 		l.ch <- c
@@ -73,8 +85,18 @@ func (l *ListenerProxy) Close() error {
 	return nil
 }
 func (l *ListenerProxy) ShutDown() {
-	l.root.Close()
+	l.once.Do(func() {
+		if l.root != nil {
+			l.root.Close()
+			l.root = nil
+		}
+
+		close(l.shutDown)
+		close(l.done)
+	})
+
 }
+
 func (l *ListenerProxy) Addr() net.Addr {
 	return l.root.Addr()
 }

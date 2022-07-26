@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewMatch(t *testing.T) {
-	listener, err := net.Listen("tcp", "0.0.0.0:9090")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return
 	}
@@ -20,8 +20,7 @@ func TestNewMatch(t *testing.T) {
 
 	go runTestRPCServer(errChan, rpcl)
 
-	runTestHTTP1Client(t, "127.0.0.1:9090")
-	<-errChan
+	runTestRPCClient(t, listener.Addr())
 
 	// output
 	//

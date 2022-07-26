@@ -40,7 +40,7 @@ func init() {
 	matchers[Any] = []cmux.Matcher{func(reader io.Reader) bool {
 		return true
 	}}
-	matchers[Http1] = []cmux.Matcher{cmux.HTTP1()}
+	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast()}
 	matchers[Https] = []cmux.Matcher{cmux.TLS()}
 	matchers[Http2] = []cmux.Matcher{cmux.HTTP2()}
 	matchers[Websocket] = []cmux.Matcher{cmux.HTTP1HeaderField("Upgrade", "websocket")}
@@ -139,10 +139,14 @@ func NewMatch(l net.Listener) CMuxMatch {
 		panic("mast init listener")
 	}
 
+	shutdown := make(chan struct{})
 	m := &cMuxMatch{
-		root:      NewListenerProxy(l),
+		root:      NewListenerProxy(l, shutdown),
 		listeners: make([]*shutListener, matchTypeMax),
 	}
-
+	go func() {
+		<-shutdown
+		m.Close()
+	}()
 	return m
 }
