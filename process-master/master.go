@@ -76,7 +76,7 @@ func ProcessDo(handler *MasterHandler) {
 type Master struct {
 	//service.UnimplementedMasterServer
 	etcdServer       etcd.Etcd
-	masterTraffic    traffic.IController
+	adminTraffic     traffic.IController
 	workerTraffic    traffic.IController
 	masterSrv        *grpc.Server
 	ctx              context.Context
@@ -168,7 +168,7 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
 
 	// 监听master监听地址，用于接口处理
-	l := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen, traffic.Http1)
+	l := m.adminTraffic.ListenTcp(cfg.Admin.Listen, traffic.Http1)
 	if l == nil {
 		log.Error("master listen tcp error: ")
 		return errors.New("not allow")
@@ -273,7 +273,7 @@ func (m *Master) close() {
 	m.cancelFunc()
 	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
 
-	m.masterTraffic.Close()
+	m.adminTraffic.Close()
 	m.workerTraffic.Close()
 	m.dispatcherServe.Close()
 
@@ -307,7 +307,7 @@ func NewMasterHandle(logWriter io.Writer, cfg *config.Config) (*Master, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.masterTraffic = masterTraffic
+	m.adminTraffic = masterTraffic
 	addrs := make([]*net.TCPAddr, 0, len(cfg.Ports()))
 	for _, p := range cfg.Ports() {
 		addrs = append(addrs, &net.TCPAddr{

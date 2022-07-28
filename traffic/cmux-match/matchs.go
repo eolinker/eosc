@@ -13,6 +13,7 @@ type MatchType int
 type CMuxMatch interface {
 	Match(match MatchType) net.Listener
 	SetReadTimeout(time.Duration)
+	Close() error
 }
 
 var (
@@ -30,11 +31,14 @@ const (
 )
 
 var (
-	matchers [][]cmux.Matcher
+	matchers    [][]cmux.Matcher
+	matcherName []string
 )
 
 func init() {
 	matchers = make([][]cmux.Matcher, matchTypeMax)
+	matcherName = make([]string, matchTypeMax)
+
 	matchers[Any] = []cmux.Matcher{func(reader io.Reader) bool {
 		return true
 	}}
@@ -43,8 +47,21 @@ func init() {
 	matchers[Http2] = []cmux.Matcher{cmux.HTTP2()}
 	matchers[Websocket] = []cmux.Matcher{cmux.HTTP1HeaderField("Upgrade", "websocket")}
 	matchers[GRPC] = []cmux.Matcher{cmux.HTTP2HeaderFieldPrefix("content-type", "application/grpc")}
-}
 
+	matcherName[Any] = "Any"
+	matcherName[Http1] = "Http1"
+	matcherName[Https] = "Https"
+	matcherName[Http2] = "Http2"
+	matcherName[Websocket] = "Websocket"
+	matcherName[GRPC] = "GRPC"
+
+}
+func (t MatchType) String() string {
+	if t > matchTypeMax || t < 0 {
+		return "unknown"
+	}
+	return matcherName[t]
+}
 func (t MatchType) matcher() []cmux.Matcher {
 	return matchers[t]
 }
@@ -115,7 +132,7 @@ func (m *cMuxMatch) rebuild() {
 	wg.Wait()
 }
 
-func (m *cMuxMatch) Close() {
+func (m *cMuxMatch) Close() error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if m.cMux != nil {
@@ -130,6 +147,7 @@ func (m *cMuxMatch) Close() {
 			m.listeners[i] = nil
 		}
 	}
+	return nil
 }
 
 func NewMatch(l net.Listener) CMuxMatch {

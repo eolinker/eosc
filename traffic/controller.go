@@ -32,112 +32,163 @@ type Controller struct {
 
 func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 	log.Debug("traffic controller: Export:")
-	ts := c.all()
-	pts := make([]*PbTraffic, 0, len(ts))
-	files := make([]*os.File, 0, len(ts))
-	for i, ln := range ts {
-		file, err := ln.File()
-		if err != nil {
-			continue
+	ms := c.data.All()
+	pts := make([]*PbTraffic, 0, len(ms))
+	files := make([]*os.File, 0, len(ms))
+	i := 0
+	for _, matcher := range ms {
+		ts := matcher.Listeners()
+		for _, ln := range ts {
+
+			file, err := ln.File()
+			if err != nil {
+				continue
+			}
+			addr := ln.Addr()
+			pt := &PbTraffic{
+				FD:      uint64(i + startIndex),
+				Addr:    addr.String(),
+				Network: addr.Network(),
+			}
+			pts = append(pts, pt)
+			files = append(files, file)
+			i++
 		}
-		addr := ln.Addr()
-		pt := &PbTraffic{
-			FD:      uint64(i + startIndex),
-			Addr:    addr.String(),
-			Network: addr.Network(),
-		}
-		pts = append(pts, pt)
-		files = append(files, file)
 	}
+
 	return pts, files
 }
 
 func (c *Controller) Shutdown() {
 	c.locker.Lock()
-	list := c.data.list()
-	c.data = newTTrafficData()
+	list := c.data.All()
+	c.data = NewMatcherData()
 	c.locker.Unlock()
 	for _, it := range list {
-		it.shutdown()
+		it.Close()
 	}
 }
 
 func (c *Controller) reset(addrs []*net.TCPAddr) error {
+
 	c.locker.Lock()
 	defer c.locker.Unlock()
 
-	newData := newTTrafficData()
+	newData := NewMatcherData()
 
-	old := c.data.clone()
+	old := c.data.Clone()
+	datas := make(map[string]*net.TCPListener)
+	for _, ms := range old.All() {
+		for _, l := range ms.Listeners() {
+			datas[l.Addr().String()] = l
+		}
+	}
 
-	for _, addr := range addrs {
+	for _, ad := range addrs {
+		name := addrName(ad)
 
-		name := addrToName(addr)
-		if o, has := old.Del(name); has {
-			log.Debug("move traffic:", name)
-			newData.add(o)
+		o, has := datas[name]
+		if has {
+			delete(datas, name)
 		} else {
 			log.Debug("create traffic:", name)
-			l, err := net.ListenTCP("tcp", addr)
+
+			l, err := net.ListenTCP("tcp", ad)
 			if err != nil {
 				log.Error("listen tcp:", err)
 				return err
 			}
-			newData.add(newTTcpListener(l))
+			o = l
 		}
+		om := old.Get(ad.Port)
+		if om == nil {
+			om = newData.Get(ad.Port)
+		}
+		if om == nil {
+			om = NewMatcher(ad.Port, o)
+		}
+		newData.Set(ad.Port, om)
+
 	}
 	for n, o := range old.All() {
 		log.Debug("close old : ", n)
-		o.shutdown()
+		o.Close()
 		log.Debug("close old done:", n)
 	}
 	c.data = newData
 	return nil
 }
+func addrName(addr *net.TCPAddr) string {
+	add := *addr
+	if add.IP == nil {
+		add.IP = net.IPv6zero
+	}
+	return add.String()
+}
+func rebuildAddr(addrs []*net.TCPAddr) map[int][]net.IP {
+	addrMap := make(map[int][]*net.TCPAddr)
+	for _, ad := range addrs {
+		addrMap[ad.Port] = append(addrMap[ad.Port], ad)
+	}
+	newAddr := make(map[int][]net.IP)
+	for p, ads := range addrMap {
+		var ipv4zero bool = false
+		var ipv6zero bool = false
 
-func (c *Controller) all() []*tListener {
+		var ipv4s []net.IP
+		var ipv6s []net.IP
+		for _, ad := range ads {
+			if ad.IP == nil {
+				ipv4zero = false
+				ipv6zero = false
+				ipv4s = nil
+				ipv6s = nil
+				break
+			}
+			if ad.IP.Equal(net.IPv4zero) {
+				ipv4zero = true
+				continue
+			}
+			if ad.IP.Equal(net.IPv6zero) {
+				ipv6zero = true
+				continue
+			}
+			if len(ad.IP) == net.IPv4len {
+				ipv4s = append(ipv4s, ad.IP)
+			} else if len(ad.IP) == net.IPv6len {
+				ipv6s = append(ipv6s, ad.IP)
+			}
 
-	c.locker.Lock()
-	list := c.data.list()
-	c.locker.Unlock()
+		}
+		if ipv4zero {
+			ipv4s = []net.IP{net.IPv4zero}
+		}
+		if ipv6zero {
+			ipv6s = []net.IP{net.IPv6zero}
+		}
 
-	return list
+		newAddr[p] = append(newAddr[p], ipv4s...)
+		newAddr[p] = append(newAddr[p], ipv6s...)
+	}
+	return newAddr
 }
 
 func ReadController(r io.Reader, addr ...*net.TCPAddr) (IController, error) {
 	c := &Controller{
-		Traffic: NewTraffic(),
+		Traffic: nil,
 	}
 	if r != nil {
-		c.data.Read(r)
+		traffics, err := readTraffic(r)
+		if err != nil {
+			return nil, err
+		}
+		c.Traffic = NewTraffic(traffics)
+	} else {
+		c.Traffic = NewTraffic(nil)
 	}
 	err := c.reset(addr)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
-}
-
-func (c *Controller) ListenTcp(ip string, port int, trafficType TrafficType) net.Listener {
-	tcpAddr := ResolveTCPAddr(ip, port)
-
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	tcp := c.Traffic.get(ip, port)
-
-	if tcp == nil {
-		log.Warn("get listen tcp not exist")
-		l, err := net.ListenTCP("tcp", tcpAddr)
-		if err != nil {
-			log.Warn("listen tcp:", err)
-			return nil
-		}
-		ln := newTTcpListener(l)
-		c.data.add(ln)
-		tcp = ln
-	}
-	if tcp != nil {
-		return c.match(tcp, trafficType)
-	}
-	return tcp
 }

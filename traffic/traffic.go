@@ -10,9 +10,10 @@ package traffic
 
 import (
 	"errors"
-	"fmt"
 	cmuxMatch "github.com/eolinker/eosc/traffic/cmux-match"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/eolinker/eosc/log"
@@ -37,112 +38,61 @@ const (
 
 type Traffic struct {
 	locker sync.Mutex
-	data   *tTrafficData
-	matchs map[string]cmuxMatch.CMuxMatch
-	stop   bool
+	data   *MatcherData
+
+	stop bool
 }
 
 func (t *Traffic) IsStop() bool {
 	return t.stop
 }
 
-func NewTraffic() *Traffic {
-	return &Traffic{
-		data:   newTTrafficData(),
+func NewTraffic(traffics []*PbTraffic) *Traffic {
+	data := NewMatcherData(traffics...)
+
+	tf := &Traffic{
+		data:   data,
 		locker: sync.Mutex{},
-		matchs: map[string]cmuxMatch.CMuxMatch{},
 	}
+	return tf
 }
-func (t *Traffic) Read(tfConf []*PbTraffic) error {
+
+func (t *Traffic) ListenTcp(port int, trafficType TrafficType) net.Listener {
+	log.Debug("traffic try ListenTcp for:", port)
+
 	t.locker.Lock()
 	defer t.locker.Unlock()
-	data := newTTrafficData()
-	data.setListener(tfConf)
-	t.data = data
-	return nil
-}
-func (t *Traffic) get(ip string, port int) net.Listener {
-	tcpAddr := ResolveTCPAddr(ip, port)
-	name := addrToName(tcpAddr)
-	if o, has := t.data.get(name); has {
-		log.Debug("traffic ListenTcp:", ip, ":", port, ", ok")
-		return o
-	}
-	ipv := resolve(ip)
-	if ipv.Equal(net.IPv4zero) && ipv.Equal(net.IPv6zero) {
-		return nil
-	}
-	return t.get(ipv.String(), port)
-}
-func (t *Traffic) ListenTcp(ip string, port int, trafficType TrafficType) net.Listener {
-	log.Debug("traffic try ListenTcp:", ip, ":", port)
-	//tcpAddr := ResolveTCPAddr(ip, port)
-	//name := addrToName(tcpAddr)
-	t.locker.Lock()
-	defer t.locker.Unlock()
-	l := t.get(ip, port)
+	l := t.data.Get(port)
 	if l == nil {
+		log.Warn("listen to un open port: ", port, " for :", trafficType)
 		return nil
 	}
-	return t.match(l, trafficType)
-}
-func (t *Traffic) match(l net.Listener, trafficType TrafficType) net.Listener {
-	name := l.Addr().String()
-	matcher, has := t.matchs[name]
-	if !has {
-		matcher = cmuxMatch.NewMatch(l)
-		t.matchs[name] = matcher
-	}
-	return matcher.Match(trafficType)
+
+	return l.Match(trafficType)
 }
 
 type ITraffic interface {
-	ListenTcp(ip string, port int, trafficType TrafficType) net.Listener
+	ListenTcp(port int, trafficType TrafficType) net.Listener
 	IsStop() bool
 	Close()
 }
 
 func (t *Traffic) Close() {
 	t.locker.Lock()
-	list := t.data.list()
-	t.data = newTTrafficData()
+	list := t.data.All()
+	t.data = NewMatcherData()
 	t.locker.Unlock()
 	for _, it := range list {
-		err := it.Close()
-		if err != nil {
-			log.Info("close traffic port-reqiure:", err)
-		}
+		it.Close()
 	}
 }
 
-func resolve(value string) net.IP {
-	ip := net.ParseIP(value)
-	if ip == nil {
-		return net.IPv6zero
-	}
-	if ip.Equal(net.IPv4zero) {
-		return net.IPv6zero
-	}
-	return ip
-}
-
-func ResolveTCPAddr(ip string, port int) *net.TCPAddr {
-
-	return &net.TCPAddr{
-		IP:   resolve(ip),
-		Port: port,
-		Zone: "",
-	}
-}
-
-func toName(ln net.Listener) string {
-	addr := ln.Addr()
-	return addrToName(addr)
-}
-
-func addrToName(addr net.Addr) string {
-	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
-
+func readPort(addr net.Addr) int {
+	ipPort := addr.String()
+	i := strings.LastIndex(ipPort, ":")
+	port := ipPort[i+1:]
+	pv, _ := strconv.Atoi(port)
+	return pv
 }
 
 type EmptyTraffic struct {
@@ -152,7 +102,7 @@ func NewEmptyTraffic() *EmptyTraffic {
 	return &EmptyTraffic{}
 }
 
-func (e *EmptyTraffic) ListenTcp(ip string, port int, trafficType TrafficType) net.Listener {
+func (e *EmptyTraffic) ListenTcp(port int, trafficType TrafficType) net.Listener {
 	return nil
 }
 
