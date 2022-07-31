@@ -17,12 +17,12 @@ type Service struct {
 
 func (s *Service) Put(key string, value []byte) error {
 	namespace, k := readKeys(key)
-	return s.sendEvent(eosc.EventSet, namespace, k, value)
+	return s.sendEvent(namespace, eosc.EventSet, k, value)
 }
 
 func (s *Service) Delete(key string) error {
 	namespace, k := readKeys(key)
-	return s.sendEvent(eosc.EventDel, namespace, k, nil)
+	return s.sendEvent(namespace, eosc.EventDel, k, nil)
 }
 
 func (s *Service) Reset(values []*etcd.KValue) {
