@@ -12,7 +12,9 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
+	open_api "github.com/eolinker/eosc/process-master/open-api"
 	"github.com/eolinker/eosc/utils"
 	"io"
 	"net"
@@ -20,8 +22,6 @@ import (
 	"strings"
 
 	"github.com/eolinker/eosc/process-master/extender"
-
-	open_api "github.com/eolinker/eosc/process-master/open-api"
 
 	raft_service "github.com/eolinker/eosc/process-master/raft-service"
 
@@ -33,7 +33,6 @@ import (
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/pidfile"
-	"github.com/eolinker/eosc/raft"
 	"github.com/eolinker/eosc/traffic"
 
 	"google.golang.org/grpc"
@@ -67,15 +66,12 @@ func ProcessDo(handler *MasterHandler) {
 
 type Master struct {
 	//service.UnimplementedMasterServer
-	node          *raft.Node
-	masterTraffic traffic.IController
-	workerTraffic traffic.IController
-	raftService   raft.IRaftService
-	masterSrv     *grpc.Server
-	ctx           context.Context
-	cancelFunc    context.CancelFunc
-
-	//PID           *pidfile.PidFile
+	etcdServer       etcd.Etcd
+	masterTraffic    traffic.IController
+	workerTraffic    traffic.IController
+	masterSrv        *grpc.Server
+	ctx              context.Context
+	cancelFunc       context.CancelFunc
 	httpserver       *http.Server
 	logWriter        io.Writer
 	dataController   *DataController
@@ -93,7 +89,7 @@ func (mh *MasterHandler) initHandler() {
 
 }
 
-func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
+func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, etcdServer etcd.Etcd) error {
 
 	if handler == nil {
 		handler = new(MasterHandler)
@@ -148,19 +144,14 @@ func (m *Master) start(handler *MasterHandler, cfg *config.Config) error {
 
 	m.openApiProxy = NewUnixClient()
 	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.openApiProxy))
-	m.workerController = NewWorkerController(m.workerTraffic, cfg, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
+	m.workerController = NewWorkerController(m.workerTraffic, listensMsg, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
 
 	m.dispatcherServe = NewDispatcherServer()
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
 	m.dataController = NewDataController(raftService, extenderManager, m.dispatcherServe)
 
-	node, err := raft.NewNode(raftService, m.adminController)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	m.node = node
+	etcdServer.Watch("/", raftService)
+	etcdServer.HandlerLeader(m.adminController)
 
 	return nil
 }
@@ -179,11 +170,6 @@ func (m *Master) Start(handler *MasterHandler) error {
 	if err != nil {
 		return err
 	}
-	err = m.start(handler, cfg)
-	if err != nil {
-		return err
-	}
-
 	// 监听master监听地址，用于接口处理
 	l, err := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen)
 	if err != nil {
@@ -200,9 +186,19 @@ func (m *Master) Start(handler *MasterHandler) error {
 		}
 		l = tls.NewListener(l, &tls.Config{GetCertificate: cert.GetCertificate})
 	}
-
-	m.startOpenApi(l)
-
+	mux := m.startHttpServer(l)
+	etcdServer, err := etcd.NewServer(m.ctx, mux)
+	if err != nil {
+		log.Error("start etcd error:", err)
+		return err
+	}
+	m.etcdServer = etcdServer
+	err = m.start(handler, cfg.Export(), etcdServer)
+	if err != nil {
+		return err
+	}
+	sm := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.openApiProxy)
+	mux.Handle("/", sm)
 	log.Info("process-master start grpc service")
 	err = m.startService()
 	if err != nil {
@@ -216,20 +212,19 @@ func (m *Master) Start(handler *MasterHandler) error {
 	return nil
 
 }
-func (m *Master) startOpenApi(l net.Listener) {
-	sm := open_api.NewOpenApiProxy(m.node, m.openApiProxy)
-	sm.ExcludeHandlers("/raft", m.node)
 
+func (m *Master) startHttpServer(l net.Listener) *http.ServeMux {
+	mux := http.NewServeMux()
 	m.httpserver = &http.Server{
-		Handler: sm,
+		Handler: mux,
 	}
-
 	go func() {
 		err := m.httpserver.Serve(l)
 		if err != nil {
 			log.Warn(err)
 		}
 	}()
+	return mux
 }
 
 func (m *Master) Wait(pFile *pidfile.PidFile) error {
@@ -239,7 +234,7 @@ func (m *Master) Wait(pFile *pidfile.PidFile) error {
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
-		//fmt.Println(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
+		//log.Debug(os.Interrupt.String(), sig.String(), sig == os.Interrupt)
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
@@ -253,7 +248,7 @@ func (m *Master) Wait(pFile *pidfile.PidFile) error {
 			}
 		case syscall.SIGUSR1:
 			{
-				m.node.Stop()
+				m.etcdServer.Close()
 				log.Info("try fork new")
 				err := m.Fork(pFile) //传子进程需要的内容
 				if err != nil {
@@ -271,16 +266,16 @@ func (m *Master) Close() {
 }
 
 func (m *Master) close() {
-	if m.node == nil {
+	if m.etcdServer == nil {
 		return
 	}
 	log.Info("process-master close")
 	log.Info("raft node close")
-	m.node.Stop()
+	m.etcdServer.Close()
 
 	m.cancelFunc()
 	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
-	
+
 	m.masterTraffic.Close()
 	m.workerTraffic.Close()
 	m.dispatcherServe.Close()

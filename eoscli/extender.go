@@ -48,28 +48,28 @@ package eoscli
 //	for _, id := range c.Args().Slice() {
 //		group, project, _, err := extends.DecodeExtenderId(id)
 //		if err != nil {
-//			fmt.Printf("%s is not exists\n", id)
+//			log.Debugf("%s is not exists\n", id)
 //			continue
 //		}
 //		versions, err := extends.GetAvailableVersions(group, project)
 //		if err != nil {
-//			fmt.Printf("%s is not exists\n", id)
+//			log.Debugf("%s is not exists\n", id)
 //			continue
 //		}
-//		fmt.Printf("[%s]\n", id)
+//		log.Debugf("[%s]\n", id)
 //		for i, v := range versions {
 //			isLatest := ""
 //			if v.IsLatest {
 //				isLatest = "（latest）"
 //			}
 //			if i != 0 {
-//				fmt.Printf("\t\t")
+//				log.Debugf("\t\t")
 //			} else {
-//				fmt.Printf("  ")
+//				log.Debugf("  ")
 //			}
-//			fmt.Printf("%s:%s %s", id, v.Version, isLatest)
+//			log.Debugf("%s:%s %s", id, v.Version, isLatest)
 //		}
-//		fmt.Println()
+//		log.Debug()
 //	}
 //
 //	return nil
@@ -100,9 +100,9 @@ package eoscli
 //		}
 //		all := register.All()
 //
-//		fmt.Println("read:", id)
+//		log.Debug("read:", id)
 //		for _, name := range all {
-//			fmt.Println("\t", name)
+//			log.Debug("\t", name)
 //		}
 //	}
 //
@@ -130,7 +130,7 @@ package eoscli
 //
 //func ExtenderInstall(c *cli.Context) error {
 //	if c.Args().Len() < 1 {
-//		fmt.Println("empty extender id list")
+//		log.Debug("empty extender id list")
 //		return nil
 //	}
 //	pid, err := readPid(env.PidFileDir())
@@ -156,35 +156,35 @@ package eoscli
 //	}
 //
 //	if len(response.Extends) > 0 {
-//		fmt.Println("the extender which are installed are below:")
+//		log.Debug("the extender which are installed are below:")
 //		for _, ext := range response.Extends {
-//			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+//			log.Debugf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 //			if len(ext.Plugins) < 1 {
-//				fmt.Printf("this extender has not plugin\n")
+//				log.Debugf("this extender has not plugin\n")
 //				continue
 //			}
-//			fmt.Printf("the plugins in extender are below：\n")
+//			log.Debugf("the plugins in extender are below：\n")
 //			for _, p := range ext.Plugins {
-//				fmt.Printf("plugin id：%s\nplugin name：%s\n", p.Id, p.Name)
+//				log.Debugf("plugin id：%s\nplugin name：%s\n", p.Id, p.Name)
 //				continue
 //			}
 //		}
 //	}
 //
 //	if len(response.FailExtends) > 0 {
-//		fmt.Println("the extender which are installed failed are below:")
+//		log.Debug("the extender which are installed failed are below:")
 //		for _, ext := range response.FailExtends {
-//			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
+//			log.Debugf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 //		}
 //	}
 //
-//	fmt.Println("extender install finish")
+//	log.Debug("extender install finish")
 //	return nil
 //}
 //
 //func ExtenderUpgrade(c *cli.Context) error {
 //	if c.Args().Len() < 1 {
-//		fmt.Println("empty extender id list")
+//		log.Debug("empty extender id list")
 //		return nil
 //	}
 //	pid, err := readPid(env.PidFileDir())
@@ -207,34 +207,34 @@ package eoscli
 //		return errors.New(response.Msg)
 //	}
 //	if len(response.Extends) > 0 {
-//		fmt.Println("the extender which are upgraded are below：")
+//		log.Debug("the extender which are upgraded are below：")
 //		for _, ext := range response.Extends {
-//			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+//			log.Debugf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 //			if len(ext.Plugins) < 1 {
-//				fmt.Printf("the extender has not plugin\n")
+//				log.Debugf("the extender has not plugin\n")
 //				continue
 //			}
-//			fmt.Printf("the plugins in extender are below：\n")
+//			log.Debugf("the plugins in extender are below：\n")
 //			for _, p := range ext.Plugins {
-//				fmt.Printf("id：%s\nname：%s\n", p.Id, p.Name)
+//				log.Debugf("id：%s\nname：%s\n", p.Id, p.Name)
 //				continue
 //			}
 //		}
 //	}
 //
 //	if len(response.FailExtends) > 0 {
-//		fmt.Println("the extender which are upgraded failed are below:")
+//		log.Debug("the extender which are upgraded failed are below:")
 //		for _, ext := range response.FailExtends {
-//			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
+//			log.Debugf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 //		}
 //	}
-//	fmt.Println("extender uninstall finish")
+//	log.Debug("extender uninstall finish")
 //	return nil
 //}
 //
 //func ExtenderUninstall(c *cli.Context) error {
 //	if c.Args().Len() < 1 {
-//		fmt.Println("empty extender id list")
+//		log.Debug("empty extender id list")
 //		return nil
 //	}
 //	pid, err := readPid(env.PidFileDir())
@@ -257,23 +257,23 @@ package eoscli
 //		return errors.New(response.Msg)
 //	}
 //	if len(response.Extends) < 1 {
-//		fmt.Printf("extender：%s need not uninstall\n", strings.Join(c.Args().Slice(), ","))
+//		log.Debugf("extender：%s need not uninstall\n", strings.Join(c.Args().Slice(), ","))
 //		return nil
 //	}
 //	if len(response.Extends) > 0 {
-//		fmt.Println("the extender which are uninstall are below：")
+//		log.Debug("the extender which are uninstall are below：")
 //		for _, ext := range response.Extends {
-//			fmt.Printf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
+//			log.Debugf("name：%s\nversion：%s\n", extends.FormatProject(ext.Group, ext.Project), ext.Version)
 //		}
 //	}
 //	if len(response.FailExtends) > 0 {
-//		fmt.Println("the extender which are uninstall failed are below：")
+//		log.Debug("the extender which are uninstall failed are below：")
 //		for _, ext := range response.FailExtends {
-//			fmt.Printf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
+//			log.Debugf("name: %s, reason: %s\n", extends.FormatProject(ext.Group, ext.Project), ext.Msg)
 //		}
 //	}
 //
-//	fmt.Println("extender uninstall finish")
+//	log.Debug("extender uninstall finish")
 //	return nil
 //}
 //
@@ -281,7 +281,7 @@ package eoscli
 //	for _, id := range c.Args().Slice() {
 //		group, name, version, err := extends.DecodeExtenderId(id)
 //		if err != nil {
-//			fmt.Println("decode extender id error:", err, "id is", id)
+//			log.Debug("decode extender id error:", err, "id is", id)
 //			continue
 //		}
 //		// 当本地不存在当前插件时，从插件市场中下载
@@ -292,7 +292,7 @@ package eoscli
 //		}
 //		err = extends.DownLoadToRepository(group, name, version)
 //		if err != nil {
-//			fmt.Println("download extender error:", err, "id is", id)
+//			log.Debug("download extender error:", err, "id is", id)
 //			continue
 //		}
 //	}
@@ -301,7 +301,7 @@ package eoscli
 //
 //func ExtenderInfo(c *cli.Context) error {
 //	if c.Args().Len() < 1 {
-//		fmt.Println("empty extender id list")
+//		log.Debug("empty extender id list")
 //		return nil
 //	}
 //	for _, id := range c.Args().Slice() {
@@ -320,11 +320,11 @@ package eoscli
 //		if info.IsLatest {
 //			isLatest = "（latest）"
 //		}
-//		fmt.Printf("name： %s\n", extends.FormatProject(group, project))
-//		fmt.Printf("version： %s %s\n", info.Version, isLatest)
-//		fmt.Printf("description：%s\n", info.Description)
-//		fmt.Printf("download url：%s\n", info.URL)
-//		fmt.Printf("install to run：%s extender install %s\n", os.Args[0], info.ID)
+//		log.Debugf("name： %s\n", extends.FormatProject(group, project))
+//		log.Debugf("version： %s %s\n", info.Version, isLatest)
+//		log.Debugf("description：%s\n", info.Description)
+//		log.Debugf("download url：%s\n", info.URL)
+//		log.Debugf("install to run：%s extender install %s\n", os.Args[0], info.ID)
 //	}
 //
 //	return nil

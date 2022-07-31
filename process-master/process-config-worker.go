@@ -50,12 +50,12 @@ func (wc *WorkerController) Update(status []*extender.Status, success bool) {
 	}
 }
 
-func NewWorkerController(traffic traffic.IController, config *config.Config, workerProcess *process.ProcessController) *WorkerController {
+func NewWorkerController(traffic traffic.IController, listensMsg *config.ListensMsg, workerProcess *process.ProcessController) *WorkerController {
 	traffics, files := traffic.Export(3)
 	wc := &WorkerController{
 		traffics:      traffics,
 		trafficFiles:  files,
-		listensMsg:    config.Export(),
+		listensMsg:    listensMsg,
 		workerProcess: workerProcess,
 	}
 	return wc
