@@ -19,7 +19,7 @@ func arraySet(originVal reflect.Value, targetVal reflect.Value, variable map[str
 	for j := 0; j < originVal.Len(); j++ {
 		indexValue := originVal.Index(j)
 		newValue := reflect.New(targetVal.Type().Elem())
-		err := recurseReflect(indexValue, newValue, variable, "")
+		err := recurseReflect(indexValue, newValue, variable)
 		if err != nil {
 			return err
 		}

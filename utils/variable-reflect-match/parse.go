@@ -2,42 +2,44 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"reflect"
 )
 
-func NewParse(typ reflect.Type, variable map[string]string) (*Parse, error) {
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	if typ.Kind() != reflect.Struct {
-		return nil, errors.New("error struct")
-	}
-	return &Parse{typ: typ, variable: variable}, nil
+func NewParse(variable map[string]string) (*Parse, error) {
+	return &Parse{variable: variable}, nil
 }
 
 type Parse struct {
 	variable map[string]string
-	origin   interface{}
+}
+
+func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, error) {
+	o := newOrg(typ, p.variable)
+	err := json.Unmarshal(buf, o)
+	return o.target, err
+}
+
+type org struct {
 	typ      reflect.Type
+	variable map[string]string
+	target   interface{}
 }
 
-func (p *Parse) String() string {
-	b, _ := json.Marshal(p.origin)
-	return string(b)
+func newOrg(typ reflect.Type, variable map[string]string) *org {
+	return &org{typ: typ, variable: variable}
 }
 
-func (p *Parse) UnmarshalJSON(bytes []byte) error {
+func (o *org) UnmarshalJSON(bytes []byte) error {
 	var origin interface{}
 	err := json.Unmarshal(bytes, &origin)
 	if err != nil {
 		return err
 	}
-	target := reflect.New(p.typ)
-	err = recurseReflect(reflect.ValueOf(origin), target, p.variable, "")
+	target := reflect.New(o.typ)
+	err = recurseReflect(reflect.ValueOf(origin), target, o.variable)
 	if err != nil {
 		return err
 	}
-	p.origin = target.Interface()
+	o.target = target.Elem().Interface()
 	return nil
 }
