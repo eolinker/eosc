@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"net/http"
@@ -26,6 +27,23 @@ type _Server struct {
 	requestTimeout          time.Duration
 	name                    string
 	leaderChangeHandler     []ILeaderStateHandler
+}
+
+func (s *_Server) Version() Versions {
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	strv := "not_decided"
+	if s.server != nil {
+		v := s.server.Cluster().Version()
+		if v != nil {
+			strv = v.String()
+		}
+	}
+	return Versions{
+		Server:  version.Version,
+		Cluster: strv,
+	}
 }
 
 func NewServer(ctx context.Context, mux *http.ServeMux) (*_Server, error) {

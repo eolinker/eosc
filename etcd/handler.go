@@ -2,8 +2,6 @@ package etcd
 
 import (
 	"encoding/json"
-	"fmt"
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -19,93 +17,64 @@ const (
 	peerMemberPromotePrefix = "/members/promote/"
 )
 
-func (s *_Server) addHandler(mux *http.ServeMux)  {
+func (s *_Server) addHandler(mux *http.ServeMux) {
 
 	mux.HandleFunc("/raft/node/join", s.join)
 
 	mux.HandleFunc(rafthttp.RaftPrefix, func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		if s.raftHandler != nil{
-			s.raftHandler.ServeHTTP(w,r)
+		if s.raftHandler != nil {
+			s.raftHandler.ServeHTTP(w, r)
 		}
 	})
 	mux.HandleFunc(rafthttp.RaftPrefix+"/", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		if s.raftHandler != nil{
-			s.raftHandler.ServeHTTP(w,r)
+		if s.raftHandler != nil {
+			s.raftHandler.ServeHTTP(w, r)
 		}
 	})
 	mux.HandleFunc(peerMembersPath, s.peerMembersHandler)
 	mux.HandleFunc(peerMemberPromotePrefix, s.peerMemberPromoteHandler)
 
-	 leaseHandler:= func(w http.ResponseWriter, r *http.Request) {
-		 s.mu.RLock()
-		 defer s.mu.RUnlock()
-		if s.leaseHandler!= nil{
-			 s.leaseHandler.ServeHTTP(w,r)
-			return
-		}
-		http.NotFound(w,r)
-	 }
-
-	 mux.HandleFunc(leasehttp.LeasePrefix, leaseHandler)
-	 mux.HandleFunc(leasehttp.LeaseInternalPrefix, leaseHandler)
-
-	downgradeEnabledHandler:= func(w http.ResponseWriter, r *http.Request) {
+	leaseHandler := func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		if s.downgradeEnabledHandler!= nil{
-			s.downgradeEnabledHandler.ServeHTTP(w,r)
+		if s.leaseHandler != nil {
+			s.leaseHandler.ServeHTTP(w, r)
 			return
 		}
-		http.NotFound(w,r)
+		http.NotFound(w, r)
+	}
+
+	mux.HandleFunc(leasehttp.LeasePrefix, leaseHandler)
+	mux.HandleFunc(leasehttp.LeaseInternalPrefix, leaseHandler)
+
+	downgradeEnabledHandler := func(w http.ResponseWriter, r *http.Request) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		if s.downgradeEnabledHandler != nil {
+			s.downgradeEnabledHandler.ServeHTTP(w, r)
+			return
+		}
+		http.NotFound(w, r)
 	}
 
 	mux.HandleFunc(etcdserver.DowngradeEnabledPath, downgradeEnabledHandler)
 
-		mux.HandleFunc(etcdserver.PeerHashKVPath, func(w http.ResponseWriter, r *http.Request) {
-			s.mu.RLock()
-			defer  s.mu.RUnlock()
-			if s.hashKVHandler != nil{
-				s.hashKVHandler.ServeHTTP(w,r)
-			}
-		})
-
-	//mux.HandleFunc("/version", versionHandler(s.server.Cluster(), serveVersion))
-	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(etcdserver.PeerHashKVPath, func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
-		if s.server != nil{
-			v:=	s.server.Cluster().Version()
-			strv := "not_decided"
-			if v != nil {
-				strv =  v.String()
-			}
-			if !allowMethod(w, r, "GET") {
-				return
-			}
-			vs := version.Versions{
-				Server:  version.Version,
-				Cluster: strv,
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			b, err := json.Marshal(&vs)
-			if err != nil {
-				panic(fmt.Sprintf("cannot marshal versions to json (%v)", err))
-			}
-			w.Write(b)
+		if s.hashKVHandler != nil {
+			s.hashKVHandler.ServeHTTP(w, r)
 		}
-
 	})
 }
 
-
 type joinRequest struct {
 	Addr []string `json:"addr"`
-	Name string `json:"name"`
+	Name string   `json:"name"`
 }
 type joinResponse struct {
 	Members map[string][]string `json:"members"`
@@ -116,6 +85,7 @@ type Response struct {
 	Msg  string      `json:"msg"`
 	Data interface{} `json:"data,omitempty"`
 }
+
 func (s *_Server) join(w http.ResponseWriter, r *http.Request) {
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -131,14 +101,14 @@ func (s *_Server) join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := new(joinResponse)
-	response.Members,  err = s.addMember(request.Name,request.Addr)
+	response.Members, err = s.addMember(request.Name, request.Addr)
 	if err != nil {
 		panic(err)
 	}
 	writeSuccessResult(w, response)
 }
 
-func (s *_Server) addMember(name string,urls []string) (map[string][]string,  error) {
+func (s *_Server) addMember(name string, urls []string) (map[string][]string, error) {
 	purls, err := types.NewURLs(urls)
 	if err != nil {
 		return nil, err
