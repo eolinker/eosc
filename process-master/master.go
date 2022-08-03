@@ -78,15 +78,23 @@ type Master struct {
 	workerController *WorkerController
 	adminController  *AdminController
 	dispatcherServe  *DispatcherServer
-	openApiProxy     *UnixAdminProcess
+	adminClient      *UnixClient
 }
 
 type MasterHandler struct {
 	InitProfession func() []*eosc.ProfessionConfig
+	VersionHandler func(etcd2 etcd.Etcd) http.Handler
 }
 
 func (mh *MasterHandler) initHandler() {
-
+	if mh.VersionHandler == nil {
+		mh.VersionHandler = func(server etcd.Etcd) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				version := server.Version()
+				json.NewEncoder(w).Encode(version)
+			})
+		}
+	}
 }
 
 func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, etcdServer etcd.Etcd) error {
@@ -142,8 +150,7 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 		return config
 	})
 
-	m.openApiProxy = NewUnixClient()
-	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.openApiProxy))
+	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminClient))
 	m.workerController = NewWorkerController(m.workerTraffic, listensMsg, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
 
 	m.dispatcherServe = NewDispatcherServer()
@@ -192,13 +199,18 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("start etcd error:", err)
 		return err
 	}
+	m.adminClient = NewUnixClient()
 	m.etcdServer = etcdServer
 	err = m.start(handler, cfg.Export(), etcdServer)
 	if err != nil {
 		return err
 	}
-	sm := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.openApiProxy)
-	mux.Handle("/", sm)
+	openApiProxy := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.adminClient)
+
+	mux.Handle("/system/version", handler.VersionHandler(etcdServer))
+	mux.HandleFunc("/system/info", m.EtcdInfoHandler)
+	mux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
+	mux.Handle("/", openApiProxy)
 	log.Info("process-master start grpc service")
 	err = m.startService()
 	if err != nil {
