@@ -23,4 +23,8 @@ type EoContext interface {
 	SetFinish(handler FinishHandler)
 	Scheme() string
 	Assert(i interface{}) error
+
+	SetLabel(name, value string)
+	GetLabel(name string) string
+	Labels() map[string]string
 }
