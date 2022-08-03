@@ -15,6 +15,8 @@ type Etcd interface {
 	Leave() error
 	Close() error
 	Info() Info
+	Nodes() []*Node
+	Status() *Node
 	Version() Versions
 }
 

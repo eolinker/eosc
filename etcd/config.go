@@ -64,7 +64,7 @@ func CreatePeerUrl() (types.URLs, types.URLs, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	clientUrl, err := createPeerUrl("tcp", c.Listen, nil)
+	clientUrl, err := createPeerUrl("eosc", c.Listen, nil)
 	if err != nil {
 		return nil, nil, err
 	}
