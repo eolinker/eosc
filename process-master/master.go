@@ -209,7 +209,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 
 	mux.Handle("/system/version", handler.VersionHandler(etcdServer))
 	mux.HandleFunc("/system/info", m.EtcdInfoHandler)
-	mux.HandleFunc("/system/status", m.StatusHandler)
+	mux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
 	mux.Handle("/", openApiProxy)
 	log.Info("process-master start grpc service")
 	err = m.startService()
