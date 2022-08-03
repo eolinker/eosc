@@ -73,8 +73,9 @@ func (s *_Server) addHandler(mux *http.ServeMux) {
 }
 
 type joinRequest struct {
-	Addr []string `json:"addr"`
-	Name string   `json:"name"`
+	Addr   []string `json:"addr"`
+	Name   string   `json:"name"`
+	Client []string `json:"client"`
 }
 type joinResponse struct {
 	Members map[string][]string `json:"members"`
@@ -101,21 +102,21 @@ func (s *_Server) join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := new(joinResponse)
-	response.Members, err = s.addMember(request.Name, request.Addr)
+	response.Members, err = s.addMember(request.Name, request.Addr, request.Client)
 	if err != nil {
 		panic(err)
 	}
 	writeSuccessResult(w, response)
 }
 
-func (s *_Server) addMember(name string, urls []string) (map[string][]string, error) {
+func (s *_Server) addMember(name string, urls []string, clients []string) (map[string][]string, error) {
 	purls, err := types.NewURLs(urls)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now()
 	member := membership.NewMember(name, purls, "APINTO_CLUSTER", &now)
-
+	member.ClientURLs = clients
 	ctx, _ := s.requestContext()
 	members, err := s.server.AddMember(ctx, *member)
 

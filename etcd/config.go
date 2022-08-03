@@ -54,25 +54,40 @@ const (
 
 var etcdInitPath = filepath.Join(env.DataDir(), "cluster", "etcd.init")
 
-func CreatePeerUrl() (types.URLs, error) {
+func CreatePeerUrl() (types.URLs, types.URLs, error) {
 	c, err := eoscConfig.GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 	admin := c.Admin
-	return createPeerUrl(admin.Scheme, admin.Listen, []string{admin.IP})
+	peerUrl, err := createPeerUrl(admin.Scheme, []int{admin.Listen}, []string{admin.IP})
+	if err != nil {
+		return nil, nil, err
+	}
+	clientUrl, err := createPeerUrl("tcp", c.Listen, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return peerUrl, clientUrl, nil
 }
-func createPeerUrl(schema string, port int, ips []string) (types.URLs, error) {
+func createPeerUrl(schema string, ports []int, ips []string) (types.URLs, error) {
 
 	urls := make([]string, 0)
 	for _, ip := range ips {
 		if ip == "" || ip == "0.0.0.0" {
-			return createPeerUrl(schema, port, readAllIp())
+			return createPeerUrl(schema, ports, readAllIp())
 		}
-		urls = append(urls, fmt.Sprintf("%s://%s:%d", schema, ip, port))
+		for _, port := range ports {
+			if schema != "" {
+				urls = append(urls, fmt.Sprintf("%s://%s:%d", schema, ip, port))
+			} else {
+				urls = append(urls, fmt.Sprintf("%s:%d", ip, port))
+
+			}
+		}
 	}
 	if len(urls) == 0 {
-		return createPeerUrl(schema, port, readAllIp())
+		return createPeerUrl(schema, ports, readAllIp())
 	}
 
 	return parseAndCheckURLs(urls)
@@ -108,7 +123,7 @@ func etcdServerConfig() config.ServerConfig {
 
 	dataDir := env.DataDir()
 
-	peerUrl, err := CreatePeerUrl()
+	peerUrl, clientUrl, err := CreatePeerUrl()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,7 +138,7 @@ func etcdServerConfig() config.ServerConfig {
 
 	srvcfg := config.ServerConfig{
 
-		ClientURLs:                               peerUrl,
+		ClientURLs:                               clientUrl,
 		PeerURLs:                                 peerUrl,
 		DataDir:                                  dataDir,
 		DedicatedWALDir:                          "",

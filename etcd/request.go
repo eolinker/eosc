@@ -10,15 +10,16 @@ import (
 	"net/url"
 )
 
-func (s *_Server) sendJoinRequest(target string, addr []string) (map[string][]string, error) {
+func (s *_Server) sendJoinRequest(target string, addr []string, client []string) (map[string][]string, error) {
 	uri, err := url.Parse(fmt.Sprintf("%s/raft/node/join", target))
 	if err != nil {
 		log.Printf("fail to join: addr is %s, error is %s", target, err.Error())
 		return nil, nil
 	}
 	msg := joinRequest{
-		Addr: addr,
-		Name: s.name,
+		Addr:   addr,
+		Name:   s.name,
+		Client: client,
 	}
 	data, _ := json.Marshal(msg)
 	// 向集群中的某个节点发送要加入的请求

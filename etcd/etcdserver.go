@@ -126,7 +126,7 @@ func (s *_Server) Join(target string) error {
 	if checkIsJoined() {
 		return ErrorAlreadyInCluster
 	}
-	urls, err := CreatePeerUrl()
+	urls, clientUrls, err := CreatePeerUrl()
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (s *_Server) Join(target string) error {
 	defer s.mu.Unlock()
 
 	// 	发出join请求，获取相关信息
-	clusters, err := s.sendJoinRequest(target, urls.StringSlice())
+	clusters, err := s.sendJoinRequest(target, urls.StringSlice(), clientUrls.StringSlice())
 	if err != nil {
 		return err
 	}
