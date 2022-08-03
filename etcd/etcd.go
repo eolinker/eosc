@@ -1,7 +1,11 @@
 package etcd
 
-import "go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+import (
+	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+)
 
+type Versions version.Versions
 type Etcd interface {
 	IsLeader() (bool, []string)
 	KV
@@ -11,6 +15,7 @@ type Etcd interface {
 	Leave() error
 	Close() error
 	Info() Info
+	Version() Versions
 }
 
 type KValue struct {
