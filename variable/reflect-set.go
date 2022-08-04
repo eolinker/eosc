@@ -1,8 +1,9 @@
-package main
+package variable
 
 import (
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc"
 	"reflect"
 	"strconv"
 )
@@ -10,6 +11,10 @@ import (
 var (
 	ErrorVariableNotFound = errors.New("variable not found")
 	ErrorUnsupportedKind  = errors.New("unsupported kind")
+)
+
+var (
+	methodName = "Reset"
 )
 
 func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string) error {
@@ -43,20 +48,37 @@ func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string
 }
 
 func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
-	value := originVal.Elem()
-	switch value.Kind() {
+	if targetVal.Type().Implements(reflect.TypeOf((*eosc.IPluginReset)(nil)).Elem()) {
+		// 判断是否实现IPluginReset接口
+		f := targetVal.MethodByName(methodName)
+		if f.IsValid() {
+			// 判断是否实现Reset方法，如果实现，则执行赋值操作
+			if targetVal.Kind() == reflect.Ptr {
+				targetVal = targetVal.Elem()
+			}
+			vs := f.Call([]reflect.Value{reflect.ValueOf(originVal.Elem()), reflect.ValueOf(targetVal), reflect.ValueOf(variable)})
+			if len(vs) > 0 {
+				err, ok := vs[0].Interface().(error)
+				if ok {
+					return err
+				}
+				return nil
+			}
+		}
+	}
+	switch originVal.Elem().Kind() {
 	case reflect.Map:
-		return mapSet(value, targetVal, variable)
+		return mapSet(originVal.Elem(), targetVal, variable)
 	case reflect.Array, reflect.Slice:
-		return arraySet(value, targetVal, variable)
+		return arraySet(originVal.Elem(), targetVal, variable)
 	case reflect.String:
-		return stringSet(value, targetVal, variable)
+		return stringSet(originVal.Elem(), targetVal, variable)
 	case reflect.Float64:
-		return float64Set(value, targetVal)
+		return float64Set(originVal.Elem(), targetVal)
 	case reflect.Bool:
-		return boolSet(value, targetVal)
+		return boolSet(originVal.Elem(), targetVal)
 	default:
-		fmt.Println("interface deal", "kind", value.Kind())
+		fmt.Println("interface deal", "kind", originVal.Elem().Kind())
 	}
 	return nil
 }
@@ -98,6 +120,30 @@ func float64Set(originVal reflect.Value, targetVal reflect.Value) error {
 	return nil
 }
 
+func arraySet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+	if originVal.Kind() != reflect.Slice && originVal.Kind() != reflect.Array {
+		return fmt.Errorf("origin error: %w %s", ErrorUnsupportedKind, originVal.Kind())
+	}
+	if targetVal.Kind() == reflect.Ptr {
+		targetVal = targetVal.Elem()
+	}
+	if targetVal.Kind() != reflect.Slice {
+		return fmt.Errorf("target error %w %s", ErrorUnsupportedKind, targetVal.Kind())
+	}
+	newSlice := reflect.MakeSlice(targetVal.Type(), 0, originVal.Cap())
+	for j := 0; j < originVal.Len(); j++ {
+		indexValue := originVal.Index(j)
+		newValue := reflect.New(targetVal.Type().Elem())
+		err := RecurseReflect(indexValue, newValue, variable)
+		if err != nil {
+			return err
+		}
+		newSlice = reflect.Append(newSlice, newValue.Elem())
+	}
+	targetVal.Set(newSlice)
+	return nil
+}
+
 func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
 	if originVal.Kind() != reflect.Map {
 		return fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
@@ -117,20 +163,17 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[strin
 		}
 	case reflect.Map:
 		{
-			if targetVal.Type() == reflect.TypeOf(PluginMap{}) {
-				return PluginMapSet(originVal, targetVal, variable)
-			}
 			targetType := targetVal.Type()
 			newMap := reflect.MakeMap(targetType)
 			for _, key := range originVal.MapKeys() {
 				newKey := reflect.New(targetType.Key())
-				err := recurseReflect(key, newKey, variable)
+				err := RecurseReflect(key, newKey, variable)
 				if err != nil {
 					return err
 				}
 				value := originVal.MapIndex(key)
 				newValue := reflect.New(targetType.Elem())
-				err = recurseReflect(value, newValue, variable)
+				err = RecurseReflect(value, newValue, variable)
 				if err != nil {
 					return err
 				}
@@ -145,7 +188,6 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[strin
 				return err
 			}
 		}
-
 	default:
 		{
 			fmt.Println("type", targetVal.Type(), "kind", targetVal.Kind())
@@ -161,7 +203,7 @@ func structSet(originVal reflect.Value, targetVal reflect.Value, variable map[st
 		fieldValue := reflect.New(field.Type)
 		tag := field.Tag.Get("json")
 		value := originVal.MapIndex(reflect.ValueOf(tag))
-		err := recurseReflect(value, fieldValue, variable)
+		err := RecurseReflect(value, fieldValue, variable)
 		if err != nil {
 			return err
 		}

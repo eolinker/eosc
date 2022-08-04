@@ -1,4 +1,4 @@
-package main
+package variable
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ func (o *org) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 	target := reflect.New(o.typ)
-	err = recurseReflect(reflect.ValueOf(origin), target, o.variable)
+	err = RecurseReflect(reflect.ValueOf(origin), target, o.variable)
 	if err != nil {
 		return err
 	}

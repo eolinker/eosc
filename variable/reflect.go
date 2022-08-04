@@ -1,13 +1,11 @@
-package main
+package variable
 
 import (
-	"fmt"
 	"reflect"
 )
 
-// recurseReflect 递归反射值给对象
-func recurseReflect(originVal reflect.Value, targetValue reflect.Value, variable map[string]string) error {
-	fmt.Println("origin kind:", originVal.Kind())
+// RecurseReflect 递归反射值给对象
+func RecurseReflect(originVal reflect.Value, targetValue reflect.Value, variable map[string]string) error {
 	switch originVal.Kind() {
 	case reflect.Interface:
 		return interfaceSet(originVal, targetValue, variable)
@@ -18,6 +16,5 @@ func recurseReflect(originVal reflect.Value, targetValue reflect.Value, variable
 	case reflect.Array, reflect.Slice:
 		return arraySet(originVal, targetValue, variable)
 	}
-
 	return nil
 }
