@@ -17,19 +17,19 @@ var (
 	ErrorAdminProcessNotInit = errors.New("admin process not init")
 )
 
-type UnixAdminProcess struct {
+type UnixClient struct {
 	addr    string
 	client  *http.Client
 	timeout time.Duration
 }
 
-func (uc *UnixAdminProcess) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+func (uc *UnixClient) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	if uc.addr == "" {
 		return nil, ErrorAdminProcessNotInit
 	}
 	return net.DialTimeout("unix", uc.addr, uc.timeout)
 }
-func (uc *UnixAdminProcess) Update(process *exec.Cmd) {
+func (uc *UnixClient) Update(process *exec.Cmd) {
 	if process == nil {
 		uc.addr = ""
 		return
@@ -37,15 +37,15 @@ func (uc *UnixAdminProcess) Update(process *exec.Cmd) {
 	uc.addr = service.ServerUnixAddr(process.Process.Pid, "admin")
 }
 
-func NewUnixClient() *UnixAdminProcess {
-	ul := &UnixAdminProcess{}
+func NewUnixClient() *UnixClient {
+	ul := &UnixClient{}
 	transport := &http.Transport{
 		DialContext: ul.DialContext,
 	}
 	ul.client = &http.Client{Transport: transport}
 	return ul
 }
-func (uc *UnixAdminProcess) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	log.Debug("proxy:", request.RequestURI)
 
 	if uc.addr == "" {
