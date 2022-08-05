@@ -20,6 +20,21 @@ type ExampleHttpContext struct {
 	finish   FinishHandler
 }
 
+func (e *ExampleHttpContext) SetLabel(name, value string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) GetLabel(name string) string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) Labels() map[string]string {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (e *ExampleHttpContext) RequestId() string {
 	//TODO implement me
 	panic("implement me")
