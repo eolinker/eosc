@@ -3,7 +3,6 @@ package variable
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
 	"reflect"
 	"strconv"
 )
@@ -13,74 +12,56 @@ var (
 	ErrorUnsupportedKind  = errors.New("unsupported kind")
 )
 
-var (
-	methodName = "Reset"
-)
-
-func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
-		targetVal = targetVal.Elem()
+		return stringSet(value, targetVal.Elem(), variable)
 	}
 	builder := NewBuilder(value.String())
-	val, success := builder.Replace(variable)
+	val, useVariables, success := builder.Replace(variable)
 	if !success {
-		return ErrorVariableNotFound
+		return nil, ErrorVariableNotFound
 	}
 	switch targetVal.Kind() {
 	case reflect.Int, reflect.Int32, reflect.Int64:
 		v, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return fmt.Errorf("string set parse int error: %w", err)
+			return nil, fmt.Errorf("string set parse int error: %w", err)
 		}
 		targetVal.SetInt(v)
 	case reflect.Bool:
 		v, err := strconv.ParseBool(val)
 		if err != nil {
-			return fmt.Errorf("string set parse bool error: %w", err)
+			return nil, fmt.Errorf("string set parse bool error: %w", err)
 		}
 		targetVal.SetBool(v)
 	case reflect.String:
 		targetVal.SetString(val)
 	default:
-		return fmt.Errorf("%w %s", ErrorUnsupportedKind, targetVal.Kind())
+		return nil, fmt.Errorf("%w %s", ErrorUnsupportedKind, targetVal.Kind())
 	}
-	return nil
+	return useVariables, nil
 }
 
-func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
-	if targetVal.Type().Implements(reflect.TypeOf((*eosc.IPluginReset)(nil)).Elem()) {
-		// 判断是否实现IPluginReset接口
-		f := targetVal.MethodByName(methodName)
-		if f.IsValid() {
-			// 判断是否实现Reset方法，如果实现，则执行赋值操作
-			if targetVal.Kind() == reflect.Ptr {
-				targetVal = targetVal.Elem()
-			}
-			vs := f.Call([]reflect.Value{reflect.ValueOf(originVal.Elem()), reflect.ValueOf(targetVal), reflect.ValueOf(variable)})
-			if len(vs) > 0 {
-				err, ok := vs[0].Interface().(error)
-				if ok {
-					return err
-				}
-				return nil
-			}
-		}
-	}
+func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
+	usedVariables := make([]string, 0, len(variables))
+	var used []string
+	var err error
 	switch originVal.Elem().Kind() {
 	case reflect.Map:
-		return mapSet(originVal.Elem(), targetVal, variable)
+		used, err = mapSet(originVal.Elem(), targetVal, variables)
 	case reflect.Array, reflect.Slice:
-		return arraySet(originVal.Elem(), targetVal, variable)
+		used, err = arraySet(originVal.Elem(), targetVal, variables)
 	case reflect.String:
-		return stringSet(originVal.Elem(), targetVal, variable)
+		used, err = stringSet(originVal.Elem(), targetVal, variables)
 	case reflect.Float64:
-		return float64Set(originVal.Elem(), targetVal)
+		err = float64Set(originVal.Elem(), targetVal)
 	case reflect.Bool:
-		return boolSet(originVal.Elem(), targetVal)
+		err = boolSet(originVal.Elem(), targetVal)
 	default:
 		fmt.Println("interface deal", "kind", originVal.Elem().Kind())
 	}
-	return nil
+	usedVariables = append(usedVariables, used...)
+	return usedVariables, err
 }
 
 func boolSet(originVal reflect.Value, targetVal reflect.Value) error {
@@ -120,33 +101,35 @@ func float64Set(originVal reflect.Value, targetVal reflect.Value) error {
 	return nil
 }
 
-func arraySet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	if originVal.Kind() != reflect.Slice && originVal.Kind() != reflect.Array {
-		return fmt.Errorf("origin error: %w %s", ErrorUnsupportedKind, originVal.Kind())
+		return nil, fmt.Errorf("origin error: %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}
 	if targetVal.Kind() != reflect.Slice {
-		return fmt.Errorf("target error %w %s", ErrorUnsupportedKind, targetVal.Kind())
+		return nil, fmt.Errorf("target error %w %s", ErrorUnsupportedKind, targetVal.Kind())
 	}
+	usedVariables := make([]string, 0, len(variables))
 	newSlice := reflect.MakeSlice(targetVal.Type(), 0, originVal.Cap())
 	for j := 0; j < originVal.Len(); j++ {
 		indexValue := originVal.Index(j)
 		newValue := reflect.New(targetVal.Type().Elem())
-		err := RecurseReflect(indexValue, newValue, variable)
+		used, err := recurseReflect(indexValue, newValue, variables)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		usedVariables = append(usedVariables, used...)
 		newSlice = reflect.Append(newSlice, newValue.Elem())
 	}
 	targetVal.Set(newSlice)
-	return nil
+	return usedVariables, nil
 }
 
-func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	if originVal.Kind() != reflect.Map {
-		return fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
+		return nil, fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
 	if targetVal.Kind() == reflect.Ptr {
 		if !targetVal.Elem().IsValid() {
@@ -156,10 +139,11 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[strin
 		}
 		targetVal = targetVal.Elem()
 	}
+	usedVariables := make([]string, 0, len(variables))
 	switch targetVal.Kind() {
 	case reflect.Struct:
 		{
-			return structSet(originVal, targetVal, variable)
+			return structSet(originVal, targetVal, variables)
 		}
 	case reflect.Map:
 		{
@@ -167,47 +151,51 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variable map[strin
 			newMap := reflect.MakeMap(targetType)
 			for _, key := range originVal.MapKeys() {
 				newKey := reflect.New(targetType.Key())
-				err := RecurseReflect(key, newKey, variable)
+				_, err := recurseReflect(key, newKey, variables)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				value := originVal.MapIndex(key)
 				newValue := reflect.New(targetType.Elem())
-				err = RecurseReflect(value, newValue, variable)
+				used, err := recurseReflect(value, newValue, variables)
 				if err != nil {
-					return err
+					return nil, err
 				}
+				usedVariables = append(usedVariables, used...)
 				newMap.SetMapIndex(newKey.Elem(), newValue.Elem())
 			}
 			targetVal.Set(newMap)
 		}
 	case reflect.Ptr:
 		{
-			err := mapSet(originVal, targetVal, variable)
+			used, err := mapSet(originVal, targetVal, variables)
 			if err != nil {
-				return err
+				return nil, err
 			}
+			usedVariables = append(usedVariables, used...)
 		}
 	default:
 		{
-			fmt.Println("type", targetVal.Type(), "kind", targetVal.Kind())
+			fmt.Println("type", targetVal.Type(), "kind", targetVal.Kind(), originVal, targetVal.Type().Name())
 		}
 	}
-	return nil
+	return usedVariables, nil
 }
 
-func structSet(originVal reflect.Value, targetVal reflect.Value, variable map[string]string) error {
+func structSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
+	usedVariables := make([]string, 0, len(variables))
 	targetType := targetVal.Type()
 	for i := 0; i < targetType.NumField(); i++ {
 		field := targetType.Field(i)
 		fieldValue := reflect.New(field.Type)
 		tag := field.Tag.Get("json")
 		value := originVal.MapIndex(reflect.ValueOf(tag))
-		err := RecurseReflect(value, fieldValue, variable)
+		used, err := recurseReflect(value, fieldValue, variables)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		usedVariables = append(usedVariables, used...)
 		targetVal.Field(i).Set(fieldValue.Elem())
 	}
-	return nil
+	return usedVariables, nil
 }
