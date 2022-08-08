@@ -5,16 +5,17 @@ import (
 	"reflect"
 )
 
-func NewParse(variable map[string]string) (*Parse, error) {
-	return &Parse{variable: variable}, nil
+func NewParse(variables map[string]string, configTypes map[string]reflect.Type) (*Parse, error) {
+	return &Parse{variables: variables, configTypes: configTypes}, nil
 }
 
 type Parse struct {
-	variable map[string]string
+	variables   map[string]string
+	configTypes map[string]reflect.Type
 }
 
 func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
-	o := newOrg(typ, p.variable)
+	o := newOrg(typ, p.variables, p.configTypes)
 	err := json.Unmarshal(buf, o)
 	return o.target, o.usedVariable, err
 }
@@ -22,12 +23,13 @@ func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, 
 type org struct {
 	typ          reflect.Type
 	variable     map[string]string
+	configTypes  map[string]reflect.Type
 	target       interface{}
 	usedVariable []string
 }
 
-func newOrg(typ reflect.Type, variable map[string]string) *org {
-	return &org{typ: typ, variable: variable}
+func newOrg(typ reflect.Type, variable map[string]string, configTypes map[string]reflect.Type) *org {
+	return &org{typ: typ, variable: variable, configTypes: configTypes}
 }
 
 func (o *org) UnmarshalJSON(bytes []byte) error {
@@ -37,7 +39,7 @@ func (o *org) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 	target := reflect.New(o.typ)
-	variables, err := recurseReflect(reflect.ValueOf(origin), target, o.variable)
+	variables, err := recurseReflect(reflect.ValueOf(origin), target, o.variable, o.configTypes)
 	if err != nil {
 		return err
 	}

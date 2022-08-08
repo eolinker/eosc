@@ -9,13 +9,12 @@ var (
 	methodName = "Reset"
 )
 
-// RecurseReflect 递归反射值给对象
-func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
-	return recurseReflect(originVal, targetVal, variables)
+func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+	return recurseReflect(originVal, targetVal, variables, configTypes)
 }
 
 // recurseReflect 递归反射值给对象
-func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
+func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}
@@ -26,7 +25,7 @@ func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables 
 	case reflect.Interface:
 		if targetVal.Type().Implements(reflect.TypeOf((*eosc.IPluginReset)(nil)).Elem()) {
 			// 判断是否实现Reset方法，如果实现，则执行赋值操作
-			f := targetVal.MethodByName("Reset")
+			f := targetVal.MethodByName(methodName)
 			if f.IsValid() {
 				if targetVal.Kind() == reflect.Ptr {
 					// 空指针赋值
@@ -38,7 +37,7 @@ func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables 
 					targetVal = targetVal.Elem()
 				}
 
-				vs := f.Call([]reflect.Value{reflect.ValueOf(originVal.Elem()), reflect.ValueOf(targetVal), reflect.ValueOf(variables)})
+				vs := f.Call([]reflect.Value{reflect.ValueOf(originVal.Elem()), reflect.ValueOf(targetVal), reflect.ValueOf(variables), reflect.ValueOf(configTypes)})
 				err, ok := vs[1].Interface().(error)
 				if ok {
 					return nil, err
@@ -51,13 +50,13 @@ func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables 
 				return usedVariables, nil
 			}
 		}
-		used, err = interfaceSet(originVal, targetVal, variables)
+		used, err = interfaceSet(originVal, targetVal, variables, configTypes)
 	case reflect.Map:
-		used, err = mapSet(originVal, targetVal, variables)
+		used, err = mapSet(originVal, targetVal, variables, configTypes)
 	case reflect.String:
-		used, err = stringSet(originVal, targetVal, variables)
+		used, err = stringSet(originVal, targetVal, variables, configTypes)
 	case reflect.Array, reflect.Slice:
-		used, err = arraySet(originVal, targetVal, variables)
+		used, err = arraySet(originVal, targetVal, variables, configTypes)
 	}
 	usedVariables = append(usedVariables, used...)
 	return usedVariables, err
