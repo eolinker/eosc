@@ -1,6 +1,7 @@
 package variable
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -25,12 +26,14 @@ const (
 	EndInputStatus
 )
 
-func NewBuilder(str string) *Builder {
-	return &Builder{str: str}
+func NewBuilder(str string, separator, suffix string) *Builder {
+	return &Builder{str: str, separator: separator, defaultSuffix: suffix}
 }
 
 type Builder struct {
-	str string
+	str           string
+	separator     string
+	defaultSuffix string
 }
 
 func (b *Builder) Replace(variables map[string]string) (string, []string, bool) {
@@ -64,6 +67,12 @@ func (b *Builder) Replace(variables map[string]string) (string, []string, bool) 
 			if !ok {
 				// 变量不存在，报错
 				return "", nil, false
+			}
+			if b.separator != "" && b.defaultSuffix != "" {
+				index := strings.Index(tmp, b.separator)
+				if index == -1 {
+					tmp = fmt.Sprintf("%s%s%s", tmp, b.separator, b.defaultSuffix)
+				}
 			}
 			useVariable = append(useVariable, tmp)
 			strBuilder.WriteString(v)

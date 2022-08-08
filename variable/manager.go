@@ -21,6 +21,10 @@ type Manager struct {
 	requireManager IRequires
 }
 
+func NewManager() IVariable {
+	return &Manager{variables: eosc.NewUntyped(), requireManager: NewRequireManager()}
+}
+
 func (m *Manager) SetVariablesById(id string, variables []string) {
 	m.requireManager.Set(id, variables)
 }
