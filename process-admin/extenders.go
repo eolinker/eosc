@@ -9,6 +9,7 @@ import (
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/schema"
 	"github.com/eolinker/eosc/workers/require"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -73,6 +74,10 @@ func NewExtenderData(conf map[string][]byte, extenderRequire require.IRequires) 
 	}
 	ed.init()
 	return ed
+}
+
+func (e *ExtenderData) GetConfigTypes() map[string]reflect.Type {
+	return nil
 }
 func (e *ExtenderData) IsWork() bool {
 	e.locker.RLock()

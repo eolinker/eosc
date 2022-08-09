@@ -13,6 +13,7 @@ type IVariable interface {
 	GetVariablesById(id string) []string
 	GetIdsByVariable(variable string) []string
 	GetAll() map[string]string
+	Namespaces() []string
 }
 
 type Manager struct {
@@ -100,4 +101,8 @@ func (m *Manager) GetByNamespace(namespace string) (map[string]string, bool) {
 
 func (m *Manager) GetAll() map[string]string {
 	return m.getAll()
+}
+
+func (m *Manager) Namespaces() []string {
+	return m.variables.Keys()
 }

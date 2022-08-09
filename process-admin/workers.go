@@ -150,6 +150,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 			return nil, e
 		}
 	}
+	body, _ := data.Encode()
 	wInfo, hasInfo := oe.data.GetInfo(id)
 	if hasInfo && wInfo.worker != nil {
 
@@ -158,7 +159,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 			return nil, e
 		}
 		oe.requireManager.Set(id, getIds(requires))
-		wInfo.reset(driverName, desc, conf, wInfo.worker)
+		wInfo.reset(driverName, desc, body, wInfo.worker)
 		return wInfo, nil
 	}
 	// create
@@ -173,10 +174,11 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		log.Warn("worker-data set worker start:", e)
 		return nil, e
 	}
+
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), conf)
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
 	} else {
-		wInfo.reset(driverName, desc, conf, worker)
+		wInfo.reset(driverName, desc, body, worker)
 	}
 	// store
 	oe.data.Set(id, wInfo)

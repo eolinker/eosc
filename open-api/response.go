@@ -7,10 +7,10 @@ import (
 )
 
 type Response struct {
-	StatusCode int            `json:"status"`
-	Header     http.Header    `json:"header"`
-	Data       []byte         `json:"data"`
-	Event      *EventResponse `json:"Event"`
+	StatusCode int              `json:"status"`
+	Header     http.Header      `json:"header"`
+	Data       []byte           `json:"data"`
+	Event      []*EventResponse `json:"Event"`
 }
 
 type EventResponse struct {
