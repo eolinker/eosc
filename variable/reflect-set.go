@@ -3,7 +3,6 @@ package variable
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
 	"reflect"
 	"strconv"
 )
@@ -13,9 +12,9 @@ var (
 	ErrorUnsupportedKind  = errors.New("unsupported kind")
 )
 
-func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
+func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
-		return stringSet(value, targetVal.Elem(), variable, configTypes)
+		return stringSet(value, targetVal.Elem(), variable)
 	}
 	builder := NewBuilder(value.String(), "@", "default")
 	val, useVariables, success := builder.Replace(variable)
@@ -43,17 +42,17 @@ func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string
 	return useVariables, nil
 }
 
-func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
+func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	usedVariables := make([]string, 0, len(variables))
 	var used []string
 	var err error
 	switch originVal.Elem().Kind() {
 	case reflect.Map:
-		used, err = mapSet(originVal.Elem(), targetVal, variables, configTypes)
+		used, err = mapSet(originVal.Elem(), targetVal, variables)
 	case reflect.Array, reflect.Slice:
-		used, err = arraySet(originVal.Elem(), targetVal, variables, configTypes)
+		used, err = arraySet(originVal.Elem(), targetVal, variables)
 	case reflect.String:
-		used, err = stringSet(originVal.Elem(), targetVal, variables, configTypes)
+		used, err = stringSet(originVal.Elem(), targetVal, variables)
 	case reflect.Float64:
 		err = float64Set(originVal.Elem(), targetVal)
 	case reflect.Bool:
@@ -102,7 +101,7 @@ func float64Set(originVal reflect.Value, targetVal reflect.Value) error {
 	return nil
 }
 
-func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
+func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	if originVal.Kind() != reflect.Slice && originVal.Kind() != reflect.Array {
 		return nil, fmt.Errorf("origin error: %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
@@ -117,7 +116,7 @@ func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[st
 	for j := 0; j < originVal.Len(); j++ {
 		indexValue := originVal.Index(j)
 		newValue := reflect.New(targetVal.Type().Elem())
-		used, err := recurseReflect(indexValue, newValue, variables, configTypes)
+		used, err := recurseReflect(indexValue, newValue, variables)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +127,7 @@ func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[st
 	return usedVariables, nil
 }
 
-func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
+func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	if originVal.Kind() != reflect.Map {
 		return nil, fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
@@ -144,7 +143,7 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[stri
 	switch targetVal.Kind() {
 	case reflect.Struct:
 		{
-			return structSet(originVal, targetVal, variables, configTypes)
+			return structSet(originVal, targetVal, variables)
 		}
 	case reflect.Map:
 		{
@@ -152,13 +151,13 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[stri
 			newMap := reflect.MakeMap(targetType)
 			for _, key := range originVal.MapKeys() {
 				newKey := reflect.New(targetType.Key())
-				_, err := recurseReflect(key, newKey, variables, configTypes)
+				_, err := recurseReflect(key, newKey, variables)
 				if err != nil {
 					return nil, err
 				}
 				value := originVal.MapIndex(key)
 				newValue := reflect.New(targetType.Elem())
-				used, err := recurseReflect(value, newValue, variables, configTypes)
+				used, err := recurseReflect(value, newValue, variables)
 				if err != nil {
 					return nil, err
 				}
@@ -169,7 +168,7 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[stri
 		}
 	case reflect.Ptr:
 		{
-			used, err := mapSet(originVal, targetVal, variables, configTypes)
+			used, err := mapSet(originVal, targetVal, variables)
 			if err != nil {
 				return nil, err
 			}
@@ -183,7 +182,7 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[stri
 	return usedVariables, nil
 }
 
-func structSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
+func structSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	usedVariables := make([]string, 0, len(variables))
 	targetType := targetVal.Type()
 	for i := 0; i < targetType.NumField(); i++ {
@@ -191,7 +190,7 @@ func structSet(originVal reflect.Value, targetVal reflect.Value, variables map[s
 		fieldValue := reflect.New(field.Type)
 		tag := field.Tag.Get("json")
 		value := originVal.MapIndex(reflect.ValueOf(tag))
-		used, err := recurseReflect(value, fieldValue, variables, configTypes)
+		used, err := recurseReflect(value, fieldValue, variables)
 		if err != nil {
 			return nil, err
 		}

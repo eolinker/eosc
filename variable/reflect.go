@@ -9,12 +9,12 @@ var (
 	methodName = "Reset"
 )
 
-func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
-	return recurseReflect(originVal, targetVal, variables, configTypes)
+func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
+	return recurseReflect(originVal, targetVal, variables)
 }
 
 // recurseReflect 递归反射值给对象
-func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
+func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}
@@ -37,7 +37,7 @@ func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables 
 					targetVal = targetVal.Elem()
 				}
 
-				vs := f.Call([]reflect.Value{reflect.ValueOf(originVal.Elem()), reflect.ValueOf(targetVal), reflect.ValueOf(variables), reflect.ValueOf(configTypes)})
+				vs := f.Call([]reflect.Value{reflect.ValueOf(originVal.Elem()), reflect.ValueOf(targetVal), reflect.ValueOf(variables)})
 				err, ok := vs[1].Interface().(error)
 				if ok {
 					return nil, err
@@ -50,13 +50,13 @@ func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables 
 				return usedVariables, nil
 			}
 		}
-		used, err = interfaceSet(originVal, targetVal, variables, configTypes)
+		used, err = interfaceSet(originVal, targetVal, variables)
 	case reflect.Map:
-		used, err = mapSet(originVal, targetVal, variables, configTypes)
+		used, err = mapSet(originVal, targetVal, variables)
 	case reflect.String:
-		used, err = stringSet(originVal, targetVal, variables, configTypes)
+		used, err = stringSet(originVal, targetVal, variables)
 	case reflect.Array, reflect.Slice:
-		used, err = arraySet(originVal, targetVal, variables, configTypes)
+		used, err = arraySet(originVal, targetVal, variables)
 	}
 	usedVariables = append(usedVariables, used...)
 	return usedVariables, err

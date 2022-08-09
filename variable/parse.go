@@ -2,25 +2,19 @@ package variable
 
 import (
 	"encoding/json"
-	"github.com/eolinker/eosc"
 	"reflect"
 )
 
-var (
-	pluginManager
-)
-
-func NewParse(variables map[string]string, configTypes *eosc.ConfigType) (*Parse, error) {
-	return &Parse{variables: variables, configTypes: configTypes}, nil
+func NewParse(variables map[string]string) (*Parse, error) {
+	return &Parse{variables: variables}, nil
 }
 
 type Parse struct {
-	variables   map[string]string
-	configTypes *eosc.ConfigType
+	variables map[string]string
 }
 
 func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
-	o := newOrg(typ, p.variables, p.configTypes)
+	o := newOrg(typ, p.variables)
 	err := json.Unmarshal(buf, o)
 	return o.target, o.usedVariable, err
 }
@@ -28,13 +22,12 @@ func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, 
 type org struct {
 	typ          reflect.Type
 	variable     map[string]string
-	configTypes  *eosc.ConfigType
 	target       interface{}
 	usedVariable []string
 }
 
-func newOrg(typ reflect.Type, variable map[string]string, configTypes *eosc.ConfigType) *org {
-	return &org{typ: typ, variable: variable, configTypes: configTypes}
+func newOrg(typ reflect.Type, variable map[string]string) *org {
+	return &org{typ: typ, variable: variable}
 }
 
 func (o *org) UnmarshalJSON(bytes []byte) error {
@@ -44,7 +37,7 @@ func (o *org) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 	target := reflect.New(o.typ)
-	variables, err := recurseReflect(reflect.ValueOf(origin), target, o.variable, o.configTypes)
+	variables, err := recurseReflect(reflect.ValueOf(origin), target, o.variable)
 	if err != nil {
 		return err
 	}

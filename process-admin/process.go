@@ -152,11 +152,11 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	vd := variable.NewManager()
 
-	ws := NewWorkers(ps, wd)
+	ws := NewWorkers(ps, wd, vd)
 
 	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)
-	NewWorkerApi(ws, vd).Register(p.router)
+	NewWorkerApi(ws).Register(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
 	NewVariableApi(extenderData, ws, vd).Register(p.router)
 

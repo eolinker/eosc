@@ -8,6 +8,10 @@ import (
 
 type IVariable interface {
 	SetByNamespace(namespace string, variables map[string]string) (map[string]string, []string, error)
+	IVariableGet
+}
+
+type IVariableGet interface {
 	GetByNamespace(namespace string) (map[string]string, bool)
 	SetVariablesById(id string, variables []string)
 	GetVariablesById(id string) []string

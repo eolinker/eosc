@@ -6,6 +6,7 @@ import (
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
+	"github.com/eolinker/eosc/variable"
 	require "github.com/eolinker/eosc/workers/require"
 	"reflect"
 )
@@ -14,11 +15,12 @@ type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
 	requireManager require.IRequires
+	variableGet    variable.IVariableGet
 }
 
-func NewWorkers(professions professions.IProfessions, data *WorkerDatas) *Workers {
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variableGet variable.IVariableGet) *Workers {
 
-	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager()}
+	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variableGet: variableGet}
 	ws.init()
 	return ws
 }
@@ -135,9 +137,14 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		return nil, fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	conf := newConfig(driver.ConfigType())
+	//conf := newConfig(driver.ConfigType())
+	parse, err := variable.NewParse(oe.variableGet.GetAll())
+	if err != nil {
+		return nil, fmt.Errorf("new variable parse error: %s", err)
+	}
+	body, _ := data.Encode()
 
-	err := data.UnMarshal(conf)
+	conf, _, err := parse.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +157,6 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 			return nil, e
 		}
 	}
-	body, _ := data.Encode()
 	wInfo, hasInfo := oe.data.GetInfo(id)
 	if hasInfo && wInfo.worker != nil {
 
