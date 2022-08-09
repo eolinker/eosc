@@ -17,14 +17,20 @@ type EoContext interface {
 	Context() context.Context
 	Value(key interface{}) interface{}
 	WithValue(key, val interface{})
-	Complete() CompleteHandler
-	SetCompleteHandler(handler CompleteHandler)
-	Finish() FinishHandler
-	SetFinish(handler FinishHandler)
+
 	Scheme() string
 	Assert(i interface{}) error
 
 	SetLabel(name, value string)
 	GetLabel(name string) string
 	Labels() map[string]string
+
+	GetComplete() CompleteHandler
+	SetCompleteHandler(handler CompleteHandler)
+	GetFinish() FinishHandler
+	SetFinish(handler FinishHandler)
+	GetApp() EoApp
+	SetApp(app EoApp)
+	GetBalance() BalanceHandler
+	SetBalance(handler BalanceHandler)
 }
