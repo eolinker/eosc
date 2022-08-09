@@ -24,7 +24,7 @@ func (fs Filters) DoChain(ctx EoContext) error {
 
 		return f.DoFilter(ctx, next)
 	}
-
+	ctx.Complete().Complete(ctx)
 	return nil
 }
 

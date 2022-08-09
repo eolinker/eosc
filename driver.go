@@ -10,10 +10,10 @@ type IExtenderDriverFactory interface {
 }
 
 type IExtenderConfigChecker interface {
-	Check(v interface{}, workers map[RequireId]interface{}) error
+	Check(v interface{}, workers map[RequireId]IWorker) error
 }
 
 type IExtenderDriver interface {
 	ConfigType() reflect.Type
-	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (IWorker, error)
+	Create(id, name string, v interface{}, workers map[RequireId]IWorker) (IWorker, error)
 }

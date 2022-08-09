@@ -217,7 +217,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte) err
 	return nil
 }
 
-func getIds(m map[eosc.RequireId]interface{}) []string {
+func getIds(m map[eosc.RequireId]eosc.IWorker) []string {
 	if len(m) == 0 {
 		return nil
 	}

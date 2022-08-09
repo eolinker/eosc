@@ -15,6 +15,7 @@ type IHttpContext interface {
 	Response() IResponse     // 处理返回结果，可读可写
 	SendTo(address string, timeout time.Duration) error
 	Proxies() []IRequest
+	FastFinish()
 }
 
 type IHeaderReader interface {

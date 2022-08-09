@@ -186,7 +186,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	return wInfo, nil
 }
 
-func getIds(m map[eosc.RequireId]interface{}) []string {
+func getIds(m map[eosc.RequireId]eosc.IWorker) []string {
 	if len(m) == 0 {
 		return nil
 	}

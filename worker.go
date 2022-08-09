@@ -8,7 +8,7 @@ type RequireId string
 type IWorker interface {
 	Id() string
 	Start() error
-	Reset(conf interface{}, workers map[RequireId]interface{}) error
+	Reset(conf interface{}, workers map[RequireId]IWorker) error
 	Stop() error
 	CheckSkill(skill string) bool
 }
@@ -24,15 +24,4 @@ type TWorker struct {
 	Create     time.Time   `json:"create" yaml:"create"`
 	Update     time.Time   `json:"update" yaml:"update"`
 	Data       interface{} `json:"data,omitempty" yaml:"data"`
-}
-
-//type IWorkersData interface {
-//	GetWork(id string) (TWorker, error)
-//	GetList(profession string) ([]TWorker, error)
-//	Delete(id string) (TWorker, error)
-//	Set(profession, name, driver string, data []byte) (TWorker, error)
-//}
-
-type IWorkerResources interface {
-	Ports() []int
 }
