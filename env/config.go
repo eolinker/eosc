@@ -208,7 +208,7 @@ func ErrorExpire() time.Duration {
 		if err != nil {
 			return 7 * 24 * time.Hour
 		}
-		return time.Duration(d) * time.Hour
+		return time.Duration(d) * 24 * time.Hour
 	}
 	return 7 * 24 * time.Hour
 }

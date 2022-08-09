@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -96,4 +97,23 @@ func compress(name string, data []byte, zw *zip.Writer) error {
 		return err
 	}
 	return nil
+}
+
+func getDir(path string) string {
+	return subString(path, 0, strings.LastIndex(path, "/"))
+}
+
+func subString(str string, start, end int) string {
+	rs := []rune(str)
+	length := len(rs)
+
+	if start < 0 || start > length {
+		panic("start is wrong")
+	}
+
+	if end < start || end > length {
+		panic("end is wrong")
+	}
+
+	return string(rs[start:end])
 }
