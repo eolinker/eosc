@@ -2,11 +2,13 @@ package process_admin
 
 import (
 	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
 )
 
 type WorkerApi struct {
-	workers *Workers
+	workers      *Workers
+	variableData variable.IVariable
 }
 
 func (oe *WorkerApi) Register(router *httprouter.Router) {
@@ -20,7 +22,7 @@ func (oe *WorkerApi) Register(router *httprouter.Router) {
 
 }
 
-func NewWorkerApi(workers *Workers) *WorkerApi {
+func NewWorkerApi(workers *Workers, variableData variable.IVariable) *WorkerApi {
 
-	return &WorkerApi{workers: workers}
+	return &WorkerApi{workers: workers, variableData: variableData}
 }

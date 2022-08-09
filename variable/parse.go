@@ -2,16 +2,21 @@ package variable
 
 import (
 	"encoding/json"
+	"github.com/eolinker/eosc"
 	"reflect"
 )
 
-func NewParse(variables map[string]string, configTypes map[string]reflect.Type) (*Parse, error) {
+var (
+	pluginManager
+)
+
+func NewParse(variables map[string]string, configTypes *eosc.ConfigType) (*Parse, error) {
 	return &Parse{variables: variables, configTypes: configTypes}, nil
 }
 
 type Parse struct {
 	variables   map[string]string
-	configTypes map[string]reflect.Type
+	configTypes *eosc.ConfigType
 }
 
 func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
@@ -23,12 +28,12 @@ func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, 
 type org struct {
 	typ          reflect.Type
 	variable     map[string]string
-	configTypes  map[string]reflect.Type
+	configTypes  *eosc.ConfigType
 	target       interface{}
 	usedVariable []string
 }
 
-func newOrg(typ reflect.Type, variable map[string]string, configTypes map[string]reflect.Type) *org {
+func newOrg(typ reflect.Type, variable map[string]string, configTypes *eosc.ConfigType) *org {
 	return &org{typ: typ, variable: variable, configTypes: configTypes}
 }
 

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
@@ -14,8 +13,12 @@ import (
 
 type VariableApi struct {
 	extenderData *ExtenderData
-	workerData   *WorkerDatas
+	workers      *Workers
 	variableData variable.IVariable
+}
+
+func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData variable.IVariable) *VariableApi {
+	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData}
 }
 
 func (oe *VariableApi) Register(router *httprouter.Router) {
@@ -25,10 +28,6 @@ func (oe *VariableApi) Register(router *httprouter.Router) {
 	router.POST("/variable/:namespace", open_api.CreateHandleFunc(oe.setByNamespace))
 	router.PUT("/variable/:namespace", open_api.CreateHandleFunc(oe.setByNamespace))
 
-}
-
-func NewVariableApi() *VariableApi {
-	return &VariableApi{variableData: variable.NewManager()}
 }
 
 func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -115,6 +114,10 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
 
+	parse, err := variable.NewParse(variables)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("create parse error:%s", err)
+	}
 	es := make([]*open_api.EventResponse, 0, len(affectIds)+1)
 	data, _ := json.Marshal(variables)
 	es = append(es, &open_api.EventResponse{
@@ -123,11 +126,19 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		Key:       namespace,
 		Data:      data,
 	})
+
 	for _, id := range affectIds {
-		info, has := oe.workerData.GetInfo(id)
-		if !has {
-			log.DebugF("worker(%s) not found", id)
+		profession, name, success := eosc.SplitWorkerId(id)
+		if !success {
 			continue
+		}
+		info, err := oe.workers.GetEmployee(profession, name)
+		if err != nil {
+			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
+		}
+		_, _, err = parse.Unmarshal(info.Body(), info.configType)
+		if err != nil {
+			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
 		}
 		es = append(es, &open_api.EventResponse{
 			Event:     "set",

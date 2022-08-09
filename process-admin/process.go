@@ -17,6 +17,7 @@ import (
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
+	"github.com/eolinker/eosc/variable"
 	"github.com/eolinker/eosc/workers/require"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
@@ -149,11 +150,16 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	bean.Check()
 
+	vd := variable.NewManager()
+
 	ws := NewWorkers(ps, wd)
 
+	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)
-	NewWorkerApi(ws).Register(p.router)
+	NewWorkerApi(ws, vd).Register(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
+	NewVariableApi(extenderData, ws, vd).Register(p.router)
+
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
 			StatusCode: 404,

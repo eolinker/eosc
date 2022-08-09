@@ -3,6 +3,7 @@ package variable
 import (
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc"
 	"reflect"
 	"strconv"
 )
@@ -12,7 +13,7 @@ var (
 	ErrorUnsupportedKind  = errors.New("unsupported kind")
 )
 
-func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
 		return stringSet(value, targetVal.Elem(), variable, configTypes)
 	}
@@ -42,7 +43,7 @@ func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string
 	return useVariables, nil
 }
 
-func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	usedVariables := make([]string, 0, len(variables))
 	var used []string
 	var err error
@@ -101,7 +102,7 @@ func float64Set(originVal reflect.Value, targetVal reflect.Value) error {
 	return nil
 }
 
-func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	if originVal.Kind() != reflect.Slice && originVal.Kind() != reflect.Array {
 		return nil, fmt.Errorf("origin error: %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
@@ -127,7 +128,7 @@ func arraySet(originVal reflect.Value, targetVal reflect.Value, variables map[st
 	return usedVariables, nil
 }
 
-func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	if originVal.Kind() != reflect.Map {
 		return nil, fmt.Errorf("map deal %w %s", ErrorUnsupportedKind, originVal.Kind())
 	}
@@ -182,7 +183,7 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[stri
 	return usedVariables, nil
 }
 
-func structSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func structSet(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	usedVariables := make([]string, 0, len(variables))
 	targetType := targetVal.Type()
 	for i := 0; i < targetType.NumField(); i++ {

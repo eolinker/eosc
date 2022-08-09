@@ -9,12 +9,12 @@ var (
 	methodName = "Reset"
 )
 
-func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	return recurseReflect(originVal, targetVal, variables, configTypes)
 }
 
 // recurseReflect 递归反射值给对象
-func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes map[string]reflect.Type) ([]string, error) {
+func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string, configTypes *eosc.ConfigType) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}

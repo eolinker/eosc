@@ -33,6 +33,16 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 
 			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body)
 		}
+	case eosc.NamespaceVariable:
+		{
+			var tmp map[string]string
+			err := json.Unmarshal(data, &tmp)
+			if err != nil {
+				return err
+			}
+			_, _, err = ws.variableManager.SetByNamespace(key, tmp)
+			return err
+		}
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
 	}
@@ -48,6 +58,10 @@ func (ws *WorkerServer) delEvent(namespace string, key string) error {
 	case eosc.NamespaceWorker:
 		{
 			return ws.workers.Del(key)
+		}
+	case eosc.NamespaceVariable:
+		{
+			return nil
 		}
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
@@ -86,6 +100,17 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 						continue
 					}
 					wc = append(wc, w)
+				}
+			case eosc.NamespaceVariable:
+				{
+					var tmp map[string]map[string]string
+					err := json.Unmarshal(data, &tmp)
+					if err != nil {
+						continue
+					}
+					for key, value := range tmp {
+						ws.variableManager.SetByNamespace(key, value)
+					}
 				}
 			}
 		}
