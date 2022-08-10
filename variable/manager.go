@@ -1,17 +1,15 @@
 package variable
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
+	"strings"
 )
 
 type IVariable interface {
 	SetByNamespace(namespace string, variables map[string]string) (map[string]string, []string, error)
-	IVariableGet
-}
-
-type IVariableGet interface {
 	GetByNamespace(namespace string) (map[string]string, bool)
 	SetVariablesById(id string, variables []string)
 	GetVariablesById(id string) []string
@@ -20,29 +18,35 @@ type IVariableGet interface {
 	Namespaces() []string
 }
 
-type Manager struct {
+type Variables struct {
 	// variables 变量数据
 	variables      eosc.IUntyped
 	requireManager IRequires
 }
 
-func NewManager() IVariable {
-	return &Manager{variables: eosc.NewUntyped(), requireManager: NewRequireManager()}
+func NewVariables(data map[string][]byte) IVariable {
+	v := &Variables{variables: eosc.NewUntyped(), requireManager: NewRequireManager()}
+	for namespace, value := range data {
+		var variables map[string]string
+		json.Unmarshal(value, &variables)
+		v.SetByNamespace(namespace, variables)
+	}
+	return v
 }
 
-func (m *Manager) SetVariablesById(id string, variables []string) {
+func (m *Variables) SetVariablesById(id string, variables []string) {
 	m.requireManager.Set(id, variables)
 }
 
-func (m *Manager) GetVariablesById(id string) []string {
+func (m *Variables) GetVariablesById(id string) []string {
 	return m.requireManager.WorkerIDs(id)
 }
 
-func (m *Manager) GetIdsByVariable(variable string) []string {
+func (m *Variables) GetIdsByVariable(variable string) []string {
 	return m.requireManager.RequireIDs(variable)
 }
 
-func (m *Manager) SetByNamespace(namespace string, variables map[string]string) (map[string]string, []string, error) {
+func (m *Variables) SetByNamespace(namespace string, variables map[string]string) (map[string]string, []string, error) {
 	// variables的key为：{变量名}@{namespace}，如：v1@default
 	old, has := m.getByNamespace(namespace)
 	if !has {
@@ -72,7 +76,7 @@ func (m *Manager) SetByNamespace(namespace string, variables map[string]string) 
 	return m.getAll(), affectIds, nil
 }
 
-func (m *Manager) getAll() map[string]string {
+func (m *Variables) getAll() map[string]string {
 	newVariables := make(map[string]string)
 	for _, key := range m.variables.Keys() {
 		vs, ok := m.getByNamespace(key)
@@ -87,7 +91,7 @@ func (m *Manager) getAll() map[string]string {
 	return newVariables
 }
 
-func (m *Manager) getByNamespace(namespace string) (map[string]string, bool) {
+func (m *Variables) getByNamespace(namespace string) (map[string]string, bool) {
 	variables, has := m.variables.Get(namespace)
 	if !has {
 		return nil, false
@@ -99,14 +103,36 @@ func (m *Manager) getByNamespace(namespace string) (map[string]string, bool) {
 	return v, ok
 }
 
-func (m *Manager) GetByNamespace(namespace string) (map[string]string, bool) {
+func (m *Variables) GetByNamespace(namespace string) (map[string]string, bool) {
 	return m.getByNamespace(namespace)
 }
 
-func (m *Manager) GetAll() map[string]string {
+func (m *Variables) GetAll() map[string]string {
 	return m.getAll()
 }
 
-func (m *Manager) Namespaces() []string {
+func (m *Variables) Namespaces() []string {
 	return m.variables.Keys()
+}
+
+func TrimNamespace(origin map[string]string) map[string]string {
+	target := make(map[string]string)
+	for key, value := range origin {
+		index := strings.Index(key, "@")
+		if index < 0 {
+			continue
+		}
+		key = key[:index]
+
+		target[key] = value
+	}
+	return target
+}
+
+func FillNamespace(namespace string, origin map[string]string) map[string]string {
+	target := make(map[string]string)
+	for key, value := range origin {
+		target[fmt.Sprintf("%s@%s", key, namespace)] = value
+	}
+	return target
 }

@@ -63,17 +63,18 @@ func (b *Builder) Replace(variables map[string]string) (string, []string, bool) 
 			varBuilder.WriteRune(s)
 		case EndInputStatus:
 			tmp := varBuilder.String()
-			v, ok := variables[tmp]
-			if !ok {
-				// 变量不存在，报错
-				return "", nil, false
-			}
 			if b.separator != "" && b.defaultSuffix != "" {
 				index := strings.Index(tmp, b.separator)
 				if index == -1 {
 					tmp = fmt.Sprintf("%s%s%s", tmp, b.separator, b.defaultSuffix)
 				}
 			}
+			v, ok := variables[tmp]
+			if !ok {
+				// 变量不存在，报错
+				return "", nil, false
+			}
+
 			useVariable = append(useVariable, tmp)
 			strBuilder.WriteString(v)
 			varBuilder.Reset()

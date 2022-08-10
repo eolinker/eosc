@@ -45,6 +45,7 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandl
 		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
 		initHandler:       initHandlers,
+		variableManager:   variable.NewVariables(nil),
 	}
 
 	ws.workers = workers.NewWorkerManager(ws.professionManager)

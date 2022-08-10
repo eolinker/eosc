@@ -8,7 +8,6 @@ import (
 	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"strings"
 )
 
 type VariableApi struct {
@@ -38,29 +37,9 @@ func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status
 		if !has {
 			continue
 		}
-		all[namespace] = trimNamespace(data)
+		all[namespace] = variable.TrimNamespace(data)
 	}
 	return http.StatusOK, nil, nil, all
-}
-
-func trimNamespace(origin map[string]string) map[string]string {
-	target := make(map[string]string)
-	for key, value := range origin {
-		index := strings.Index(key, "@")
-		if index > 0 {
-			key = key[:index]
-		}
-		target[key] = value
-	}
-	return target
-}
-
-func fillNamespace(namespace string, origin map[string]string) map[string]string {
-	target := make(map[string]string)
-	for key, value := range origin {
-		target[fmt.Sprintf("%s@%s", key, namespace)] = value
-	}
-	return target
 }
 
 func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -72,7 +51,7 @@ func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	return http.StatusOK, nil, nil, trimNamespace(data)
+	return http.StatusOK, nil, nil, variable.TrimNamespace(data)
 }
 
 func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -104,20 +83,18 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	cb := make(map[string]string)
-	errUnmarshal := decoder.UnMarshal(cb)
+	errUnmarshal := decoder.UnMarshal(&cb)
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	variables := fillNamespace(namespace, cb)
+
+	variables := variable.FillNamespace(namespace, cb)
 	_, affectIds, err := oe.variableData.SetByNamespace(namespace, variables)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
 
-	parse, err := variable.NewParse(variables)
-	if err != nil {
-		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("create parse error:%s", err)
-	}
+	parse := variable.NewParse(variables)
 	es := make([]*open_api.EventResponse, 0, len(affectIds)+1)
 	data, _ := json.Marshal(variables)
 	es = append(es, &open_api.EventResponse{
@@ -148,5 +125,5 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		})
 	}
 
-	return http.StatusOK, nil, es, nil
+	return http.StatusOK, nil, es, cb
 }

@@ -5,8 +5,8 @@ import (
 	"reflect"
 )
 
-func NewParse(variables map[string]string) (*Parse, error) {
-	return &Parse{variables: variables}, nil
+func NewParse(variables map[string]string) *Parse {
+	return &Parse{variables: variables}
 }
 
 type Parse struct {

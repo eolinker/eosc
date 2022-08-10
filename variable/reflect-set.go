@@ -20,6 +20,7 @@ func stringSet(value reflect.Value, targetVal reflect.Value, variable map[string
 	builder := NewBuilder(value.String(), "@", "default")
 	val, useVariables, success := builder.Replace(variable)
 	if !success {
+		log.Debug("variable is ", variable)
 		return nil, ErrorVariableNotFound
 	}
 	switch targetVal.Kind() {

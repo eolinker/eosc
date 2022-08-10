@@ -15,12 +15,12 @@ type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
 	requireManager require.IRequires
-	variableGet    variable.IVariableGet
+	variables      variable.IVariable
 }
 
-func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variableGet variable.IVariableGet) *Workers {
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables variable.IVariable) *Workers {
 
-	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variableGet: variableGet}
+	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variables: variables}
 	ws.init()
 	return ws
 }
@@ -137,18 +137,13 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		return nil, fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	//conf := newConfig(driver.ConfigType())
-	parse, err := variable.NewParse(oe.variableGet.GetAll())
-	if err != nil {
-		return nil, fmt.Errorf("new variable parse error: %s", err)
-	}
 	body, _ := data.Encode()
 
-	conf, _, err := parse.Unmarshal(body, driver.ConfigType())
+	conf, usedVariables, err := variable.NewParse(oe.variables.GetAll()).Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("body is ", string(body), " conf is ", conf)
+
 	requires, err := config.CheckConfig(conf, oe.data)
 	if err != nil {
 		return nil, err
@@ -167,6 +162,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		}
 		oe.requireManager.Set(id, getIds(requires))
 		wInfo.reset(driverName, desc, body, wInfo.worker)
+		oe.variables.SetVariablesById(id, usedVariables)
 		return wInfo, nil
 	}
 	// create
@@ -190,8 +186,9 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	// store
 	oe.data.Set(id, wInfo)
 	oe.requireManager.Set(id, getIds(requires))
-
+	oe.variables.SetVariablesById(id, usedVariables)
 	log.Debug("worker-data set worker done:", id)
+
 	return wInfo, nil
 }
 
