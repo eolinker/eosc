@@ -3,6 +3,7 @@ package variable
 import (
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strconv"
 )
@@ -58,7 +59,7 @@ func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables ma
 	case reflect.Bool:
 		err = boolSet(originVal.Elem(), targetVal)
 	default:
-		fmt.Println("interface deal", "kind", originVal.Elem().Kind())
+		log.Error("interface deal", "kind", originVal.Elem().Kind())
 	}
 	usedVariables = append(usedVariables, used...)
 	return usedVariables, err
@@ -84,7 +85,7 @@ func float64Set(originVal reflect.Value, targetVal reflect.Value) error {
 		targetVal = targetVal.Elem()
 	}
 	switch targetVal.Kind() {
-	case reflect.Int:
+	case reflect.Int, reflect.Int32, reflect.Int64:
 		value, err := strconv.ParseInt(fmt.Sprintf("%1.0f", originVal.Float()), 10, 64)
 		if err != nil {
 			return err
@@ -176,7 +177,7 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables map[stri
 		}
 	default:
 		{
-			fmt.Println("type", targetVal.Type(), "kind", targetVal.Kind(), originVal, targetVal.Type().Name())
+			log.Error("type ", targetVal.Type(), " kind ", targetVal.Kind(), " ", originVal, " ", targetVal.Type().Name())
 		}
 	}
 	return usedVariables, nil

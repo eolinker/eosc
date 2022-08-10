@@ -148,6 +148,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	if err != nil {
 		return nil, err
 	}
+	log.Debug("body is ", string(body), " conf is ", conf)
 	requires, err := config.CheckConfig(conf, oe.data)
 	if err != nil {
 		return nil, err

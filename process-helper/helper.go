@@ -92,7 +92,12 @@ func getExtenders(args []string) *service.ExtendsResponse {
 			Plugins: make([]*service.Plugin, 0, len(names)),
 		}
 		for n, df := range names {
-			render := df.Render()
+			d, err := df.Create(extender.Id, n, n, n, nil)
+			if err != nil {
+				log.DebugF("create %s extender %s error:%s", extender.Id, n, err)
+				continue
+			}
+			render := d.Render()
 			renderData, _ := json.Marshal(render)
 
 			extender.Plugins = append(extender.Plugins, &service.Plugin{
