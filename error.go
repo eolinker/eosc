@@ -7,6 +7,7 @@ var (
 	ErrorProfessionNotExist         = errors.New("profession not exist")
 	ErrorNotAllowCreateForSingleton = errors.New("not allow create for singleton profession")
 	ErrorWorkerNotExits             = errors.New("worker-data not exits")
+	ErrorWorkerNotRunning           = errors.New("worker-data not running")
 	ErrorRegisterConflict           = errors.New("conflict of register")
 	ErrorNotGetSillForRequire       = errors.New("not get skill for require")
 	ErrorTargetNotImplementSkill    = errors.New("require of skill not implement")
