@@ -97,10 +97,6 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 		return nil, eosc.ErrorRequire
 	}
 
-	err := worker.worker.Stop()
-	if err != nil {
-		return nil, err
-	}
 	oe.data.Del(id)
 	oe.requireManager.Del(id)
 
@@ -168,11 +164,11 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		return nil, err
 	}
 	// start
-	e := worker.Start()
-	if e != nil {
-		log.Warn("worker-data set worker start:", e)
-		return nil, e
-	}
+	//e := worker.Start()
+	//if e != nil {
+	//	log.Warn("worker-data set worker start:", e)
+	//	return nil, e
+	//}
 	if !hasInfo {
 		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), conf)
 	} else {
