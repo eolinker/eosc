@@ -37,6 +37,18 @@ func ToWorkerId(name, profession string) (string, bool) {
 	return name, true
 }
 
+func SplitWorkerId(id string) (profession string, name string, success bool) {
+	id = strings.ToLower(id)
+	index := strings.Index(id, "@")
+	if index < 0 {
+		return "", "", false
+	}
+	if len(id) > index+1 {
+		return id[index+1:], id[:index], true
+	}
+	return "", "", false
+}
+
 //Decompress 解压文件
 func Decompress(filePath string, dest string) error {
 	err := os.MkdirAll(dest, 0755)

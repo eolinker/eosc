@@ -5,7 +5,6 @@ import (
 )
 
 type IExtenderDriverFactory interface {
-	Render() interface{}
 	Create(profession string, name string, label string, desc string, params map[string]interface{}) (IExtenderDriver, error)
 }
 
@@ -14,6 +13,7 @@ type IExtenderConfigChecker interface {
 }
 
 type IExtenderDriver interface {
+	Render() interface{}
 	ConfigType() reflect.Type
 	Create(id, name string, v interface{}, workers map[RequireId]interface{}) (IWorker, error)
 }
