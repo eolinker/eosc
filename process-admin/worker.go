@@ -35,11 +35,12 @@ func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driv
 	}
 }
 
-func (w *WorkerInfo) reset(driver, desc string, body []byte, worker eosc.IWorker) {
+func (w *WorkerInfo) reset(driver, desc string, body []byte, worker eosc.IWorker, configType reflect.Type) {
 	w.config.Update = eosc.Now()
 	w.config.Driver = driver
 	w.config.Description = desc
 	w.config.Body = body
+	w.configType = configType
 	w.worker = worker
 	w.info = nil
 	w.attr = nil

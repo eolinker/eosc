@@ -161,7 +161,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 			return nil, e
 		}
 		oe.requireManager.Set(id, getIds(requires))
-		wInfo.reset(driverName, desc, body, wInfo.worker)
+		wInfo.reset(driverName, desc, body, wInfo.worker, driver.ConfigType())
 		oe.variables.SetVariablesById(id, usedVariables)
 		return wInfo, nil
 	}
@@ -175,8 +175,9 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	if !hasInfo {
 		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
 	} else {
-		wInfo.reset(driverName, desc, body, worker)
+		wInfo.reset(driverName, desc, body, worker, driver.ConfigType())
 	}
+
 	// store
 	oe.data.Set(id, wInfo)
 	oe.requireManager.Set(id, getIds(requires))
