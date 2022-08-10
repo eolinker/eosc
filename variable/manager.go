@@ -97,9 +97,6 @@ func (m *Variables) getByNamespace(namespace string) (map[string]string, bool) {
 		return nil, false
 	}
 	v, ok := variables.(map[string]string)
-	if !ok {
-		return nil, false
-	}
 	return v, ok
 }
 

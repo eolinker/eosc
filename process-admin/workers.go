@@ -171,7 +171,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		log.Warn("worker-data set worker create:", err)
 		return nil, err
 	}
-	
+
 	if !hasInfo {
 		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
 	} else {

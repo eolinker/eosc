@@ -62,15 +62,13 @@ func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (stat
 	}
 	data, has := oe.variableData.GetByNamespace(namespace)
 	if !has {
-		return 404, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
+		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	value, ok := data[fmt.Sprintf("%s@%s", namespace, key)]
+	value, ok := data[fmt.Sprintf("%s@%s", key, namespace)]
 	if !ok {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	return http.StatusOK, nil, nil, map[string]string{
-		key: value,
-	}
+	return http.StatusOK, nil, nil, value
 }
 
 func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
