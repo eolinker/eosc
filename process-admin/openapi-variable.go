@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
@@ -112,7 +111,6 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		if err != nil {
 			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
 		}
-		log.Debug("info is ", info, " ", id, " ", info.configType)
 		_, _, err = parse.Unmarshal(info.Body(), info.configType)
 		if err != nil {
 			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
@@ -126,5 +124,8 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		})
 	}
 
-	return http.StatusOK, nil, es, cb
+	return http.StatusOK, nil, es, map[string]interface{}{
+		"namespace": namespace,
+		"variables": cb,
+	}
 }
