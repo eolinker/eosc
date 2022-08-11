@@ -66,7 +66,7 @@ func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (stat
 	}
 	value, ok := data[fmt.Sprintf("%s@%s", key, namespace)]
 	if !ok {
-		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
+		return http.StatusNotFound, nil, nil, fmt.Sprintf("key{%s} not found", key)
 	}
 	return http.StatusOK, nil, nil, value
 }
