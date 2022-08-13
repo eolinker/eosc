@@ -99,10 +99,6 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 		return nil, eosc.ErrorRequire
 	}
 
-	err := worker.worker.Stop()
-	if err != nil {
-		return nil, err
-	}
 	oe.data.Del(id)
 	oe.requireManager.Del(id)
 
