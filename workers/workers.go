@@ -203,7 +203,6 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	e := worker.Start()
 	if e != nil {
 		log.Warn("worker-data set worker start:", e)
-		return e
 	}
 
 	// store
