@@ -2,6 +2,7 @@ package eocontext
 
 import (
 	"context"
+	"net"
 )
 
 type CompleteHandler interface {
@@ -33,4 +34,8 @@ type EoContext interface {
 	SetApp(app EoApp)
 	GetBalance() BalanceHandler
 	SetBalance(handler BalanceHandler)
+
+	LocalIP() net.IP
+	LocalAddr() net.Addr
+	LocalPort() int
 }
