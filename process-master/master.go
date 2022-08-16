@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
 	open_api "github.com/eolinker/eosc/process-master/open-api"
@@ -52,9 +53,17 @@ func ProcessDo(handler *MasterHandler) {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-
-	master := NewMasterHandle(logWriter)
-	if err := master.Start(handler); err != nil {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error("get config error: ", err)
+		return
+	}
+	master, err := NewMasterHandle(logWriter, cfg)
+	if err != nil {
+		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
+		return
+	}
+	if err := master.Start(handler, cfg); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
@@ -67,7 +76,7 @@ func ProcessDo(handler *MasterHandler) {
 type Master struct {
 	//service.UnimplementedMasterServer
 	etcdServer       etcd.Etcd
-	masterTraffic    traffic.IController
+	adminTraffic     traffic.IController
 	workerTraffic    traffic.IController
 	masterSrv        *grpc.Server
 	ctx              context.Context
@@ -163,25 +172,13 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 	return nil
 }
 
-func (m *Master) Start(handler *MasterHandler) error {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error("get config error: ", err)
-		return err
-	}
-	_, err = m.masterTraffic.Reset([]int{cfg.Admin.Listen})
-	if err != nil {
-		return err
-	}
-	_, err = m.workerTraffic.Reset(cfg.Ports())
-	if err != nil {
-		return err
-	}
+func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
+
 	// 监听master监听地址，用于接口处理
-	l, err := m.masterTraffic.ListenTcp(cfg.Admin.IP, cfg.Admin.Listen)
-	if err != nil {
-		log.Error("master listen tcp error: ", err)
-		return err
+	l := m.adminTraffic.ListenTcp(cfg.Admin.Listen, traffic.Http1)
+	if l == nil {
+		log.Error("master listen tcp error: ")
+		return errors.New("not allow")
 	}
 
 	if strings.ToLower(cfg.Admin.Scheme) == "https" {
@@ -288,7 +285,7 @@ func (m *Master) close() {
 	m.cancelFunc()
 	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
 
-	m.masterTraffic.Close()
+	m.adminTraffic.Close()
 	m.workerTraffic.Close()
 	m.dispatcherServe.Close()
 
@@ -299,22 +296,41 @@ func (m *Master) close() {
 	m.adminController.Stop()
 }
 
-func NewMasterHandle(logWriter io.Writer) *Master {
+func NewMasterHandle(logWriter io.Writer, cfg *config.Config) (*Master, error) {
+
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
 		cancelFunc: cancelFunc,
 		ctx:        cancel,
 		logWriter:  logWriter,
 	}
+	var input io.Reader
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Info("Reset traffic from stdin")
-		m.masterTraffic = traffic.NewController(os.Stdin)
-		m.workerTraffic = traffic.NewController(os.Stdin)
-	} else {
-		log.Info("new traffic")
 
-		m.masterTraffic = traffic.NewController(nil)
-		m.workerTraffic = traffic.NewController(nil)
+		input = os.Stdin
+	} else {
+		input = nil
 	}
-	return m
+	masterTraffic, err := traffic.ReadController(input, &net.TCPAddr{
+		IP:   net.ParseIP(cfg.Admin.IP),
+		Port: cfg.Admin.Listen,
+	})
+	if err != nil {
+		return nil, err
+	}
+	m.adminTraffic = masterTraffic
+	addrs := make([]*net.TCPAddr, 0, len(cfg.Ports()))
+	for _, p := range cfg.Ports() {
+		addrs = append(addrs, &net.TCPAddr{
+			IP:   net.IPv4zero,
+			Port: p,
+		})
+	}
+	workerTraffic, err := traffic.ReadController(input, addrs...)
+	if err != nil {
+		return nil, err
+	}
+	m.workerTraffic = workerTraffic
+	return m, nil
 }
