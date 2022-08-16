@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 
 	es, err := oe.workers.ListEmployees(profession)
@@ -21,7 +21,7 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 	return 200, nil, nil, out
 }
 
-func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 	eo, err := oe.workers.GetEmployee(profession, name)

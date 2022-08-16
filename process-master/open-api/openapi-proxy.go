@@ -125,11 +125,14 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if res.Event != nil {
-		err := p.raftSender.Send(res.Event.Event, res.Event.Namespace, res.Event.Key, res.Event.Data)
-		log.Debug("open api send:", res.Event)
-		if err != nil {
-			log.Errorf("open api raft:%v", err)
+		for _, event := range res.Event {
+			err := p.raftSender.Send(event.Event, event.Namespace, event.Key, event.Data)
+			log.Debug("open api send:", res.Event)
+			if err != nil {
+				log.Errorf("open api raft:%v", err)
+			}
 		}
+
 	}
 	if res.Header != nil {
 		for k := range res.Header {

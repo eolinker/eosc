@@ -17,6 +17,7 @@ import (
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
+	"github.com/eolinker/eosc/variable"
 	"github.com/eolinker/eosc/workers/require"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
@@ -127,6 +128,13 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	register := initExtender(arg[eosc.NamespaceExtender])
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
+	//for namespace, a := range arg {
+	//	log.Debug("namespace is ", namespace)
+	//	for k, v := range a {
+	//		log.Debug("key is ", k, " v is ", string(v))
+	//	}
+	//
+	//}
 
 	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{
@@ -149,11 +157,16 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	bean.Check()
 
-	ws := NewWorkers(ps, wd)
+	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
 
+	ws := NewWorkers(ps, wd, vd)
+
+	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)
 	NewWorkerApi(ws).Register(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
+	NewVariableApi(extenderData, ws, vd).Register(p.router)
+
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
 			StatusCode: 404,

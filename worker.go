@@ -5,6 +5,7 @@ import (
 )
 
 type RequireId string
+
 type IWorker interface {
 	Id() string
 	Start() error

@@ -18,7 +18,7 @@ type BaseArg struct {
 	Description string `json:"description" yaml:"description"`
 }
 
-func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 	decoder, err := GetData(r)
 	if err != nil {
@@ -41,14 +41,14 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	}
 	eventData, _ := json.Marshal(obj.config)
 
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.Detail()
+	}}, obj.Detail()
 }
-func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 	if name == "" {
@@ -99,14 +99,14 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}
 
 	eventData, _ := json.Marshal(obj.config)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.Detail()
+	}}, obj.Detail()
 }
-func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
 	name := params.ByName("name")
@@ -128,15 +128,15 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	}
 
 	eventData, _ := json.Marshal(obj.config)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.Detail()
+	}}, obj.Detail()
 }
 
-func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
 	name := params.ByName("name")
@@ -156,10 +156,10 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 	if err != nil {
 		return 404, nil, nil, err
 	}
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventDel,
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
 		Data:      nil,
-	}, wInfo.Detail()
+	}}, wInfo.Detail()
 }

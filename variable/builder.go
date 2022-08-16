@@ -1,6 +1,7 @@
-package main
+package variable
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -25,19 +26,22 @@ const (
 	EndInputStatus
 )
 
-func NewBuilder(str string) *Builder {
-	return &Builder{str: str}
+func NewBuilder(str string, separator, suffix string) *Builder {
+	return &Builder{str: str, separator: separator, defaultSuffix: suffix}
 }
 
 type Builder struct {
-	str string
+	str           string
+	separator     string
+	defaultSuffix string
 }
 
-func (b *Builder) Replace(variableMap map[string]string) (string, bool) {
+func (b *Builder) Replace(variables map[string]string) (string, []string, bool) {
 	strBuilder := strings.Builder{}
 	varBuilder := strings.Builder{}
 	status := CurrentStatus
 	startIndex := 0
+	useVariable := make([]string, 0, len(variables))
 	for i, s := range b.str {
 		oldStatus := status
 		status = toggleStatus(status, s)
@@ -58,11 +62,20 @@ func (b *Builder) Replace(variableMap map[string]string) (string, bool) {
 			}
 			varBuilder.WriteRune(s)
 		case EndInputStatus:
-			v, ok := variableMap[varBuilder.String()]
+			tmp := varBuilder.String()
+			if b.separator != "" && b.defaultSuffix != "" {
+				index := strings.Index(tmp, b.separator)
+				if index == -1 {
+					tmp = fmt.Sprintf("%s%s%s", tmp, b.separator, b.defaultSuffix)
+				}
+			}
+			v, ok := variables[tmp]
 			if !ok {
 				// 变量不存在，报错
-				return "", false
+				return "", nil, false
 			}
+
+			useVariable = append(useVariable, tmp)
 			strBuilder.WriteString(v)
 			varBuilder.Reset()
 			startIndex = i + 1
@@ -73,7 +86,8 @@ func (b *Builder) Replace(variableMap map[string]string) (string, bool) {
 	if status == InputStatus {
 		strBuilder.WriteString(b.str[startIndex:])
 	}
-	return strBuilder.String(), true
+
+	return strBuilder.String(), useVariable, true
 }
 
 func toggleStatus(status int, c rune) int {
