@@ -32,7 +32,6 @@ func NewMatcherData(tfConf ...*PbTraffic) *MatcherData {
 	for p, ls := range lm {
 		mixlistener := mixl.NewMixListener(p, ls...)
 		m.Set(p, &Matcher{
-			Port:        0,
 			mixListener: mixlistener,
 			CMuxMatch:   cmuxMatch.NewMatch(mixlistener),
 		})
@@ -76,14 +75,13 @@ func (m *MatcherData) All() map[int]*Matcher {
 }
 
 type Matcher struct {
-	Port        int
 	mixListener *mixl.MixListener
 	cmuxMatch.CMuxMatch
 }
 
 func NewMatcher(port int, ls ...*net.TCPListener) *Matcher {
 	mixListener := mixl.NewMixListener(port, ls...)
-	return &Matcher{Port: port, mixListener: mixListener, CMuxMatch: cmuxMatch.NewMatch(mixListener)}
+	return &Matcher{mixListener: mixListener, CMuxMatch: cmuxMatch.NewMatch(mixListener)}
 }
 
 func (m *Matcher) Listeners() []*net.TCPListener {
