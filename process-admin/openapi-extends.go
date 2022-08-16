@@ -30,7 +30,7 @@ func (oe *ExtenderOpenApi) Register(router *httprouter.Router) {
 
 }
 
-func (oe *ExtenderOpenApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *ExtenderOpenApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	id := params.ByName("id")
 	group, project := readProject(id)
 	version := r.URL.Query().Get("v")
@@ -40,15 +40,15 @@ func (oe *ExtenderOpenApi) Delete(r *http.Request, params httprouter.Params) (st
 		return 0, nil, nil, err.Error()
 	}
 
-	return 200, nil, &open_api.EventResponse{
+	return 200, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventDel,
 		Namespace: eosc.NamespaceExtender,
 		Key:       id,
 		Data:      nil,
-	}, projectInfo.toInfo()
+	}}, projectInfo.toInfo()
 
 }
-func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	log.Debug("Content-Type:", r.Header.Get("Content-Type"))
 	log.Debug("mediaType:", mediaType, err)
@@ -84,23 +84,23 @@ func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (statu
 		return http.StatusInternalServerError, nil, nil, err.Error()
 	}
 	if ok {
-		return 200, nil, &open_api.EventResponse{
-			Event:     eosc.EventReset,
+		return 200, nil, []*open_api.EventResponse{{
+			Event:     eosc.EventSet,
 			Namespace: eosc.NamespaceExtender,
-			Key:       fmt.Sprint(p.Group, "", p.Project),
+			Key:       fmt.Sprint(p.Group, ":", p.Project),
 			Data:      []byte(p.Version),
-		}, projectInfo.toInfo()
+		}}, projectInfo.toInfo()
 	} else {
 		return 200, nil, nil, projectInfo.toInfo()
 	}
 
 }
 
-func (oe *ExtenderOpenApi) List(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *ExtenderOpenApi) List(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	return 200, nil, nil, oe.extenders.List()
 }
-func (oe *ExtenderOpenApi) Info(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *ExtenderOpenApi) Info(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	id := params.ByName("id")
 
 	info, ok := oe.extenders.GetInfo(readProject(id))
@@ -109,7 +109,7 @@ func (oe *ExtenderOpenApi) Info(r *http.Request, params httprouter.Params) (stat
 	}
 	return 200, nil, nil, info
 }
-func (oe *ExtenderOpenApi) Render(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *ExtenderOpenApi) Render(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	id := params.ByName("id")
 	name := params.ByName("name")
 	group, project := readProject(id)

@@ -3,6 +3,7 @@ package eoscli
 import (
 	"context"
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"strings"
 
 	"github.com/eolinker/eosc/env"
@@ -45,6 +46,6 @@ func InfoFunc(c *cli.Context) error {
 	builder.WriteString(fmt.Sprintf("Term: %d\n", response.Info.Term))
 	builder.WriteString(fmt.Sprintf("Leader: %d\n", response.Info.LeaderID))
 
-	fmt.Println(builder.String())
+	log.Debug(builder.String())
 	return nil
 }

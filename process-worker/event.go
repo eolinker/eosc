@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/log"
+	"strings"
 
 	"github.com/eolinker/eosc"
 )
@@ -31,7 +32,17 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 				return err
 			}
 
-			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body)
+			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager.GetAll())
+		}
+	case eosc.NamespaceVariable:
+		{
+			var tmp map[string]string
+			err := json.Unmarshal(data, &tmp)
+			if err != nil {
+				return err
+			}
+			_, _, err = ws.variableManager.SetByNamespace(key, tmp)
+			return err
 		}
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
@@ -48,6 +59,10 @@ func (ws *WorkerServer) delEvent(namespace string, key string) error {
 	case eosc.NamespaceWorker:
 		{
 			return ws.workers.Del(key)
+		}
+	case eosc.NamespaceVariable:
+		{
+			return nil
 		}
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
@@ -87,6 +102,29 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 					}
 					wc = append(wc, w)
 				}
+			case eosc.NamespaceVariable:
+				{
+					var tmp map[string]string
+					err := json.Unmarshal(c, &tmp)
+					if err != nil {
+						continue
+					}
+					target := make(map[string]map[string]string)
+					for key, value := range tmp {
+						name := "default"
+						index := strings.Index(key, "@")
+						if index > 0 && len(key) > index+1 {
+							name = key[index+1:]
+						}
+						if _, ok := target[name]; !ok {
+							target[name] = make(map[string]string)
+						}
+						target[name][key] = value
+					}
+					for key, value := range target {
+						ws.variableManager.SetByNamespace(key, value)
+					}
+				}
 			}
 		}
 	}
@@ -97,7 +135,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			h()
 		}
 	})
-	ws.workers.Reset(wc)
+	ws.workers.Reset(wc, ws.variableManager.GetAll())
 
 	return nil
 }

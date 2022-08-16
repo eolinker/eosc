@@ -17,3 +17,4 @@
 /vendor/
 /out/
 *.DS_Store
+/data/

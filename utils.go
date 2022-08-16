@@ -37,6 +37,18 @@ func ToWorkerId(name, profession string) (string, bool) {
 	return name, true
 }
 
+func SplitWorkerId(id string) (profession string, name string, success bool) {
+	id = strings.ToLower(id)
+	index := strings.Index(id, "@")
+	if index < 0 {
+		return "", "", false
+	}
+	if len(id) > index+1 {
+		return id[index+1:], id[:index], true
+	}
+	return "", "", false
+}
+
 //Decompress 解压文件
 func Decompress(filePath string, dest string) error {
 	err := os.MkdirAll(dest, 0755)
@@ -108,13 +120,14 @@ func GenInitWorkerConfig(ps []*ProfessionConfig) []*WorkerConfig {
 			for _, d := range p.Drivers {
 				id, _ := ToWorkerId(d.Name, p.Name)
 				wc := &WorkerConfig{
-					Id:         id,
-					Profession: p.Name,
-					Name:       d.Name,
-					Driver:     d.Name,
-					Create:     Now(),
-					Update:     Now(),
-					Body:       nil,
+					Id:          id,
+					Profession:  p.Name,
+					Name:        d.Name,
+					Driver:      d.Name,
+					Description: d.Desc,
+					Create:      Now(),
+					Update:      Now(),
+					Body:        nil,
 				}
 
 				wc.Body = []byte("{}")

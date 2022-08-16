@@ -564,3 +564,9 @@ ID string `json:"id,omitempty" label:"myID"`
 #### ui:sort
 
 自定义的关键字，用于给properties排序
+
+
+
+#### skip
+
+自定义的关键字，兼容不导出schema，又需要使用到json标签的结构体字段。

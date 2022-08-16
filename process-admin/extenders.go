@@ -9,6 +9,7 @@ import (
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/schema"
 	"github.com/eolinker/eosc/workers/require"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -73,6 +74,10 @@ func NewExtenderData(conf map[string][]byte, extenderRequire require.IRequires) 
 	}
 	ed.init()
 	return ed
+}
+
+func (e *ExtenderData) GetConfigTypes() map[string]reflect.Type {
+	return nil
 }
 func (e *ExtenderData) IsWork() bool {
 	e.locker.RLock()
@@ -197,8 +202,13 @@ func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, e
 
 		ds := register.All()
 		info.renders = eosc.NewUntyped()
-		for name, d := range ds {
-			info.renders.Set(name, d.Render())
+		for name, df := range ds {
+			driver, err := df.Create(id, name, name, name, nil)
+			if err != nil {
+				log.DebugF("load %s extender %s error:%s", id, name, err)
+				continue
+			}
+			info.renders.Set(name, driver.Render())
 		}
 		info.isWork = true
 	}

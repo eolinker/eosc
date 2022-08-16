@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/variable"
 	"io"
 	"sync"
 	"time"
@@ -29,6 +30,7 @@ type WorkerServer struct {
 	cancel            context.CancelFunc
 	workers           workers.IWorkers
 	professionManager professions.IProfessions
+	variableManager   variable.IVariable
 	masterPid         int
 	onceInit          sync.Once
 	initHandler       []func()
@@ -43,6 +45,7 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandl
 		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
 		initHandler:       initHandlers,
+		variableManager:   variable.NewVariables(nil),
 	}
 
 	ws.workers = workers.NewWorkerManager(ws.professionManager)

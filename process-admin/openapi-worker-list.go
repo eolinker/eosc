@@ -8,24 +8,20 @@ import (
 	"net/http"
 )
 
-func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 
 	es, err := oe.workers.ListEmployees(profession)
 	if err != nil {
 		return 500, nil, nil, err
 	}
-	rs := make([]interface{}, 0, len(es))
-	for _, e := range es {
-		log.Debug("toInfo:", e)
-		rs = append(rs, e.Info())
-	}
-	out, _ := json.Marshal(rs)
+
+	out, _ := json.Marshal(es)
 	log.Debug("getEmployeesByProfession:", string(out))
 	return 200, nil, nil, out
 }
 
-func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 	name := params.ByName("name")
 	eo, err := oe.workers.GetEmployee(profession, name)

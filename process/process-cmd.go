@@ -58,7 +58,7 @@ func (p *ProcessCmd) Read() {
 	data, err := utils.ReadFrame(p.reader)
 	if err != nil {
 		p.status = StatusExit
-		log.Error(err)
+		log.Error(p.name, " ", err)
 		return
 	}
 	status := new(eosc.ProcessStatus)
