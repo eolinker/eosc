@@ -98,6 +98,10 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 	}
 
 	oe.data.Del(id)
+	destroy, ok := worker.worker.(eosc.IWorkerDestroy)
+	if ok {
+		destroy.Destroy()
+	}
 	oe.requireManager.Del(id)
 
 	return worker, nil

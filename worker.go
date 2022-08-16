@@ -12,6 +12,9 @@ type IWorker interface {
 	Stop() error
 	CheckSkill(skill string) bool
 }
+type IWorkerDestroy interface {
+	Destroy() error
+}
 type IWorkers interface {
 	Get(id string) (IWorker, bool)
 }

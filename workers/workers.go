@@ -88,6 +88,10 @@ func (wm *Workers) Del(id string) error {
 		return err
 	}
 	wm.data.Del(id)
+	destroy, ok := worker.(eosc.IWorkerDestroy)
+	if ok {
+		destroy.Destroy()
+	}
 	wm.requireManager.Del(id)
 	//wm.portsRequire.Del(id)
 
