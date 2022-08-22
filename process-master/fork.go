@@ -42,7 +42,7 @@ func (m *Master) Fork(pFile *pidfile.PidFile) error {
 		return err
 	}
 
-	tfMaster, filesMaster := m.masterTraffic.Export(3)
+	tfMaster, filesMaster := m.adminTraffic.Export(3)
 
 	dataMasterTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfMaster})
 	if err != nil {

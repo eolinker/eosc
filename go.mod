@@ -19,6 +19,7 @@ require (
 
 require (
 	github.com/google/uuid v1.1.2
+	github.com/soheilhy/cmux v0.1.5
 	go.etcd.io/bbolt v1.3.6
 	go.etcd.io/etcd/api/v3 v3.5.4
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4

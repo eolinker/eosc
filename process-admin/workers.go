@@ -100,6 +100,10 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 	}
 
 	oe.data.Del(id)
+	destroy, ok := worker.worker.(eosc.IWorkerDestroy)
+	if ok {
+		destroy.Destroy()
+	}
 	oe.requireManager.Del(id)
 
 	return worker, nil
@@ -183,7 +187,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	return wInfo, nil
 }
 
-func getIds(m map[eosc.RequireId]interface{}) []string {
+func getIds(m map[eosc.RequireId]eosc.IWorker) []string {
 	if len(m) == 0 {
 		return nil
 	}

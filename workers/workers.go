@@ -89,6 +89,10 @@ func (wm *Workers) Del(id string) error {
 		return err
 	}
 	wm.data.Del(id)
+	destroy, ok := worker.(eosc.IWorkerDestroy)
+	if ok {
+		destroy.Destroy()
+	}
 	wm.requireManager.Del(id)
 	//wm.portsRequire.Del(id)
 
@@ -215,7 +219,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	return nil
 }
 
-func getIds(m map[eosc.RequireId]interface{}) []string {
+func getIds(m map[eosc.RequireId]eosc.IWorker) []string {
 	if len(m) == 0 {
 		return nil
 	}
