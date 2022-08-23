@@ -88,8 +88,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	
 	variables := variable.FillNamespace(namespace, cb)
 	
-	cloneData := oe.variableData.Clone()
-	affectIds, err := cloneData.SetByNamespace(namespace, variables)
+	affectIds, err := oe.variableData.Check(namespace, variables)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
@@ -125,7 +124,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			Data:      eventData,
 		})
 	}
-	oe.variableData = cloneData
+	oe.variableData.SetByNamespace(namespace, variables)
 	return http.StatusOK, nil, es, map[string]interface{}{
 		"namespace": namespace,
 		"variables": cb,
