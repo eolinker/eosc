@@ -9,9 +9,9 @@ import (
 	"github.com/eolinker/eosc/workers/require"
 	"reflect"
 	"sync"
-
+	
 	//port_reqiure "github.com/eolinker/eosc/common/port-reqiure"
-
+	
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 )
@@ -21,7 +21,7 @@ type IWorkers interface {
 	Del(id string) error
 	//Check(id, profession, name, driverName string, body []byte) error
 	Set(id, profession, name, driverName string, body []byte, variables map[string]string) error
-
+	
 	//RequiredCount(id string) int
 	Reset(wdl []*eosc.WorkerConfig, variables map[string]string) error
 	//All() []*Worker
@@ -44,7 +44,7 @@ func (wm *Workers) RequiredCount(id string) int {
 func (wm *Workers) Check(id, profession, name, driverName string, body []byte) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
+	
 	p, has := wm.professions.Get(profession)
 	if !has {
 		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
@@ -53,7 +53,7 @@ func (wm *Workers) Check(id, profession, name, driverName string, body []byte) e
 	if !has {
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
-
+	
 	conf := newConfig(driver.ConfigType())
 	err := json.Unmarshal(body, conf)
 	if err != nil {
@@ -69,13 +69,13 @@ func (wm *Workers) Check(id, profession, name, driverName string, body []byte) e
 		}
 	}
 	return nil
-
+	
 }
 
 func (wm *Workers) Del(id string) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
+	
 	worker, has := wm.data.Get(id)
 	if !has {
 		return eosc.ErrorWorkerNotExits
@@ -83,7 +83,7 @@ func (wm *Workers) Del(id string) error {
 	if wm.requireManager.RequireByCount(id) > 0 {
 		return eosc.ErrorRequire
 	}
-
+	
 	err := worker.Stop()
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (wm *Workers) Del(id string) error {
 	}
 	wm.requireManager.Del(id)
 	//wm.portsRequire.Del(id)
-
+	
 	return nil
 }
 
@@ -119,18 +119,19 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 
 func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) error {
 	ps := wm.professions.Sort()
-
+	
 	pm := make(map[string][]*eosc.WorkerConfig)
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
-
+	
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
+	
 	olddata := wm.data
 	wm.data = NewTypedWorkers()
-
+	wm.requireManager = require.NewRequireManager()
+	
 	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
 		log.Debug("init profession:", p.Name)
@@ -155,7 +156,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) 
 func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variables map[string]string) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
+	
 	return wm.set(id, profession, name, driverName, body, variables)
 }
 
@@ -174,7 +175,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if err != nil {
 		return fmt.Errorf("worker unmarshal error:%s", err)
 	}
-
+	
 	requires, err := config.CheckConfig(conf, wm)
 	if err != nil {
 		return err
@@ -186,7 +187,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	}
 	o, has := wm.data.Get(id)
 	if has {
-
+		
 		e := o.Reset(conf, requires)
 		if e != nil {
 			return e
@@ -208,7 +209,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if e != nil {
 		log.Warn("worker-data set worker start:", e)
 	}
-
+	
 	// store
 	wm.data.Set(id, worker)
 	wm.requireManager.Set(id, getIds(requires))
