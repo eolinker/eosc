@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
@@ -34,42 +33,6 @@ type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
 	requireManager require.IRequires
-	//portsRequire   port_reqiure.IPortsRequire
-}
-
-func (wm *Workers) RequiredCount(id string) int {
-	return wm.requireManager.RequireByCount(id)
-}
-
-func (wm *Workers) Check(id, profession, name, driverName string, body []byte) error {
-	wm.locker.Lock()
-	defer wm.locker.Unlock()
-
-	p, has := wm.professions.Get(profession)
-	if !has {
-		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
-	}
-	driver, has := p.GetDriver(driverName)
-	if !has {
-		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
-	}
-
-	conf := newConfig(driver.ConfigType())
-	err := json.Unmarshal(body, conf)
-	if err != nil {
-		return err
-	}
-	requires, err := config.CheckConfig(conf, wm)
-	if err != nil {
-		return err
-	}
-	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
-		if err := dc.Check(conf, requires); err != nil {
-			return err
-		}
-	}
-	return nil
-
 }
 
 func (wm *Workers) Del(id string) error {
@@ -94,7 +57,6 @@ func (wm *Workers) Del(id string) error {
 		destroy.Destroy()
 	}
 	wm.requireManager.Del(id)
-	//wm.portsRequire.Del(id)
 
 	return nil
 }
@@ -113,7 +75,6 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 		locker:         sync.Mutex{},
 		data:           NewTypedWorkers(),
 		requireManager: require.NewRequireManager(),
-		//portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
 
@@ -192,9 +153,6 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 			return e
 		}
 		wm.requireManager.Set(id, getIds(requires))
-		//if res, ok := o.IWorker.(eosc.IWorkerResources); ok {
-		//	wm.portsRequire.Set(id, res.Ports())
-		//}
 		return nil
 	}
 	// create
@@ -212,9 +170,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	// store
 	wm.data.Set(id, worker)
 	wm.requireManager.Set(id, getIds(requires))
-	//if res, ok := worker.(eosc.IWorkerResources); ok {
-	//	wm.portsRequire.Set(id, res.Ports())
-	//}
+
 	log.Debug("worker-data set worker done:", id)
 	return nil
 }

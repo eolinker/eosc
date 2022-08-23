@@ -17,3 +17,10 @@ type IExtenderDriver interface {
 	ConfigType() reflect.Type
 	Create(id, name string, v interface{}, workers map[RequireId]IWorker) (IWorker, error)
 }
+
+type ISetting interface {
+	ConfigType() reflect.Type
+	Set(conf []byte) (interface{}, error)
+	Get() interface{}
+	ReadOnly() bool
+}
