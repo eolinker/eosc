@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
@@ -8,9 +9,9 @@ import (
 	"github.com/eolinker/eosc/workers/require"
 	"reflect"
 	"sync"
-
+	
 	//port_reqiure "github.com/eolinker/eosc/common/port-reqiure"
-
+	
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 )
@@ -19,10 +20,10 @@ type IWorkers interface {
 	eosc.IWorkers
 	Del(id string) error
 	//Check(id, profession, name, driverName string, body []byte) error
-	Set(id, profession, name, driverName string, body []byte, variables map[string]string) error
-
+	Set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error
+	
 	//RequiredCount(id string) int
-	Reset(wdl []*eosc.WorkerConfig, variables map[string]string) error
+	Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) error
 	//All() []*Worker
 }
 
@@ -33,12 +34,48 @@ type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
 	requireManager require.IRequires
+	//portsRequire   port_reqiure.IPortsRequire
+}
+
+func (wm *Workers) RequiredCount(id string) int {
+	return wm.requireManager.RequireByCount(id)
+}
+
+func (wm *Workers) Check(id, profession, name, driverName string, body []byte) error {
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+	
+	p, has := wm.professions.Get(profession)
+	if !has {
+		return fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
+	}
+	driver, has := p.GetDriver(driverName)
+	if !has {
+		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
+	}
+	
+	conf := newConfig(driver.ConfigType())
+	err := json.Unmarshal(body, conf)
+	if err != nil {
+		return err
+	}
+	requires, err := config.CheckConfig(conf, wm)
+	if err != nil {
+		return err
+	}
+	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
+		if err := dc.Check(conf, requires); err != nil {
+			return err
+		}
+	}
+	return nil
+	
 }
 
 func (wm *Workers) Del(id string) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
+	
 	worker, has := wm.data.Get(id)
 	if !has {
 		return eosc.ErrorWorkerNotExits
@@ -46,7 +83,7 @@ func (wm *Workers) Del(id string) error {
 	if wm.requireManager.RequireByCount(id) > 0 {
 		return eosc.ErrorRequire
 	}
-
+	
 	err := worker.Stop()
 	if err != nil {
 		return err
@@ -57,7 +94,8 @@ func (wm *Workers) Del(id string) error {
 		destroy.Destroy()
 	}
 	wm.requireManager.Del(id)
-
+	//wm.portsRequire.Del(id)
+	
 	return nil
 }
 
@@ -75,23 +113,25 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 		locker:         sync.Mutex{},
 		data:           NewTypedWorkers(),
 		requireManager: require.NewRequireManager(),
+		//portsRequire:   port_reqiure.NewPortsRequire(),
 	}
 }
 
-func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) error {
+func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) error {
 	ps := wm.professions.Sort()
-
+	
 	pm := make(map[string][]*eosc.WorkerConfig)
 	for _, wd := range wdl {
 		pm[wd.Profession] = append(pm[wd.Profession], wd)
 	}
-
+	
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
+	
 	olddata := wm.data
 	wm.data = NewTypedWorkers()
-
+	wm.requireManager = require.NewRequireManager()
+	
 	log.Debug("worker init... size is ", len(wdl))
 	for _, p := range ps {
 		log.Debug("init profession:", p.Name)
@@ -101,7 +141,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) 
 				wm.data.Set(wd.Id, old)
 			}
 			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
-			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body, variables); err != nil {
+			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body, variable); err != nil {
 				log.Error("init set worker: ", err)
 				continue
 			}
@@ -113,14 +153,14 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) 
 	return nil
 }
 
-func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variables map[string]string) error {
+func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-
-	return wm.set(id, profession, name, driverName, body, variables)
+	
+	return wm.set(id, profession, name, driverName, body, variable)
 }
 
-func (wm *Workers) set(id, profession, name, driverName string, body []byte, variables map[string]string) error {
+func (wm *Workers) set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error {
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
@@ -130,12 +170,11 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if !has {
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
-	log.Debug("set body is ", string(body), ",variables is ", variables)
-	conf, _, err := variable.NewParse(variables).Unmarshal(body, driver.ConfigType())
+	conf, _, err := variable.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return fmt.Errorf("worker unmarshal error:%s", err)
 	}
-
+	
 	requires, err := config.CheckConfig(conf, wm)
 	if err != nil {
 		return err
@@ -147,12 +186,15 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	}
 	o, has := wm.data.Get(id)
 	if has {
-
+		
 		e := o.Reset(conf, requires)
 		if e != nil {
 			return e
 		}
 		wm.requireManager.Set(id, getIds(requires))
+		//if res, ok := o.IWorker.(eosc.IWorkerResources); ok {
+		//	wm.portsRequire.Set(id, res.Ports())
+		//}
 		return nil
 	}
 	// create
@@ -166,11 +208,13 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if e != nil {
 		log.Warn("worker-data set worker start:", e)
 	}
-
+	
 	// store
 	wm.data.Set(id, worker)
 	wm.requireManager.Set(id, getIds(requires))
-
+	//if res, ok := worker.(eosc.IWorkerResources); ok {
+	//	wm.portsRequire.Set(id, res.Ports())
+	//}
 	log.Debug("worker-data set worker done:", id)
 	return nil
 }

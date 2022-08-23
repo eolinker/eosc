@@ -32,7 +32,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 				return err
 			}
 			
-			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager.GetAll())
+			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager)
 		}
 	case eosc.NamespaceVariable:
 		{
@@ -41,7 +41,8 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			if err != nil {
 				return err
 			}
-			_, err = ws.variableManager.SetByNamespace(key, tmp)
+			
+			err = ws.variableManager.SetByNamespace(key, tmp)
 			return err
 		}
 	default:
@@ -119,7 +120,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			h()
 		}
 	})
-	ws.workers.Reset(wc, ws.variableManager.GetAll())
+	ws.workers.Reset(wc, ws.variableManager)
 	
 	return nil
 }

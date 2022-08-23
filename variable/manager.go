@@ -4,20 +4,19 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
+	"reflect"
 	"strings"
 )
 
 var _ IVariable = (*Variables)(nil)
 
 type IVariable interface {
-	SetByNamespace(namespace string, variables map[string]string) ([]string, error)
+	SetByNamespace(namespace string, variables map[string]string) error
 	GetByNamespace(namespace string) (map[string]string, bool)
 	SetVariablesById(id string, variables []string)
-	GetVariablesById(id string) []string
-	GetIdsByVariable(variable string) []string
-	GetAll() map[string]string
 	Namespaces() []string
-	Clone() IVariable
+	Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error)
+	Check(namespace string, variables map[string]string) ([]string, error)
 }
 
 type Variables struct {
@@ -26,19 +25,16 @@ type Variables struct {
 	requireManager IRequires
 }
 
+func (m *Variables) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
+	return NewParse(m.getAll()).Unmarshal(buf, typ)
+}
+
 func NewVariables(data map[string][]byte) IVariable {
 	v := &Variables{variables: eosc.NewUntyped(), requireManager: NewRequireManager()}
 	for namespace, value := range data {
 		v.variables.Set(namespace, value)
 	}
 	return v
-}
-
-func (m *Variables) Clone() IVariable {
-	return &Variables{
-		variables:      m.variables.Clone(),
-		requireManager: m.requireManager.Clone(),
-	}
 }
 
 func (m *Variables) SetVariablesById(id string, variables []string) {
@@ -53,7 +49,7 @@ func (m *Variables) GetIdsByVariable(variable string) []string {
 	return m.requireManager.RequireIDs(variable)
 }
 
-func (m *Variables) SetByNamespace(namespace string, variables map[string]string) ([]string, error) {
+func (m *Variables) Check(namespace string, variables map[string]string) ([]string, error) {
 	// variables的key为：{变量名}@{namespace}，如：v1@default
 	old, has := m.getByNamespace(namespace)
 	if !has {
@@ -71,16 +67,24 @@ func (m *Variables) SetByNamespace(namespace string, variables map[string]string
 			delete(old, key)
 			continue
 		}
-		// 将新增的key记录下来
-		affectIds = append(affectIds, m.requireManager.RequireIDs(key)...)
 	}
 	for key := range old {
+		// 删除的key
 		if m.requireManager.RequireByCount(key) > 0 {
 			return nil, fmt.Errorf("variable %s %w", key, eosc.ErrorRequire)
 		}
 	}
-	m.variables.Set(namespace, variables)
+	
 	return affectIds, nil
+}
+
+func (m *Variables) SetByNamespace(namespace string, variables map[string]string) error {
+	_, err := m.Check(namespace, variables)
+	if err != nil {
+		return err
+	}
+	m.variables.Set(namespace, variables)
+	return nil
 }
 
 func (m *Variables) getAll() map[string]string {
@@ -104,16 +108,24 @@ func (m *Variables) getByNamespace(namespace string) (map[string]string, bool) {
 		return nil, false
 	}
 	v, ok := variables.(map[string]string)
-	return v, ok
+	if !ok {
+		return nil, false
+	}
+	newMap := make(map[string]string)
+	for key, value := range v {
+		newMap[key] = value
+	}
+	return newMap, ok
 }
 
 func (m *Variables) GetByNamespace(namespace string) (map[string]string, bool) {
 	return m.getByNamespace(namespace)
 }
 
-func (m *Variables) GetAll() map[string]string {
-	return m.getAll()
-}
+//
+//func (m *Variables) GetAll() map[string]string {
+//	return m.getAll()
+//}
 
 func (m *Variables) Namespaces() []string {
 	return m.variables.Keys()
