@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/variable"
 	"strings"
-
+	
 	"github.com/eolinker/eosc"
 )
 
 func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) error {
-
+	
 	switch namespace {
 	case eosc.NamespaceProfession:
 		{
@@ -21,7 +22,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 				log.Error("unmarshal profession data error:", err)
 				return err
 			}
-
+			
 			return ws.professionManager.Set(key, p)
 		}
 	case eosc.NamespaceWorker:
@@ -31,7 +32,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			if err != nil {
 				return err
 			}
-
+			
 			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager.GetAll())
 		}
 	case eosc.NamespaceVariable:
@@ -47,7 +48,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
 	}
-
+	
 }
 
 func (ws *WorkerServer) delEvent(namespace string, key string) error {
@@ -77,10 +78,10 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			return err
 		}
 	}
-
+	
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
-
+	
 	for namespace, config := range eventData {
 		for _, c := range config {
 			switch namespace {
@@ -121,6 +122,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 						}
 						target[name][key] = value
 					}
+					ws.variableManager = variable.NewVariables(nil)
 					for key, value := range target {
 						ws.variableManager.SetByNamespace(key, value)
 					}
@@ -128,7 +130,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			}
 		}
 	}
-
+	
 	ws.professionManager.Reset(pc)
 	ws.onceInit.Do(func() {
 		for _, h := range ws.initHandler {
@@ -136,6 +138,6 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 		}
 	})
 	ws.workers.Reset(wc, ws.variableManager.GetAll())
-
+	
 	return nil
 }
