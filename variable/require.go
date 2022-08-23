@@ -15,7 +15,6 @@ type IRequires interface {
 	require.IRequires
 	RequireIDs(requireId string) []string
 	WorkerIDs(id string) []string
-	Clone() IRequires
 }
 
 type RequireManager struct {
@@ -31,14 +30,6 @@ func NewRequireManager() IRequires {
 		locker:    sync.Mutex{},
 		requireBy: eosc.NewUntyped(),
 		workerIds: eosc.NewUntyped(),
-	}
-}
-
-func (w *RequireManager) Clone() IRequires {
-	return &RequireManager{
-		locker:    sync.Mutex{},
-		requireBy: w.requireBy.Clone(),
-		workerIds: w.workerIds.Clone(),
 	}
 }
 
