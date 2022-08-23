@@ -93,7 +93,8 @@ func NewSettingApi(init map[string][]byte, variable variable.IVariable) *Setting
 			if err != nil {
 				continue
 			}
-		 	
+			
+			driver.Set(config.Body)
 		}
 	}
 	return &SettingApi{
