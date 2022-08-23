@@ -14,11 +14,12 @@ import (
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/process-admin/require"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
-	"github.com/eolinker/eosc/workers/require"
+
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"os"
@@ -165,7 +166,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)
-	NewWorkerApi(ws).Register(p.router)
+	NewWorkerApi(ws, settingApi.request).Register(p.router)
 	settingApi.RegisterSetting(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
 	NewVariableApi(extenderData, ws, vd).Register(p.router)

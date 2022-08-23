@@ -49,6 +49,6 @@ func (oe *WorkerApi) compatibleSetting(profession string, r *http.Request, param
 		return
 	}
 	isSkip = true
-	status, header, events, body = settingApi.request(r, params)
+	status, header, events, body = oe.settingRequest(r, params)
 	return
 }

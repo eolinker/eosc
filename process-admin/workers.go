@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
+	require "github.com/eolinker/eosc/process-admin/require"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
 	"github.com/eolinker/eosc/variable"
-	require "github.com/eolinker/eosc/workers/require"
 	"reflect"
 )
 
@@ -19,19 +19,19 @@ type Workers struct {
 }
 
 func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables variable.IVariable) *Workers {
-	
+
 	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variables: variables}
 	ws.init()
 	return ws
 }
 func (oe *Workers) init() {
 	ps := oe.professions.Sort()
-	
+
 	pm := make(map[string][]*WorkerInfo)
 	for _, wd := range oe.data.List() {
 		pm[wd.config.Profession] = append(pm[wd.config.Profession], wd)
 	}
-	
+
 	for _, pw := range ps {
 		for _, v := range pm[pw.Name] {
 			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Description, JsonData(v.config.Body))
@@ -55,7 +55,7 @@ func (oe *Workers) ListEmployees(profession string) ([]interface{}, error) {
 		}
 	}
 	return vs, nil
-	
+
 }
 
 func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*WorkerInfo, error) {
@@ -65,7 +65,7 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 	}
 	log.Debug("update:", id, " ", profession, ",", name, ",", driver, ",", data)
 	if driver == "" {
-		
+
 		employee, err := oe.GetEmployee(profession, name)
 		if err != nil {
 			return nil, err
@@ -76,9 +76,9 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return w, nil
-	
+
 }
 
 func (oe *Workers) Export() map[string][]*WorkerInfo {
@@ -89,28 +89,28 @@ func (oe *Workers) Export() map[string][]*WorkerInfo {
 	return all
 }
 func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
-	
+
 	worker, has := oe.data.GetInfo(id)
 	if !has {
 		return nil, eosc.ErrorWorkerNotExits
 	}
-	
+
 	if oe.requireManager.RequireByCount(id) > 0 {
 		return nil, eosc.ErrorRequire
 	}
-	
+
 	oe.data.Del(id)
 	destroy, ok := worker.worker.(eosc.IWorkerDestroy)
 	if ok {
 		destroy.Destroy()
 	}
 	oe.requireManager.Del(id)
-	
+
 	return worker, nil
 }
 
 func (oe *Workers) GetEmployee(profession, name string) (*WorkerInfo, error) {
-	
+
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
 		return nil, fmt.Errorf("%s %w", id, ErrorNotMatch)
@@ -123,7 +123,7 @@ func (oe *Workers) GetEmployee(profession, name string) (*WorkerInfo, error) {
 }
 
 func (oe *Workers) set(id, profession, name, driverName, desc string, data IData) (*WorkerInfo, error) {
-	
+
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := oe.professions.Get(profession)
 	if !has {
@@ -136,14 +136,14 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	if !has {
 		return nil, fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
-	
+
 	body, _ := data.Encode()
-	
+
 	conf, usedVariables, err := oe.variables.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return nil, err
 	}
-	
+
 	requires, err := config.CheckConfig(conf, oe.data)
 	if err != nil {
 		return nil, err
@@ -155,7 +155,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 	}
 	wInfo, hasInfo := oe.data.GetInfo(id)
 	if hasInfo && wInfo.worker != nil {
-		
+
 		e := wInfo.worker.Reset(conf, requires)
 		if e != nil {
 			return nil, e
@@ -171,19 +171,19 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		log.Warn("worker-data set worker create:", err)
 		return nil, err
 	}
-	
+
 	if !hasInfo {
 		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
 	} else {
 		wInfo.reset(driverName, desc, body, worker, driver.ConfigType())
 	}
-	
+
 	// store
 	oe.data.Set(id, wInfo)
 	oe.requireManager.Set(id, getIds(requires))
 	oe.variables.SetVariablesById(id, usedVariables)
 	log.Debug("worker-data set worker done:", id)
-	
+
 	return wInfo, nil
 }
 

@@ -2,8 +2,8 @@ package process_admin
 
 import (
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/process-admin/require"
 	"github.com/eolinker/eosc/professions"
-	"github.com/eolinker/eosc/workers/require"
 )
 
 type ProfessionsRequire struct {

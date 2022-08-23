@@ -1,9 +1,9 @@
 package variable
 
 import (
-	"github.com/eolinker/eosc/workers/require"
+	"github.com/eolinker/eosc/process-admin/require"
 	"sync"
-	
+
 	"github.com/eolinker/eosc"
 )
 
@@ -47,7 +47,7 @@ func (w *RequireManager) Set(id string, requiresIds []string) {
 	defer w.locker.Unlock()
 	w.del(id)
 	if len(requiresIds) > 0 {
-		
+
 		for _, rid := range requiresIds {
 			d, has := w.requireBy.Get(rid)
 			if !has {
@@ -64,7 +64,7 @@ func (w *RequireManager) Del(id string) {
 	w.locker.Lock()
 	w.del(id)
 	w.locker.Unlock()
-	
+
 }
 func (w *RequireManager) del(id string) {
 	if r, has := w.workerIds.Del(id); has {

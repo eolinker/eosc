@@ -12,7 +12,7 @@ import (
 
 	"github.com/eolinker/eosc"
 
-	"github.com/eolinker/eosc/workers"
+	"github.com/eolinker/eosc/process-worker/workers"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/utils"

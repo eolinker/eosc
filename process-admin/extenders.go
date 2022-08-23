@@ -7,8 +7,9 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/extends"
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/process-admin/require"
 	"github.com/eolinker/eosc/utils/schema"
-	"github.com/eolinker/eosc/workers/require"
+
 	"reflect"
 	"strings"
 	"sync"
