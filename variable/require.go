@@ -3,7 +3,7 @@ package variable
 import (
 	"github.com/eolinker/eosc/workers/require"
 	"sync"
-
+	
 	"github.com/eolinker/eosc"
 )
 
@@ -15,6 +15,7 @@ type IRequires interface {
 	require.IRequires
 	RequireIDs(requireId string) []string
 	WorkerIDs(id string) []string
+	Clone() IRequires
 }
 
 type RequireManager struct {
@@ -33,12 +34,20 @@ func NewRequireManager() IRequires {
 	}
 }
 
+func (w *RequireManager) Clone() IRequires {
+	return &RequireManager{
+		locker:    sync.Mutex{},
+		requireBy: w.requireBy.Clone(),
+		workerIds: w.workerIds.Clone(),
+	}
+}
+
 func (w *RequireManager) Set(id string, requiresIds []string) {
 	w.locker.Lock()
 	defer w.locker.Unlock()
 	w.del(id)
 	if len(requiresIds) > 0 {
-
+		
 		for _, rid := range requiresIds {
 			d, has := w.requireBy.Get(rid)
 			if !has {
@@ -55,7 +64,7 @@ func (w *RequireManager) Del(id string) {
 	w.locker.Lock()
 	w.del(id)
 	w.locker.Unlock()
-
+	
 }
 func (w *RequireManager) del(id string) {
 	if r, has := w.workerIds.Del(id); has {

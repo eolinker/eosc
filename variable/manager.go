@@ -1,21 +1,23 @@
 package variable
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"strings"
 )
 
+var _ IVariable = (*Variables)(nil)
+
 type IVariable interface {
-	SetByNamespace(namespace string, variables map[string]string) (map[string]string, []string, error)
+	SetByNamespace(namespace string, variables map[string]string) ([]string, error)
 	GetByNamespace(namespace string) (map[string]string, bool)
 	SetVariablesById(id string, variables []string)
 	GetVariablesById(id string) []string
 	GetIdsByVariable(variable string) []string
 	GetAll() map[string]string
 	Namespaces() []string
+	Clone() IVariable
 }
 
 type Variables struct {
@@ -27,11 +29,16 @@ type Variables struct {
 func NewVariables(data map[string][]byte) IVariable {
 	v := &Variables{variables: eosc.NewUntyped(), requireManager: NewRequireManager()}
 	for namespace, value := range data {
-		var variables map[string]string
-		json.Unmarshal(value, &variables)
-		v.SetByNamespace(namespace, variables)
+		v.variables.Set(namespace, value)
 	}
 	return v
+}
+
+func (m *Variables) Clone() IVariable {
+	return &Variables{
+		variables:      m.variables.Clone(),
+		requireManager: m.requireManager.Clone(),
+	}
 }
 
 func (m *Variables) SetVariablesById(id string, variables []string) {
@@ -46,13 +53,13 @@ func (m *Variables) GetIdsByVariable(variable string) []string {
 	return m.requireManager.RequireIDs(variable)
 }
 
-func (m *Variables) SetByNamespace(namespace string, variables map[string]string) (map[string]string, []string, error) {
+func (m *Variables) SetByNamespace(namespace string, variables map[string]string) ([]string, error) {
 	// variables的key为：{变量名}@{namespace}，如：v1@default
 	old, has := m.getByNamespace(namespace)
 	if !has {
 		m.variables.Set(namespace, variables)
 		// 此时变量都是新的，没有受影响的配置id
-		return m.getAll(), nil, nil
+		return nil, nil
 	}
 	affectIds := make([]string, 0, len(variables))
 	for key, value := range variables {
@@ -69,11 +76,11 @@ func (m *Variables) SetByNamespace(namespace string, variables map[string]string
 	}
 	for key := range old {
 		if m.requireManager.RequireByCount(key) > 0 {
-			return nil, nil, fmt.Errorf("variable %s %w", key, eosc.ErrorRequire)
+			return nil, fmt.Errorf("variable %s %w", key, eosc.ErrorRequire)
 		}
 	}
 	m.variables.Set(namespace, variables)
-	return m.getAll(), affectIds, nil
+	return affectIds, nil
 }
 
 func (m *Variables) getAll() map[string]string {
@@ -120,7 +127,7 @@ func TrimNamespace(origin map[string]string) map[string]string {
 			continue
 		}
 		key = key[:index]
-
+		
 		target[key] = value
 	}
 	return target
