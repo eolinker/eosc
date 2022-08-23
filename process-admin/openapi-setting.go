@@ -6,22 +6,20 @@ import (
 	"github.com/eolinker/eosc"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/setting"
+	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
 
-var (
-	settingApi = NewSettingApi()
-)
-
 type SettingApi struct {
-	datas setting.ISettings
+	datas    setting.ISettings
+	variable variable.IVariable
 }
 
-func RegisterSetting(router *httprouter.Router) {
-	router.GET("/setting/:name", open_api.CreateHandleFunc(settingApi.Get))
-	router.POST("/setting/:name", open_api.CreateHandleFunc(settingApi.Set))
-	router.PUT("/setting/:name", open_api.CreateHandleFunc(settingApi.Set))
+func (oe *SettingApi) RegisterSetting(router *httprouter.Router) {
+	router.GET("/setting/:name", open_api.CreateHandleFunc(oe.Get))
+	router.POST("/setting/:name", open_api.CreateHandleFunc(oe.Set))
+	router.PUT("/setting/:name", open_api.CreateHandleFunc(oe.Set))
 }
 func (oe *SettingApi) request(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
@@ -45,16 +43,26 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
 	}
-	encode, err := idata.Encode()
+	inputData, err := idata.Encode()
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
 	}
 
-	obj, err := driver.Set(encode)
+	obj, err := driver.Set(inputData)
 	if err != nil {
 		return 0, nil, nil, nil
 	}
-	eventData, _ := json.Marshal(obj)
+	id, _ := eosc.ToWorkerId(name, Setting)
+	eventData, _ := json.Marshal(eosc.WorkerConfig{
+		Id:          id,
+		Profession:  Setting,
+		Name:        name,
+		Driver:      name,
+		Create:      eosc.Now(),
+		Update:      eosc.Now(),
+		Body:        inputData,
+		Description: id,
+	})
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
@@ -73,9 +81,23 @@ func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status i
 	return http.StatusOK, nil, nil, driver.Get()
 }
 
-func NewSettingApi() *SettingApi {
+func NewSettingApi(init map[string][]byte, variable variable.IVariable) *SettingApi {
+	datas := setting.GetSettings()
 
+	for id, conf := range init {
+		name, _, _ := eosc.SplitWorkerId(id)
+		driver, has := datas.GetDriver(name)
+		if has {
+			config := new(eosc.WorkerConfig)
+			err := json.Unmarshal(conf, config)
+			if err != nil {
+				continue
+			}
+		 	
+		}
+	}
 	return &SettingApi{
-		datas: setting.GetSettings(),
+		variable: variable,
+		datas:    datas,
 	}
 }
