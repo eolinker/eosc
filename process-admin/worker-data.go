@@ -21,6 +21,7 @@ func (w *WorkerDatas) Get(id string) (eosc.IWorker, bool) {
 func NewWorkerDatas(initData map[string][]byte) *WorkerDatas {
 	data := &WorkerDatas{data: eosc.NewUntyped()}
 	for id, d := range initData {
+
 		cf := new(eosc.WorkerConfig)
 		e := json.Unmarshal(d, cf)
 		if e != nil {

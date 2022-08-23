@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -150,8 +151,8 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
-
-	wd := NewWorkerDatas(arg[eosc.NamespaceWorker])
+	settingsConfigs := filerSetting(arg[eosc.NamespaceWorker], Setting, true)
+	wd := NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 
@@ -202,6 +203,17 @@ func initExtender(config map[string][]byte) extends.IExtenderRegister {
 	return register
 }
 
+func filerSetting(confs map[string][]byte, name string, yes bool) map[string][]byte {
+	name = strings.ToLower(name)
+	sets := make(map[string][]byte)
+	for id, data := range confs {
+		_, profession, _ := eosc.SplitWorkerId(id)
+		if (strings.ToLower(profession) == name) == yes {
+			sets[id] = data
+		}
+	}
+	return sets
+}
 func readConfig() map[string]map[string][]byte {
 	conf := make(map[string]map[string][]byte)
 
