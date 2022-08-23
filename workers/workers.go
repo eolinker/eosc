@@ -20,10 +20,10 @@ type IWorkers interface {
 	eosc.IWorkers
 	Del(id string) error
 	//Check(id, profession, name, driverName string, body []byte) error
-	Set(id, profession, name, driverName string, body []byte, variables map[string]string) error
+	Set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error
 	
 	//RequiredCount(id string) int
-	Reset(wdl []*eosc.WorkerConfig, variables map[string]string) error
+	Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) error
 	//All() []*Worker
 }
 
@@ -117,7 +117,7 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 	}
 }
 
-func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) error {
+func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) error {
 	ps := wm.professions.Sort()
 	
 	pm := make(map[string][]*eosc.WorkerConfig)
@@ -141,7 +141,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) 
 				wm.data.Set(wd.Id, old)
 			}
 			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
-			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body, variables); err != nil {
+			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body, variable); err != nil {
 				log.Error("init set worker: ", err)
 				continue
 			}
@@ -153,14 +153,14 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variables map[string]string) 
 	return nil
 }
 
-func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variables map[string]string) error {
+func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
 	
-	return wm.set(id, profession, name, driverName, body, variables)
+	return wm.set(id, profession, name, driverName, body, variable)
 }
 
-func (wm *Workers) set(id, profession, name, driverName string, body []byte, variables map[string]string) error {
+func (wm *Workers) set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error {
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
@@ -170,8 +170,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if !has {
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
-	log.Debug("set body is ", string(body), ",variables is ", variables)
-	conf, _, err := variable.NewParse(variables).Unmarshal(body, driver.ConfigType())
+	conf, _, err := variable.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return fmt.Errorf("worker unmarshal error:%s", err)
 	}
