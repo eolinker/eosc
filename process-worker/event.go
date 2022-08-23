@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/variable"
-	"strings"
 	
 	"github.com/eolinker/eosc"
 )
@@ -42,7 +41,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			if err != nil {
 				return err
 			}
-			_, _, err = ws.variableManager.SetByNamespace(key, tmp)
+			_, err = ws.variableManager.SetByNamespace(key, tmp)
 			return err
 		}
 	default:
@@ -83,10 +82,11 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 	wc := make([]*eosc.WorkerConfig, 0)
 	
 	for namespace, config := range eventData {
-		for _, c := range config {
-			switch namespace {
-			case eosc.NamespaceProfession:
-				{
+		
+		switch namespace {
+		case eosc.NamespaceProfession:
+			{
+				for _, c := range config {
 					p := new(eosc.ProfessionConfig)
 					err := json.Unmarshal(c, p)
 					if err != nil {
@@ -94,8 +94,10 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 					}
 					pc = append(pc, p)
 				}
-			case eosc.NamespaceWorker:
-				{
+			}
+		case eosc.NamespaceWorker:
+			{
+				for _, c := range config {
 					w := new(eosc.WorkerConfig)
 					err := json.Unmarshal(c, w)
 					if err != nil {
@@ -103,30 +105,10 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 					}
 					wc = append(wc, w)
 				}
-			case eosc.NamespaceVariable:
-				{
-					var tmp map[string]string
-					err := json.Unmarshal(c, &tmp)
-					if err != nil {
-						continue
-					}
-					target := make(map[string]map[string]string)
-					for key, value := range tmp {
-						name := "default"
-						index := strings.Index(key, "@")
-						if index > 0 && len(key) > index+1 {
-							name = key[index+1:]
-						}
-						if _, ok := target[name]; !ok {
-							target[name] = make(map[string]string)
-						}
-						target[name][key] = value
-					}
-					ws.variableManager = variable.NewVariables(nil)
-					for key, value := range target {
-						ws.variableManager.SetByNamespace(key, value)
-					}
-				}
+			}
+		case eosc.NamespaceVariable:
+			{
+				ws.variableManager = variable.NewVariables(config)
 			}
 		}
 	}
