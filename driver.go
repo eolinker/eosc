@@ -20,7 +20,7 @@ type IExtenderDriver interface {
 
 type ISetting interface {
 	ConfigType() reflect.Type
-	Set(conf []byte) (interface{}, error)
+	Set(conf interface{}) error
 	Get() interface{}
 	ReadOnly() bool
 }

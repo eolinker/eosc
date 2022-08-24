@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/variable"
@@ -48,7 +49,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
 	}
 
-	obj, err := driver.Set(inputData)
+	err = driver.Set(inputData)
 	if err != nil {
 		return 0, nil, nil, nil
 	}
@@ -63,6 +64,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 		Body:        inputData,
 		Description: id,
 	})
+
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
@@ -91,10 +93,22 @@ func NewSettingApi(init map[string][]byte, variable variable.IVariable) *Setting
 			config := new(eosc.WorkerConfig)
 			err := json.Unmarshal(conf, config)
 			if err != nil {
+				log.Warn("init setting Unmarshal WorkerConfig:", err)
 				continue
 			}
-			
-			driver.Set(config.Body)
+			cfg, vs, err := variable.Unmarshal(config.Body, driver.ConfigType())
+			if err != nil {
+				log.Warn("init setting", name, " Unmarshal variable:", err)
+				continue
+			}
+
+			err = driver.Set(cfg)
+			if err != nil {
+				log.Warn("init setting set:", err)
+
+				continue
+			}
+			variable.SetVariablesById(id, vs)
 		}
 	}
 	return &SettingApi{

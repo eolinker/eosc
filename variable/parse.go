@@ -5,12 +5,12 @@ import (
 	"reflect"
 )
 
-func NewParse(variables map[string]string) *Parse {
+func NewParse(variables IVariable) *Parse {
 	return &Parse{variables: variables}
 }
 
 type Parse struct {
-	variables map[string]string
+	variables IVariable
 }
 
 func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
@@ -21,12 +21,12 @@ func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, 
 
 type org struct {
 	typ          reflect.Type
-	variable     map[string]string
+	variable     IVariable
 	target       interface{}
 	usedVariable []string
 }
 
-func newOrg(typ reflect.Type, variable map[string]string) *org {
+func newOrg(typ reflect.Type, variable IVariable) *org {
 	return &org{typ: typ, variable: variable}
 }
 

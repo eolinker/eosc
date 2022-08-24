@@ -26,20 +26,12 @@ func (oe *VariableApi) Register(router *httprouter.Router) {
 	router.GET("/variable/:namespace/:key", open_api.CreateHandleFunc(oe.getByKey))
 	router.POST("/variable/:namespace", open_api.CreateHandleFunc(oe.setByNamespace))
 	router.PUT("/variable/:namespace", open_api.CreateHandleFunc(oe.setByNamespace))
-	
+
 }
 
 func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	namespaces := oe.variableData.Namespaces()
-	all := make(map[string]interface{})
-	for _, namespace := range namespaces {
-		data, has := oe.variableData.GetByNamespace(namespace)
-		if !has {
-			continue
-		}
-		all[namespace] = variable.TrimNamespace(data)
-	}
-	return http.StatusOK, nil, nil, all
+
+	return http.StatusOK, nil, nil, oe.variableData
 }
 
 func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -51,7 +43,7 @@ func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	return http.StatusOK, nil, nil, variable.TrimNamespace(data)
+	return http.StatusOK, nil, nil, data
 }
 
 func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -85,24 +77,22 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	
-	variables := variable.FillNamespace(namespace, cb)
-	
-	affectIds, err := oe.variableData.Check(namespace, variables)
+
+	affectIds, clone, err := oe.variableData.Check(namespace, cb)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	
-	parse := variable.NewParse(variables)
+
+	parse := variable.NewParse(clone)
 	es := make([]*open_api.EventResponse, 0, len(affectIds)+1)
-	data, _ := json.Marshal(variables)
+	data, _ := decoder.Encode()
 	es = append(es, &open_api.EventResponse{
 		Event:     "set",
 		Namespace: "variable",
 		Key:       namespace,
 		Data:      data,
 	})
-	
+
 	for _, id := range affectIds {
 		profession, name, success := eosc.SplitWorkerId(id)
 		if !success {
@@ -124,7 +114,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			Data:      eventData,
 		})
 	}
-	oe.variableData.SetByNamespace(namespace, variables)
+	oe.variableData.SetByNamespace(namespace, cb)
 	return http.StatusOK, nil, es, map[string]interface{}{
 		"namespace": namespace,
 		"variables": cb,
