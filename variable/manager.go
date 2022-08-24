@@ -2,30 +2,23 @@ package variable
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/require"
 	"reflect"
 	"strings"
 	"sync"
 )
 
-var _ IVariable = (*Variables)(nil)
-
-type IVariable interface {
-	SetByNamespace(namespace string, variables map[string]string) error
-	GetByNamespace(namespace string) (map[string]string, bool)
-	SetVariablesById(id string, variables []string)
-	Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error)
-	Check(namespace string, variables map[string]string) ([]string, IVariable, error)
-	Get(id string) (string, bool)
-	Len() int
-}
+var ErrorVariableRequire = errors.New("variable require")
+var _ eosc.IVariable = (*Variables)(nil)
 
 type Variables struct {
 	// data 变量数据
 	lock           sync.RWMutex
 	data           map[string]map[string]string
-	requireManager IRequires
+	requireManager eosc.IRequires
 }
 
 func (m *Variables) Get(id string) (string, bool) {
@@ -73,8 +66,8 @@ func (m *Variables) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []stri
 	return NewParse(m).Unmarshal(buf, typ)
 }
 
-func NewVariables(data map[string][]byte) IVariable {
-	v := &Variables{data: make(map[string]map[string]string, len(data)), requireManager: NewRequireManager()}
+func NewVariables(data map[string][]byte) eosc.IVariable {
+	v := &Variables{data: make(map[string]map[string]string, len(data)), requireManager: require.NewRequireManager()}
 	for namespace, value := range data {
 		nvs := make(map[string]string)
 		err := json.Unmarshal(value, &nvs)
@@ -91,11 +84,11 @@ func (m *Variables) SetVariablesById(id string, variables []string) {
 }
 
 func (m *Variables) GetVariablesById(id string) []string {
-	return m.requireManager.WorkerIDs(id)
+	return m.requireManager.Requires(id)
 }
 
 func (m *Variables) GetIdsByVariable(variable string) []string {
-	return m.requireManager.RequireIDs(variable)
+	return m.requireManager.RequireBy(variable)
 }
 
 func (m *Variables) check(namespace string, variables map[string]string) ([]string, error) {
@@ -109,7 +102,7 @@ func (m *Variables) check(namespace string, variables map[string]string) ([]stri
 		if v, ok := old[key]; ok {
 			if v != value {
 				// 将更新的key记录下来
-				affectIds = append(affectIds, m.requireManager.RequireIDs(key)...)
+				affectIds = append(affectIds, m.requireManager.RequireBy(key)...)
 			}
 			delete(old, key)
 			continue
@@ -118,13 +111,13 @@ func (m *Variables) check(namespace string, variables map[string]string) ([]stri
 	for key := range old {
 		// 删除的key
 		if m.requireManager.RequireByCount(key) > 0 {
-			return nil, fmt.Errorf("variable %s %w", key, eosc.ErrorRequire)
+			return nil, fmt.Errorf("variable %s %w", key, ErrorVariableRequire)
 		}
 	}
 
 	return affectIds, nil
 }
-func (m *Variables) Check(namespace string, variables map[string]string) ([]string, IVariable, error) {
+func (m *Variables) Check(namespace string, variables map[string]string) ([]string, eosc.IVariable, error) {
 	// variables的key为：{变量名}@{namespace}，如：v1@default
 	m.lock.RLock()
 	defer m.lock.RUnlock()

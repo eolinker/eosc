@@ -13,10 +13,10 @@ import (
 type VariableApi struct {
 	extenderData *ExtenderData
 	workers      *Workers
-	variableData variable.IVariable
+	variableData eosc.IVariable
 }
 
-func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData variable.IVariable) *VariableApi {
+func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData eosc.IVariable) *VariableApi {
 	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData}
 }
 

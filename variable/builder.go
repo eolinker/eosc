@@ -1,6 +1,7 @@
 package variable
 
 import (
+	"github.com/eolinker/eosc"
 	"strings"
 )
 
@@ -35,7 +36,7 @@ type Builder struct {
 	//defaultSuffix string
 }
 
-func (b *Builder) Replace(variables IVariable) (string, []string, bool) {
+func (b *Builder) Replace(variables eosc.IVariable) (string, []string, bool) {
 	strBuilder := strings.Builder{}
 	varBuilder := strings.Builder{}
 	status := CurrentStatus

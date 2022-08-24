@@ -7,7 +7,6 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/extends"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process-admin/require"
 	"github.com/eolinker/eosc/utils/schema"
 
 	"reflect"
@@ -54,10 +53,10 @@ type ExtenderData struct {
 	history  map[string]bool
 	locker   sync.RWMutex
 
-	extenderRequire require.IRequires
+	extenderRequire eosc.IRequires
 }
 
-func NewExtenderData(conf map[string][]byte, extenderRequire require.IRequires) *ExtenderData {
+func NewExtenderData(conf map[string][]byte, extenderRequire eosc.IRequires) *ExtenderData {
 	vs := make(map[string]string)
 	for k, v := range conf {
 		vs[k] = string(v)

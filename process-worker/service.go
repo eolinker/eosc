@@ -30,7 +30,7 @@ type WorkerServer struct {
 	cancel            context.CancelFunc
 	workers           workers.IWorkers
 	professionManager professions.IProfessions
-	variableManager   variable.IVariable
+	variableManager   eosc.IVariable
 	masterPid         int
 	onceInit          sync.Once
 	initHandler       []func()

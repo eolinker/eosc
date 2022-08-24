@@ -1,6 +1,7 @@
 package variable
 
 import (
+	"github.com/eolinker/eosc"
 	"reflect"
 )
 
@@ -10,15 +11,15 @@ var (
 )
 
 type IVariableResetType interface {
-	Reset(originVal reflect.Value, targetVal reflect.Value, variables IVariable) ([]string, error)
+	Reset(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVariable) ([]string, error)
 }
 
-func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables IVariable) ([]string, error) {
+func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVariable) ([]string, error) {
 	return recurseReflect(originVal, targetVal, variables)
 }
 
 // recurseReflect 递归反射值给对象
-func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables IVariable) ([]string, error) {
+func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVariable) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}

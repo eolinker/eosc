@@ -7,14 +7,13 @@ import (
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/setting"
-	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
 
 type SettingApi struct {
 	datas    setting.ISettings
-	variable variable.IVariable
+	variable eosc.IVariable
 }
 
 func (oe *SettingApi) RegisterSetting(router *httprouter.Router) {
@@ -39,6 +38,9 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if !has {
 		return http.StatusNotFound, nil, nil, http.StatusText(http.StatusNotFound)
 	}
+	if driver.ReadOnly() {
+		return http.StatusMethodNotAllowed, nil, nil, http.StatusText(http.StatusMethodNotAllowed)
+	}
 
 	idata, err := GetData(req)
 	if err != nil {
@@ -48,11 +50,11 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
 	}
-
-	err = driver.Set(inputData)
+	output, err := oe.datas.Set(name, inputData, oe.variable)
 	if err != nil {
 		return 0, nil, nil, nil
 	}
+
 	id, _ := eosc.ToWorkerId(name, Setting)
 	eventData, _ := json.Marshal(eosc.WorkerConfig{
 		Id:          id,
@@ -70,7 +72,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 		Namespace: eosc.NamespaceWorker,
 		Key:       fmt.Sprintf("%s@setting", name),
 		Data:      eventData,
-	}}, obj
+	}}, output
 }
 
 func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -83,12 +85,12 @@ func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status i
 	return http.StatusOK, nil, nil, driver.Get()
 }
 
-func NewSettingApi(init map[string][]byte, variable variable.IVariable) *SettingApi {
+func NewSettingApi(init map[string][]byte, variable eosc.IVariable) *SettingApi {
 	datas := setting.GetSettings()
 
 	for id, conf := range init {
 		name, _, _ := eosc.SplitWorkerId(id)
-		driver, has := datas.GetDriver(name)
+		_, has := datas.GetDriver(name)
 		if has {
 			config := new(eosc.WorkerConfig)
 			err := json.Unmarshal(conf, config)
@@ -96,19 +98,7 @@ func NewSettingApi(init map[string][]byte, variable variable.IVariable) *Setting
 				log.Warn("init setting Unmarshal WorkerConfig:", err)
 				continue
 			}
-			cfg, vs, err := variable.Unmarshal(config.Body, driver.ConfigType())
-			if err != nil {
-				log.Warn("init setting", name, " Unmarshal variable:", err)
-				continue
-			}
-
-			err = driver.Set(cfg)
-			if err != nil {
-				log.Warn("init setting set:", err)
-
-				continue
-			}
-			variable.SetVariablesById(id, vs)
+			datas.Set(name, config.Body, variable)
 		}
 	}
 	return &SettingApi{

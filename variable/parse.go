@@ -2,15 +2,16 @@ package variable
 
 import (
 	"encoding/json"
+	"github.com/eolinker/eosc"
 	"reflect"
 )
 
-func NewParse(variables IVariable) *Parse {
+func NewParse(variables eosc.IVariable) *Parse {
 	return &Parse{variables: variables}
 }
 
 type Parse struct {
-	variables IVariable
+	variables eosc.IVariable
 }
 
 func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
@@ -21,13 +22,13 @@ func (p *Parse) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, 
 
 type org struct {
 	typ          reflect.Type
-	variable     IVariable
+	variables    eosc.IVariable
 	target       interface{}
 	usedVariable []string
 }
 
-func newOrg(typ reflect.Type, variable IVariable) *org {
-	return &org{typ: typ, variable: variable}
+func newOrg(typ reflect.Type, variables eosc.IVariable) *org {
+	return &org{typ: typ, variables: variables}
 }
 
 func (o *org) UnmarshalJSON(bytes []byte) error {
@@ -37,7 +38,7 @@ func (o *org) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 	target := reflect.New(o.typ)
-	variables, err := recurseReflect(reflect.ValueOf(origin), target, o.variable)
+	variables, err := recurseReflect(reflect.ValueOf(origin), target, o.variables)
 	if err != nil {
 		return err
 	}

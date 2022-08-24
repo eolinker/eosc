@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	require "github.com/eolinker/eosc/process-admin/require"
+	"github.com/eolinker/eosc/require"
+
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
-	"github.com/eolinker/eosc/variable"
 	"reflect"
 )
 
 type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
-	requireManager require.IRequires
-	variables      variable.IVariable
+	requireManager eosc.IRequires
+	variables      eosc.IVariable
 }
 
-func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables variable.IVariable) *Workers {
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) *Workers {
 
 	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variables: variables}
 	ws.init()

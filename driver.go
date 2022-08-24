@@ -19,8 +19,14 @@ type IExtenderDriver interface {
 }
 
 type ISetting interface {
+	Render() interface{}
 	ConfigType() reflect.Type
 	Set(conf interface{}) error
 	Get() interface{}
 	ReadOnly() bool
+}
+
+type ISettings interface {
+	GetDriver(name string) (ISetting, bool)
+	Set(name string, org []byte, variable IVariable) (format interface{}, err error)
 }

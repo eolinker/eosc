@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
-	"github.com/eolinker/eosc/variable"
 	"sync"
 
 	//port_reqiure "github.com/eolinker/eosc/common/port-reqiure"
@@ -17,10 +16,10 @@ type IWorkers interface {
 	eosc.IWorkers
 	Del(id string) error
 	//Check(id, profession, name, driverName string, body []byte) error
-	Set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error
+	Set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error
 
 	//RequiredCount(id string) int
-	Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) error
+	Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error
 	//All() []*Worker
 }
 
@@ -70,7 +69,7 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 	}
 }
 
-func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) error {
+func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error {
 	ps := wm.professions.Sort()
 
 	pm := make(map[string][]*eosc.WorkerConfig)
@@ -105,14 +104,14 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable variable.IVariable) 
 	return nil
 }
 
-func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error {
+func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
 
 	return wm.set(id, profession, name, driverName, body, variable)
 }
 
-func (wm *Workers) set(id, profession, name, driverName string, body []byte, variable variable.IVariable) error {
+func (wm *Workers) set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error {
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
