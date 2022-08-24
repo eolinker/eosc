@@ -23,8 +23,24 @@ type ISettings interface {
 	eosc.ISettings
 }
 type tSettings struct {
-	lock sync.RWMutex
-	data map[string]eosc.ISetting
+	lock    sync.RWMutex
+	data    map[string]eosc.ISetting
+	configs map[string]interface{}
+}
+
+func (s *tSettings) GetConfig(name string) interface{} {
+
+	if driver, has := s.GetDriver(name); has {
+		if driver.ReadOnly() {
+			return driver.Get()
+		}
+		v, yes := s.configs[name]
+		if yes {
+			return v
+		}
+		return driver.Get()
+	}
+	return nil
 }
 
 func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (format interface{}, err error) {
@@ -53,7 +69,11 @@ func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (forma
 		return nil, err
 	}
 
-	return formatConfig(orgConfig, driver.ConfigType()), nil
+	config := formatConfig(orgConfig, driver.ConfigType())
+	s.lock.Lock()
+	s.configs[name] = config
+	s.lock.Unlock()
+	return config, nil
 
 }
 func formatConfig(config map[string]interface{}, tp reflect.Type) interface{} {
@@ -94,7 +114,10 @@ func (s *tSettings) GetDriver(name string) (eosc.ISetting, bool) {
 }
 
 func newSettings() *tSettings {
-	return &tSettings{}
+	return &tSettings{
+		data:    make(map[string]eosc.ISetting),
+		configs: make(map[string]interface{}),
+	}
 }
 
 func GetSettings() ISettings {
