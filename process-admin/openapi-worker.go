@@ -3,10 +3,13 @@ package process_admin
 import (
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/julienschmidt/httprouter"
+	"net/http"
 )
 
 type WorkerApi struct {
 	workers *Workers
+
+	settingRequest func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{})
 }
 
 func (oe *WorkerApi) Register(router *httprouter.Router) {
@@ -20,7 +23,7 @@ func (oe *WorkerApi) Register(router *httprouter.Router) {
 
 }
 
-func NewWorkerApi(workers *Workers) *WorkerApi {
+func NewWorkerApi(workers *Workers, settingRequest func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{})) *WorkerApi {
 
-	return &WorkerApi{workers: workers}
+	return &WorkerApi{workers: workers, settingRequest: settingRequest}
 }

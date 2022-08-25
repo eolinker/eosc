@@ -1,38 +1,84 @@
 package variable
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/require"
 	"reflect"
 	"strings"
+	"sync"
 )
 
-var _ IVariable = (*Variables)(nil)
-
-type IVariable interface {
-	SetByNamespace(namespace string, variables map[string]string) error
-	GetByNamespace(namespace string) (map[string]string, bool)
-	SetVariablesById(id string, variables []string)
-	Namespaces() []string
-	Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error)
-	Check(namespace string, variables map[string]string) ([]string, error)
-}
+var ErrorVariableRequire = errors.New("variable require")
+var _ eosc.IVariable = (*Variables)(nil)
 
 type Variables struct {
-	// variables 变量数据
-	variables      eosc.IUntyped
-	requireManager IRequires
+	// data 变量数据
+	lock           sync.RWMutex
+	data           map[string]map[string]string
+	requireManager eosc.IRequires
+}
+
+func (m *Variables) RemoveRequire(id string) {
+	m.requireManager.Del(id)
+}
+
+func (m *Variables) Get(id string) (string, bool) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	namespace, key := readId(id)
+	vs, has := m.data[namespace]
+	if has {
+		val, has := vs[key]
+		return val, has
+	}
+	return "", false
+}
+func readId(id string) (namespace, key string) {
+
+	if i := strings.Index(id, "@"); i > 0 {
+		namespace = id[i+1:]
+		key = id[:i]
+		if len(key) == 0 {
+			// "@xxxx"
+			key = namespace
+			namespace = "default"
+		}
+		if len(namespace) == 0 {
+			namespace = "default"
+		}
+
+	} else {
+		key = id
+
+	}
+	return
+}
+func (m *Variables) Len() int {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	l := 0
+	for _, vs := range m.data {
+		l += len(vs)
+	}
+	return l
 }
 
 func (m *Variables) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
-	return NewParse(m.getAll()).Unmarshal(buf, typ)
+	return NewParse(m).Unmarshal(buf, typ)
 }
 
-func NewVariables(data map[string][]byte) IVariable {
-	v := &Variables{variables: eosc.NewUntyped(), requireManager: NewRequireManager()}
+func NewVariables(data map[string][]byte) eosc.IVariable {
+	v := &Variables{data: make(map[string]map[string]string, len(data)), requireManager: require.NewRequireManager()}
 	for namespace, value := range data {
-		v.variables.Set(namespace, value)
+		nvs := make(map[string]string)
+		err := json.Unmarshal(value, &nvs)
+		if err != nil {
+			continue
+		}
+		v.data[namespace] = nvs
 	}
 	return v
 }
@@ -42,18 +88,16 @@ func (m *Variables) SetVariablesById(id string, variables []string) {
 }
 
 func (m *Variables) GetVariablesById(id string) []string {
-	return m.requireManager.WorkerIDs(id)
+	return m.requireManager.Requires(id)
 }
 
 func (m *Variables) GetIdsByVariable(variable string) []string {
-	return m.requireManager.RequireIDs(variable)
+	return m.requireManager.RequireBy(variable)
 }
 
-func (m *Variables) Check(namespace string, variables map[string]string) ([]string, error) {
-	// variables的key为：{变量名}@{namespace}，如：v1@default
+func (m *Variables) check(namespace string, variables map[string]string) ([]string, error) {
 	old, has := m.getByNamespace(namespace)
 	if !has {
-		m.variables.Set(namespace, variables)
 		// 此时变量都是新的，没有受影响的配置id
 		return nil, nil
 	}
@@ -62,7 +106,7 @@ func (m *Variables) Check(namespace string, variables map[string]string) ([]stri
 		if v, ok := old[key]; ok {
 			if v != value {
 				// 将更新的key记录下来
-				affectIds = append(affectIds, m.requireManager.RequireIDs(key)...)
+				affectIds = append(affectIds, m.requireManager.RequireBy(key)...)
 			}
 			delete(old, key)
 			continue
@@ -71,84 +115,68 @@ func (m *Variables) Check(namespace string, variables map[string]string) ([]stri
 	for key := range old {
 		// 删除的key
 		if m.requireManager.RequireByCount(key) > 0 {
-			return nil, fmt.Errorf("variable %s %w", key, eosc.ErrorRequire)
+			return nil, fmt.Errorf("variable %s %w", key, ErrorVariableRequire)
 		}
 	}
-	
+
 	return affectIds, nil
+}
+func (m *Variables) Check(namespace string, variables map[string]string) ([]string, eosc.IVariable, error) {
+	// variables的key为：{变量名}@{namespace}，如：v1@default
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	vs, err := m.check(namespace, variables)
+	if err != nil {
+		return nil, nil, err
+	}
+	clone := m.clone()
+	clone.data[namespace] = variables
+	return vs, clone, nil
 }
 
 func (m *Variables) SetByNamespace(namespace string, variables map[string]string) error {
-	_, err := m.Check(namespace, variables)
+	m.lock.Lock()
+	defer m.lock.Lock()
+	_, err := m.check(namespace, variables)
 	if err != nil {
 		return err
 	}
-	m.variables.Set(namespace, variables)
+	m.data[namespace] = variables
 	return nil
 }
+func (m *Variables) clone() *Variables {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 
-func (m *Variables) getAll() map[string]string {
-	newVariables := make(map[string]string)
-	for _, key := range m.variables.Keys() {
-		vs, ok := m.getByNamespace(key)
-		if !ok {
-			log.Error("fail to get variable,namespace is ", key)
-			continue
-		}
+	data := make(map[string]map[string]string)
+	for namespace, vs := range m.data {
+		tmp := make(map[string]string)
 		for k, v := range vs {
-			newVariables[k] = v
+			tmp[k] = v
 		}
+		data[namespace] = tmp
 	}
-	return newVariables
+	return &Variables{
+		lock:           sync.RWMutex{},
+		data:           data,
+		requireManager: m.requireManager,
+	}
 }
-
 func (m *Variables) getByNamespace(namespace string) (map[string]string, bool) {
-	variables, has := m.variables.Get(namespace)
+
+	variables, has := m.data[namespace]
 	if !has {
 		return nil, false
 	}
-	v, ok := variables.(map[string]string)
-	if !ok {
-		return nil, false
-	}
 	newMap := make(map[string]string)
-	for key, value := range v {
+	for key, value := range variables {
 		newMap[key] = value
 	}
-	return newMap, ok
+	return newMap, true
 }
 
 func (m *Variables) GetByNamespace(namespace string) (map[string]string, bool) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return m.getByNamespace(namespace)
-}
-
-//
-//func (m *Variables) GetAll() map[string]string {
-//	return m.getAll()
-//}
-
-func (m *Variables) Namespaces() []string {
-	return m.variables.Keys()
-}
-
-func TrimNamespace(origin map[string]string) map[string]string {
-	target := make(map[string]string)
-	for key, value := range origin {
-		index := strings.Index(key, "@")
-		if index < 0 {
-			continue
-		}
-		key = key[:index]
-		
-		target[key] = value
-	}
-	return target
-}
-
-func FillNamespace(namespace string, origin map[string]string) map[string]string {
-	target := make(map[string]string)
-	for key, value := range origin {
-		target[fmt.Sprintf("%s@%s", key, namespace)] = value
-	}
-	return target
 }

@@ -3,7 +3,6 @@ package professions
 import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/workers/require"
 )
 
 var _ IProfessions = (*Professions)(nil)
@@ -19,9 +18,8 @@ type IProfessions interface {
 }
 
 type Professions struct {
-	extenderRequire require.IRequires
-	data            eosc.IUntyped
-	extends         eosc.IExtenderDrivers
+	data    eosc.IUntyped
+	extends eosc.IExtenderDrivers
 }
 
 func (ps *Professions) Delete(name string) error {

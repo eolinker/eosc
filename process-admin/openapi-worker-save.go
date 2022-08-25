@@ -20,6 +20,11 @@ type BaseArg struct {
 
 func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	decoder, err := GetData(r)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
@@ -50,6 +55,11 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 }
 func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	name := params.ByName("name")
 	if name == "" {
 		return http.StatusInternalServerError, nil, nil, "require name"
@@ -109,6 +119,11 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	name := params.ByName("name")
 	if name == "" {
 		return http.StatusInternalServerError, nil, nil, "require name"
@@ -139,6 +154,11 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	name := params.ByName("name")
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
@@ -150,7 +170,6 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
 		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
-
 	}
 	wInfo, err := oe.workers.Delete(id)
 	if err != nil {

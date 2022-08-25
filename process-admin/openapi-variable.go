@@ -1,7 +1,6 @@
 package process_admin
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -13,11 +12,12 @@ import (
 type VariableApi struct {
 	extenderData *ExtenderData
 	workers      *Workers
-	variableData variable.IVariable
+	variableData eosc.IVariable
+	setting      eosc.ISettings
 }
 
-func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData variable.IVariable) *VariableApi {
-	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData}
+func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
+	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData, setting: setting}
 }
 
 func (oe *VariableApi) Register(router *httprouter.Router) {
@@ -26,20 +26,12 @@ func (oe *VariableApi) Register(router *httprouter.Router) {
 	router.GET("/variable/:namespace/:key", open_api.CreateHandleFunc(oe.getByKey))
 	router.POST("/variable/:namespace", open_api.CreateHandleFunc(oe.setByNamespace))
 	router.PUT("/variable/:namespace", open_api.CreateHandleFunc(oe.setByNamespace))
-	
+
 }
 
 func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	namespaces := oe.variableData.Namespaces()
-	all := make(map[string]interface{})
-	for _, namespace := range namespaces {
-		data, has := oe.variableData.GetByNamespace(namespace)
-		if !has {
-			continue
-		}
-		all[namespace] = variable.TrimNamespace(data)
-	}
-	return http.StatusOK, nil, nil, all
+
+	return http.StatusOK, nil, nil, oe.variableData
 }
 
 func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -51,7 +43,7 @@ func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	return http.StatusOK, nil, nil, variable.TrimNamespace(data)
+	return http.StatusOK, nil, nil, data
 }
 
 func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -85,48 +77,65 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	
-	variables := variable.FillNamespace(namespace, cb)
-	
-	affectIds, err := oe.variableData.Check(namespace, variables)
+
+	affectIds, clone, err := oe.variableData.Check(namespace, cb)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	
-	parse := variable.NewParse(variables)
-	es := make([]*open_api.EventResponse, 0, len(affectIds)+1)
-	data, _ := json.Marshal(variables)
-	es = append(es, &open_api.EventResponse{
-		Event:     "set",
-		Namespace: "variable",
-		Key:       namespace,
-		Data:      data,
-	})
-	
+
+	parse := variable.NewParse(clone)
+	workerToUpdate := make([]CacheItem, 0, len(affectIds))
 	for _, id := range affectIds {
 		profession, name, success := eosc.SplitWorkerId(id)
 		if !success {
 			continue
 		}
-		info, err := oe.workers.GetEmployee(profession, name)
-		if err != nil {
-			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
+		if profession != Setting {
+			info, err := oe.workers.GetEmployee(profession, name)
+			if err != nil {
+				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
+			}
+			_, _, err = parse.Unmarshal(info.Body(), info.configType)
+			if err != nil {
+				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
+			}
+			workerToUpdate = append(workerToUpdate, CacheItem{
+				id:         id,
+				profession: profession,
+				name:       name,
+			})
+		} else {
+			err := oe.setting.CheckVariable(name, clone)
+			if err != nil {
+				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("setting %s unmarshal error:%s", name, err)
+			}
+			workerToUpdate = append(workerToUpdate, CacheItem{
+				id:         id,
+				profession: profession,
+				name:       name,
+			})
 		}
-		_, _, err = parse.Unmarshal(info.Body(), info.configType)
-		if err != nil {
-			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
+
+	}
+	for _, w := range workerToUpdate {
+		if w.profession != Setting {
+			oe.workers.rebuild(w.id)
+		} else {
+			oe.setting.Update(w.name, oe.variableData)
 		}
-		eventData, _ := json.Marshal(info.config)
-		es = append(es, &open_api.EventResponse{
+	}
+
+	oe.variableData.SetByNamespace(namespace, cb)
+
+	data, _ := decoder.Encode()
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 			Event:     "set",
-			Namespace: eosc.NamespaceWorker,
-			Key:       info.config.Id,
-			Data:      eventData,
-		})
-	}
-	oe.variableData.SetByNamespace(namespace, variables)
-	return http.StatusOK, nil, es, map[string]interface{}{
-		"namespace": namespace,
-		"variables": cb,
-	}
+			Namespace: "variable",
+			Key:       namespace,
+			Data:      data,
+		},
+		}, map[string]interface{}{
+			"namespace": namespace,
+			"variables": cb,
+		}
 }
