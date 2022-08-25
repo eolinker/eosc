@@ -48,7 +48,7 @@ func (h *HttpService) ShutDown() {
 
 func NewHttpService(listener net.Listener) *HttpService {
 	s := &HttpService{
-		srv: &fasthttp.Server{Handler: NotFound},
+		srv: &fasthttp.Server{Handler: NotFound, DisablePreParseMultipartForm: true},
 	}
 	go s.srv.Serve(listener)
 	log.Debug("new http service:", listener.Addr())
