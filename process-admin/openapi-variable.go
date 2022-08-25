@@ -13,10 +13,11 @@ type VariableApi struct {
 	extenderData *ExtenderData
 	workers      *Workers
 	variableData eosc.IVariable
+	setting      eosc.ISettings
 }
 
-func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData eosc.IVariable) *VariableApi {
-	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData}
+func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
+	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData, setting: setting}
 }
 
 func (oe *VariableApi) Register(router *httprouter.Router) {
@@ -89,14 +90,22 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		if !success {
 			continue
 		}
-		info, err := oe.workers.GetEmployee(profession, name)
-		if err != nil {
-			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
+		if profession != Setting {
+			info, err := oe.workers.GetEmployee(profession, name)
+			if err != nil {
+				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
+			}
+			_, _, err = parse.Unmarshal(info.Body(), info.configType)
+			if err != nil {
+				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
+			}
+		} else {
+			err := oe.setting.CheckVariable(name, clone)
+			if err != nil {
+				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("setting %s unmarshal error:%s", name, err)
+			}
 		}
-		_, _, err = parse.Unmarshal(info.Body(), info.configType)
-		if err != nil {
-			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
-		}
+
 	}
 
 	oe.variableData.SetByNamespace(namespace, cb)

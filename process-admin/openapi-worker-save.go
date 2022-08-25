@@ -170,7 +170,6 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
 		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
-
 	}
 	wInfo, err := oe.workers.Delete(id)
 	if err != nil {

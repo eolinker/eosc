@@ -15,12 +15,8 @@ import (
 type IWorkers interface {
 	eosc.IWorkers
 	Del(id string) error
-	//Check(id, profession, name, driverName string, body []byte) error
 	Set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error
-
-	//RequiredCount(id string) int
 	Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error
-	//All() []*Worker
 }
 
 var _ IWorkers = (*Workers)(nil)
@@ -28,6 +24,7 @@ var _ IWorkers = (*Workers)(nil)
 type Workers struct {
 	locker      sync.Mutex
 	professions professions.IProfessions
+	variables   eosc.IVariable
 	data        *WorkerDatas
 }
 
@@ -49,7 +46,7 @@ func (wm *Workers) Del(id string) error {
 	if ok {
 		destroy.Destroy()
 	}
-
+	wm.variables.RemoveRequire(id)
 	return nil
 }
 
@@ -70,6 +67,7 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 }
 
 func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error {
+
 	ps := wm.professions.Sort()
 
 	pm := make(map[string][]*eosc.WorkerConfig)
@@ -79,6 +77,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) erro
 
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
+	wm.variables = variable
 
 	olddata := wm.data
 	wm.data = NewTypedWorkers()
@@ -99,6 +98,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) erro
 		}
 	}
 	for _, ov := range olddata.All() {
+		variable.RemoveRequire(ov.Id())
 		ov.Stop()
 	}
 	return nil
@@ -121,7 +121,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if !has {
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
-	conf, _, err := variable.Unmarshal(body, driver.ConfigType())
+	conf, useVariables, err := variable.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return fmt.Errorf("worker unmarshal error:%s", err)
 	}
@@ -142,6 +142,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 		if e != nil {
 			return e
 		}
+		wm.variables.SetVariablesById(id, useVariables)
 		return nil
 	}
 	// create
@@ -158,7 +159,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 
 	// store
 	wm.data.Set(id, worker)
-
+	wm.variables.SetVariablesById(id, useVariables)
 	log.Debug("worker-data set worker done:", id)
 	return nil
 }

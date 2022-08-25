@@ -105,7 +105,7 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 		destroy.Destroy()
 	}
 	oe.requireManager.Del(id)
-
+	oe.variables.RemoveRequire(id)
 	return worker, nil
 }
 

@@ -21,6 +21,10 @@ type Variables struct {
 	requireManager eosc.IRequires
 }
 
+func (m *Variables) RemoveRequire(id string) {
+	m.requireManager.Del(id)
+}
+
 func (m *Variables) Get(id string) (string, bool) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()

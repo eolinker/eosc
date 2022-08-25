@@ -17,6 +17,7 @@ import (
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/service"
+	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
 
@@ -169,7 +170,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	NewWorkerApi(ws, settingApi.request).Register(p.router)
 	settingApi.RegisterSetting(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
-	NewVariableApi(extenderData, ws, vd).Register(p.router)
+	NewVariableApi(extenderData, ws, vd, setting.GetSettings()).Register(p.router)
 
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
