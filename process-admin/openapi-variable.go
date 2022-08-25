@@ -84,7 +84,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	}
 
 	parse := variable.NewParse(clone)
-
+	configCache := make(map[string]interface{})
 	for _, id := range affectIds {
 		profession, name, success := eosc.SplitWorkerId(id)
 		if !success {
@@ -95,10 +95,11 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
 			}
-			_, _, err = parse.Unmarshal(info.Body(), info.configType)
+			confObj, _, err := parse.Unmarshal(info.Body(), info.configType)
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
 			}
+			configCache[id] = confObj
 		} else {
 			err := oe.setting.CheckVariable(name, clone)
 			if err != nil {

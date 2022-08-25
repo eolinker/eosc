@@ -16,7 +16,15 @@ type IWorkers interface {
 	eosc.IWorkers
 	Del(id string) error
 	Set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error
+	Update(id string, variable eosc.IVariable) error
 	Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error
+}
+
+type ConfigCache struct {
+	profession string
+	name       string
+	driver     string
+	config     []byte
 }
 
 var _ IWorkers = (*Workers)(nil)
@@ -26,6 +34,17 @@ type Workers struct {
 	professions professions.IProfessions
 	variables   eosc.IVariable
 	data        *WorkerDatas
+	configs     map[string]*ConfigCache
+}
+
+func (wm *Workers) Update(id string, variable eosc.IVariable) error {
+	wm.locker.Lock()
+	defer wm.locker.Unlock()
+	con, has := wm.configs[id]
+	if !has {
+		return nil
+	}
+	return wm.set(id, con.profession, con.name, con.driver, con.config, variable)
 }
 
 func (wm *Workers) Del(id string) error {
@@ -143,6 +162,12 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 			return e
 		}
 		wm.variables.SetVariablesById(id, useVariables)
+		wm.configs[id] = &ConfigCache{
+			profession: profession,
+			name:       name,
+			driver:     driverName,
+			config:     body,
+		}
 		return nil
 	}
 	// create
@@ -160,6 +185,12 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	// store
 	wm.data.Set(id, worker)
 	wm.variables.SetVariablesById(id, useVariables)
+	wm.configs[id] = &ConfigCache{
+		profession: profession,
+		name:       name,
+		driver:     driverName,
+		config:     body,
+	}
 	log.Debug("worker-data set worker done:", id)
 	return nil
 }

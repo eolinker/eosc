@@ -29,6 +29,35 @@ type tSettings struct {
 	orgConfig map[string][]byte
 }
 
+func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
+	driver, has := s.GetDriver(name)
+	if !has {
+		return nil
+	}
+	if driver.ReadOnly() {
+		return nil
+	}
+	s.lock.RLock()
+	org, has := s.orgConfig[name]
+	s.lock.RUnlock()
+	if !has {
+		return nil
+	}
+	conf, useVariable, err := variable.Unmarshal(org, driver.ConfigType())
+	if err != nil {
+		return err
+	}
+
+	err = driver.Set(conf)
+	if err != nil {
+		return err
+	}
+	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), useVariable)
+
+	return nil
+
+}
+
 func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err error) {
 	driver, has := s.GetDriver(name)
 	if !has {
