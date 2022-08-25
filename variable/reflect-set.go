@@ -61,7 +61,9 @@ func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables eo
 	case reflect.Bool:
 		err = boolSet(originVal.Elem(), targetVal)
 	default:
-		log.Error("interface deal", "kind", originVal.Elem().Kind())
+		err = fmt.Errorf("interface deal kind: %s", originVal.Elem().Kind().String())
+		log.Error(err)
+		return nil, err
 	}
 	usedVariables = append(usedVariables, used...)
 	return usedVariables, err
