@@ -84,7 +84,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	}
 
 	parse := variable.NewParse(clone)
-	configCache := make(map[string]interface{})
+	workerToUpdate := make([]CacheItem, 0, len(affectIds))
 	for _, id := range affectIds {
 		profession, name, success := eosc.SplitWorkerId(id)
 		if !success {
@@ -95,18 +95,34 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
 			}
-			confObj, _, err := parse.Unmarshal(info.Body(), info.configType)
+			_, _, err = parse.Unmarshal(info.Body(), info.configType)
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
 			}
-			configCache[id] = confObj
+			workerToUpdate = append(workerToUpdate, CacheItem{
+				id:         id,
+				profession: profession,
+				name:       name,
+			})
 		} else {
 			err := oe.setting.CheckVariable(name, clone)
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("setting %s unmarshal error:%s", name, err)
 			}
+			workerToUpdate = append(workerToUpdate, CacheItem{
+				id:         id,
+				profession: profession,
+				name:       name,
+			})
 		}
 
+	}
+	for _, w := range workerToUpdate {
+		if w.profession != Setting {
+			oe.workers.rebuild(w.id)
+		} else {
+			oe.setting.Update(w.name, oe.variableData)
+		}
 	}
 
 	oe.variableData.SetByNamespace(namespace, cb)
