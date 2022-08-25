@@ -1,7 +1,6 @@
 package process_admin
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -84,14 +83,6 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	}
 
 	parse := variable.NewParse(clone)
-	es := make([]*open_api.EventResponse, 0, len(affectIds)+1)
-	data, _ := decoder.Encode()
-	es = append(es, &open_api.EventResponse{
-		Event:     "set",
-		Namespace: "variable",
-		Key:       namespace,
-		Data:      data,
-	})
 
 	for _, id := range affectIds {
 		profession, name, success := eosc.SplitWorkerId(id)
@@ -106,17 +97,19 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		if err != nil {
 			return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
 		}
-		eventData, _ := json.Marshal(info.config)
-		es = append(es, &open_api.EventResponse{
-			Event:     "set",
-			Namespace: eosc.NamespaceWorker,
-			Key:       info.config.Id,
-			Data:      eventData,
-		})
 	}
+
 	oe.variableData.SetByNamespace(namespace, cb)
-	return http.StatusOK, nil, es, map[string]interface{}{
-		"namespace": namespace,
-		"variables": cb,
-	}
+
+	data, _ := decoder.Encode()
+	return http.StatusOK, nil, []*open_api.EventResponse{{
+			Event:     "set",
+			Namespace: "variable",
+			Key:       namespace,
+			Data:      data,
+		},
+		}, map[string]interface{}{
+			"namespace": namespace,
+			"variables": cb,
+		}
 }
