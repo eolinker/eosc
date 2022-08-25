@@ -65,6 +65,7 @@ func (wm *Workers) Del(id string) error {
 	if ok {
 		destroy.Destroy()
 	}
+	delete(wm.configs, id)
 	wm.variables.RemoveRequire(id)
 	return nil
 }
@@ -82,6 +83,7 @@ func NewWorkerManager(profession professions.IProfessions) *Workers {
 		professions: profession,
 		locker:      sync.Mutex{},
 		data:        NewTypedWorkers(),
+		configs:     make(map[string]*ConfigCache),
 	}
 }
 
@@ -97,7 +99,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) erro
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
 	wm.variables = variable
-
+	wm.configs = make(map[string]*ConfigCache)
 	olddata := wm.data
 	wm.data = NewTypedWorkers()
 
