@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -38,23 +39,23 @@ var (
 func init() {
 	matchers = make([][]cmux.Matcher, matchTypeMax)
 	matcherName = make([]string, matchTypeMax)
-
+	
 	matchers[Any] = []cmux.Matcher{func(reader io.Reader) bool {
 		return true
 	}}
-	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast(), cmux.HTTP2()}
+	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast(http.MethodPatch), cmux.HTTP2()}
 	matchers[Https] = []cmux.Matcher{cmux.TLS()}
 	matchers[Http2] = []cmux.Matcher{cmux.HTTP2()}
 	matchers[Websocket] = []cmux.Matcher{cmux.HTTP1HeaderField("Upgrade", "websocket")}
 	matchers[GRPC] = []cmux.Matcher{cmux.HTTP2HeaderFieldPrefix("content-type", "application/grpc")}
-
+	
 	matcherName[Any] = "Any"
 	matcherName[Http1] = "Http1"
 	matcherName[Https] = "Https"
 	matcherName[Http2] = "Http2"
 	matcherName[Websocket] = "Websocket"
 	matcherName[GRPC] = "GRPC"
-
+	
 }
 func (t MatchType) String() string {
 	if t > matchTypeMax || t < 0 {
@@ -69,7 +70,7 @@ func (t MatchType) matcher() []cmux.Matcher {
 type cMuxMatch struct {
 	cMux      cmux.CMux
 	listeners []*shutListener
-
+	
 	root        *ListenerProxy
 	lock        sync.Mutex
 	readTimeOut time.Duration
@@ -90,27 +91,27 @@ func (m *cMuxMatch) Match(match MatchType) net.Listener {
 	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
-
+	
 	if l := m.listeners[match]; l == nil {
 		m.listeners[match] = newListener()
 		m.rebuild()
 	}
 	return m.listeners[match]
-
+	
 }
 func (m *cMuxMatch) rebuild() {
 	m.root = m.root.Replace()
-
+	
 	if m.cMux != nil {
 		m.cMux.Close()
 		m.cMux = nil
 	}
-
+	
 	nc := cmux.New(m.root)
 	if m.readTimeOut != 0 {
 		nc.SetReadTimeout(m.readTimeOut)
 	}
-
+	
 	for i := GRPC; i >= Any; i-- {
 		l := m.listeners[i]
 		if l != nil {
@@ -139,7 +140,7 @@ func (m *cMuxMatch) Close() error {
 		m.cMux.Close()
 		m.cMux = nil
 	}
-
+	
 	m.root.ShutDown()
 	for i, l := range m.listeners {
 		if l != nil {
@@ -154,7 +155,7 @@ func NewMatch(l net.Listener) CMuxMatch {
 	if l == nil {
 		panic("mast init listener")
 	}
-
+	
 	shutdown := make(chan struct{})
 	m := &cMuxMatch{
 		root:      NewListenerProxy(l, shutdown),
