@@ -19,7 +19,6 @@ type IExtenderDriver interface {
 }
 
 type ISetting interface {
-	Render() interface{}
 	ConfigType() reflect.Type
 	Set(conf interface{}) error
 	Get() interface{}

@@ -22,14 +22,14 @@ func (oe *SettingApi) RegisterSetting(router *httprouter.Router) {
 	router.PUT("/setting/:name", open_api.CreateHandleFunc(oe.Set))
 }
 func (oe *SettingApi) request(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-
+	
 	switch req.Method {
 	case http.MethodGet:
 		return oe.Get(req, params)
 	case http.MethodPut, http.MethodPost:
 		return oe.Set(req, params)
 	}
-
+	
 	return http.StatusMethodNotAllowed, nil, nil, http.StatusText(http.StatusMethodNotAllowed)
 }
 func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -41,7 +41,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if driver.ReadOnly() {
 		return http.StatusMethodNotAllowed, nil, nil, http.StatusText(http.StatusMethodNotAllowed)
 	}
-
+	
 	idata, err := GetData(req)
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
@@ -54,7 +54,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if err != nil {
 		return 0, nil, nil, nil
 	}
-
+	
 	id, _ := eosc.ToWorkerId(name, Setting)
 	eventData, _ := json.Marshal(eosc.WorkerConfig{
 		Id:          id,
@@ -66,7 +66,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 		Body:        inputData,
 		Description: id,
 	})
-
+	
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
@@ -77,20 +77,21 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 
 func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("name")
-	driver, has := oe.datas.GetDriver(name)
+	_, has := oe.datas.GetDriver(name)
 	if !has {
 		return http.StatusNotFound, nil, nil, http.StatusText(http.StatusNotFound)
 	}
-
-	return http.StatusOK, nil, nil, driver.Get()
+	
+	return http.StatusOK, nil, nil, oe.datas.GetConfig(name)
 }
 
 func NewSettingApi(init map[string][]byte, variable eosc.IVariable) *SettingApi {
 	datas := setting.GetSettings()
-
 	for id, conf := range init {
-		name, _, _ := eosc.SplitWorkerId(id)
+		
+		_, name, _ := eosc.SplitWorkerId(id)
 		_, has := datas.GetDriver(name)
+		log.Debug("init setting id: ", id, " conf: ", string(conf), " ", has)
 		if has {
 			config := new(eosc.WorkerConfig)
 			err := json.Unmarshal(conf, config)
@@ -98,6 +99,7 @@ func NewSettingApi(init map[string][]byte, variable eosc.IVariable) *SettingApi 
 				log.Warn("init setting Unmarshal WorkerConfig:", err)
 				continue
 			}
+			log.Debug("init setting id body: ", id, " conf: ", string(config.Body), " ", has)
 			datas.Set(name, config.Body, variable)
 		}
 	}

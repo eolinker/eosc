@@ -3,13 +3,15 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/schema"
 	"github.com/julienschmidt/httprouter"
-	"io/ioutil"
-	"net/http"
 )
 
 type ProfessionApi struct {
@@ -67,6 +69,7 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 				ws = append(ws, w.Info(pn.AppendLabels...))
 			}
 		}
+		log.Debug("worker is: ", w.worker)
 	}
 	return http.StatusOK, nil, nil, ws
 }
