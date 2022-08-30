@@ -47,15 +47,15 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
 	if err != nil {
 		return err
 	}
-
+	
 	err = driver.Set(conf)
 	if err != nil {
 		return err
 	}
 	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), useVariable)
-
+	
 	return nil
-
+	
 }
 
 func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err error) {
@@ -73,13 +73,13 @@ func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err err
 		return nil
 	}
 	_, _, err = variable.Unmarshal(org, driver.ConfigType())
-
+	
 	return err
-
+	
 }
 
 func (s *tSettings) GetConfig(name string) interface{} {
-
+	
 	if driver, has := s.GetDriver(name); has {
 		if driver.ReadOnly() {
 			return driver.Get()
@@ -94,12 +94,12 @@ func (s *tSettings) GetConfig(name string) interface{} {
 }
 
 func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (format interface{}, err error) {
-
+	
 	driver, has := s.GetDriver(name)
 	if !has {
 		return nil, eosc.ErrorDriverNotExist
 	}
-
+	
 	if driver.ReadOnly() {
 		return nil, eosc.ErrorStoreReadOnly
 	}
@@ -112,20 +112,20 @@ func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (forma
 		return nil, err
 	}
 	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), vs)
-
+	
 	orgConfig := make(map[string]interface{})
-	err = json.Unmarshal(org, &format)
+	err = json.Unmarshal(org, &orgConfig)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	config := formatConfig(orgConfig, driver.ConfigType())
 	s.lock.Lock()
 	s.configs[name] = config
 	s.orgConfig[name] = org
 	s.lock.Unlock()
 	return config, nil
-
+	
 }
 func formatConfig(config map[string]interface{}, tp reflect.Type) interface{} {
 	switch tp.Kind() {
@@ -134,7 +134,11 @@ func formatConfig(config map[string]interface{}, tp reflect.Type) interface{} {
 	case reflect.Struct:
 		nc := make(map[string]interface{}, tp.NumField())
 		for i := 0; i < tp.NumField(); i++ {
-			name := tp.Field(i).Name
+			name, has := tp.Field(i).Tag.Lookup("json")
+			if !has {
+				name = tp.Field(i).Name
+			}
+			name = strings.Split(name, ",")[0]
 			if fv, has := config[name]; has {
 				nc[name] = fv
 			}
@@ -147,7 +151,7 @@ func (s *tSettings) registerSetting(name string, driver eosc.ISetting) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	name = toDriverName(name)
-
+	
 	_, has := s.data[name]
 	if has {
 		return eosc.ErrorRegisterConflict
