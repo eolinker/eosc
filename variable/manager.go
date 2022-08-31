@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/require"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/require"
 )
 
 var ErrorVariableRequire = errors.New("variable require")
@@ -136,7 +137,7 @@ func (m *Variables) Check(namespace string, variables map[string]string) ([]stri
 
 func (m *Variables) SetByNamespace(namespace string, variables map[string]string) error {
 	m.lock.Lock()
-	defer m.lock.Lock()
+	defer m.lock.Unlock()
 	_, err := m.check(namespace, variables)
 	if err != nil {
 		return err
