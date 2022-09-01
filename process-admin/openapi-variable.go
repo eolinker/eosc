@@ -2,11 +2,13 @@ package process_admin
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type VariableApi struct {
@@ -77,12 +79,12 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-
+	log.Debug("check variable...")
 	affectIds, clone, err := oe.variableData.Check(namespace, cb)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-
+	log.Debug("parse variable...")
 	parse := variable.NewParse(clone)
 	workerToUpdate := make([]CacheItem, 0, len(affectIds))
 	for _, id := range affectIds {
@@ -117,6 +119,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		}
 
 	}
+	log.Debug("update variable...")
 	for _, w := range workerToUpdate {
 		if w.profession != Setting {
 			oe.workers.rebuild(w.id)
@@ -124,8 +127,9 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			oe.setting.Update(w.name, oe.variableData)
 		}
 	}
-
+	log.Debug("set variable...")
 	oe.variableData.SetByNamespace(namespace, cb)
+	log.Debug("set variable over...")
 
 	data, _ := decoder.Encode()
 	return http.StatusOK, nil, []*open_api.EventResponse{{
