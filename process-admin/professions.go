@@ -3,12 +3,11 @@ package process_admin
 import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/professions"
-	"github.com/eolinker/eosc/workers/require"
 )
 
 type ProfessionsRequire struct {
 	professions.IProfessions
-	requires require.IRequires
+	requires eosc.IRequires
 }
 
 func (p *ProfessionsRequire) Delete(name string) error {
@@ -43,6 +42,6 @@ func (p *ProfessionsRequire) Reset(configs []*eosc.ProfessionConfig) {
 	}
 }
 
-func NewProfessionsRequire(professions professions.IProfessions, requires require.IRequires) *ProfessionsRequire {
+func NewProfessionsRequire(professions professions.IProfessions, requires eosc.IRequires) *ProfessionsRequire {
 	return &ProfessionsRequire{IProfessions: professions, requires: requires}
 }

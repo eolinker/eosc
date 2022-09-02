@@ -3,7 +3,6 @@ package professions
 import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/workers/require"
 )
 
 var _ IProfessions = (*Professions)(nil)
@@ -19,9 +18,8 @@ type IProfessions interface {
 }
 
 type Professions struct {
-	extenderRequire require.IRequires
-	data            eosc.IUntyped
-	extends         eosc.IExtenderDrivers
+	data    eosc.IUntyped
+	extends eosc.IExtenderDrivers
 }
 
 func (ps *Professions) Delete(name string) error {
@@ -50,6 +48,8 @@ func (ps *Professions) Sort() []*Profession {
 	index := 0
 	for i, p := range list {
 		if p.Mod == eosc.ProfessionConfig_Singleton {
+			list[i] = nil
+			continue
 			sl = append(sl, p)
 			sm[p.Name] = index
 			index++
@@ -102,7 +102,9 @@ func NewProfessions(extends eosc.IExtenderDrivers) IProfessions {
 }
 
 func (ps *Professions) Set(name string, c *eosc.ProfessionConfig) error {
-
+	if name == "setting" {
+		return nil
+	}
 	p := NewProfession(c, ps.extends)
 	ps.data.Set(name, p)
 
@@ -114,6 +116,9 @@ func (ps *Professions) Reset(configs []*eosc.ProfessionConfig) {
 	log.Debug("reset profession:", configs)
 	for _, c := range configs {
 		log.Debug("add profession config:", c)
+		if c.Name == "setting" {
+			continue
+		}
 		p := NewProfession(c, ps.extends)
 		data.Set(c.Name, p)
 	}

@@ -27,7 +27,7 @@ func TypeName(t reflect.Type) string {
 	return fmt.Sprintf("%s.%s", t.PkgPath(), t.String())
 }
 
-func CheckConfig(v interface{}, workers eosc.IWorkers) (map[RequireId]interface{}, error) {
+func CheckConfig(v interface{}, workers eosc.IWorkers) (map[RequireId]eosc.IWorker, error) {
 
 	value := reflect.ValueOf(v)
 	ws, err := checkConfig(value, workers)
@@ -35,14 +35,14 @@ func CheckConfig(v interface{}, workers eosc.IWorkers) (map[RequireId]interface{
 		return nil, fmt.Errorf("%s:%w", TypeNameOf(v), err)
 	}
 	if ws == nil {
-		ws = make(map[RequireId]interface{})
+		ws = make(map[RequireId]eosc.IWorker)
 	}
 
 	return ws, nil
 
 }
 
-func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]interface{}, error) {
+func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]eosc.IWorker, error) {
 	kind := v.Kind()
 	switch kind {
 	case reflect.Ptr:
@@ -53,7 +53,7 @@ func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]interfac
 	case reflect.Struct:
 		t := v.Type()
 		n := v.NumField()
-		requires := make(map[RequireId]interface{})
+		requires := make(map[RequireId]eosc.IWorker)
 		for i := 0; i < n; i++ {
 			if ws, err := checkField(t.Field(i), v.Field(i), workers); err != nil {
 				return nil, err
@@ -64,7 +64,7 @@ func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]interfac
 		return requires, nil
 	case reflect.Slice:
 		n := v.Len()
-		requires := make(map[RequireId]interface{})
+		requires := make(map[RequireId]eosc.IWorker)
 		for i := 0; i < n; i++ {
 			if ws, err := checkConfig(v.Index(i), workers); err != nil {
 				return nil, err
@@ -75,7 +75,7 @@ func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]interfac
 		return requires, nil
 	case reflect.Map:
 		it := v.MapRange()
-		requires := make(map[RequireId]interface{})
+		requires := make(map[RequireId]eosc.IWorker)
 
 		for it.Next() {
 			if ws, err := checkConfig(it.Value(), workers); err != nil {
@@ -91,7 +91,7 @@ func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]interfac
 	return nil, eosc.ErrorConfigFieldUnknown
 }
 
-func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (map[RequireId]interface{}, error) {
+func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (map[RequireId]eosc.IWorker, error) {
 
 	typeName := TypeName(v.Type())
 	switch typeName {
@@ -123,7 +123,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 			if !target.CheckSkill(skill) {
 				return nil, fmt.Errorf(" %s type %s value %s:%w", f.Name, typeName, id, eosc.ErrorTargetNotImplementSkill)
 			}
-			return map[RequireId]interface{}{RequireId(id): target}, nil
+			return map[RequireId]eosc.IWorker{RequireId(id): target}, nil
 		}
 	case _RequireSliceTypeName:
 		{
@@ -134,7 +134,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 			require, requireHas := f.Tag.Lookup("require")
 
 			n := v.Len()
-			requires := make(map[RequireId]interface{})
+			requires := make(map[RequireId]eosc.IWorker)
 			for i := 0; i < n; i++ {
 				id := v.Index(i).String()
 				if id == "" {
@@ -160,7 +160,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 	}
 }
 
-func merge(dist map[RequireId]interface{}, source map[RequireId]interface{}) map[RequireId]interface{} {
+func merge(dist map[RequireId]eosc.IWorker, source map[RequireId]eosc.IWorker) map[RequireId]eosc.IWorker {
 	if dist == nil && source == nil {
 		return nil
 	}

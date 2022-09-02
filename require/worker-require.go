@@ -7,14 +7,8 @@ import (
 )
 
 var (
-	_ IRequires = (*Manager)(nil)
+	_ eosc.IRequires = (*Manager)(nil)
 )
-
-type IRequires interface {
-	Set(id string, requires []string)
-	Del(id string)
-	RequireByCount(requireId string) int
-}
 
 type Manager struct {
 	locker    sync.Mutex
@@ -22,7 +16,7 @@ type Manager struct {
 	workerIds eosc.IUntyped
 }
 
-func NewRequireManager() IRequires {
+func NewRequireManager() eosc.IRequires {
 	return &Manager{
 		locker:    sync.Mutex{},
 		requireBy: eosc.NewUntyped(),
@@ -47,7 +41,16 @@ func (w *Manager) Set(id string, requiresIds []string) {
 		w.workerIds.Set(id, requiresIds)
 	}
 }
-
+func (w *Manager) RequireBy(requireId string) []string {
+	// 获取依赖requireID的所有id列表
+	w.locker.Lock()
+	ids, has := w.requireBy.Get(requireId)
+	w.locker.Unlock()
+	if has {
+		return ids.([]string)
+	}
+	return nil
+}
 func (w *Manager) Del(id string) {
 	w.locker.Lock()
 	w.del(id)
@@ -78,6 +81,16 @@ func (w *Manager) removeBy(id string, requireId string) {
 			w.requireBy.Set(requireId, rs)
 		}
 	}
+}
+func (w *Manager) Requires(id string) []string {
+	// 根据id获取所有依赖的id列表
+	w.locker.Lock()
+	ids, has := w.workerIds.Get(id)
+	w.locker.Unlock()
+	if has {
+		return ids.([]string)
+	}
+	return nil
 }
 
 func (w *Manager) RequireByCount(requireId string) int {

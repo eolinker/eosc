@@ -4,21 +4,23 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/require"
+
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
-	require "github.com/eolinker/eosc/workers/require"
 	"reflect"
 )
 
 type Workers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
-	requireManager require.IRequires
+	requireManager eosc.IRequires
+	variables      eosc.IVariable
 }
 
-func NewWorkers(professions professions.IProfessions, data *WorkerDatas) *Workers {
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) *Workers {
 
-	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager()}
+	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variables: variables}
 	ws.init()
 	return ws
 }
@@ -70,7 +72,8 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 		}
 		driver = employee.config.Driver
 	}
-	w, err := oe.set(id, profession, name, driver, desc, data)
+	body, _ := data.Encode()
+	w, err := oe.set(id, profession, name, driver, desc, body)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +81,15 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 	return w, nil
 
 }
+func (oe *Workers) rebuild(id string) error {
+	info, has := oe.data.GetInfo(id)
+	if has {
+		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Description, info.config.Body)
+		return err
+	}
+	return nil
 
+}
 func (oe *Workers) Export() map[string][]*WorkerInfo {
 	all := make(map[string][]*WorkerInfo)
 	for _, w := range oe.data.All() {
@@ -97,13 +108,13 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 		return nil, eosc.ErrorRequire
 	}
 
-	err := worker.worker.Stop()
-	if err != nil {
-		return nil, err
-	}
 	oe.data.Del(id)
+	destroy, ok := worker.worker.(eosc.IWorkerDestroy)
+	if ok {
+		destroy.Destroy()
+	}
 	oe.requireManager.Del(id)
-
+	oe.variables.RemoveRequire(id)
 	return worker, nil
 }
 
@@ -120,7 +131,7 @@ func (oe *Workers) GetEmployee(profession, name string) (*WorkerInfo, error) {
 	return d, nil
 }
 
-func (oe *Workers) set(id, profession, name, driverName, desc string, data IData) (*WorkerInfo, error) {
+func (oe *Workers) set(id, profession, name, driverName, desc string, body []byte) (*WorkerInfo, error) {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := oe.professions.Get(profession)
@@ -135,12 +146,11 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		return nil, fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
 
-	conf := newConfig(driver.ConfigType())
-
-	err := data.UnMarshal(conf)
+	conf, usedVariables, err := oe.variables.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return nil, err
 	}
+
 	requires, err := config.CheckConfig(conf, oe.data)
 	if err != nil {
 		return nil, err
@@ -158,7 +168,8 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 			return nil, e
 		}
 		oe.requireManager.Set(id, getIds(requires))
-		wInfo.reset(driverName, desc, conf, wInfo.worker)
+		wInfo.reset(driverName, desc, body, wInfo.worker, driver.ConfigType())
+		oe.variables.SetVariablesById(id, usedVariables)
 		return wInfo, nil
 	}
 	// create
@@ -167,26 +178,23 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, data IData
 		log.Warn("worker-data set worker create:", err)
 		return nil, err
 	}
-	// start
-	e := worker.Start()
-	if e != nil {
-		log.Warn("worker-data set worker start:", e)
-		return nil, e
-	}
+
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), conf)
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
 	} else {
-		wInfo.reset(driverName, desc, conf, worker)
+		wInfo.reset(driverName, desc, body, worker, driver.ConfigType())
 	}
+
 	// store
 	oe.data.Set(id, wInfo)
 	oe.requireManager.Set(id, getIds(requires))
-
+	oe.variables.SetVariablesById(id, usedVariables)
 	log.Debug("worker-data set worker done:", id)
+
 	return wInfo, nil
 }
 
-func getIds(m map[eosc.RequireId]interface{}) []string {
+func getIds(m map[eosc.RequireId]eosc.IWorker) []string {
 	if len(m) == 0 {
 		return nil
 	}

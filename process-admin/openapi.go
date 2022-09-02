@@ -6,6 +6,8 @@ import (
 	"github.com/eolinker/eosc/log"
 )
 
+const Setting = "setting"
+
 func professionConfig(oc map[string][]byte) []*eosc.ProfessionConfig {
 	if oc == nil || len(oc) == 0 {
 		return nil

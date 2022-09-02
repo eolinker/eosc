@@ -8,7 +8,8 @@ import (
 	"github.com/eolinker/eosc/extends"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/schema"
-	"github.com/eolinker/eosc/workers/require"
+
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -52,10 +53,10 @@ type ExtenderData struct {
 	history  map[string]bool
 	locker   sync.RWMutex
 
-	extenderRequire require.IRequires
+	extenderRequire eosc.IRequires
 }
 
-func NewExtenderData(conf map[string][]byte, extenderRequire require.IRequires) *ExtenderData {
+func NewExtenderData(conf map[string][]byte, extenderRequire eosc.IRequires) *ExtenderData {
 	vs := make(map[string]string)
 	for k, v := range conf {
 		vs[k] = string(v)
@@ -73,6 +74,10 @@ func NewExtenderData(conf map[string][]byte, extenderRequire require.IRequires) 
 	}
 	ed.init()
 	return ed
+}
+
+func (e *ExtenderData) GetConfigTypes() map[string]reflect.Type {
+	return nil
 }
 func (e *ExtenderData) IsWork() bool {
 	e.locker.RLock()
@@ -197,8 +202,8 @@ func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, e
 
 		ds := register.All()
 		info.renders = eosc.NewUntyped()
-		for name, d := range ds {
-			info.renders.Set(name, d.Render())
+		for name, df := range ds {
+			info.renders.Set(name, df.Render())
 		}
 		info.isWork = true
 	}

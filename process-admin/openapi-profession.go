@@ -3,13 +3,15 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/schema"
 	"github.com/julienschmidt/httprouter"
-	"io/ioutil"
-	"net/http"
 )
 
 type ProfessionApi struct {
@@ -43,7 +45,7 @@ type ProfessionInfo struct {
 	Driver []string `json:"driver,omitempty"`
 }
 
-func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	skill := req.URL.Query().Get("skill")
 	if skill == "" {
@@ -67,11 +69,12 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 				ws = append(ws, w.Info(pn.AppendLabels...))
 			}
 		}
+		log.Debug("worker is: ", w.worker)
 	}
 	return http.StatusOK, nil, nil, ws
 }
 
-func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	list := pi.data.List()
 	res := make([]*ProfessionInfo, 0, len(list))
 	for _, p := range list {
@@ -89,7 +92,7 @@ func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status 
 	return 200, nil, nil, res
 }
 
-func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	profession, has := pi.data.Get(name)
 	if !has {
@@ -98,7 +101,7 @@ func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (stat
 	return 200, nil, nil, profession.ProfessionConfig
 }
 
-func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	profession, has := pi.data.Get(name)
 	if !has {
@@ -123,7 +126,7 @@ func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (sta
 	return http.StatusOK, nil, nil, dsi
 }
 
-func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	professionName := params.ByName("profession")
 
 	driverName := r.URL.Query().Get("name")
@@ -158,7 +161,7 @@ func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (
 	}
 }
 
-func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	driverName := r.URL.Query().Get("name")
 	profession, has := pi.data.Get(name)
@@ -185,15 +188,15 @@ func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (s
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceProfession,
 		Key:       name,
 		Data:      data,
-	}, data
+	}}, data
 
 }
-func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	profession, has := pi.data.Get(name)
 	if !has {
@@ -221,15 +224,15 @@ func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (s
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceProfession,
 		Key:       name,
 		Data:      data,
-	}, data
+	}}, data
 
 }
-func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	profession, has := pi.data.Get(name)
 	if !has {
@@ -252,15 +255,15 @@ func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params)
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceProfession,
 		Key:       name,
 		Data:      data,
-	}, data
+	}}, data
 
 }
-func (pi *ProfessionApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	driverName := r.URL.Query().Get("name")
 	profession, has := pi.data.Get(name)
@@ -288,10 +291,10 @@ func (pi *ProfessionApi) Delete(r *http.Request, params httprouter.Params) (stat
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceProfession,
 		Key:       name,
 		Data:      data,
-	}, data
+	}}, data
 }

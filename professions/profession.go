@@ -28,6 +28,7 @@ func NewProfession(professionConfig *eosc.ProfessionConfig, extends eosc.IExtend
 	ds := NewProfessionDrivers()
 	driverData := make(map[string]*eosc.DriverConfig)
 	for _, driverConfig := range professionConfig.Drivers {
+
 		driverData[driverConfig.Name] = driverConfig
 		df, b := extends.GetDriver(driverConfig.Id)
 		if !b {

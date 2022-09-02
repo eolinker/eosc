@@ -18,8 +18,13 @@ type BaseArg struct {
 	Description string `json:"description" yaml:"description"`
 }
 
-func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	decoder, err := GetData(r)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
@@ -41,15 +46,20 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	}
 	eventData, _ := json.Marshal(obj.config)
 
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.Detail()
+	}}, obj.Detail()
 }
-func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	name := params.ByName("name")
 	if name == "" {
 		return http.StatusInternalServerError, nil, nil, "require name"
@@ -70,7 +80,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}
 	workerInfo, err := oe.workers.GetEmployee(profession, name)
 	if err != nil {
-		return 0, nil, nil, nil
+		return 0, nil, nil, "not exist"
 	}
 	current := make(map[string]interface{})
 	json.Unmarshal(workerInfo.config.Body, &current)
@@ -99,16 +109,21 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}
 
 	eventData, _ := json.Marshal(obj.config)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.Detail()
+	}}, obj.Detail()
 }
-func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	name := params.ByName("name")
 	if name == "" {
 		return http.StatusInternalServerError, nil, nil, "require name"
@@ -128,17 +143,22 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	}
 
 	eventData, _ := json.Marshal(obj.config)
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       obj.config.Id,
 		Data:      eventData,
-	}, obj.Detail()
+	}}, obj.Detail()
 }
 
-func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
 	profession := params.ByName("profession")
+	isSkip := true
+	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	if isSkip {
+		return
+	}
 	name := params.ByName("name")
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
@@ -150,16 +170,15 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
 		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
-
 	}
 	wInfo, err := oe.workers.Delete(id)
 	if err != nil {
 		return 404, nil, nil, err
 	}
-	return http.StatusOK, nil, &open_api.EventResponse{
+	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventDel,
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
 		Data:      nil,
-	}, wInfo.Detail()
+	}}, wInfo.Detail()
 }

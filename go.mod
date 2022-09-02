@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-basic/uuid v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/stretchr/testify v1.7.0
@@ -12,7 +11,7 @@ require (
 	github.com/valyala/fasthttp v1.31.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1
-	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11
+	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -20,11 +19,11 @@ require (
 
 require (
 	github.com/google/uuid v1.1.2
+	github.com/soheilhy/cmux v0.1.5
 	go.etcd.io/bbolt v1.3.6
 	go.etcd.io/etcd/api/v3 v3.5.4
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4
 	go.etcd.io/etcd/client/v3 v3.5.4
-	go.etcd.io/etcd/raft/v3 v3.5.4
 	go.etcd.io/etcd/server/v3 v3.5.4
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
 )
@@ -60,6 +59,7 @@ require (
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/etcd/client/v2 v2.305.4 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.4 // indirect
+	go.etcd.io/etcd/raft/v3 v3.5.4 // indirect
 	go.opentelemetry.io/contrib v0.20.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0 // indirect
 	go.opentelemetry.io/otel v0.20.0 // indirect

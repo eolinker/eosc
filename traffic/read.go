@@ -26,7 +26,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func readListener(r io.Reader) ([]*net.TCPListener, error) {
+func readTraffic(r io.Reader) ([]*PbTraffic, error) {
 
 	frame, err := utils.ReadFrame(r)
 	if err != nil {
@@ -39,7 +39,7 @@ func readListener(r io.Reader) ([]*net.TCPListener, error) {
 		return nil, err
 	}
 
-	return toListeners(pts.GetTraffic())
+	return pts.Traffic, nil
 }
 
 func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {

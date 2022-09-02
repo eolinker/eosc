@@ -3,6 +3,7 @@ package process_admin
 import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
+	"reflect"
 )
 
 type WorkerInfo struct {
@@ -11,11 +12,10 @@ type WorkerInfo struct {
 	appendLabels []string
 	attr         map[string]interface{}
 	info         map[string]interface{}
+	configType   reflect.Type
 }
 
-func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, desc, create, update string, config interface{}) *WorkerInfo {
-
-	body, _ := json.Marshal(config)
+func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, desc, create, update string, body []byte, configType reflect.Type) *WorkerInfo {
 
 	return &WorkerInfo{
 
@@ -30,15 +30,17 @@ func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driv
 			Description: desc,
 			Body:        body,
 		},
-		attr: nil,
+		configType: configType,
+		attr:       nil,
 	}
 }
 
-func (w *WorkerInfo) reset(driver, desc string, config interface{}, worker eosc.IWorker) {
+func (w *WorkerInfo) reset(driver, desc string, body []byte, worker eosc.IWorker, configType reflect.Type) {
 	w.config.Update = eosc.Now()
 	w.config.Driver = driver
 	w.config.Description = desc
-	w.config.Body, _ = json.Marshal(config)
+	w.config.Body = body
+	w.configType = configType
 	w.worker = worker
 	w.info = nil
 	w.attr = nil
@@ -80,4 +82,12 @@ func (w *WorkerInfo) Info(appendLabels ...string) interface{} {
 	}
 
 	return w.info
+}
+
+func (w *WorkerInfo) Body() []byte {
+	return w.config.Body
+}
+
+func (w *WorkerInfo) ConfigType() reflect.Type {
+	return w.configType
 }

@@ -152,12 +152,7 @@ func readArg() *service.ProcessLoadArg {
 }
 
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
-	t := traffic.NewTraffic()
+	t := traffic.NewTraffic(tfConf)
 
-	err := t.Read(tfConf)
-	if err != nil {
-		log.Error("read traffic :", err)
-		return t
-	}
 	return t
 }
