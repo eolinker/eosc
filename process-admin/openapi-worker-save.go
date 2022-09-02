@@ -6,7 +6,7 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	
+
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
@@ -34,9 +34,9 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	
+
 	name := cb.Name
-	
+
 	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
@@ -45,7 +45,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	eventData, _ := json.Marshal(obj.config)
-	
+
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
@@ -68,7 +68,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	
+
 	options := make(map[string]interface{})
 	err = decoder.UnMarshal(&options)
 	if err != nil {
@@ -76,7 +76,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}
 	if len(options) == 0 {
 		return http.StatusInternalServerError, nil, nil, "nothing to patch"
-		
+
 	}
 	workerInfo, err := oe.workers.GetEmployee(profession, name)
 	if err != nil {
@@ -84,14 +84,14 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}
 	current := make(map[string]interface{})
 	json.Unmarshal(workerInfo.config.Body, &current)
-	
+
 	for k, v := range options {
 		if v != nil {
 			log.Debug("patch set:", k, "=", v)
 			current[k] = v
 		} else {
 			log.Debug("patch delete:", k)
-			
+
 			delete(current, k)
 		}
 	}
@@ -107,7 +107,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	
+
 	eventData, _ := json.Marshal(obj.config)
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
@@ -117,7 +117,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	}}, obj.Detail()
 }
 func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	
+
 	profession := params.ByName("profession")
 	isSkip := true
 	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
@@ -141,7 +141,7 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	
+
 	eventData, _ := json.Marshal(obj.config)
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 		Event:     eosc.EventSet,
@@ -152,7 +152,7 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 }
 
 func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	
+
 	profession := params.ByName("profession")
 	isSkip := true
 	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)

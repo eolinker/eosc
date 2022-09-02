@@ -2,7 +2,6 @@ package cmuxMatch
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 )
@@ -27,7 +26,7 @@ func (m *shutListener) Accept() (net.Conn, error) {
 
 	select {
 	case <-m.ctx.Done():
-		fmt.Println("Accept done")
+ 
 		return nil, ErrorListenerClosed
 	case conn, ok := <-m.ch:
 		if ok {
@@ -40,9 +39,8 @@ func (m *shutListener) Accept() (net.Conn, error) {
 func (m *shutListener) doAccept(l net.Listener) {
 
 	for {
-		fmt.Println("shut listener: start")
+
 		accept, err := l.Accept()
-		fmt.Println("shut listener: end")
 
 		if err != nil {
 			if ne, ok := err.(net.Error); ok {
