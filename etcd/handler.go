@@ -27,6 +27,7 @@ func (s *_Server) addHandler(mux *http.ServeMux) {
 		if s.raftHandler != nil {
 			s.raftHandler.ServeHTTP(w, r)
 		}
+
 	})
 	mux.HandleFunc(rafthttp.RaftPrefix+"/", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
@@ -69,6 +70,22 @@ func (s *_Server) addHandler(mux *http.ServeMux) {
 		if s.hashKVHandler != nil {
 			s.hashKVHandler.ServeHTTP(w, r)
 		}
+	})
+	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+
+		if !allowMethod(w, r, "GET") {
+			return
+		}
+		vs := s.Version()
+
+		w.Header().Set("Content-Type", "application/json")
+		b, _ := json.Marshal(&vs)
+		//if err != nil {
+		//	log.Errorf("cannot marshal versions to json (%v)", err)
+		//	return
+		//}
+		w.Write(b)
+
 	})
 }
 
