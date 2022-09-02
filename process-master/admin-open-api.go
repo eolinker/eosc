@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/service"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os/exec"
 	"time"
+
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/service"
 )
 
 var (
@@ -30,6 +31,7 @@ func (uc *UnixClient) DialContext(ctx context.Context, network, addr string) (ne
 	return net.DialTimeout("unix", uc.addr, uc.timeout)
 }
 func (uc *UnixClient) Update(process *exec.Cmd) {
+	log.Debug("unix client update: admin ", process)
 	if process == nil {
 		uc.addr = ""
 		return

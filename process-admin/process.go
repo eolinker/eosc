@@ -11,6 +11,7 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -20,25 +21,26 @@ import (
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
-	
-	"github.com/julienschmidt/httprouter"
+
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
-	
+
+	"github.com/julienschmidt/httprouter"
+
 	"github.com/eolinker/eosc/process"
-	
+
 	"github.com/eolinker/eosc/extends"
-	
+
 	"github.com/eolinker/eosc/common/bean"
-	
+
 	"google.golang.org/protobuf/proto"
-	
+
 	"github.com/eolinker/eosc/utils"
-	
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 )
@@ -46,21 +48,21 @@ import (
 func Process() {
 	utils.InitStdTransport(eosc.ProcessAdmin)
 	log.Info("admin process start...")
-	
+
 	arg := readConfig()
 	if arg == nil {
 		arg = map[string]map[string][]byte{}
 	}
-	
+
 	log.Debug("create admin process...")
-	
+
 	w, err := NewProcessAdmin(context.Background(), arg)
 	if err != nil {
+
 		w.writeOutput(process.StatusExit, err.Error())
 		log.Error("new process admin error: ", err)
 		return
 	}
-	
 	w.writeOutput(process.StatusRunning, "")
 	w.wait()
 	log.Info("admin process end")
@@ -72,7 +74,7 @@ type ProcessAdmin struct {
 	once       sync.Once
 	reg        eosc.IExtenderDriverRegister
 	router     *httprouter.Router
-	
+
 	apiLocker sync.Mutex
 }
 
@@ -112,13 +114,13 @@ func (pa *ProcessAdmin) wait() {
 			}
 		case syscall.SIGUSR1:
 			{
-			
+
 			}
 		default:
 			continue
 		}
 	}
-	
+
 }
 
 //NewProcessAdmin 创建新的admin进程
@@ -138,7 +140,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	//	}
 	//
 	//}
-	
+
 	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{
 		ctx:        ctx,
@@ -148,30 +150,30 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	extenderRequire := require.NewRequireManager()
 	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 	NewExtenderOpenApi(extenderData).Register(p.router)
-	
+
 	ps := professions.NewProfessions(register)
-	
+
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
-	
+
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
-	
+
 	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), vd)
 	wd := NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
-	
+
 	bean.Check()
-	
+
 	ws := NewWorkers(ps, wd, vd)
-	
+
 	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)
 	NewWorkerApi(ws, settingApi.request).Register(p.router)
 	settingApi.RegisterSetting(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
 	NewVariableApi(extenderData, ws, vd, setting.GetSettings()).Register(p.router)
-	
+
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
 			StatusCode: 404,
@@ -179,15 +181,15 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 			Data:       nil,
 			Event:      nil,
 		}
-		
+
 		data, _ := json.Marshal(response)
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(200)
 		w.Write(data)
 	})
-	
+
 	p.OpenApiServer()
-	
+
 	return p, nil
 }
 
@@ -219,7 +221,7 @@ func filerSetting(confs map[string][]byte, name string, yes bool) map[string][]b
 }
 func readConfig() map[string]map[string][]byte {
 	conf := make(map[string]map[string][]byte)
-	
+
 	data, err := utils.ReadFrame(os.Stdin)
 	if err != nil {
 		log.Warn("read arg fail:", err)
@@ -239,7 +241,7 @@ func readConfig() map[string]map[string][]byte {
 }
 
 func (pa *ProcessAdmin) OpenApiServer() error {
-	
+
 	addr := service.ServerUnixAddr(os.Getpid(), eosc.ProcessAdmin)
 	syscall.Unlink(addr)
 	log.Info("start admin unix server: ", addr)
@@ -260,6 +262,6 @@ func (pa *ProcessAdmin) OpenApiServer() error {
 		server.Shutdown(context.Background())
 		syscall.Unlink(addr)
 	}()
-	
+
 	return nil
 }

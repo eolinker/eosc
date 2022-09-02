@@ -1,8 +1,9 @@
 package variable
 
 import (
-	"github.com/eolinker/eosc"
 	"reflect"
+
+	"github.com/eolinker/eosc"
 )
 
 var (
