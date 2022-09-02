@@ -131,32 +131,6 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 			}
 		}
 		return config
-	}, func(config map[string]map[string][]byte) map[string]map[string][]byte {
-		if config == nil {
-			config = make(map[string]map[string][]byte)
-		}
-		if ps, has := config[eosc.NamespaceProfession]; has {
-			pl := make([]*eosc.ProfessionConfig, 0, len(ps))
-			for _, d := range ps {
-				p := new(eosc.ProfessionConfig)
-				if err := json.Unmarshal(d, p); err != nil {
-					continue
-				}
-				pl = append(pl, p)
-			}
-			initWs := eosc.GenInitWorkerConfig(pl)
-			ws, wsHas := config[eosc.NamespaceWorker]
-			if !wsHas {
-				ws = make(map[string][]byte)
-			}
-			for _, w := range initWs {
-				if _, has := ws[w.Id]; !has {
-					ws[w.Id], _ = json.Marshal(w)
-				}
-			}
-			config[eosc.NamespaceWorker] = ws
-		}
-		return config
 	})
 
 	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminClient))
