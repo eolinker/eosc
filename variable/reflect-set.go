@@ -3,10 +3,11 @@ package variable
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strconv"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 )
 
 var (
@@ -200,7 +201,9 @@ func structSet(originVal reflect.Value, targetVal reflect.Value, variables eosc.
 			return nil, err
 		}
 		usedVariables = append(usedVariables, used...)
-		targetVal.Field(i).Set(fieldValue.Elem())
+		if targetVal.Field(i).CanSet() {
+			targetVal.Field(i).Set(fieldValue.Elem())
+		}
 	}
 	return usedVariables, nil
 }

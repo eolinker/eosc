@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ type tSettings struct {
 }
 
 func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
+	log.Debug("setting update:", name)
 	driver, has := s.GetDriver(name)
 	if !has {
 		return nil
@@ -47,15 +49,15 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
 	if err != nil {
 		return err
 	}
-	
+
 	err = driver.Set(conf)
 	if err != nil {
 		return err
 	}
 	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), useVariable)
-	
+
 	return nil
-	
+
 }
 
 func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err error) {
@@ -73,13 +75,13 @@ func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err err
 		return nil
 	}
 	_, _, err = variable.Unmarshal(org, driver.ConfigType())
-	
+
 	return err
-	
+
 }
 
 func (s *tSettings) GetConfig(name string) interface{} {
-	
+
 	if driver, has := s.GetDriver(name); has {
 		if driver.ReadOnly() {
 			return driver.Get()
@@ -94,15 +96,17 @@ func (s *tSettings) GetConfig(name string) interface{} {
 }
 
 func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (format interface{}, err error) {
-	
+	log.Debug("setting Set:", name, " org:", string(org))
+
 	driver, has := s.GetDriver(name)
 	if !has {
 		return nil, eosc.ErrorDriverNotExist
 	}
-	
+
 	if driver.ReadOnly() {
 		return nil, eosc.ErrorStoreReadOnly
 	}
+
 	cfg, vs, err := variable.Unmarshal(org, driver.ConfigType())
 	if err != nil {
 		return nil, err
@@ -112,20 +116,20 @@ func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (forma
 		return nil, err
 	}
 	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), vs)
-	
+
 	orgConfig := make(map[string]interface{})
 	err = json.Unmarshal(org, &orgConfig)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	config := formatConfig(orgConfig, driver.ConfigType())
 	s.lock.Lock()
 	s.configs[name] = config
 	s.orgConfig[name] = org
 	s.lock.Unlock()
 	return config, nil
-	
+
 }
 func formatConfig(config map[string]interface{}, tp reflect.Type) interface{} {
 	switch tp.Kind() {
@@ -151,7 +155,7 @@ func (s *tSettings) registerSetting(name string, driver eosc.ISetting) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	name = toDriverName(name)
-	
+
 	_, has := s.data[name]
 	if has {
 		return eosc.ErrorRegisterConflict
