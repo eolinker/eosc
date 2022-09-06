@@ -30,6 +30,11 @@ type tSettings struct {
 	orgConfig map[string][]byte
 }
 
+func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (format interface{}, update []*eosc.WorkerConfig, delete []string, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
 	log.Debug("setting update:", name)
 	driver, has := s.GetDriver(name)
@@ -50,7 +55,7 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
 		return err
 	}
 
-	err = driver.Set(conf)
+	_, _, err = driver.Set(conf)
 	if err != nil {
 		return err
 	}
@@ -83,44 +88,49 @@ func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err err
 func (s *tSettings) GetConfig(name string) interface{} {
 
 	if driver, has := s.GetDriver(name); has {
-		if driver.ReadOnly() {
-			return driver.Get()
+		switch driver.Mode() {
+		case eosc.SettingModeReadonly:
+			{
+				return driver.Get()
+			}
+		case eosc.SettingModeSingleton:
+			v, yes := s.configs[name]
+			if yes {
+				return v
+			}
+		case eosc.SettingModeBatch:
+			return nil
 		}
-		v, yes := s.configs[name]
-		if yes {
-			return v
-		}
-		return driver.Get()
 	}
 	return nil
 }
 
-func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (format interface{}, err error) {
+func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariable) (err error) {
 	log.Debug("setting Set:", name, " org:", string(org))
 
 	driver, has := s.GetDriver(name)
 	if !has {
-		return nil, eosc.ErrorDriverNotExist
+		return eosc.ErrorDriverNotExist
 	}
 
-	if driver.ReadOnly() {
-		return nil, eosc.ErrorStoreReadOnly
+	if driver.Mode() != eosc.SettingModeSingleton {
+		return eosc.ErrorStoreReadOnly
 	}
 
 	cfg, vs, err := variable.Unmarshal(org, driver.ConfigType())
 	if err != nil {
-		return nil, err
+		return err
 	}
-	err = driver.Set(cfg)
+	_, _, err = driver.Set(cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), vs)
 
 	orgConfig := make(map[string]interface{})
 	err = json.Unmarshal(org, &orgConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	config := formatConfig(orgConfig, driver.ConfigType())

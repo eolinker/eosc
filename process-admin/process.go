@@ -157,15 +157,14 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
 
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
-
-	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), vd)
 	wd := NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
+
+	ws := NewWorkers(ps, wd, vd)
+	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), ws, vd)
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 
 	bean.Check()
-
-	ws := NewWorkers(ps, wd, vd)
 
 	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)

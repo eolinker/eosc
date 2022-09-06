@@ -2,7 +2,6 @@ package process_admin
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -12,6 +11,7 @@ import (
 )
 
 type SettingApi struct {
+	workers  *Workers
 	datas    setting.ISettings
 	variable eosc.IVariable
 }
@@ -22,14 +22,14 @@ func (oe *SettingApi) RegisterSetting(router *httprouter.Router) {
 	router.PUT("/setting/:name", open_api.CreateHandleFunc(oe.Set))
 }
 func (oe *SettingApi) request(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	
+
 	switch req.Method {
 	case http.MethodGet:
 		return oe.Get(req, params)
 	case http.MethodPut, http.MethodPost:
 		return oe.Set(req, params)
 	}
-	
+
 	return http.StatusMethodNotAllowed, nil, nil, http.StatusText(http.StatusMethodNotAllowed)
 }
 func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -41,7 +41,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if driver.ReadOnly() {
 		return http.StatusMethodNotAllowed, nil, nil, http.StatusText(http.StatusMethodNotAllowed)
 	}
-	
+
 	idata, err := GetData(req)
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
@@ -50,29 +50,34 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
 	}
-	output, err := oe.datas.Set(name, inputData, oe.variable)
+	output, toUpdate, toDelete, err := oe.datas.Set(name, inputData, oe.variable)
 	if err != nil {
 		return 0, nil, nil, nil
 	}
-	
-	id, _ := eosc.ToWorkerId(name, Setting)
-	eventData, _ := json.Marshal(eosc.WorkerConfig{
-		Id:          id,
-		Profession:  Setting,
-		Name:        name,
-		Driver:      name,
-		Create:      eosc.Now(),
-		Update:      eosc.Now(),
-		Body:        inputData,
-		Description: id,
-	})
-	
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceWorker,
-		Key:       fmt.Sprintf("%s@setting", name),
-		Data:      eventData,
-	}}, output
+
+	eventResponse := make([]*open_api.EventResponse, 0, len(toUpdate)+len(toDelete))
+	for _, m := range toUpdate {
+		eventData, _ := json.Marshal(m)
+		eventResponse = append(eventResponse, &open_api.EventResponse{
+			Event:     eosc.EventSet,
+			Namespace: eosc.NamespaceWorker,
+			Key:       m.Id,
+			Data:      eventData,
+		})
+		oe.workers.set(m.Id, m.Profession, m.Name, m.Driver, m.Description, m.Body)
+	}
+	for _, delId := range toDelete {
+
+		eventResponse = append(eventResponse, &open_api.EventResponse{
+			Event:     eosc.EventDel,
+			Namespace: eosc.NamespaceWorker,
+			Key:       delId,
+			Data:      nil,
+		})
+		oe.workers.Delete(delId)
+	}
+
+	return http.StatusOK, nil, eventResponse, output
 }
 
 func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -81,14 +86,14 @@ func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status i
 	if !has {
 		return http.StatusNotFound, nil, nil, http.StatusText(http.StatusNotFound)
 	}
-	
+
 	return http.StatusOK, nil, nil, oe.datas.GetConfig(name)
 }
 
-func NewSettingApi(init map[string][]byte, variable eosc.IVariable) *SettingApi {
+func NewSettingApi(init map[string][]byte, workers *Workers, variable eosc.IVariable) *SettingApi {
 	datas := setting.GetSettings()
 	for id, conf := range init {
-		
+
 		_, name, _ := eosc.SplitWorkerId(id)
 		_, has := datas.GetDriver(name)
 		log.Debug("init setting id: ", id, " conf: ", string(conf), " ", has)
@@ -104,6 +109,7 @@ func NewSettingApi(init map[string][]byte, variable eosc.IVariable) *SettingApi 
 		}
 	}
 	return &SettingApi{
+		workers:  workers,
 		variable: variable,
 		datas:    datas,
 	}
