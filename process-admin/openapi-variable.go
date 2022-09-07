@@ -111,8 +111,8 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("setting %s unmarshal error:%s", name, err)
 			}
 			workerToUpdate = append(workerToUpdate, CacheItem{
-				id:         id,
-				profession: profession,
+				id:         name,
+				profession: Setting,
 			})
 		}
 

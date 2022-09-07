@@ -35,7 +35,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			log.Debug("NamespaceWorker:", w.Profession, w.Name)
 
 			if w.Profession == "setting" {
-				err = ws.settings.SettingWorker(w.Id, w.Body, ws.variableManager)
+				err = ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
 				return err
 			}
 
@@ -150,7 +150,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 	})
 	for _, w := range settings {
 
-		err := ws.settings.SettingWorker(w.Id, w.Body, ws.variableManager)
+		err := ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
 		if err != nil {
 			log.Warn("set setting :", err)
 		}

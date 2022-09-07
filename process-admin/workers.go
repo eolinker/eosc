@@ -97,6 +97,14 @@ func (oe *Workers) Export() map[string][]*WorkerInfo {
 	}
 	return all
 }
+func (oe *Workers) DeleteTest(ids ...string) (requires []string) {
+	for _, id := range ids {
+		if oe.requireManager.RequireByCount(id) > 0 {
+			requires = append(requires, id)
+		}
+	}
+	return requires
+}
 func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 
 	worker, has := oe.data.GetInfo(id)
