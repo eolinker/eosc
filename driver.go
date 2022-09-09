@@ -30,14 +30,13 @@ type ISetting interface {
 	Set(conf interface{}) (err error)
 	Get() interface{}
 	Mode() SettingMode
-	Check(cfg interface{}) (id, profession, name, driver, desc string, err error)
+	Check(cfg interface{}) (profession, name, driver, desc string, err error)
 	AllWorkers() []string
 }
 
 type ISettings interface {
 	GetDriver(name string) (ISetting, bool)
 	SettingWorker(name string, config []byte, variable IVariable) error
-	//Set(name string, org []byte, variable IVariable) (format interface{}, update []*WorkerConfig, delete []string, err error)
 	Update(name string, variable IVariable) (err error)
 	CheckVariable(name string, variable IVariable) (err error)
 	GetConfig(name string) interface{}

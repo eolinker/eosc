@@ -9,6 +9,7 @@ import (
 	"github.com/eolinker/eosc/setting"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"reflect"
 	"strings"
 )
 
@@ -76,77 +77,92 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 			Data:      eventData,
 		}}, setting.FormatConfig(inputData, configType)
 	} else {
-		type BatchWorkerInfo struct {
-			id         string
-			profession string
-			name       string
-			driver     string
-			desc       string
-			configBody []byte
-		}
-		inputList := splitConfig(inputData)
-		cfgs := make(map[string]BatchWorkerInfo, len(inputList))
-		allWorkers := toSet(driver.AllWorkers())
-		events = make([]*open_api.EventResponse, 0, len(allWorkers))
-		responseBody := make([]interface{}, 0, len(inputList))
-		for _, inp := range inputList {
-			cfg, _, err2 := oe.variable.Unmarshal(inp, configType)
-			if err2 != nil {
-				return http.StatusServiceUnavailable, nil, nil, err2.Error()
-			}
-			id, profession, workerName, driverName, desc, errCk := driver.Check(cfg)
-			if errCk != nil {
-				return http.StatusServiceUnavailable, nil, nil, errCk.Error()
-			}
-			if allWorkers[id] {
-				delete(allWorkers, id)
-			}
-			cfgs[id] = BatchWorkerInfo{
-				id:         id,
-				profession: profession,
-				name:       workerName,
-				driver:     driverName,
-				desc:       desc,
-				configBody: inp,
-			}
-		}
-		idtoDelete := make([]string, 0, len(allWorkers))
-		for id := range allWorkers {
-			idtoDelete = append(idtoDelete, id)
-		}
-
-		cannotDelete := oe.workers.DeleteTest(idtoDelete...)
-		if len(cannotDelete) > 0 {
-			return http.StatusServiceUnavailable, nil, nil, fmt.Sprint("should not delete:", strings.Join(cannotDelete, ","))
-		}
-		for id, cfg := range cfgs {
-			info, errSet := oe.workers.set(id, cfg.profession, cfg.name, cfg.driver, cfg.desc, cfg.configBody)
-			if errSet != nil {
-				log.Warnf("bath set skip %s by error:%v", id, err)
-				continue
-			}
-			configData, _ := json.Marshal(info.config)
-			responseBody = append(responseBody, info.Detail())
-			events = append(events, &open_api.EventResponse{
-				Event:     eosc.EventSet,
-				Namespace: eosc.NamespaceWorker,
-				Key:       id,
-				Data:      configData,
-			})
-		}
-		body = responseBody
-		for _, id := range idtoDelete {
-			oe.workers.Delete(id)
-			events = append(events, &open_api.EventResponse{
-				Event:     eosc.EventDel,
-				Namespace: eosc.NamespaceWorker,
-				Key:       id,
-				Data:      nil,
-			})
+		events, body, err = oe.batchSet(inputData, driver, events, configType)
+		if err != nil {
+			status = http.StatusServiceUnavailable
+			body = err.Error()
+			log.Debug("batch set:", name, ":", string(inputData))
+			log.Info("batch set:", name, ":", err)
+			return
 		}
 		status = http.StatusOK
 		return
 	}
+}
+
+func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, events []*open_api.EventResponse, configType reflect.Type) ([]*open_api.EventResponse, interface{}, error) {
+	type BatchWorkerInfo struct {
+		id         string
+		profession string
+		name       string
+		driver     string
+		desc       string
+		configBody []byte
+	}
+	inputList := splitConfig(inputData)
+	cfgs := make(map[string]BatchWorkerInfo, len(inputList))
+	allWorkers := toSet(driver.AllWorkers())
+	events = make([]*open_api.EventResponse, 0, len(allWorkers))
+	responseBody := make([]interface{}, 0, len(inputList))
+	for _, inp := range inputList {
+		cfg, _, err2 := oe.variable.Unmarshal(inp, configType)
+		if err2 != nil {
+
+			return nil, nil, err2
+		}
+		profession, workerName, driverName, desc, errCk := driver.Check(cfg)
+		if errCk != nil {
+
+			return nil, nil, errCk
+		}
+		id, _ := eosc.ToWorkerId(workerName, profession)
+		if allWorkers[id] {
+			delete(allWorkers, id)
+		}
+		cfgs[id] = BatchWorkerInfo{
+			id:         id,
+			profession: profession,
+			name:       workerName,
+			driver:     driverName,
+			desc:       desc,
+			configBody: inp,
+		}
+	}
+	idtoDelete := make([]string, 0, len(allWorkers))
+	for id := range allWorkers {
+		idtoDelete = append(idtoDelete, id)
+	}
+
+	cannotDelete := oe.workers.DeleteTest(idtoDelete...)
+	if len(cannotDelete) > 0 {
+		return nil, nil, fmt.Errorf("should not delete:%s", strings.Join(cannotDelete, ","))
+	}
+	for id, cfg := range cfgs {
+		info, errSet := oe.workers.set(id, cfg.profession, cfg.name, cfg.driver, cfg.desc, cfg.configBody)
+		if errSet != nil {
+			log.Warnf("bath set skip %s by error:%v", id, ":", errSet)
+			continue
+		}
+		configData, _ := json.Marshal(info.config)
+		responseBody = append(responseBody, info.Detail())
+		events = append(events, &open_api.EventResponse{
+			Event:     eosc.EventSet,
+			Namespace: eosc.NamespaceWorker,
+			Key:       id,
+			Data:      configData,
+		})
+	}
+
+	for _, id := range idtoDelete {
+		oe.workers.Delete(id)
+		events = append(events, &open_api.EventResponse{
+			Event:     eosc.EventDel,
+			Namespace: eosc.NamespaceWorker,
+			Key:       id,
+			Data:      nil,
+		})
+	}
+	return events, responseBody, nil
 }
 
 func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
