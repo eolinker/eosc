@@ -104,7 +104,6 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			workerToUpdate = append(workerToUpdate, CacheItem{
 				id:         id,
 				profession: profession,
-				name:       name,
 			})
 		} else {
 			err := oe.setting.CheckVariable(name, clone)
@@ -112,9 +111,8 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("setting %s unmarshal error:%s", name, err)
 			}
 			workerToUpdate = append(workerToUpdate, CacheItem{
-				id:         id,
-				profession: profession,
-				name:       name,
+				id:         name,
+				profession: Setting,
 			})
 		}
 
@@ -124,7 +122,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 		if w.profession != Setting {
 			oe.workers.rebuild(w.id)
 		} else {
-			oe.setting.Update(w.name, oe.variableData)
+			oe.setting.Update(w.id, oe.variableData)
 		}
 	}
 	log.Debug("set variable...")

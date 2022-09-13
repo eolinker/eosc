@@ -30,13 +30,99 @@ type tSettings struct {
 	orgConfig map[string][]byte
 }
 
-func (s *tSettings) Update(name string, variable eosc.IVariable) (err error) {
+//func (s *tSettings) Set(name string, body []byte, variable eosc.IVariable) (format interface{}, update []*eosc.WorkerConfig, delete []string, err error) {
+//	driver, has := s.GetDriver(name)
+//	if !has {
+//		err = eosc.ErrorDriverNotExist
+//		return
+//	}
+//	configType := driver.ConfigType()
+//	switch driver.Mode() {
+//	case eosc.SettingModeReadonly:
+//		err = eosc.ErrorUnsupportedKind
+//		return
+//	case eosc.SettingModeSingleton:
+//		{
+//			orgConfig := make(map[string]interface{})
+//			err = json.Unmarshal(body, &orgConfig)
+//			if err != nil {
+//				return
+//			}
+//
+//			err = s.SettingWorker(name, body, variable)
+//			if err != nil {
+//				return
+//			}
+//
+//			config := formatConfig(orgConfig, configType)
+//			s.lock.Lock()
+//			s.configs[name] = config
+//			s.orgConfig[name] = body
+//			s.lock.Unlock()
+//			format = config
+//			outputBody, _ := json.Marshal(config)
+//			update = []*eosc.WorkerConfig{
+//				{
+//					Id:          fmt.Sprintf("%s@setting", name),
+//					Profession:  "setting",
+//					Name:        name,
+//					Driver:      name,
+//					Create:      eosc.Now(),
+//					Update:      eosc.Now(),
+//					Body:        outputBody,
+//					Description: "",
+//				},
+//			}
+//			delete = nil
+//			return
+//		}
+//	case eosc.SettingModeBatch:
+//		orgs := splitConfig(body)
+//		cfgs := make([]interface{}, 0, len(orgs))
+//		orgObjs := make([]map[string]interface{}, 0, len(orgs))
+//		usagesAll := make([][]string, 0, len(orgs))
+//		for _, org := range orgs {
+//			cfg, usages, errI := variable.Unmarshal(org, configType)
+//			if errI != nil {
+//				err = errI
+//				return
+//			}
+//			orgConfig := make(map[string]interface{})
+//			err = json.Unmarshal(body, &orgConfig)
+//			if err != nil {
+//				return
+//			}
+//			orgObjs = append(orgObjs, orgConfig)
+//			cfgs = append(cfgs, cfg)
+//			usagesAll = append(usagesAll, usages)
+//		}
+//		var updateIds []string
+//		updateIds, delete, err = driver.Set(cfgs...)
+//		if err != nil {
+//			return
+//		}
+//		for i := range cfgs {
+//			variable.SetVariablesById(update[i].Id, usagesAll[i])
+//		}
+//		for _, id := range delete {
+//			variable.RemoveRequire(id)
+//		}
+//
+//		for i := range orgObjs {
+//			orgObjs[i] = formatConfig(orgObjs[i], configType)
+//		}
+//		format = orgObjs
+//	}
+//	return
+//}
+
+func (s *tSettings) Update(name string, variable eosc.IVariable) error {
 	log.Debug("setting update:", name)
 	driver, has := s.GetDriver(name)
 	if !has {
 		return nil
 	}
-	if driver.ReadOnly() {
+	if driver.Mode() != eosc.SettingModeSingleton {
 		return nil
 	}
 	s.lock.RLock()
@@ -65,7 +151,7 @@ func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err err
 	if !has {
 		return nil
 	}
-	if driver.ReadOnly() {
+	if driver.Mode() != eosc.SettingModeSingleton {
 		return nil
 	}
 	s.lock.RLock()
@@ -83,73 +169,52 @@ func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err err
 func (s *tSettings) GetConfig(name string) interface{} {
 
 	if driver, has := s.GetDriver(name); has {
-		if driver.ReadOnly() {
+		switch driver.Mode() {
+		case eosc.SettingModeReadonly:
+			{
+				return driver.Get()
+			}
+		case eosc.SettingModeSingleton:
+			v, yes := s.configs[name]
+			if yes {
+				return v
+			}
 			return driver.Get()
+		case eosc.SettingModeBatch:
+			return nil
 		}
-		v, yes := s.configs[name]
-		if yes {
-			return v
-		}
-		return driver.Get()
 	}
 	return nil
 }
 
-func (s *tSettings) Set(name string, org []byte, variable eosc.IVariable) (format interface{}, err error) {
+func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariable) (err error) {
 	log.Debug("setting Set:", name, " org:", string(org))
 
 	driver, has := s.GetDriver(name)
 	if !has {
-		return nil, eosc.ErrorDriverNotExist
+		return eosc.ErrorDriverNotExist
 	}
 
-	if driver.ReadOnly() {
-		return nil, eosc.ErrorStoreReadOnly
+	if driver.Mode() != eosc.SettingModeSingleton {
+		return eosc.ErrorUnsupportedKind
 	}
-
-	cfg, vs, err := variable.Unmarshal(org, driver.ConfigType())
+	configType := driver.ConfigType()
+	cfg, vs, err := variable.Unmarshal(org, configType)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	err = driver.Set(cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), vs)
-
-	orgConfig := make(map[string]interface{})
-	err = json.Unmarshal(org, &orgConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	config := formatConfig(orgConfig, driver.ConfigType())
+	config := FormatConfig(org, configType)
 	s.lock.Lock()
 	s.configs[name] = config
 	s.orgConfig[name] = org
 	s.lock.Unlock()
-	return config, nil
+	return nil
 
-}
-func formatConfig(config map[string]interface{}, tp reflect.Type) interface{} {
-	switch tp.Kind() {
-	case reflect.Interface, reflect.Ptr:
-		return formatConfig(config, tp.Elem())
-	case reflect.Struct:
-		nc := make(map[string]interface{}, tp.NumField())
-		for i := 0; i < tp.NumField(); i++ {
-			name, has := tp.Field(i).Tag.Lookup("json")
-			if !has {
-				name = tp.Field(i).Name
-			}
-			name = strings.Split(name, ",")[0]
-			if fv, has := config[name]; has {
-				nc[name] = fv
-			}
-		}
-		return nc
-	}
-	return config
 }
 func (s *tSettings) registerSetting(name string, driver eosc.ISetting) error {
 	s.lock.Lock()
@@ -192,4 +257,29 @@ func toDriverName(id string) string {
 		}
 	}
 	return id
+}
+func FormatConfig(input []byte, tp reflect.Type) interface{} {
+	orgConfig := make(map[string]interface{})
+	json.Unmarshal(input, &orgConfig)
+	return formatConfig(orgConfig, tp)
+}
+func formatConfig(config map[string]interface{}, tp reflect.Type) map[string]interface{} {
+	switch tp.Kind() {
+	case reflect.Interface, reflect.Ptr:
+		return formatConfig(config, tp.Elem())
+	case reflect.Struct:
+		nc := make(map[string]interface{}, tp.NumField())
+		for i := 0; i < tp.NumField(); i++ {
+			name, has := tp.Field(i).Tag.Lookup("json")
+			if !has {
+				name = tp.Field(i).Name
+			}
+			name = strings.Split(name, ",")[0]
+			if fv, has := config[name]; has {
+				nc[name] = fv
+			}
+		}
+		return nc
+	}
+	return config
 }
