@@ -59,9 +59,10 @@ func (m *shutListener) doAccept(l net.Listener) {
 
 }
 func (m *shutListener) Close() error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
-	m.closeTemp <- struct{}{}
-	return nil
+	return m.close()
 }
 func (m *shutListener) close() error {
 	if m.cancel != nil {
@@ -79,9 +80,11 @@ func (m *shutListener) Shutdown() error {
 func (m *shutListener) reset(l net.Listener) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+
 	m.addr = l.Addr()
 
 	m.last = l
+
 	go m.doAccept(l)
 }
 func newListener() *shutListener {
