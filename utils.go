@@ -117,6 +117,7 @@ func GenInitWorkerConfig(ps []*ProfessionConfig) []*WorkerConfig {
 	vs := make([]*WorkerConfig, 0, len(ps))
 	for _, p := range ps {
 		if p.Mod == ProfessionConfig_Singleton {
+
 			for _, d := range p.Drivers {
 				id, _ := ToWorkerId(d.Name, p.Name)
 				wc := &WorkerConfig{

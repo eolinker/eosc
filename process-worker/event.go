@@ -25,13 +25,17 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 		}
 	case eosc.NamespaceWorker:
 		{
+			log.Debug("setEvent NamespaceWorker:")
+
 			w := new(eosc.WorkerConfig)
 			err := json.Unmarshal(data, w)
 			if err != nil {
 				return err
 			}
+			log.Debug("NamespaceWorker:", w.Profession, w.Name)
+
 			if w.Profession == "setting" {
-				_, err = ws.settings.Set(w.Name, w.Body, ws.variableManager)
+				err = ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
 				return err
 			}
 
@@ -48,15 +52,16 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			wids, clone, err := ws.variableManager.Check(key, tmp)
 			if err != nil {
 				return err
+
 			}
 			ws.variableManager.SetByNamespace(key, tmp)
 			for _, id := range wids {
-				profession, name, success := eosc.SplitWorkerId(id)
+				profession, _, success := eosc.SplitWorkerId(id)
 				if !success {
 					continue
 				}
 				if profession == "setting" {
-					ws.settings.Update(name, clone)
+					ws.settings.Update(id, clone)
 				} else {
 					ws.workers.Update(id, clone)
 				}
@@ -99,7 +104,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
-
+	settings := make([]*eosc.WorkerConfig, 0)
 	for namespace, config := range eventData {
 
 		switch namespace {
@@ -122,7 +127,12 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 					if err != nil {
 						continue
 					}
-					wc = append(wc, w)
+					log.Debug("init read worker:", w.Profession, ":", w.Name)
+					if w.Profession == "setting" {
+						settings = append(settings, w)
+					} else {
+						wc = append(wc, w)
+					}
 				}
 			}
 		case eosc.NamespaceVariable:
@@ -138,6 +148,13 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			h()
 		}
 	})
+	for _, w := range settings {
+
+		err := ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+		if err != nil {
+			log.Warn("set setting :", err)
+		}
+	}
 	ws.workers.Reset(wc, ws.variableManager)
 
 	return nil

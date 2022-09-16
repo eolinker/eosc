@@ -1,10 +1,10 @@
 package cmuxMatch
 
 import (
-	"fmt"
-	"github.com/soheilhy/cmux"
 	"net"
 	"sync"
+
+	"github.com/soheilhy/cmux"
 )
 
 var (
@@ -42,9 +42,7 @@ func (l *ListenerProxy) Replace() *ListenerProxy {
 func (l *ListenerProxy) doAccept() {
 	defer close(l.ch)
 	for {
-		fmt.Println("proxy accept start")
 		c, err := l.root.Accept()
-		fmt.Println("proxy accept done")
 		if err != nil {
 			if ne, ok := err.(net.Error); ok {
 				if ne.Timeout() {

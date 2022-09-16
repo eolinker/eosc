@@ -17,17 +17,26 @@ type IExtenderDriver interface {
 	ConfigType() reflect.Type
 	Create(id, name string, v interface{}, workers map[RequireId]IWorker) (IWorker, error)
 }
+type SettingMode int
+
+const (
+	SettingModeReadonly SettingMode = iota
+	SettingModeSingleton
+	SettingModeBatch
+)
 
 type ISetting interface {
 	ConfigType() reflect.Type
-	Set(conf interface{}) error
+	Set(conf interface{}) (err error)
 	Get() interface{}
-	ReadOnly() bool
+	Mode() SettingMode
+	Check(cfg interface{}) (profession, name, driver, desc string, err error)
+	AllWorkers() []string
 }
 
 type ISettings interface {
 	GetDriver(name string) (ISetting, bool)
-	Set(name string, org []byte, variable IVariable) (format interface{}, err error)
+	SettingWorker(name string, config []byte, variable IVariable) error
 	Update(name string, variable IVariable) (err error)
 	CheckVariable(name string, variable IVariable) (err error)
 	GetConfig(name string) interface{}
