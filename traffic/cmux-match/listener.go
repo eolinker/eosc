@@ -7,11 +7,13 @@ import (
 )
 
 type shutListener struct {
-	lock   sync.RWMutex
-	ch     chan net.Conn
-	addr   net.Addr
-	ctx    context.Context
-	cancel context.CancelFunc
+	lock sync.RWMutex
+	ch   chan net.Conn
+
+	closeTemp chan struct{}
+	addr      net.Addr
+	ctx       context.Context
+	cancel    context.CancelFunc
 
 	last net.Listener
 }
@@ -25,8 +27,9 @@ func (m *shutListener) Addr() net.Addr {
 func (m *shutListener) Accept() (net.Conn, error) {
 
 	select {
+	case <-m.closeTemp:
+		return nil, ErrorListenerClosed
 	case <-m.ctx.Done():
- 
 		return nil, ErrorListenerClosed
 	case conn, ok := <-m.ch:
 		if ok {
@@ -56,11 +59,9 @@ func (m *shutListener) doAccept(l net.Listener) {
 
 }
 func (m *shutListener) Close() error {
-	return nil
-	//m.lock.Lock()
-	//defer m.lock.Unlock()
 
-	//return m.close()
+	m.closeTemp <- struct{}{}
+	return nil
 }
 func (m *shutListener) close() error {
 	if m.cancel != nil {
@@ -87,8 +88,9 @@ func newListener() *shutListener {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	return &shutListener{
-		ctx:    ctx,
-		cancel: cancelFunc,
-		ch:     make(chan net.Conn, 1),
+		closeTemp: make(chan struct{}, 1),
+		ctx:       ctx,
+		cancel:    cancelFunc,
+		ch:        make(chan net.Conn, 1),
 	}
 }
