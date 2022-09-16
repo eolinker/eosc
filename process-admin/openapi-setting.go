@@ -77,7 +77,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 			Data:      eventData,
 		}}, setting.FormatConfig(inputData, configType)
 	} else {
-		events, body, err = oe.batchSet(inputData, driver, events, configType)
+		events, body, err = oe.batchSet(inputData, driver, configType)
 		if err != nil {
 			status = http.StatusServiceUnavailable
 			body = err.Error()
@@ -90,7 +90,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	}
 }
 
-func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, events []*open_api.EventResponse, configType reflect.Type) ([]*open_api.EventResponse, interface{}, error) {
+func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configType reflect.Type) ([]*open_api.EventResponse, interface{}, error) {
 	type BatchWorkerInfo struct {
 		id         string
 		profession string
@@ -102,7 +102,7 @@ func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, events []
 	inputList := splitConfig(inputData)
 	cfgs := make(map[string]BatchWorkerInfo, len(inputList))
 	allWorkers := toSet(driver.AllWorkers())
-	events = make([]*open_api.EventResponse, 0, len(allWorkers))
+	events := make([]*open_api.EventResponse, 0, len(allWorkers))
 	responseBody := make([]interface{}, 0, len(inputList))
 	for _, inp := range inputList {
 		cfg, _, err2 := oe.variable.Unmarshal(inp, configType)
