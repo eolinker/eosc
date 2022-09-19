@@ -3,6 +3,7 @@ package bean
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/eolinker/eosc/log"
@@ -44,6 +45,8 @@ func (m *container) AddInitializingBean(handler InitializingBeanHandler) {
 	if need := m.check(); len(need) == 0 {
 		handler.AfterPropertiesSet()
 		return
+	} else {
+		log.Debug("AddInitializingBean need:", strings.Join(need, ","))
 	}
 	m.initializingBean = append(m.initializingBean, handler)
 
