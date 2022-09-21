@@ -5,14 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils"
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/utils"
 )
 
 type IProcessUpdates []IProcessUpdate
@@ -183,7 +185,7 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 			return nil
 		case StatusExit, StatusError:
 			pc.callback.Update(nil)
-			return errors.New("fail to start process worker")
+			return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
 		}
 
 		ticker.Reset(5 * time.Millisecond)

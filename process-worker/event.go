@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/log"
-	"strings"
-
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/variable"
 )
 
 func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) error {
@@ -26,13 +25,21 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 		}
 	case eosc.NamespaceWorker:
 		{
+			log.Debug("setEvent NamespaceWorker:")
+
 			w := new(eosc.WorkerConfig)
 			err := json.Unmarshal(data, w)
 			if err != nil {
 				return err
 			}
+			log.Debug("NamespaceWorker:", w.Profession, w.Name)
 
-			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager.GetAll())
+			if w.Profession == "setting" {
+				err = ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+				return err
+			}
+
+			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager)
 		}
 	case eosc.NamespaceVariable:
 		{
@@ -41,7 +48,24 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			if err != nil {
 				return err
 			}
-			_, _, err = ws.variableManager.SetByNamespace(key, tmp)
+
+			wids, clone, err := ws.variableManager.Check(key, tmp)
+			if err != nil {
+				return err
+
+			}
+			ws.variableManager.SetByNamespace(key, tmp)
+			for _, id := range wids {
+				profession, _, success := eosc.SplitWorkerId(id)
+				if !success {
+					continue
+				}
+				if profession == "setting" {
+					ws.settings.Update(id, clone)
+				} else {
+					ws.workers.Update(id, clone)
+				}
+			}
 			return err
 		}
 	default:
@@ -80,12 +104,13 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
-
+	settings := make([]*eosc.WorkerConfig, 0)
 	for namespace, config := range eventData {
-		for _, c := range config {
-			switch namespace {
-			case eosc.NamespaceProfession:
-				{
+
+		switch namespace {
+		case eosc.NamespaceProfession:
+			{
+				for _, c := range config {
 					p := new(eosc.ProfessionConfig)
 					err := json.Unmarshal(c, p)
 					if err != nil {
@@ -93,38 +118,26 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 					}
 					pc = append(pc, p)
 				}
-			case eosc.NamespaceWorker:
-				{
+			}
+		case eosc.NamespaceWorker:
+			{
+				for _, c := range config {
 					w := new(eosc.WorkerConfig)
 					err := json.Unmarshal(c, w)
 					if err != nil {
 						continue
 					}
-					wc = append(wc, w)
-				}
-			case eosc.NamespaceVariable:
-				{
-					var tmp map[string]string
-					err := json.Unmarshal(c, &tmp)
-					if err != nil {
-						continue
-					}
-					target := make(map[string]map[string]string)
-					for key, value := range tmp {
-						name := "default"
-						index := strings.Index(key, "@")
-						if index > 0 && len(key) > index+1 {
-							name = key[index+1:]
-						}
-						if _, ok := target[name]; !ok {
-							target[name] = make(map[string]string)
-						}
-						target[name][key] = value
-					}
-					for key, value := range target {
-						ws.variableManager.SetByNamespace(key, value)
+					log.Debug("init read worker:", w.Profession, ":", w.Name)
+					if w.Profession == "setting" {
+						settings = append(settings, w)
+					} else {
+						wc = append(wc, w)
 					}
 				}
+			}
+		case eosc.NamespaceVariable:
+			{
+				ws.variableManager = variable.NewVariables(config)
 			}
 		}
 	}
@@ -135,7 +148,14 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			h()
 		}
 	})
-	ws.workers.Reset(wc, ws.variableManager.GetAll())
+	for _, w := range settings {
+
+		err := ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+		if err != nil {
+			log.Warn("set setting :", err)
+		}
+	}
+	ws.workers.Reset(wc, ws.variableManager)
 
 	return nil
 }

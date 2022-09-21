@@ -1,29 +1,35 @@
 package variable
 
 import (
-	"github.com/eolinker/eosc"
 	"reflect"
+
+	"github.com/eolinker/eosc"
 )
 
 var (
 	methodName = "Reset"
+	resetType  = reflect.TypeOf((*IVariableResetType)(nil)).Elem()
 )
 
-func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
+type IVariableResetType interface {
+	Reset(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVariable) ([]string, error)
+}
+
+func RecurseReflect(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVariable) ([]string, error) {
 	return recurseReflect(originVal, targetVal, variables)
 }
 
 // recurseReflect 递归反射值给对象
-func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables map[string]string) ([]string, error) {
+func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVariable) ([]string, error) {
 	if targetVal.Kind() == reflect.Ptr {
 		targetVal = targetVal.Elem()
 	}
-	usedVariables := make([]string, 0, len(variables))
+	usedVariables := make([]string, 0, variables.Len())
 	var used []string
 	var err error
 	switch originVal.Kind() {
 	case reflect.Interface:
-		if targetVal.Type().Implements(reflect.TypeOf((*eosc.IPluginReset)(nil)).Elem()) {
+		if targetVal.Type().Implements(resetType) {
 			// 判断是否实现Reset方法，如果实现，则执行赋值操作
 			f := targetVal.MethodByName(methodName)
 			if f.IsValid() {

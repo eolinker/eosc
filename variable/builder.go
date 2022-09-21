@@ -1,7 +1,7 @@
 package variable
 
 import (
-	"fmt"
+	"github.com/eolinker/eosc"
 	"strings"
 )
 
@@ -26,22 +26,22 @@ const (
 	EndInputStatus
 )
 
-func NewBuilder(str string, separator, suffix string) *Builder {
-	return &Builder{str: str, separator: separator, defaultSuffix: suffix}
+func NewBuilder(str string) *Builder {
+	return &Builder{str: str}
 }
 
 type Builder struct {
-	str           string
-	separator     string
-	defaultSuffix string
+	str string
+	//separator     string
+	//defaultSuffix string
 }
 
-func (b *Builder) Replace(variables map[string]string) (string, []string, bool) {
+func (b *Builder) Replace(variables eosc.IVariable) (string, []string, bool) {
 	strBuilder := strings.Builder{}
 	varBuilder := strings.Builder{}
 	status := CurrentStatus
 	startIndex := 0
-	useVariable := make([]string, 0, len(variables))
+	useVariable := make([]string, 0, variables.Len())
 	for i, s := range b.str {
 		oldStatus := status
 		status = toggleStatus(status, s)
@@ -62,20 +62,15 @@ func (b *Builder) Replace(variables map[string]string) (string, []string, bool) 
 			}
 			varBuilder.WriteRune(s)
 		case EndInputStatus:
-			tmp := varBuilder.String()
-			if b.separator != "" && b.defaultSuffix != "" {
-				index := strings.Index(tmp, b.separator)
-				if index == -1 {
-					tmp = fmt.Sprintf("%s%s%s", tmp, b.separator, b.defaultSuffix)
-				}
-			}
-			v, ok := variables[tmp]
+			id := varBuilder.String()
+
+			v, ok := variables.Get(id)
 			if !ok {
 				// 变量不存在，报错
 				return "", nil, false
 			}
 
-			useVariable = append(useVariable, tmp)
+			useVariable = append(useVariable, id)
 			strBuilder.WriteString(v)
 			varBuilder.Reset()
 			startIndex = i + 1

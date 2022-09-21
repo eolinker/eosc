@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc"
 	"net"
 	"net/url"
 	"reflect"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/eolinker/eosc"
 )
 
 // ErrSchemaInvalid is sent when there is a problem building the schema.
@@ -617,7 +618,7 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (r *Schema, err
 		schema.AdditionalProperties = s
 	case reflect.Slice, reflect.Array:
 		if t.Elem().Kind() == reflect.Uint8 {
-			// Special case: `[]byte` should be a Base-64 string.
+			// Special case: `[]byte` should be a BaseConfig-64 string.
 			schema.Type = TypeString
 		} else {
 			schema.Type = TypeArray

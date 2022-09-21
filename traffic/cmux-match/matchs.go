@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -42,7 +43,7 @@ func init() {
 	matchers[Any] = []cmux.Matcher{func(reader io.Reader) bool {
 		return true
 	}}
-	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast(), cmux.HTTP2()}
+	matchers[Http1] = []cmux.Matcher{cmux.HTTP1Fast(http.MethodPatch), cmux.HTTP2(), cmux.TLS()}
 	matchers[Https] = []cmux.Matcher{cmux.TLS()}
 	matchers[Http2] = []cmux.Matcher{cmux.HTTP2()}
 	matchers[Websocket] = []cmux.Matcher{cmux.HTTP1HeaderField("Upgrade", "websocket")}

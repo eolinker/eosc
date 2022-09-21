@@ -11,20 +11,25 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/service"
+	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
-	"github.com/eolinker/eosc/workers/require"
-	"github.com/julienschmidt/httprouter"
+
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/eolinker/eosc/process"
 
@@ -53,11 +58,11 @@ func Process() {
 
 	w, err := NewProcessAdmin(context.Background(), arg)
 	if err != nil {
+
 		w.writeOutput(process.StatusExit, err.Error())
 		log.Error("new process admin error: ", err)
 		return
 	}
-
 	w.writeOutput(process.StatusRunning, "")
 	w.wait()
 	log.Info("admin process end")
@@ -151,21 +156,25 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	ps = NewProfessionsRequire(ps, extenderRequire)
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
 
-	wd := NewWorkerDatas(arg[eosc.NamespaceWorker])
+	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
+	wd := NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
+
+	ws := NewWorkers()
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 
 	bean.Check()
 
-	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
+	ws.Init(ps, wd, vd)
 
-	ws := NewWorkers(ps, wd, vd)
+	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), ws, vd)
 
 	// openAPI handler register
 	NewProfessionApi(ps, wd).Register(p.router)
-	NewWorkerApi(ws).Register(p.router)
+	NewWorkerApi(ws, settingApi.request).Register(p.router)
+	settingApi.RegisterSetting(p.router)
 	NewExportApi(extenderData, ps, ws).Register(p.router)
-	NewVariableApi(extenderData, ws, vd).Register(p.router)
+	NewVariableApi(extenderData, ws, vd, setting.GetSettings()).Register(p.router)
 
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
@@ -201,6 +210,17 @@ func initExtender(config map[string][]byte) extends.IExtenderRegister {
 	return register
 }
 
+func filerSetting(confs map[string][]byte, name string, yes bool) map[string][]byte {
+	name = strings.ToLower(name)
+	sets := make(map[string][]byte)
+	for id, data := range confs {
+		profession, _, _ := eosc.SplitWorkerId(id)
+		if (strings.ToLower(profession) == name) == yes {
+			sets[id] = data
+		}
+	}
+	return sets
+}
 func readConfig() map[string]map[string][]byte {
 	conf := make(map[string]map[string][]byte)
 
