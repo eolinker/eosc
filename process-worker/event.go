@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
-
-	"github.com/eolinker/eosc/common/bean"
-	"github.com/eolinker/eosc/log"
-
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/variable"
 )
 
 func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) error {
+
 	switch namespace {
 	case eosc.NamespaceProfession:
 		{
@@ -27,13 +25,48 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 		}
 	case eosc.NamespaceWorker:
 		{
+			log.Debug("setEvent NamespaceWorker:")
+
 			w := new(eosc.WorkerConfig)
 			err := json.Unmarshal(data, w)
 			if err != nil {
 				return err
 			}
+			log.Debug("NamespaceWorker:", w.Profession, w.Name)
 
-			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body)
+			if w.Profession == "setting" {
+				err = ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+				return err
+			}
+
+			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager)
+		}
+	case eosc.NamespaceVariable:
+		{
+			var tmp map[string]string
+			err := json.Unmarshal(data, &tmp)
+			if err != nil {
+				return err
+			}
+
+			wids, clone, err := ws.variableManager.Check(key, tmp)
+			if err != nil {
+				return err
+
+			}
+			ws.variableManager.SetByNamespace(key, tmp)
+			for _, id := range wids {
+				profession, _, success := eosc.SplitWorkerId(id)
+				if !success {
+					continue
+				}
+				if profession == "setting" {
+					ws.settings.Update(id, clone)
+				} else {
+					ws.workers.Update(id, clone)
+				}
+			}
+			return err
 		}
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
@@ -51,6 +84,10 @@ func (ws *WorkerServer) delEvent(namespace string, key string) error {
 		{
 			return ws.workers.Del(key)
 		}
+	case eosc.NamespaceVariable:
+		{
+			return nil
+		}
 	default:
 		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
 	}
@@ -67,48 +104,58 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
-
-	professionTyp := reflect.TypeOf(&eosc.ProfessionConfig{})
-	workerTyp := reflect.TypeOf(&eosc.WorkerConfig{})
+	settings := make([]*eosc.WorkerConfig, 0)
 	for namespace, config := range eventData {
-		for _, c := range config {
-			switch namespace {
-			case eosc.NamespaceProfession:
-				{
 
-					p, err := toConfig(c, professionTyp)
+		switch namespace {
+		case eosc.NamespaceProfession:
+			{
+				for _, c := range config {
+					p := new(eosc.ProfessionConfig)
+					err := json.Unmarshal(c, p)
 					if err != nil {
 						continue
 					}
-					pc = append(pc, p.(*eosc.ProfessionConfig))
+					pc = append(pc, p)
 				}
-			case eosc.NamespaceWorker:
-				{
-					w, err := toConfig(c, workerTyp)
+			}
+		case eosc.NamespaceWorker:
+			{
+				for _, c := range config {
+					w := new(eosc.WorkerConfig)
+					err := json.Unmarshal(c, w)
 					if err != nil {
 						continue
 					}
-					wc = append(wc, w.(*eosc.WorkerConfig))
+					log.Debug("init read worker:", w.Profession, ":", w.Name)
+					if w.Profession == "setting" {
+						settings = append(settings, w)
+					} else {
+						wc = append(wc, w)
+					}
 				}
+			}
+		case eosc.NamespaceVariable:
+			{
+				ws.variableManager = variable.NewVariables(config)
 			}
 		}
 	}
 
 	ws.professionManager.Reset(pc)
-	ws.workers.Reset(wc)
-	bean.Injection(&ws.workers)
-	return nil
-}
+	ws.onceInit.Do(func() {
+		for _, h := range ws.initHandler {
+			h()
+		}
+	})
+	for _, w := range settings {
 
-func toConfig(data []byte, typ reflect.Type) (interface{}, error) {
-	cfg := newConfig(typ)
-	err := json.Unmarshal(data, cfg)
-	return cfg, err
-}
-
-func newConfig(t reflect.Type) interface{} {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
+		err := ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+		if err != nil {
+			log.Warn("set setting :", err)
+		}
 	}
-	return reflect.New(t).Interface()
+	ws.workers.Reset(wc, ws.variableManager)
+
+	return nil
 }

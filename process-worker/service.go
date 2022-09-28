@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/setting"
+	"github.com/eolinker/eosc/variable"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/eolinker/eosc"
 
-	"github.com/eolinker/eosc/workers"
+	"github.com/eolinker/eosc/process-worker/workers"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	"github.com/eolinker/eosc/utils"
@@ -28,23 +31,29 @@ type WorkerServer struct {
 	cancel            context.CancelFunc
 	workers           workers.IWorkers
 	professionManager professions.IProfessions
-
-	masterPid int
+	settings          eosc.ISettings
+	variableManager   eosc.IVariable
+	masterPid         int
+	onceInit          sync.Once
+	initHandler       []func()
 }
 
-func NewWorkerServer(masterPid int, extends extends.IExtenderRegister) (*WorkerServer, error) {
+func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandlers ...func()) (*WorkerServer, error) {
 	defer utils.TimeSpend("NewWorkerServer")()
 	ctx, cancel := context.WithCancel(context.Background())
 	ws := &WorkerServer{
-		ctx:       ctx,
-		cancel:    cancel,
-		masterPid: masterPid,
-
+		ctx:               ctx,
+		cancel:            cancel,
+		masterPid:         masterPid,
 		professionManager: professions.NewProfessions(extends),
+		initHandler:       initHandlers,
+		variableManager:   variable.NewVariables(nil),
+		settings:          setting.GetSettings(),
 	}
 
 	ws.workers = workers.NewWorkerManager(ws.professionManager)
-	bean.Injection(&ws.workers)
+	var iw eosc.IWorkers = ws.workers
+	bean.Injection(&iw)
 	ws.listenMaster()
 	return ws, nil
 }
@@ -102,9 +111,11 @@ func (ws *WorkerServer) createClient() (*grpc.ClientConn, service.MasterDispatch
 }
 
 func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher_ListenClient) {
+	log.Debug("start listen")
 	defer conn.Close()
 	for {
 		event, err := c.Recv()
+		log.Debug("recv:", err)
 		if err != nil {
 			if err == io.EOF {
 				log.Debug("listen closed... ", err)
@@ -113,6 +124,7 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			ws.retryConn()
 			return
 		}
+		log.Debug("recv:", event.String())
 		switch event.Command {
 		case eosc.EventInit, eosc.EventReset:
 			{
@@ -132,4 +144,5 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			}
 		}
 	}
+	log.Debug("stop listen")
 }

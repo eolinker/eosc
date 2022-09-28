@@ -54,6 +54,13 @@ func StartFunc(c *cli.Context) error {
 		return err
 	}
 
+	for _, rPort := range cfg.Listen {
+		err = utils.IsListen(fmt.Sprintf("%s:%d", ip, rPort))
+		if err != nil {
+			return err
+		}
+	}
+
 	protocol := cfg.Admin.Scheme
 	if protocol == "" {
 		protocol = env.GetDefault(env.Protocol, "http")

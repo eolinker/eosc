@@ -1,7 +1,9 @@
 package process_admin
 
 import (
+	"encoding/json"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 )
 
 type WorkerDatas struct {
@@ -16,24 +18,40 @@ func (w *WorkerDatas) Get(id string) (eosc.IWorker, bool) {
 	return nil, false
 }
 
-func NewWorkerDatas() *WorkerDatas {
-	return &WorkerDatas{data: eosc.NewUntyped()}
+func NewWorkerDatas(initData map[string][]byte) *WorkerDatas {
+	data := &WorkerDatas{data: eosc.NewUntyped()}
+	for id, d := range initData {
+
+		cf := new(eosc.WorkerConfig)
+		e := json.Unmarshal(d, cf)
+		if e != nil {
+			continue
+		}
+		data.Set(id, &WorkerInfo{
+			worker: nil,
+			config: cf,
+			attr:   nil,
+			info:   nil,
+		})
+	}
+	return data
 }
 
-func (w *WorkerDatas) Set(name string, v *WorkerInfo) {
-	w.data.Set(name, v)
+func (w *WorkerDatas) Set(id string, v *WorkerInfo) {
+	log.DebugF("worker set:%s==>%v", id, v.config)
+	w.data.Set(id, v)
 }
 
-func (w *WorkerDatas) GetInfo(name string) (*WorkerInfo, bool) {
-	v, has := w.data.Get(name)
+func (w *WorkerDatas) GetInfo(id string) (*WorkerInfo, bool) {
+	v, has := w.data.Get(id)
 	if has {
 		return v.(*WorkerInfo), true
 	}
 	return nil, false
 }
 
-func (w *WorkerDatas) Del(name string) (*WorkerInfo, bool) {
-	v, has := w.data.Del(name)
+func (w *WorkerDatas) Del(id string) (*WorkerInfo, bool) {
+	v, has := w.data.Del(id)
 	if has {
 		return v.(*WorkerInfo), true
 	}

@@ -9,7 +9,6 @@
 package process_worker
 
 import (
-	"github.com/eolinker/eosc/professions"
 	"os"
 	"os/signal"
 	"sync"
@@ -100,29 +99,27 @@ func (w *ProcessWorker) wait() {
 //NewProcessWorker 创建新的worker进程
 //启动时通过stdin传输配置信息
 func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
-
 	register := extends.InitRegister()
-	extends.LoadPlugins(arg.Extends, register)
-	profession := professions.NewProfessions(register)
+	tf := createTraffic(arg.Traffic)
+	bean.Injection(&tf)
+	bean.Injection(&arg.ListensMsg)
 
-	server, err := NewWorkerServer(os.Getppid(), register)
+	extends.LoadPlugins(arg.Extends, register)
+	var extenderDrivers eosc.IExtenderDrivers = register
+	bean.Injection(&extenderDrivers)
+
+	server, err := NewWorkerServer(os.Getppid(), register, func() {
+		bean.Check()
+	})
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	tf := createTraffic(arg.Traffic)
 	w := &ProcessWorker{
 		server: server,
 		tf:     tf,
 	}
-
-	var extenderDrivers eosc.IExtenderDrivers = register
-	bean.Injection(&extenderDrivers)
-	bean.Injection(&tf)
-	bean.Injection(&profession)
-	bean.Injection(&arg.ListensMsg)
-	bean.Check()
 
 	return w, nil
 }
@@ -155,12 +152,7 @@ func readArg() *service.ProcessLoadArg {
 }
 
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
-	t := traffic.NewTraffic()
+	t := traffic.NewTraffic(tfConf)
 
-	err := t.Read(tfConf)
-	if err != nil {
-		log.Error("read traffic :", err)
-		return t
-	}
 	return t
 }

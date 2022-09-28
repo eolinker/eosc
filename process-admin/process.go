@@ -11,24 +11,29 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/service"
-	"github.com/julienschmidt/httprouter"
+	"github.com/eolinker/eosc/setting"
+	"github.com/eolinker/eosc/traffic"
+	"github.com/eolinker/eosc/variable"
+
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/eolinker/eosc/process"
 
 	"github.com/eolinker/eosc/extends"
-
-	"github.com/eolinker/eosc/config"
-
-	"github.com/eolinker/eosc/traffic"
 
 	"github.com/eolinker/eosc/common/bean"
 
@@ -53,11 +58,11 @@ func Process() {
 
 	w, err := NewProcessAdmin(context.Background(), arg)
 	if err != nil {
+
 		w.writeOutput(process.StatusExit, err.Error())
 		log.Error("new process admin error: ", err)
 		return
 	}
-
 	w.writeOutput(process.StatusRunning, "")
 	w.wait()
 	log.Info("admin process end")
@@ -121,6 +126,20 @@ func (pa *ProcessAdmin) wait() {
 //NewProcessAdmin 创建新的admin进程
 //启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
+	cfg := &config.ListensMsg{}
+	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
+	bean.Injection(&tf)
+	bean.Injection(&cfg)
+	register := initExtender(arg[eosc.NamespaceExtender])
+	var extenderDrivers eosc.IExtenderDrivers = register
+	bean.Injection(&extenderDrivers)
+	//for namespace, a := range arg {
+	//	log.Debug("namespace is ", namespace)
+	//	for k, v := range a {
+	//		log.Debug("key is ", k, " v is ", string(v))
+	//	}
+	//
+	//}
 
 	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{
@@ -128,16 +147,35 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 		cancelFunc: cancelFunc,
 		router:     httprouter.New(),
 	}
-	register := initExtender(arg[eosc.NamespaceExtender])
-	extenderData := NewExtenderData(arg[eosc.NamespaceExtender])
+	extenderRequire := require.NewRequireManager()
+	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 	NewExtenderOpenApi(extenderData).Register(p.router)
 
-	professionData := professions.NewProfessions(register)
-	professionData.Reset(professionConfig(arg[eosc.NamespaceProfession]))
-	NewProfessionApi(professionData).Register(p.router)
-	workers := NewWorkers(professionData, arg[eosc.NamespaceWorker])
-	NewWorkerApi(workers).Register(p.router)
-	NewExportApi(extenderData, professionData, workers).Register(p.router)
+	ps := professions.NewProfessions(register)
+
+	ps = NewProfessionsRequire(ps, extenderRequire)
+	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
+
+	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
+	wd := NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
+
+	ws := NewWorkers()
+	var iWorkers eosc.IWorkers = wd
+	bean.Injection(&iWorkers)
+
+	bean.Check()
+
+	ws.Init(ps, wd, vd)
+
+	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), ws, vd)
+
+	// openAPI handler register
+	NewProfessionApi(ps, wd).Register(p.router)
+	NewWorkerApi(ws, settingApi.request).Register(p.router)
+	settingApi.RegisterSetting(p.router)
+	NewExportApi(extenderData, ps, ws).Register(p.router)
+	NewVariableApi(extenderData, ws, vd, setting.GetSettings()).Register(p.router)
+
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
 			StatusCode: 404,
@@ -153,14 +191,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	})
 
 	p.OpenApiServer()
-
-	cfg := &config.ListensMsg{}
-	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
-	bean.Injection(&tf)
-	bean.Injection(&cfg)
-
-	bean.Injection(&register)
-	bean.Check()
 
 	return p, nil
 }
@@ -180,6 +210,17 @@ func initExtender(config map[string][]byte) extends.IExtenderRegister {
 	return register
 }
 
+func filerSetting(confs map[string][]byte, name string, yes bool) map[string][]byte {
+	name = strings.ToLower(name)
+	sets := make(map[string][]byte)
+	for id, data := range confs {
+		profession, _, _ := eosc.SplitWorkerId(id)
+		if (strings.ToLower(profession) == name) == yes {
+			sets[id] = data
+		}
+	}
+	return sets
+}
 func readConfig() map[string]map[string][]byte {
 	conf := make(map[string]map[string][]byte)
 

@@ -2,6 +2,7 @@ package eoscli
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"strings"
 
 	"github.com/eolinker/eosc/env"
@@ -19,13 +20,13 @@ func Env() *cli.Command {
 
 func EnvFunc(c *cli.Context) error {
 	for _, name := range env.Envs() {
-		fmt.Println(env.GenEnv(name, env.GetDefault(name, "")))
+		log.Debug(env.GenEnv(name, env.GetDefault(name, "")))
 	}
 	for k, v := range env.GetConfig() {
 		if k == "" {
 			continue
 		}
-		fmt.Println(fmt.Sprintf("%s_%s=%s", strings.ToUpper(env.AppName()), k, v))
+		log.Debug(fmt.Sprintf("%s_%s=%s", strings.ToUpper(env.AppName()), k, v))
 	}
 	return nil
 }

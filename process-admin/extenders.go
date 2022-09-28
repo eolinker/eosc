@@ -8,6 +8,8 @@ import (
 	"github.com/eolinker/eosc/extends"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/schema"
+
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -18,6 +20,7 @@ var (
 	ErrorNotExist                = errors.New("not exist")
 	ErrorDuplicatePath           = errors.New("path duplicate")
 	ErrorNotMatch                = errors.New("not match profession")
+	ErrorExtenderVersionIsChange = errors.New("the version of extender has changed")
 )
 
 type ExtenderProject struct {
@@ -49,9 +52,11 @@ type ExtenderData struct {
 	Infos    map[string]*ExtenderProject
 	history  map[string]bool
 	locker   sync.RWMutex
+
+	extenderRequire eosc.IRequires
 }
 
-func NewExtenderData(conf map[string][]byte) *ExtenderData {
+func NewExtenderData(conf map[string][]byte, extenderRequire eosc.IRequires) *ExtenderData {
 	vs := make(map[string]string)
 	for k, v := range conf {
 		vs[k] = string(v)
@@ -61,13 +66,18 @@ func NewExtenderData(conf map[string][]byte) *ExtenderData {
 	}
 
 	ed := &ExtenderData{
-		Versions: vs,
-		Infos:    make(map[string]*ExtenderProject),
-		history:  map[string]bool{},
-		locker:   sync.RWMutex{},
+		extenderRequire: extenderRequire,
+		Versions:        vs,
+		Infos:           make(map[string]*ExtenderProject),
+		history:         map[string]bool{},
+		locker:          sync.RWMutex{},
 	}
 	ed.init()
 	return ed
+}
+
+func (e *ExtenderData) GetConfigTypes() map[string]reflect.Type {
+	return nil
 }
 func (e *ExtenderData) IsWork() bool {
 	e.locker.RLock()
@@ -84,11 +94,12 @@ func (e *ExtenderData) init() {
 
 	for k, v := range e.Versions {
 		group, project := readProject(k)
+
 		e.load(group, project, v)
 	}
 
 }
-func (e *ExtenderData) Delete(group, project string) (*ExtenderProject, error) {
+func (e *ExtenderData) Delete(group, project, version string) (*ExtenderProject, error) {
 	e.locker.RLock()
 	defer e.locker.RUnlock()
 	if extends.IsInner(group, project) {
@@ -99,6 +110,11 @@ func (e *ExtenderData) Delete(group, project string) (*ExtenderProject, error) {
 	v, has := e.Versions[name]
 	if !has {
 		return nil, ErrorNotExist
+	}
+	if version != "" {
+		if v != version {
+			return nil, ErrorExtenderVersionIsChange
+		}
 	}
 	extenderProject, _ := e.load(group, project, v)
 	delete(e.Versions, name)
@@ -115,31 +131,38 @@ func (e *ExtenderData) getVersion(group, project string) (version string, has bo
 
 }
 
-func (e *ExtenderData) setVersion(group, project, version string) {
+func (e *ExtenderData) setVersion(group, project, version string) bool {
 	id := toProject(group, project)
+	o, has := e.Versions[id]
+	if has && o == version {
+		return false
+	}
 	e.Versions[id] = version
+	return true
 }
-func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProject, error) {
+func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProject, bool, error) {
 	log.Debug("SetVersion:", group, ":", project, ":", version)
 	e.locker.Lock()
 	defer e.locker.Unlock()
 
 	if extends.IsInner(group, project) {
-		return nil, fmt.Errorf("%s:%s %w", group, project, ErrorInnerExtenderCantChange)
+		return nil, false, fmt.Errorf("%s:%s %w", group, project, ErrorInnerExtenderCantChange)
 	}
 
 	load, err := e.load(group, project, version)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !load.isWork {
-		return nil, fmt.Errorf("%s:%s:%s %w", group, project, version, ErrorExtenderNotWork)
+		return nil, false, fmt.Errorf("%s:%s:%s %w", group, project, version, ErrorExtenderNotWork)
 	}
-	e.setVersion(group, project, version)
-	return load, nil
+
+	ok := e.setVersion(group, project, version)
+	return load, ok, nil
 }
 
 func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, error) {
+	log.DebugF("load extender:%s:%s@%s", group, project, version)
 	id := toVersion(group, project, version)
 
 	if e.history[toProject(group, project)] {
@@ -179,8 +202,8 @@ func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, e
 
 		ds := register.All()
 		info.renders = eosc.NewUntyped()
-		for name, d := range ds {
-			info.renders.Set(name, d.Render())
+		for name, df := range ds {
+			info.renders.Set(name, df.Render())
 		}
 		info.isWork = true
 	}
@@ -216,12 +239,17 @@ func (e *ExtenderData) List() []*ExtenderItem {
 	defer e.locker.RUnlock()
 	for k, version := range e.Versions {
 		id := idVersion(k, version)
+
 		info, has := e.Infos[id]
 		if has && info.isWork {
 			group, project := readProject(k)
 			for _, name := range info.renders.Keys() {
+				extenderItemID := fmt.Sprint(group, ":", project, ":", name)
+				if e.extenderRequire.RequireByCount(extenderItemID) > 0 {
+					continue
+				}
 				rs = append(rs, &ExtenderItem{
-					Id: fmt.Sprint(group, ":", project, ":", name),
+					Id: extenderItemID,
 					ExtenderItemInfo: ExtenderItemInfo{
 						Group:   group,
 						Project: project,

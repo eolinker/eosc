@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -22,6 +23,10 @@ type IData interface {
 }
 type JsonData []byte
 
+func (j JsonData) String() string {
+	return string(j)
+}
+
 func (j JsonData) Encode() ([]byte, error) {
 	return j, nil
 }
@@ -34,9 +39,11 @@ func (j JsonData) Marshal() ([]byte, error) {
 	return j, nil
 }
 
-type XMLData []byte
-
 type YamlData []byte
+
+func (y YamlData) String() string {
+	return string(y)
+}
 
 func (y YamlData) Encode() ([]byte, error) {
 	v := make(map[string]interface{})
@@ -68,7 +75,7 @@ func GetData(req *http.Request) (IData, error) {
 			return nil, e
 		}
 		req.Body.Close()
-
+		log.Debug("GetData:JsonData:", string(data))
 		return JsonData(data), nil
 	case "application/yaml":
 		data, e := ioutil.ReadAll(req.Body)
@@ -76,6 +83,7 @@ func GetData(req *http.Request) (IData, error) {
 			return nil, e
 		}
 		req.Body.Close()
+		log.Debug("GetData:YamlData:", string(data))
 
 		return YamlData(data), nil
 

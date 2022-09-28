@@ -5,14 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils"
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/utils"
 )
 
 type IProcessUpdates []IProcessUpdate
@@ -44,11 +46,9 @@ type ProcessController struct {
 	callback    IProcessUpdates
 	restartChan chan *StartArgs
 	locker      sync.Mutex
-	//expireProcesses []*ProcessCmd
-
-	isStop     bool
-	isShutDown int32
-	logWriter  io.Writer
+	isStop      bool
+	isShutDown  int32
+	logWriter   io.Writer
 }
 
 func NewProcessController(ctx context.Context, name string, logWriter io.Writer, callback ...IProcessUpdate) *ProcessController {
@@ -60,8 +60,7 @@ func NewProcessController(ctx context.Context, name string, logWriter io.Writer,
 		ctx:         newCtx,
 		cancel:      cancel,
 		restartChan: make(chan *StartArgs),
-		//configBuild:     configBuild,
-		logWriter: logWriter,
+		logWriter:   logWriter,
 	}
 	atomic.StoreInt32(&c.isShutDown, 1)
 	go c.doControl()
@@ -186,12 +185,13 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 			return nil
 		case StatusExit, StatusError:
 			pc.callback.Update(nil)
-			return errors.New("fail to start process worker")
+			return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
 		}
 
 		ticker.Reset(5 * time.Millisecond)
 	}
 }
+
 func (pc *ProcessController) Start(configData []byte, extraFiles []*os.File) error {
 	pc.locker.Lock()
 	defer pc.locker.Unlock()
@@ -228,6 +228,7 @@ func (pc *ProcessController) doControl() {
 	for {
 		select {
 		case <-pc.ctx.Done():
+			pc.Shutdown()
 			return
 		case arg, ok := <-pc.restartChan:
 			if ok {

@@ -25,25 +25,6 @@ func GetRealIP(r *http.Request) string {
 	return realIP
 }
 
-func readDriverId(id string) (group, project, name string) {
-	vs := strings.Split(id, ":")
-
-	if len(vs) > 2 {
-
-		group = vs[0]
-		project = vs[1]
-		name = vs[2]
-		return
-	}
-	if len(vs) == 2 {
-		project = vs[0]
-		name = vs[1]
-		return
-	}
-	name = vs[0]
-	return
-}
-
 func ToWorkerId(name, profession string) (string, bool) {
 	name = strings.ToLower(name)
 	index := strings.Index(name, "@")
@@ -54,6 +35,18 @@ func ToWorkerId(name, profession string) (string, bool) {
 		return "", false
 	}
 	return name, true
+}
+
+func SplitWorkerId(id string) (profession string, name string, success bool) {
+	id = strings.ToLower(id)
+	index := strings.Index(id, "@")
+	if index < 0 {
+		return "", "", false
+	}
+	if len(id) > index+1 {
+		return id[index+1:], id[:index], true
+	}
+	return "", "", false
 }
 
 //Decompress 解压文件
@@ -117,4 +110,31 @@ func SHA1(data []byte) string {
 	h := sha1.New()
 	h.Write(data)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func GenInitWorkerConfig(ps []*ProfessionConfig) []*WorkerConfig {
+	// 初始化单例的worker
+	vs := make([]*WorkerConfig, 0, len(ps))
+	for _, p := range ps {
+		if p.Mod == ProfessionConfig_Singleton {
+
+			for _, d := range p.Drivers {
+				id, _ := ToWorkerId(d.Name, p.Name)
+				wc := &WorkerConfig{
+					Id:          id,
+					Profession:  p.Name,
+					Name:        d.Name,
+					Driver:      d.Name,
+					Description: d.Desc,
+					Create:      Now(),
+					Update:      Now(),
+					Body:        nil,
+				}
+
+				wc.Body = []byte("{}")
+				vs = append(vs, wc)
+			}
+		}
+	}
+	return vs
 }

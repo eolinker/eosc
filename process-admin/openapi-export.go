@@ -26,7 +26,7 @@ func (oe *ExportApi) Register(router *httprouter.Router) {
 	router.GET("/export", open_api.CreateHandleFunc(oe.export))
 
 }
-func (oe *ExportApi) export(r *http.Request, params httprouter.Params) (status int, header http.Header, event *open_api.EventResponse, body interface{}) {
+func (oe *ExportApi) export(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	workerData := oe.allWorker()
 	extenderList := oe.extenders.versions()
 	professionList := oe.profession.List()
@@ -84,7 +84,7 @@ func (oe *ExportApi) allWorker() map[string][]interface{} {
 	for key, pl := range ps {
 		list := make([]interface{}, 0, len(pl))
 		for _, p := range pl {
-			list = append(list, p.toAttr())
+			list = append(list, p.Detail())
 		}
 		data[key] = list
 	}

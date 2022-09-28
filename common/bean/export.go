@@ -1,5 +1,7 @@
 package bean
 
+import "github.com/eolinker/eosc/log"
+
 var (
 	//Default 默认的bean
 	Default = NewContainer()
@@ -32,7 +34,11 @@ func InjectionDefault(i interface{}) {
 
 //Check 对默认的bean容器执行检查， 如果所有Autowired需求都被满足，返回nil，否则返回与缺失实例有关都error
 func Check() error {
-	return Default.Check()
+	err := Default.Check()
+	if err != nil {
+		log.Debug("bean.check:", err)
+	}
+	return err
 }
 
 //AddInitializingBean 注册完成回调接口， 执行check成功后会调用回调接口

@@ -1,20 +1,65 @@
 package raft_service
 
 import (
-	"encoding/json"
-	"sync"
-
 	"github.com/eolinker/eosc"
-
 	dispatcher "github.com/eolinker/eosc/common/dispatcher"
+	"github.com/eolinker/eosc/etcd"
+	"strings"
+	"sync"
 )
 
 type Service struct {
 	dispatcher.IDispatchCenter
 	closeOnes sync.Once
-	data      *dispatcher.Data
-	initOps   []InitOp
+
+	initOps []InitOp
 }
+
+func (s *Service) Put(key string, value []byte) error {
+	namespace, k := readKeys(key)
+	return s.sendEvent(namespace, eosc.EventSet, k, value)
+}
+
+func (s *Service) Delete(key string) error {
+	namespace, k := readKeys(key)
+	return s.sendEvent(namespace, eosc.EventDel, k, nil)
+}
+
+func (s *Service) Reset(values []*etcd.KValue) {
+	vs := make(map[string]map[string][]byte)
+
+	for _, v := range values {
+		namespace, k := readKeys(string(v.Key))
+
+		if _, has := vs[namespace]; !has {
+			vs[namespace] = make(map[string][]byte)
+		}
+		vs[namespace][k] = v.Value
+	}
+	for _, oh := range s.initOps {
+		vs = oh(vs)
+	}
+	event := &Event{
+		namespace: "",
+		cmd:       eosc.EventReset,
+		key:       "",
+		data:      nil,
+		all:       vs,
+	}
+	s.IDispatchCenter.Send(event)
+}
+func readKeys(keys string) (namespace, key string) {
+	i := strings.LastIndex(keys, "/")
+	if i > 0 {
+		namespace = strings.TrimPrefix(keys[:i], "/")
+		key = keys[i+1:]
+	} else {
+		namespace = ""
+		key = strings.TrimPrefix(keys, "/")
+	}
+	return
+}
+
 type InitOp func(map[string]map[string][]byte) map[string]map[string][]byte
 
 func NewService(ops ...InitOp) *Service {
@@ -24,16 +69,10 @@ func NewService(ops ...InitOp) *Service {
 	}
 	s := &Service{
 		IDispatchCenter: dispatcher.NewDataDispatchCenter(),
-		data:            dispatcher.NewMyData(initData),
 		initOps:         ops,
 	}
 
 	return s
-}
-
-func (s *Service) Commit(command string, namespace string, key string, data []byte) (err error) {
-
-	return s.sendEvent(namespace, command, key, data)
 }
 
 func (s *Service) sendEvent(namespace, cmd, key string, data []byte) error {
@@ -43,47 +82,6 @@ func (s *Service) sendEvent(namespace, cmd, key string, data []byte) error {
 		key:       key,
 		data:      data,
 	}
-
-	s.data.DoEvent(event)
-	//event.all = s.data.GET()
 	s.IDispatchCenter.Send(event)
-
 	return nil
-}
-
-func (s *Service) GetInit() ([]byte, error) {
-	data, err := s.GetSnapshot()
-	if err != nil {
-		return nil, err
-	}
-
-	return data, err
-}
-
-func (s *Service) ResetSnap(data []byte) error {
-	all := make(map[string]map[string][]byte)
-	if len(data) != 0 {
-		err := json.Unmarshal(data, &all)
-		if err != nil {
-			return err
-		}
-	}
-	for _, op := range s.initOps {
-		all = op(all)
-	}
-
-	s.IDispatchCenter.Send(&Event{
-		namespace: "",
-		cmd:       eosc.EventReset,
-		key:       "",
-		data:      nil,
-		all:       all,
-	})
-	return nil
-}
-
-func (s *Service) GetSnapshot() ([]byte, error) {
-	all := s.data.GET()
-	data, err := json.Marshal(all)
-	return data, err
 }

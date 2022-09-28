@@ -53,7 +53,6 @@ func (d *DataDispatchCenter) doEventLoop() {
 		select {
 		case event, ok := <-d.eventChannel:
 			if ok {
-
 				next := channels[:0]
 				for _, c := range channels {
 					if err := c.handler(event); err != nil {
@@ -77,11 +76,12 @@ func (d *DataDispatchCenter) doEventLoop() {
 func (d *DataDispatchCenter) doDataLoop() {
 	data := NewMyData(nil)
 	channels := make([]*_CallbackBox, 0, 10)
-
+	isInit := false
 	for {
 		select {
 		case event, ok := <-d.eventChannel:
 			if ok {
+				isInit = true
 				data.DoEvent(event)
 				next := channels[:0]
 				for _, c := range channels {
@@ -96,8 +96,12 @@ func (d *DataDispatchCenter) doDataLoop() {
 		case hbox, ok := <-d.addChannel:
 			{
 				if ok {
-					if err := hbox.handler(InitEvent(data.GET())); err == nil {
+					if !isInit {
 						channels = append(channels, hbox)
+					} else {
+						if err := hbox.handler(InitEvent(data.GET())); err == nil {
+							channels = append(channels, hbox)
+						}
 					}
 				}
 			}
@@ -105,7 +109,7 @@ func (d *DataDispatchCenter) doDataLoop() {
 
 	}
 }
-func (d *DataDispatchCenter) Register(handlerFunc CallBackFunc) (closeChan chan <-int) {
+func (d *DataDispatchCenter) Register(handlerFunc CallBackFunc) (closeChan chan<- int) {
 	c := make(chan int)
 
 	d.addChannel <- &_CallbackBox{

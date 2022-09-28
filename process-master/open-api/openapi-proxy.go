@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/eolinker/eosc/raft"
 	"github.com/julienschmidt/httprouter"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,7 +18,7 @@ var (
 
 type IRaftSender interface {
 	Send(event string, namespace string, key string, data []byte) error
-	IsLeader() (bool, *raft.NodeInfo, error)
+	IsLeader() (bool, []string)
 }
 
 type OpenApiProxy struct {
@@ -89,29 +89,27 @@ func (p *OpenApiProxy) ExcludeHandlers(path string, handler http.Handler) {
 }
 
 func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	isLeader, leadNode, err := p.raftSender.IsLeader()
-	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		log.Warnf("apinto no leader")
+	handler, params, _ := p.excludeRouter.Lookup(r.Method, r.URL.Path)
+	if handler != nil {
+		handler(w, r, params)
 		return
 	}
+
+	isLeader, leaderPeers := p.raftSender.IsLeader()
+
 	if isLeader {
 		p.doProxy(w, r)
 	} else {
-		p.doProxyToLeader(w, r, leadNode.Addr)
+		p.doProxyToLeader(w, r, leaderPeers)
 	}
 }
 
 func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
+
 	buf := p.pool.Get().(*_ProxyWriterBuffer)
 	buf.Reset()
 	defer p.pool.Put(buf)
-	handler, params, has := p.excludeRouter.Lookup(r.Method, r.URL.Path)
-	if has {
-		handler(buf, r, params)
-	} else {
-		p.leaderHandler.ServeHTTP(buf, r)
-	}
+	p.leaderHandler.ServeHTTP(buf, r)
 	if buf.statusCode != http.StatusOK {
 		buf.WriteTo(w)
 		return
@@ -127,11 +125,14 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if res.Event != nil {
-		err := p.raftSender.Send(res.Event.Event, res.Event.Namespace, res.Event.Key, res.Event.Data)
-		log.Debug("open api send:", res.Event)
-		if err != nil {
-			log.Errorf("open api raft:%v", err)
+		for _, event := range res.Event {
+			err := p.raftSender.Send(event.Event, event.Namespace, event.Key, event.Data)
+			log.Debug("open api send:", res.Event)
+			if err != nil {
+				log.Errorf("open api raft:%v", err)
+			}
 		}
+
 	}
 	if res.Header != nil {
 		for k := range res.Header {
@@ -144,19 +145,31 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request, leader string) {
+func (p *OpenApiProxy) doProxyToLeader(w http.ResponseWriter, org *http.Request, leaders []string) {
+	var err error
+	var response *http.Response
+	for _, leader := range leaders {
+		r, _ := http.NewRequest(org.Method, fmt.Sprintf("%s%s", leader, org.RequestURI), org.Body)
+		r.Header = org.Header
 
-	r, _ := http.NewRequest(org.Method, fmt.Sprintf("%s%s", leader, org.RequestURI), org.Body)
-	r.Header = org.Header
-	response, err := client.Do(r)
+		response, err = client.Do(r)
+		if err != nil {
+			continue
+		}
+		defer response.Body.Close()
+		for key, value := range response.Header {
+			w.Header().Set(key, strings.Join(value, ","))
+		}
+		w.WriteHeader(response.StatusCode)
+		io.Copy(w, response.Body)
+		return
+	}
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		w.Header().Set("content-type", "application/js")
 		fmt.Fprintf(w, `{"code":%d,"error":"%s"}`, http.StatusBadGateway, err.Error())
 		return
 	}
-
-	response.Write(w)
 
 }
 

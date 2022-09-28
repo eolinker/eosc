@@ -18,7 +18,6 @@ type IProfessions interface {
 }
 
 type Professions struct {
-	//eosc.IProfessions
 	data    eosc.IUntyped
 	extends eosc.IExtenderDrivers
 }
@@ -47,10 +46,23 @@ func (ps *Professions) Sort() []*Profession {
 	sl := make([]*Profession, 0, len(list))
 	sm := make(map[string]int)
 	index := 0
-
+	for i, p := range list {
+		if p.Mod == eosc.ProfessionConfig_Singleton {
+			list[i] = nil
+			continue
+			sl = append(sl, p)
+			sm[p.Name] = index
+			index++
+			list[i] = nil
+		}
+	}
 	for len(list) > 0 {
 		sc := 0
 		for i, v := range list {
+			if v == nil {
+				sc++
+				continue
+			}
 			dependenciesHas := 0
 			for _, dep := range v.Dependencies {
 				if _, has := sm[dep]; !has {
@@ -82,16 +94,17 @@ func (ps *Professions) Sort() []*Profession {
 	return sl
 }
 
-func NewProfessions(extends eosc.IExtenderDrivers) *Professions {
+func NewProfessions(extends eosc.IExtenderDrivers) IProfessions {
 	ps := &Professions{
-		//IProfessions: professions.NewProfessions(),
 		extends: extends,
 	}
 	return ps
 }
 
 func (ps *Professions) Set(name string, c *eosc.ProfessionConfig) error {
-
+	if name == "setting" {
+		return nil
+	}
 	p := NewProfession(c, ps.extends)
 	ps.data.Set(name, p)
 
@@ -100,9 +113,12 @@ func (ps *Professions) Set(name string, c *eosc.ProfessionConfig) error {
 }
 func (ps *Professions) Reset(configs []*eosc.ProfessionConfig) {
 	data := eosc.NewUntyped()
-
+	log.Debug("reset profession:", configs)
 	for _, c := range configs {
 		log.Debug("add profession config:", c)
+		if c.Name == "setting" {
+			continue
+		}
 		p := NewProfession(c, ps.extends)
 		data.Set(c.Name, p)
 	}
