@@ -82,7 +82,7 @@ func (m *Master) Fork(pFile *pidfile.PidFile) error {
 		log.Fatalf("Restart: Failed to launch, error: %v", err)
 		return err
 	}
-	log.Debug("fork new process: ", cmd.String())
+	log.Debug("fork new process: ", cmd.Process.Pid, ":", cmd.String())
 	// check cmd
 	go waitFork(m.ctx, pFile, cmd.Process.Pid)
 

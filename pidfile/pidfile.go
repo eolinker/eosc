@@ -92,13 +92,13 @@ func (p *PidFile) TryFork() error {
 
 	target := getOldPath()
 
+	if strings.EqualFold(p.path, target) {
+		return ErrorPidForking
+	}
+
 	if exist(target) {
 		// 强制清理旧文件
 		os.Remove(target)
-	}
-
-	if strings.EqualFold(p.path, target) {
-		return ErrorPidForking
 	}
 	err := os.Rename(p.path, target)
 	if err != nil {

@@ -15,14 +15,13 @@ import (
 	"errors"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/process-master/extender"
 	open_api "github.com/eolinker/eosc/process-master/open-api"
 	"github.com/eolinker/eosc/utils"
 	"io"
 	"net"
 	"net/http"
 	"strings"
-
-	"github.com/eolinker/eosc/process-master/extender"
 
 	raft_service "github.com/eolinker/eosc/process-master/raft-service"
 
@@ -48,6 +47,8 @@ func Process() {
 }
 func ProcessDo(handler *MasterHandler) {
 	logWriter := utils.InitMasterLog()
+	log.Debug("master start:", os.Getpid(), ":", os.Getppid())
+
 	pFile, err := pidfile.New()
 	if err != nil {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
@@ -190,7 +191,8 @@ func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
 	}
 
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
-		syscall.Kill(syscall.Getppid(), syscall.SIGQUIT)
+		log.Debug("master continue: call parent:", os.Getppid())
+		syscall.Kill(os.Getppid(), syscall.SIGQUIT)
 	}
 	return nil
 
@@ -214,6 +216,7 @@ func (m *Master) Wait(pFile *pidfile.PidFile) error {
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
+
 	for {
 		sig := <-sigc
 		log.Infof("Caught signal pid:%d ppid:%d signal %s: .\n", os.Getpid(), os.Getppid(), sig.String())
@@ -221,17 +224,28 @@ func (m *Master) Wait(pFile *pidfile.PidFile) error {
 		switch sig {
 		case os.Interrupt, os.Kill:
 			{
+				if m.etcdServer != nil {
+					m.etcdServer.Close()
+					m.etcdServer = nil
+				}
 				m.close()
 				return nil
 			}
 		case syscall.SIGQUIT:
 			{
+				if m.etcdServer != nil {
+					m.etcdServer.Close()
+					m.etcdServer = nil
+				}
 				m.close()
 				return nil
 			}
 		case syscall.SIGUSR1:
 			{
-				m.etcdServer.Close()
+				if m.etcdServer != nil {
+					m.etcdServer.Close()
+					m.etcdServer = nil
+				}
 				log.Info("try fork new")
 				err := m.Fork(pFile) //传子进程需要的内容
 				if err != nil {
@@ -239,9 +253,11 @@ func (m *Master) Wait(pFile *pidfile.PidFile) error {
 				}
 			}
 		default:
+
 			continue
 		}
 	}
+
 }
 
 func (m *Master) Close() {
@@ -249,14 +265,12 @@ func (m *Master) Close() {
 }
 
 func (m *Master) close() {
-	if m.etcdServer == nil {
+	if m.cancelFunc == nil {
 		return
 	}
-	log.Info("process-master close")
-	log.Info("raft node close")
-	m.etcdServer.Close()
 
 	m.cancelFunc()
+	m.cancelFunc = nil
 	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
 
 	m.adminTraffic.Close()
