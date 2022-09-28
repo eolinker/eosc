@@ -220,28 +220,22 @@ func Generate(t reflect.Type, dependencies map[string][]string) (*Schema, error)
 // represents the outer-most declaration.
 func getFields(typ reflect.Type) []reflect.StructField {
 	fields := make([]reflect.StructField, 0, typ.NumField())
-	embedded := []reflect.StructField{}
 
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)
 		if f.Anonymous {
-			embedded = append(embedded, f)
+			newTyp := f.Type
+			if newTyp.Kind() == reflect.Ptr {
+				newTyp = newTyp.Elem()
+			}
+			if newTyp.Kind() == reflect.Struct {
+				fields = append(fields, getFields(newTyp)...)
+			}
 			continue
 		}
 
 		fields = append(fields, f)
 	}
-
-	for _, f := range embedded {
-		newTyp := f.Type
-		if newTyp.Kind() == reflect.Ptr {
-			newTyp = newTyp.Elem()
-		}
-		if newTyp.Kind() == reflect.Struct {
-			fields = append(fields, getFields(newTyp)...)
-		}
-	}
-
 	return fields
 }
 
@@ -506,6 +500,10 @@ func generateFromField(f reflect.StructField, mode Mode) (name string, required 
 		s.Label = tag
 	}
 
+	if tag, ok := f.Tag.Lookup("eotype"); ok {
+		s.EOType = tag
+	}
+
 	return name, required, s, nil
 }
 
@@ -522,7 +520,7 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (r *Schema, err
 	}
 	r = schema
 	defer func() {
-		if r != nil {
+		if r != nil && r.EOType == "" {
 			r.EOType = r.Type
 			switch r.Type {
 			case TypeFormatter:
