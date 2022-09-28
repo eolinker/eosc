@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 )
 
 var (
@@ -31,7 +32,7 @@ type Controller struct {
 }
 
 func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
-	log.Debug("traffic controller: Export:")
+	log.Debug("traffic controller: Export: begin ", startIndex)
 	ms := c.data.All()
 	pts := make([]*PbTraffic, 0, len(ms))
 	files := make([]*os.File, 0, len(ms))
@@ -55,6 +56,7 @@ func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 			i++
 		}
 	}
+	log.Debug("traffic controller: Export: size ", len(files))
 
 	return pts, files
 }
@@ -80,7 +82,7 @@ func (c *Controller) reset(addrs []*net.TCPAddr) error {
 	datas := make(map[string]*net.TCPListener)
 	for _, ms := range old.All() {
 		for _, l := range ms.Listeners() {
-			datas[l.Addr().String()] = l
+			datas[addrName(l.Addr())] = l
 		}
 	}
 
@@ -100,7 +102,7 @@ func (c *Controller) reset(addrs []*net.TCPAddr) error {
 			}
 			o = l
 		}
-		om := old.Get(ad.Port)
+		om, _ := old.Del(ad.Port)
 		if om == nil {
 			om = newData.Get(ad.Port)
 		}
@@ -110,7 +112,7 @@ func (c *Controller) reset(addrs []*net.TCPAddr) error {
 		newData.Set(ad.Port, om)
 
 	}
-	for n, o := range old.All() {
+	for n, o := range datas {
 		log.Debug("close old : ", n)
 		o.Close()
 		log.Debug("close old done:", n)
@@ -118,12 +120,13 @@ func (c *Controller) reset(addrs []*net.TCPAddr) error {
 	c.data = newData
 	return nil
 }
-func addrName(addr *net.TCPAddr) string {
-	add := *addr
+func addrName(addr net.Addr) string {
+
+	add := *addr.(*net.TCPAddr)
 	if add.IP == nil {
 		add.IP = net.IPv6zero
 	}
-	return add.String()
+	return strconv.Itoa(add.Port)
 }
 func rebuildAddr(addrs []*net.TCPAddr) map[int][]net.IP {
 	addrMap := make(map[int][]*net.TCPAddr)
