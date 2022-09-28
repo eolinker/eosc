@@ -18,13 +18,17 @@ type Workers struct {
 	variables      eosc.IVariable
 }
 
-func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) *Workers {
+func NewWorkers() *Workers {
 
-	ws := &Workers{professions: professions, data: data, requireManager: require.NewRequireManager(), variables: variables}
-	ws.init()
+	ws := &Workers{requireManager: require.NewRequireManager()}
+
 	return ws
 }
-func (oe *Workers) init() {
+func (oe *Workers) Init(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) {
+	oe.professions = professions
+	oe.data = data
+	oe.variables = variables
+
 	ps := oe.professions.Sort()
 
 	pm := make(map[string][]*WorkerInfo)
@@ -96,6 +100,14 @@ func (oe *Workers) Export() map[string][]*WorkerInfo {
 		all[w.config.Profession] = append(all[w.config.Profession], w)
 	}
 	return all
+}
+func (oe *Workers) DeleteTest(ids ...string) (requires []string) {
+	for _, id := range ids {
+		if oe.requireManager.RequireByCount(id) > 0 {
+			requires = append(requires, id)
+		}
+	}
+	return requires
 }
 func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 

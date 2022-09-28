@@ -127,6 +127,7 @@ func (m *MixListener) Close() error {
 			l.Close()
 		}
 		m.wg.Wait()
+	skip:
 		for {
 			select {
 			case conn, ok := <-m.acceptChan:
@@ -135,7 +136,7 @@ func (m *MixListener) Close() error {
 				}
 			default:
 				close(m.acceptChan)
-				break
+				break skip
 			}
 		}
 		close(m.closeCh)

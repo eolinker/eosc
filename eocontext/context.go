@@ -34,6 +34,8 @@ type EoContext interface {
 	SetApp(app EoApp)
 	GetBalance() BalanceHandler
 	SetBalance(handler BalanceHandler)
+	GetUpstreamHostHandler() UpstreamHostHandler
+	SetUpstreamHostHandler(handler UpstreamHostHandler)
 
 	LocalIP() net.IP
 	LocalAddr() net.Addr

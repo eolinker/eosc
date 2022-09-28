@@ -2,6 +2,7 @@ package http_context
 
 import (
 	"github.com/eolinker/eosc/eocontext"
+	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -63,9 +64,9 @@ type IBodyDataReader interface {
 	//content-Type = application/x-www-form-urlencoded 或 multipart/form-data，与原生request.Form不同，这里不包括 query 参数
 	BodyForm() (url.Values, error)
 	//content-Type = multipart/form-data 时有效
-	Files() (map[string]*FileHeader, error)
+	Files() (map[string][]*multipart.FileHeader, error)
 	GetForm(key string) string
-	GetFile(key string) (file *FileHeader, has bool)
+	GetFile(key string) (file []*multipart.FileHeader, has bool)
 	RawBody() ([]byte, error)
 }
 
@@ -76,7 +77,7 @@ type IBodyDataWriter interface {
 	SetToForm(key, value string) error
 	AddForm(key, value string) error
 	// 会替换掉对应掉file信息，并且将content-type 设置为 multipart/form-data
-	AddFile(key string, file *FileHeader) error
+	AddFile(key string, file *multipart.FileHeader) error
 	//设置 multipartForm 数据并将content-type设置 为 multipart/form-data
 	// 重置body，会清除掉未处理掉 form和file
 	SetRaw(contentType string, body []byte)

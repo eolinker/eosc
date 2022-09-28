@@ -35,7 +35,7 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			log.Debug("NamespaceWorker:", w.Profession, w.Name)
 
 			if w.Profession == "setting" {
-				_, err = ws.settings.Set(w.Name, w.Body, ws.variableManager)
+				err = ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
 				return err
 			}
 
@@ -56,12 +56,12 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			}
 			ws.variableManager.SetByNamespace(key, tmp)
 			for _, id := range wids {
-				profession, name, success := eosc.SplitWorkerId(id)
+				profession, _, success := eosc.SplitWorkerId(id)
 				if !success {
 					continue
 				}
 				if profession == "setting" {
-					ws.settings.Update(name, clone)
+					ws.settings.Update(id, clone)
 				} else {
 					ws.workers.Update(id, clone)
 				}
@@ -150,8 +150,10 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 	})
 	for _, w := range settings {
 
-		_, err := ws.settings.Set(w.Name, w.Body, ws.variableManager)
-		log.Warn("set setting :", err)
+		err := ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+		if err != nil {
+			log.Warn("set setting :", err)
+		}
 	}
 	ws.workers.Reset(wc, ws.variableManager)
 
