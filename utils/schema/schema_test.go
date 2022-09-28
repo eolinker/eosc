@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eolinker/eosc/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,10 +22,10 @@ func Example() {
 	}
 
 	type MyObject struct {
-		ID     string                 `json:"id,omitempty" doc:"Object ID" readOnly:"true"`
-		Rate   float64                `doc:"Rate of change" minimum:"0"`
-		Coords []int                  `doc:"X,Y coordinates" minItems:"2" maxItems:"2"`
-		Date   myDate                 `json:"date,omitempty" dependencies:"day:month;year month:year"`
+		ID     string  `json:"id,omitempty" doc:"Object ID" readOnly:"true"`
+		Rate   float64 `doc:"Rate of change" minimum:"0"`
+		Coords []int   `doc:"X,Y coordinates" minItems:"2" maxItems:"2"`
+		myDate `json:"date,omitempty" dependencies:"day:month;year month:year"`
 		Bucket map[string]interface{} `json:"bucket,omitempty" dependencies:"apple:banana;peach banana:melon"`
 		Target RequireId              `json:"target" skill:"github.com/eolinker/apinto/service.service.IService"`
 	}
