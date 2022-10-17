@@ -32,6 +32,8 @@ var (
 	runIdx                      = 0
 	path                        = ""
 	appName                     = env.AppName()
+
+	runnings = make(map[string]string)
 )
 
 func init() {
@@ -56,6 +58,7 @@ func init() {
 //Register 注册程序到进程处理器中
 func Register(name string, processHandler func()) error {
 	key := toKey(name)
+	runnings[key] = name
 	_, has := processHandlers[key]
 	if has {
 		return fmt.Errorf("%w by %s", ErrorProcessHandlerConflict, name)
@@ -85,24 +88,27 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 // run process
 func Run() bool {
 	if runIdx > 0 {
-		ph, exists := processHandlers[os.Args[0]]
+		key := os.Args[0]
+		ph, exists := processHandlers[key]
 		if exists {
 			//defer func() {
 			//	if v := recover(); v != nil {
 			//		log.Error("Run recover: ", os.Args[0], " ", v)
 			//	}
 			//}()
+			env.SetProcessName(runnings[key])
 			ph()
 			return true
 		}
 	}
-
+	env.SetProcessName("cli")
 	return false
 }
 func RunDebug(name string) bool {
 
 	ph, exists := processHandlers[toKey(name)]
 	if exists {
+		env.SetProcessName(name)
 		ph()
 		return true
 	}
