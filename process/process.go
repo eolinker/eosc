@@ -38,12 +38,13 @@ var (
 
 func init() {
 
-	if p, has := os.LookupEnv(EnvDaemonPath); !has {
-		os.Setenv(EnvDaemonPath, os.Args[0])
-		path = os.Args[0]
-	} else {
-		path = p
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
 	}
+	path = exePath
+
 	log.Debug(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
 	idx, err := strconv.Atoi(os.Getenv(EnvDaemonName))
 	if err != nil {

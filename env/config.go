@@ -33,7 +33,7 @@ const (
 
 var (
 	socketSocketDirValue = ""
-	configPath           = ""
+	configPath           []string
 	dataDirPath          = ""
 	pidFilePath          = ""
 	logDirPath           = ""
@@ -48,22 +48,21 @@ var (
 func init() {
 
 	socketSocketDirValue = GetDefault(envSocketDirName, fmt.Sprintf("/tmp/%s", appName))
-	socketSocketDirValue = formatPath(socketSocketDirValue)
+	socketSocketDirValue = FormatPath(socketSocketDirValue)
 
-	configPath = GetDefault(envConfigName, "config.yml")
-	configPath = formatPath(configPath)
+	configPath = readConfigPaths(appName)
 
 	dataDirPath = GetDefault(envDataDirName, fmt.Sprintf("/var/lib/%s", appName))
-	dataDirPath = formatPath(dataDirPath)
+	dataDirPath = FormatPath(dataDirPath)
 
 	pidFilePath = GetDefault(envPidFileName, fmt.Sprintf("/var/run/%s", appName))
-	pidFilePath = formatPath(pidFilePath)
+	pidFilePath = FormatPath(pidFilePath)
 
 	logDirPath = GetDefault(envLogDirName, fmt.Sprintf("/var/log/%s", appName))
-	logDirPath = formatPath(logDirPath)
+	logDirPath = FormatPath(logDirPath)
 
 	extendsBaseDir = GetDefault(envExtendsDirName, fmt.Sprintf("/var/lib/%s/extends", appName))
-	extendsBaseDir = formatPath(extendsBaseDir)
+	extendsBaseDir = FormatPath(extendsBaseDir)
 
 	extendsMark = GetDefault(envExtenderMarkName, "https://market.apinto.com")
 	// todo 如有必要，这里增加对 mark地址格式的校验
@@ -75,10 +74,21 @@ func init() {
 	errorLogPeriod = GetDefault(envErrorLogPeriod, "day")
 
 }
+func readConfigPaths(app string) []string {
+	cs := make([]string, 0, 3)
+	configPathInEnv, has := GetEnv(envConfigName)
+	if has && configPathInEnv != "" {
+		cs = append(cs, FormatPath(configPathInEnv))
+		return cs
+	}
+	cs = append(cs, FormatPath("config.yml"))
+	cs = append(cs, FormatPath(fmt.Sprintf("/etc/%s/config.yml", app)))
+	return cs
+}
 func GetConfig() map[string]string {
 	return map[string]string{
 		envSocketDirName:    socketSocketDirValue,
-		envConfigName:       configPath,
+		envConfigName:       strings.Join(configPath, ","),
 		envDataDirName:      dataDirPath,
 		envPidFileName:      pidFilePath,
 		envLogDirName:       logDirPath,
@@ -165,7 +175,7 @@ func SocketAddr(name string, pid int) string {
 	return fmt.Sprintf("%s/%s.%s-%d.sock", socketSocketDirValue, appName, name, pid)
 }
 
-func ConfigPath() string {
+func ConfigPath() []string {
 	return configPath
 }
 
@@ -219,7 +229,7 @@ func ExtendersDir() string {
 func ExtenderMarkAddr() string {
 	return extendsMark
 }
-func formatPath(path string) string {
+func FormatPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
 		path = strings.TrimPrefix(path, "~/")
 		path = filepath.Join(Home(), path)
