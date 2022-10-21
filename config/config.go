@@ -7,6 +7,7 @@ import (
 	"github.com/eolinker/eosc/utils"
 	"io"
 	"io/ioutil"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 
@@ -92,16 +93,22 @@ type CertificateDir struct {
 	Dir string `json:"dir" yaml:"dir"`
 }
 
-var defaultPath = "config.yml"
-
 func GetConfig() (*Config, error) {
-	path := env.ConfigPath()
-	if path == "" {
-		path = defaultPath
+	paths := env.ConfigPath()
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("need config")
 	}
-	data, err := ioutil.ReadFile(path)
+	var err error
+	var data []byte
+	for _, path := range paths {
+		data, err = ioutil.ReadFile(path)
+		if err == nil {
+			break
+		}
+	}
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read config fail in:[%s]", strings.Join(paths, ","))
 	}
 	var cfg Config
 	err = yaml.Unmarshal(data, &cfg)
