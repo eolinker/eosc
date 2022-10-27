@@ -1,34 +1,25 @@
 package eosc
 
-type IRegister interface {
-	Register(name string, obj interface{}, force bool) error
-	Get(name string) (interface{}, bool)
-	Del(name string) (interface{}, bool)
+type IRegister[T any] interface {
+	Register(name string, obj T, force bool) error
+	Get(name string) (T, bool)
+	Del(name string) (T, bool)
+}
+type Register[T any] struct {
+	Untyped[string, T]
 }
 
-type Register struct {
-	data IUntyped
-}
-
-func (r *Register) Del(name string) (interface{}, bool) {
-	return r.data.Del(name)
-}
-
-func NewRegister() IRegister {
-	return &Register{
-		data: NewUntyped(),
+func NewRegister[T any]() IRegister[T] {
+	return &Register[T]{
+		Untyped: BuildUntyped[string, T](),
 	}
 }
 
-func (r *Register) Register(name string, obj interface{}, force bool) error {
+func (r *Register[T]) Register(name string, obj T, force bool) error {
 
-	if _, has := r.data.Get(name); has && !force {
+	if _, has := r.Untyped.Get(name); has && !force {
 		return ErrorRegisterConflict
 	}
-	r.data.Set(name, obj)
+	r.Untyped.Set(name, obj)
 	return nil
-}
-
-func (r *Register) Get(name string) (interface{}, bool) {
-	return r.data.Get(name)
 }
