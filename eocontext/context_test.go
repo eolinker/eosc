@@ -3,10 +3,11 @@ package eocontext
 import (
 	"context"
 	"fmt"
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils/config"
 	"net"
 	"net/http"
+
+	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/utils/config"
 )
 
 type HttpContext interface {
@@ -136,6 +137,7 @@ func (e *ExampleHttpContext) SetFinish(handler FinishHandler) {
 }
 
 func (e *ExampleHttpContext) Scheme() string {
+
 	return e.r.URL.Scheme
 }
 
