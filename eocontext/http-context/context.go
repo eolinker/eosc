@@ -1,13 +1,26 @@
 package http_context
 
 import (
-	"github.com/eolinker/eosc/eocontext"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
 	"time"
+
+	"github.com/fasthttp/websocket"
+
+	"github.com/eolinker/eosc/eocontext"
 )
+
+type IWebsocketContext interface {
+	IHttpContext
+	Upgrade() error
+	GetClientConn() *websocket.Conn
+	GetUpstreamConn() *websocket.Conn
+	SetUpstreamConn(conn *websocket.Conn)
+	IsWebsocket() bool
+	WebsocketFinish()
+}
 
 type IHttpContext interface {
 	eocontext.EoContext
