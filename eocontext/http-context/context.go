@@ -15,11 +15,8 @@ import (
 type IWebsocketContext interface {
 	IHttpContext
 	Upgrade() error
-	GetClientConn() *websocket.Conn
-	GetUpstreamConn() *websocket.Conn
 	SetUpstreamConn(conn *websocket.Conn)
 	IsWebsocket() bool
-	WebsocketFinish()
 }
 
 type IHttpContext interface {

@@ -23,3 +23,7 @@ func DoHttpFilter(httpFilter HttpFilter, ctx eocontext.EoContext, next eocontext
 	}
 	return err
 }
+
+type WebsocketFilter interface {
+	DoWebsocketFilter(ctx IWebsocketContext, next eocontext.IChain) error
+}
