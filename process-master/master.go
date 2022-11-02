@@ -159,7 +159,7 @@ func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
 	if strings.ToLower(cfg.Admin.Scheme) == "https" {
 		// start https listener
 		log.Debug("start https listener...")
-		cert, err := config.NewCert([]*config.Certificate{cfg.Admin.Certificate}, cfg.CertificateDir.Dir)
+		cert, err := config.LoadCert([]*config.Certificate{cfg.Admin.Certificate}, cfg.CertificateDir.Dir)
 		if err != nil {
 			return err
 		}
