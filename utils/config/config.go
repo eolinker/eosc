@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strings"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
 )
 
 type RequireId = eosc.RequireId
@@ -107,7 +108,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 			}
 
 			target, has := workers.Get(id)
-			if !has {
+			if !has || target == nil {
 				require, has := f.Tag.Lookup("required")
 				if !has || strings.ToLower(require) != "false" {
 					return nil, fmt.Errorf("required %s:%w", id, eosc.ErrorWorkerNotExits)
