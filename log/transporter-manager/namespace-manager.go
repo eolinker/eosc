@@ -7,23 +7,23 @@ import (
 )
 
 type nameSpaceManager struct {
-	locker  sync.RWMutex
-	data    eosc.IUntyped
+	locker sync.RWMutex
+	data   eosc.Untyped[string, ITransporterManager]
 }
 
 func NewNameSpaceManager() INameSpaceManager {
 	return &nameSpaceManager{
-		locker:  sync.RWMutex{},
-		data: eosc.NewUntyped(),
+		locker: sync.RWMutex{},
+		data:   eosc.BuildUntyped[string, ITransporterManager](),
 	}
 }
 
-func(n *nameSpaceManager) RegisterTransporterManager(nameSpace string, rh ResetHandler) error{
+func (n *nameSpaceManager) RegisterTransporterManager(nameSpace string, rh ResetHandler) error {
 	n.locker.Lock()
 	defer n.locker.Unlock()
 
-	if _, has :=n.data.Get(nameSpace); has{
-		return fmt.Errorf("TransporterManager NameSpace:%s has existed",nameSpace)
+	if _, has := n.data.Get(nameSpace); has {
+		return fmt.Errorf("TransporterManager NameSpace:%s has existed", nameSpace)
 	}
 
 	ntm := newTransporterManager(rh)
@@ -32,22 +32,17 @@ func(n *nameSpaceManager) RegisterTransporterManager(nameSpace string, rh ResetH
 	return nil
 }
 
-func(n *nameSpaceManager) GetTransporterManager(nameSpace string) ITransporterManager{
+func (n *nameSpaceManager) GetTransporterManager(nameSpace string) ITransporterManager {
 	n.locker.RLock()
 	defer n.locker.RUnlock()
 
-	if o, has :=n.data.Get(nameSpace); has{
-		if tm, ok := o.(ITransporterManager); ok{
-			return tm
-		}
+	if o, has := n.data.Get(nameSpace); has {
+		return o
 	}
 
-	if o, has :=n.data.Get("default"); has{
-		if tm, ok := o.(ITransporterManager); ok{
-			return tm
-		}
+	if o, has := n.data.Get("default"); has {
+		return o
 	}
 
 	return nil
 }
-

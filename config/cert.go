@@ -16,7 +16,11 @@ type Cert struct {
 	certs map[string]*tls.Certificate
 }
 
-func NewCert(certs []*Certificate, dir string) (*Cert, error) {
+func NewCert(certs map[string]*tls.Certificate) *Cert {
+	return &Cert{certs: certs}
+}
+
+func LoadCert(certs []*Certificate, dir string) (*Cert, error) {
 	cs := make(map[string]*tls.Certificate)
 	for _, c := range certs {
 		if c.Key != "" && c.Cert != "" {
@@ -71,9 +75,7 @@ func NewCert(certs []*Certificate, dir string) (*Cert, error) {
 			}
 		}
 	}
-	return &Cert{
-		certs: cs,
-	}, nil
+	return NewCert(cs), nil
 }
 
 func loadCert(pem string, key string, dir string) (*tls.Certificate, *x509.Certificate, error) {
@@ -107,7 +109,7 @@ func (c *Cert) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, erro
 	return certificate, nil
 }
 
-//Get 获取证书
+// Get 获取证书
 func (c *Cert) Get(hostName string) (*tls.Certificate, bool) {
 	if c == nil || len(c.certs) == 0 {
 		return nil, true

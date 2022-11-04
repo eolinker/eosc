@@ -73,7 +73,7 @@ func StartFunc(c *cli.Context) error {
 
 	cmd, err := StartMaster([]string{}, nil)
 	if err != nil {
-		log.Errorf("start process-master error: %w", err)
+		log.Errorf("start process-master error: %s", err.Error())
 		return err
 	}
 	//cfg.Save()

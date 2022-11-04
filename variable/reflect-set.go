@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -195,7 +196,8 @@ func structSet(originVal reflect.Value, targetVal reflect.Value, variables eosc.
 		field := targetType.Field(i)
 		fieldValue := reflect.New(field.Type)
 		tag := field.Tag.Get("json")
-		value := originVal.MapIndex(reflect.ValueOf(tag))
+		ts := strings.Split(tag, ",")
+		value := originVal.MapIndex(reflect.ValueOf(ts[0]))
 		used, err := recurseReflect(value, fieldValue, variables)
 		if err != nil {
 			return nil, err

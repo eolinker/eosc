@@ -27,7 +27,7 @@ type ExtenderProject struct {
 	group   string
 	project string
 	version string
-	renders eosc.IUntyped
+	renders eosc.Untyped[string, interface{}]
 	isWork  bool
 }
 
@@ -178,7 +178,7 @@ func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, e
 				isWork:  false,
 			}
 		} else {
-			renders := eosc.NewUntyped()
+			renders := eosc.BuildUntyped[string, interface{}]()
 			for _, pi := range extendsInfo.Plugins {
 				var render *schema.Schema
 				json.Unmarshal([]byte(pi.Render), render)
@@ -201,7 +201,7 @@ func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, e
 	if err == nil {
 
 		ds := register.All()
-		info.renders = eosc.NewUntyped()
+		info.renders = eosc.BuildUntyped[string, interface{}]()
 		for name, df := range ds {
 			info.renders.Set(name, df.Render())
 		}

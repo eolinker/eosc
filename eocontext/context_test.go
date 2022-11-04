@@ -3,9 +3,11 @@ package eocontext
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/config"
-	"net/http"
 )
 
 type HttpContext interface {
@@ -18,6 +20,61 @@ type ExampleHttpContext struct {
 
 	complete CompleteHandler
 	finish   FinishHandler
+}
+
+func (e *ExampleHttpContext) GetComplete() CompleteHandler {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) GetFinish() FinishHandler {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) GetApp() EoApp {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) SetApp(app EoApp) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) GetBalance() BalanceHandler {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) SetBalance(handler BalanceHandler) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) GetUpstreamHostHandler() UpstreamHostHandler {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) SetUpstreamHostHandler(handler UpstreamHostHandler) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) LocalIP() net.IP {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) LocalAddr() net.Addr {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) LocalPort() int {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (e *ExampleHttpContext) SetLabel(name, value string) {
@@ -80,6 +137,7 @@ func (e *ExampleHttpContext) SetFinish(handler FinishHandler) {
 }
 
 func (e *ExampleHttpContext) Scheme() string {
+
 	return e.r.URL.Scheme
 }
 

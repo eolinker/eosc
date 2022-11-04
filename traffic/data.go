@@ -6,17 +6,16 @@ import (
 	cmuxMatch "github.com/eolinker/eosc/traffic/cmux-match"
 	"github.com/eolinker/eosc/traffic/mixl"
 	"net"
-	"strconv"
 )
 
 type MatcherData struct {
-	data eosc.IUntyped
+	data eosc.Untyped[int, *Matcher]
 }
 
 func NewMatcherData(tfConf ...*PbTraffic) *MatcherData {
 
 	m := &MatcherData{
-		data: eosc.NewUntyped(),
+		data: eosc.BuildUntyped[int, *Matcher](),
 	}
 	listeners, err := toListeners(tfConf)
 	log.Debug("read listeners: ", len(listeners))
@@ -40,21 +39,17 @@ func NewMatcherData(tfConf ...*PbTraffic) *MatcherData {
 }
 
 func (m *MatcherData) Set(port int, mux *Matcher) {
-	m.data.Set(strconv.Itoa(port), mux)
+	m.data.Set(port, mux)
 }
 func (m *MatcherData) Get(port int) *Matcher {
-	o, has := m.data.Get(strconv.Itoa(port))
+	o, has := m.data.Get(port)
 	if !has {
 		return nil
 	}
-	return o.(*Matcher)
+	return o
 }
 func (m *MatcherData) Del(port int) (*Matcher, bool) {
-	o, ok := m.data.Del(strconv.Itoa(port))
-	if ok {
-		return o.(*Matcher), true
-	}
-	return nil, false
+	return m.data.Del(port)
 }
 func (m *MatcherData) Clone() *MatcherData {
 	return &MatcherData{
@@ -62,16 +57,7 @@ func (m *MatcherData) Clone() *MatcherData {
 	}
 }
 func (m *MatcherData) All() map[int]*Matcher {
-	all := m.data.All()
-	rs := make(map[int]*Matcher)
-	for p, o := range all {
-		port, err := strconv.Atoi(p)
-		if err != nil {
-			continue
-		}
-		rs[port] = o.(*Matcher)
-	}
-	return rs
+	return m.data.All()
 }
 
 type Matcher struct {

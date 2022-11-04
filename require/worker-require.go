@@ -12,15 +12,15 @@ var (
 
 type Manager struct {
 	locker    sync.Mutex
-	requireBy eosc.IUntyped
-	workerIds eosc.IUntyped
+	requireBy eosc.Untyped[string, []string]
+	workerIds eosc.Untyped[string, []string]
 }
 
 func NewRequireManager() eosc.IRequires {
 	return &Manager{
 		locker:    sync.Mutex{},
-		requireBy: eosc.NewUntyped(),
-		workerIds: eosc.NewUntyped(),
+		requireBy: eosc.BuildUntyped[string, []string](),
+		workerIds: eosc.BuildUntyped[string, []string](),
 	}
 }
 
@@ -35,7 +35,7 @@ func (w *Manager) Set(id string, requiresIds []string) {
 			if !has {
 				w.requireBy.Set(rid, []string{id})
 			} else {
-				w.requireBy.Set(rid, append(d.([]string), id))
+				w.requireBy.Set(rid, append(d, id))
 			}
 		}
 		w.workerIds.Set(id, requiresIds)
@@ -47,7 +47,7 @@ func (w *Manager) RequireBy(requireId string) []string {
 	ids, has := w.requireBy.Get(requireId)
 	w.locker.Unlock()
 	if has {
-		return ids.([]string)
+		return ids
 	}
 	return nil
 }
@@ -58,8 +58,7 @@ func (w *Manager) Del(id string) {
 
 }
 func (w *Manager) del(id string) {
-	if r, has := w.workerIds.Del(id); has {
-		rs := r.([]string)
+	if rs, has := w.workerIds.Del(id); has {
 		for _, rid := range rs {
 			w.removeBy(id, rid)
 		}
@@ -67,8 +66,8 @@ func (w *Manager) del(id string) {
 }
 
 func (w *Manager) removeBy(id string, requireId string) {
-	if d, has := w.requireBy.Get(requireId); has {
-		rs := d.([]string)
+	if rs, has := w.requireBy.Get(requireId); has {
+
 		for i, rid := range rs {
 			if rid == id {
 				rs = append(rs[:i], rs[i+1:]...)
@@ -88,7 +87,7 @@ func (w *Manager) Requires(id string) []string {
 	ids, has := w.workerIds.Get(id)
 	w.locker.Unlock()
 	if has {
-		return ids.([]string)
+		return ids
 	}
 	return nil
 }
@@ -98,7 +97,7 @@ func (w *Manager) RequireByCount(requireId string) int {
 	rs, has := w.requireBy.Get(requireId)
 	w.locker.Unlock()
 	if has {
-		return len(rs.([]string))
+		return len(rs)
 	}
 	return 0
 }

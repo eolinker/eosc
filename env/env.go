@@ -22,8 +22,9 @@ var envs = []string{
 	IP, Port, Protocol, BroadcastIP, ClusterAddress, IsJoin, NodeID, NodeKey,
 }
 var (
-	appName    = createApp()
-	envAppName = strings.ToUpper(appName)
+	appName     = createApp()
+	envAppName  = strings.ToUpper(appName)
+	processName = "unknown"
 )
 
 func createApp() string {
@@ -43,7 +44,7 @@ func Envs() []string {
 }
 
 func GetEnv(name string) (string, bool) {
-	return syscall.Getenv(EnvName(name))
+	return syscall.Getenv(envName(name))
 }
 
 func GetDefault(name string, d string) string {
@@ -54,13 +55,13 @@ func GetDefault(name string, d string) string {
 }
 
 func SetEnv(name string, value string) {
-	os.Setenv(EnvName(name), value)
+	os.Setenv(envName(name), value)
 }
 
 func GenEnv(name, value string) string {
-	return fmt.Sprintf("%s=%s", EnvName(name), value)
+	return fmt.Sprintf("%s=%s", envName(name), value)
 }
-func EnvName(name string) string {
+func envName(name string) string {
 	return createEnvName(envAppName, name)
 }
 func createEnvName(envName, name string) string {
@@ -69,4 +70,11 @@ func createEnvName(envName, name string) string {
 }
 func AppName() string {
 	return appName
+}
+
+func Process() string {
+	return processName
+}
+func SetProcessName(s string) {
+	processName = s
 }

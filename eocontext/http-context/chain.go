@@ -9,3 +9,9 @@ func Assert(ctx eocontext.EoContext) (IHttpContext, error) {
 	err := ctx.Assert(&httpContext)
 	return httpContext, err
 }
+
+func WebsocketAssert(ctx eocontext.EoContext) (IWebsocketContext, error) {
+	var websocketContext IWebsocketContext
+	err := ctx.Assert(&websocketContext)
+	return websocketContext, err
+}

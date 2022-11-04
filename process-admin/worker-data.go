@@ -7,7 +7,7 @@ import (
 )
 
 type WorkerDatas struct {
-	data eosc.IUntyped
+	data eosc.Untyped[string, *WorkerInfo]
 }
 
 func (w *WorkerDatas) Get(id string) (eosc.IWorker, bool) {
@@ -19,7 +19,7 @@ func (w *WorkerDatas) Get(id string) (eosc.IWorker, bool) {
 }
 
 func NewWorkerDatas(initData map[string][]byte) *WorkerDatas {
-	data := &WorkerDatas{data: eosc.NewUntyped()}
+	data := &WorkerDatas{data: eosc.BuildUntyped[string, *WorkerInfo]()}
 	for id, d := range initData {
 
 		cf := new(eosc.WorkerConfig)
@@ -43,28 +43,15 @@ func (w *WorkerDatas) Set(id string, v *WorkerInfo) {
 }
 
 func (w *WorkerDatas) GetInfo(id string) (*WorkerInfo, bool) {
-	v, has := w.data.Get(id)
-	if has {
-		return v.(*WorkerInfo), true
-	}
-	return nil, false
+	return w.data.Get(id)
 }
 
 func (w *WorkerDatas) Del(id string) (*WorkerInfo, bool) {
-	v, has := w.data.Del(id)
-	if has {
-		return v.(*WorkerInfo), true
-	}
-	return nil, false
+	return w.data.Del(id)
 }
 
 func (w *WorkerDatas) List() []*WorkerInfo {
-	list := w.data.List()
-	rs := make([]*WorkerInfo, 0, len(list))
-	for _, v := range list {
-		rs = append(rs, v.(*WorkerInfo))
-	}
-	return rs
+	return w.data.List()
 }
 
 func (w *WorkerDatas) Keys() []string {
@@ -73,11 +60,7 @@ func (w *WorkerDatas) Keys() []string {
 
 func (w *WorkerDatas) All() map[string]*WorkerInfo {
 	ds := w.data.All()
-	m := make(map[string]*WorkerInfo)
-	for k, v := range ds {
-		m[k] = v.(*WorkerInfo)
-	}
-	return m
+	return ds
 }
 
 func (w *WorkerDatas) Clone() *WorkerDatas {
