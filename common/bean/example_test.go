@@ -1,6 +1,8 @@
 package bean
 
-import "fmt"
+import (
+	"log"
+)
 
 type NameInterface interface {
 	DO()
@@ -10,7 +12,7 @@ type TestImpl struct {
 }
 
 func (t *TestImpl) DO() {
-	log.Debug("do by:", t.name)
+	log.Println("do by:", t.name)
 }
 
 func init() {
@@ -20,7 +22,7 @@ func init() {
 	Autowired(&nameInterface)
 
 	AddInitializingBeanFunc(func() {
-		log.Debug("auto wired done")
+		log.Println("auto wired done")
 		nameInterface.DO()
 	})
 
