@@ -43,12 +43,22 @@ type Traffic struct {
 	stop bool
 }
 
+func (t *Traffic) Listen(addr string) net.Listener {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (t *Traffic) IsStop() bool {
 	return t.stop
 }
 
 func NewTraffic(traffics []*PbTraffic) *Traffic {
-	data := NewMatcherData(traffics...)
+	listeners, err := toListeners(traffics)
+	log.Debug("read listeners: ", len(listeners))
+	if err != nil {
+		log.Warn("read listeners:", err)
+	}
+	data := NewMatcherData(listeners)
 
 	tf := &Traffic{
 		data:   data,
@@ -62,7 +72,7 @@ func (t *Traffic) ListenTcp(port int, trafficType TrafficType) net.Listener {
 
 	t.locker.Lock()
 	defer t.locker.Unlock()
-	l := t.data.Get(port)
+	l := t.data.GetByPort(port)
 	if l == nil {
 		log.Warn("listen to un open port: ", port, " for :", trafficType)
 		return nil
@@ -73,6 +83,7 @@ func (t *Traffic) ListenTcp(port int, trafficType TrafficType) net.Listener {
 
 type ITraffic interface {
 	ListenTcp(port int, trafficType TrafficType) net.Listener
+	Listen(addr string) net.Listener
 	IsStop() bool
 	Close()
 }
@@ -80,22 +91,32 @@ type ITraffic interface {
 func (t *Traffic) Close() {
 	t.locker.Lock()
 	list := t.data.All()
-	t.data = NewMatcherData()
-	t.locker.Unlock()
 	for _, it := range list {
 		it.Close()
 	}
+	t.data = NewMatcherData(nil)
+	t.locker.Unlock()
 }
 
-func readPort(addr net.Addr) int {
-	ipPort := addr.String()
+func readAddr(ipPort string) (string, int) {
+
 	i := strings.LastIndex(ipPort, ":")
+	ip := ipPort[:i]
+
 	port := ipPort[i+1:]
 	pv, _ := strconv.Atoi(port)
-	return pv
+	if ip == "" {
+		ip = "0.0.0.0"
+	}
+	return ip, pv
 }
 
 type EmptyTraffic struct {
+}
+
+func (e *EmptyTraffic) Listen(addr string) net.Listener {
+	//TODO implement me
+	panic("implement me")
 }
 
 func NewEmptyTraffic() *EmptyTraffic {

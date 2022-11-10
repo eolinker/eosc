@@ -42,22 +42,15 @@ func readTraffic(r io.Reader) ([]*PbTraffic, error) {
 	return pts.Traffic, nil
 }
 
-func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {
+func toListeners(tfConf []*PbTraffic) (map[string]*net.TCPListener, error) {
 
-	tfs := make([]*net.TCPListener, 0, len(tfConf))
+	tfs := make(map[string]*net.TCPListener)
 	for _, pt := range tfConf {
 		name := fmt.Sprintf("%s:/%s", pt.Network, pt.Addr)
 
-		//addr, err := net.ResolveTCPAddr(pt.GetNetwork(), pt.GetAddr())
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
 		log.DebugF("read traffic:%s=%d", name, pt.GetFD())
 		switch pt.Network {
-		//case "udp","udp4","udp8":
-		//
-		//	c,err:=net.FilePacketConn(f)
+
 		case "tcp", "tcp4", "tcp6":
 
 			f := os.NewFile(uintptr(pt.GetFD()), name)
@@ -68,7 +61,7 @@ func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {
 			}
 
 			f.Close()
-			tfs = append(tfs, l.(*net.TCPListener))
+			tfs[pt.Addr] = l.(*net.TCPListener)
 		}
 	}
 

@@ -43,23 +43,6 @@ func createAdvertiseUrls(listenUrls []string) []string {
 
 }
 
-//func splitPeerUrl(u string) (scheme, ip string, port int) {
-//	url, err := url.Parse(u)
-//	if err != nil {
-//		return "", "", 0
-//	}
-//	url.Port()
-//	if index := strings.Index(url, "://"); index > -1 {
-//		scheme = url[:index]
-//		url = url[index+3:]
-//	} else
-//	if index := strings.Index(url, ":"); index > -1 {
-//		ip = url[:index]
-//		url = url[index+1:]
-//	}
-//
-//}
-
 var (
 	onceGetIp sync.Once
 	ipsCache  []string

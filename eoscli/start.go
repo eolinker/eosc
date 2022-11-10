@@ -3,7 +3,6 @@ package eoscli
 import (
 	"fmt"
 	"github.com/eolinker/eosc/config"
-	"net/url"
 	"strings"
 
 	"github.com/eolinker/eosc/env"
@@ -42,7 +41,7 @@ func StartFunc(c *cli.Context) error {
 
 	ClearPid(pidDir)
 	cfg := config.Load()
-	listenAddrs := listens(cfg)
+	listenAddrs := config.GetListens(cfg.Peer, cfg.Client, cfg.Client)
 	errAddr := make([]string, 0, len(listenAddrs))
 	for _, addr := range listenAddrs {
 		err := utils.IsListen(addr)
@@ -65,36 +64,4 @@ func StartFunc(c *cli.Context) error {
 		return cmd.Wait()
 	}
 	return nil
-}
-
-func listens(n config.NConfig) []string {
-	addrs := make(map[string]struct{})
-
-	for _, lu := range n.Peer.ListenUrls {
-		u, err := url.Parse(lu)
-		if err != nil {
-			continue
-		}
-		addrs[u.Host] = struct{}{}
-	}
-
-	for _, lu := range n.Client.ListenUrls {
-		u, err := url.Parse(lu)
-		if err != nil {
-			continue
-		}
-		addrs[u.Host] = struct{}{}
-	}
-	for _, lu := range n.Gateway.ListenUrls {
-		u, err := url.Parse(lu)
-		if err != nil {
-			continue
-		}
-		addrs[u.Host] = struct{}{}
-	}
-	rs := make([]string, 0, len(addrs))
-	for u := range addrs {
-		rs = append(rs, u)
-	}
-	return rs
 }

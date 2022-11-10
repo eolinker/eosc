@@ -32,9 +32,9 @@ func NewMixListener(port int, listeners ...*net.TCPListener) *MixListener {
 		addr: &net.TCPAddr{
 			Port: port,
 		},
-		closeCh:  make(chan struct{}),
-		sitClose: 0,
-		wg:       sync.WaitGroup{},
+		closeCh: make(chan struct{}),
+		//sitClose: 0,
+		wg: sync.WaitGroup{},
 	}
 	atomic.StoreInt32(&ml.sitClose, 0)
 
@@ -44,34 +44,36 @@ func NewMixListener(port int, listeners ...*net.TCPListener) *MixListener {
 	}
 	return ml
 }
-func (m *MixListener) Add(ls ...*net.TCPListener) {
-	isClosed := atomic.LoadInt32(&m.sitClose)
-	if isClosed == 0 {
-		m.lock.Lock()
 
-		for _, l := range ls {
-			name := l.Addr().String()
-			if _, has := m.listeners[name]; !has {
-				m.listeners[name] = l
-				m.wg.Add(1)
-				go m.accept(l)
-			}
-
-		}
-
-		m.lock.Unlock()
-	}
-}
-func (m *MixListener) Listeners() []*net.TCPListener {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	ls := make([]*net.TCPListener, 0, len(m.listeners))
-	for _, l := range m.listeners {
-		ls = append(ls, l)
-	}
-	return ls
-
-}
+//	func (m *MixListener) Add(ls ...*net.TCPListener) {
+//		isClosed := atomic.LoadInt32(&m.sitClose)
+//		if isClosed == 0 {
+//			m.lock.Lock()
+//
+//			for _, l := range ls {
+//				name := l.Addr().String()
+//				if _, has := m.listeners[name]; !has {
+//					m.listeners[name] = l
+//					m.wg.Add(1)
+//					go m.accept(l)
+//				}
+//
+//			}
+//
+//			m.lock.Unlock()
+//		}
+//	}
+//
+//	func (m *MixListener) Listeners() []*net.TCPListener {
+//		m.lock.RLock()
+//		defer m.lock.RUnlock()
+//		ls := make([]*net.TCPListener, 0, len(m.listeners))
+//		for _, l := range m.listeners {
+//			ls = append(ls, l)
+//		}
+//		return ls
+//
+// }
 func (m *MixListener) accept(l net.Listener) {
 	defer func() {
 		m.lock.Lock()

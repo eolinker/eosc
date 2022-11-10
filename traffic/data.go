@@ -1,63 +1,56 @@
 package traffic
 
 import (
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
 	cmuxMatch "github.com/eolinker/eosc/traffic/cmux-match"
 	"github.com/eolinker/eosc/traffic/mixl"
 	"net"
 )
 
 type MatcherData struct {
-	data eosc.Untyped[int, *Matcher]
+	data  map[string]*net.TCPListener
+	ports map[int]*Matcher
 }
 
-func NewMatcherData(tfConf ...*PbTraffic) *MatcherData {
+func NewMatcherData(listeners map[string]*net.TCPListener) *MatcherData {
 
 	m := &MatcherData{
-		data: eosc.BuildUntyped[int, *Matcher](),
+		data:  make(map[string]*net.TCPListener),
+		ports: make(map[int]*Matcher),
 	}
-	listeners, err := toListeners(tfConf)
-	log.Debug("read listeners: ", len(listeners))
-	if err != nil {
-		log.Warn("read listeners:", err)
+	if listeners != nil {
+		ports := make(map[int][]*net.TCPListener)
+		for a, l := range listeners {
+			_, port := readAddr(a)
+			ports[port] = append(ports[port], l)
+			m.data[a] = l
+		}
+		for port, ls := range ports {
+			m.ports[port] = NewMatcher(port, ls...)
+		}
 	}
 
-	lm := make(map[int][]*net.TCPListener)
-	for _, l := range listeners {
-		p := readPort(l.Addr())
-		lm[p] = append(lm[p], l)
-	}
-	for p, ls := range lm {
-		mixlistener := mixl.NewMixListener(p, ls...)
-		m.Set(p, &Matcher{
-			mixListener: mixlistener,
-			CMuxMatch:   cmuxMatch.NewMatch(mixlistener),
-		})
-	}
 	return m
 }
 
-func (m *MatcherData) Set(port int, mux *Matcher) {
-	m.data.Set(port, mux)
-}
-func (m *MatcherData) Get(port int) *Matcher {
-	o, has := m.data.Get(port)
+func (m *MatcherData) GetByPort(port int) *Matcher {
+	v, has := m.ports[port]
+
 	if !has {
 		return nil
 	}
-	return o
+
+	return v
 }
-func (m *MatcherData) Del(port int) (*Matcher, bool) {
-	return m.data.Del(port)
-}
-func (m *MatcherData) Clone() *MatcherData {
-	return &MatcherData{
-		data: m.data.Clone(),
+
+func (m *MatcherData) clone() map[string]*net.TCPListener {
+	ce := make(map[string]*net.TCPListener)
+	for k, v := range m.data {
+		ce[k] = v
 	}
+	return ce
 }
-func (m *MatcherData) All() map[int]*Matcher {
-	return m.data.All()
+func (m *MatcherData) All() map[string]*net.TCPListener {
+	return m.data
 }
 
 type Matcher struct {
@@ -70,9 +63,9 @@ func NewMatcher(port int, ls ...*net.TCPListener) *Matcher {
 	return &Matcher{mixListener: mixListener, CMuxMatch: cmuxMatch.NewMatch(mixListener)}
 }
 
-func (m *Matcher) Listeners() []*net.TCPListener {
-	return m.mixListener.Listeners()
-}
+//	func (m *Matcher) Listeners() []*net.TCPListener {
+//		return m.mixListener.Listeners()
+//	}
 func (m *Matcher) Close() error {
 	m.mixListener.Close()
 	m.CMuxMatch.Close()

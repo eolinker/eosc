@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,6 +10,10 @@ import (
 	"strings"
 
 	"github.com/eolinker/eosc/log"
+)
+
+var (
+	errorCertificateNotExit = errors.New("not exist cert")
 )
 
 type Cert struct {

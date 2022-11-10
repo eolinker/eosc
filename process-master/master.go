@@ -297,10 +297,7 @@ func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {
 	} else {
 		input = nil
 	}
-	masterTraffic, err := traffic.ReadController(input, &net.TCPAddr{
-		IP:   net.ParseIP(cfg.Admin.IP),
-		Port: cfg.Admin.Listen,
-	})
+	masterTraffic, err := traffic.ReadController(input, cfg.Client.ListenUrls, cfg.Peer.ListenUrls)
 	if err != nil {
 		return nil, err
 	}

@@ -9,11 +9,11 @@
 package traffic
 
 import (
+	"fmt"
 	"github.com/eolinker/eosc/log"
 	"io"
 	"net"
 	"os"
-	"strconv"
 )
 
 var (
@@ -37,24 +37,21 @@ func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 	pts := make([]*PbTraffic, 0, len(ms))
 	files := make([]*os.File, 0, len(ms))
 	i := 0
-	for _, matcher := range ms {
-		ts := matcher.Listeners()
-		for _, ln := range ts {
+	for addr, ln := range ms {
 
-			file, err := ln.File()
-			if err != nil {
-				continue
-			}
-			addr := ln.Addr()
-			pt := &PbTraffic{
-				FD:      uint64(i + startIndex),
-				Addr:    addr.String(),
-				Network: addr.Network(),
-			}
-			pts = append(pts, pt)
-			files = append(files, file)
-			i++
+		file, err := ln.File()
+		if err != nil {
+			continue
 		}
+		pt := &PbTraffic{
+			FD:      uint64(i + startIndex),
+			Addr:    addr,
+			Network: ln.Addr().Network(),
+		}
+		pts = append(pts, pt)
+		files = append(files, file)
+		i++
+
 	}
 	log.Debug("traffic controller: Export: size ", len(files))
 
@@ -64,119 +61,48 @@ func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 func (c *Controller) Shutdown() {
 	c.locker.Lock()
 	list := c.data.All()
-	c.data = NewMatcherData()
+	c.data = NewMatcherData(nil)
 	c.locker.Unlock()
 	for _, it := range list {
 		it.Close()
 	}
 }
 
-func (c *Controller) reset(addrs []*net.TCPAddr) error {
+func (c *Controller) reset(addrs []string) error {
 
 	c.locker.Lock()
 	defer c.locker.Unlock()
 
-	newData := NewMatcherData()
-
-	old := c.data.Clone()
+	old := c.data.clone()
 	datas := make(map[string]*net.TCPListener)
-	for _, ms := range old.All() {
-		for _, l := range ms.Listeners() {
-			datas[addrName(l.Addr())] = l
-		}
-	}
 
 	for _, ad := range addrs {
-		name := addrName(ad)
 
-		o, has := datas[name]
+		v, has := old[ad]
 		if has {
-			delete(datas, name)
+			delete(datas, ad)
 		} else {
-			log.Debug("create traffic:", name)
+			log.Debug("create traffic:", ad)
 
-			l, err := net.ListenTCP("tcp", ad)
+			l, err := net.Listen("tcp", ad)
 			if err != nil {
 				log.Error("listen tcp:", err)
 				return err
 			}
-			o = l
+			v = l.(*net.TCPListener)
 		}
-		om, _ := old.Del(ad.Port)
-		if om == nil {
-			om = newData.Get(ad.Port)
-		}
-		if om == nil {
-			om = NewMatcher(ad.Port, o)
-		}
-		newData.Set(ad.Port, om)
-
+		datas[ad] = v
 	}
-	for n, o := range datas {
+	for n, o := range old {
 		log.Debug("close old : ", n)
 		o.Close()
 		log.Debug("close old done:", n)
 	}
-	c.data = newData
+	c.data = NewMatcherData(datas)
 	return nil
 }
-func addrName(addr net.Addr) string {
 
-	add := *addr.(*net.TCPAddr)
-	if add.IP == nil {
-		add.IP = net.IPv6zero
-	}
-	return strconv.Itoa(add.Port)
-}
-func rebuildAddr(addrs []*net.TCPAddr) map[int][]net.IP {
-	addrMap := make(map[int][]*net.TCPAddr)
-	for _, ad := range addrs {
-		addrMap[ad.Port] = append(addrMap[ad.Port], ad)
-	}
-	newAddr := make(map[int][]net.IP)
-	for p, ads := range addrMap {
-		var ipv4zero bool = false
-		var ipv6zero bool = false
-
-		var ipv4s []net.IP
-		var ipv6s []net.IP
-		for _, ad := range ads {
-			if ad.IP == nil {
-				ipv4zero = false
-				ipv6zero = false
-				ipv4s = nil
-				ipv6s = nil
-				break
-			}
-			if ad.IP.Equal(net.IPv4zero) {
-				ipv4zero = true
-				continue
-			}
-			if ad.IP.Equal(net.IPv6zero) {
-				ipv6zero = true
-				continue
-			}
-			if len(ad.IP) == net.IPv4len {
-				ipv4s = append(ipv4s, ad.IP)
-			} else if len(ad.IP) == net.IPv6len {
-				ipv6s = append(ipv6s, ad.IP)
-			}
-
-		}
-		if ipv4zero {
-			ipv4s = []net.IP{net.IPv4zero}
-		}
-		if ipv6zero {
-			ipv6s = []net.IP{net.IPv6zero}
-		}
-
-		newAddr[p] = append(newAddr[p], ipv4s...)
-		newAddr[p] = append(newAddr[p], ipv6s...)
-	}
-	return newAddr
-}
-
-func ReadController(r io.Reader, addr ...*net.TCPAddr) (IController, error) {
+func ReadController(r io.Reader, addrs ...string) (IController, error) {
 	c := &Controller{
 		Traffic: nil,
 	}
@@ -189,9 +115,41 @@ func ReadController(r io.Reader, addr ...*net.TCPAddr) (IController, error) {
 	} else {
 		c.Traffic = NewTraffic(nil)
 	}
-	err := c.reset(addr)
+
+	err := c.reset(unrepeated(addrs...))
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+func unrepeated(addrs ...string) []string {
+
+	zeros := make(map[int]struct{})
+
+	for _, ad := range addrs {
+		ip, port := readAddr(ad)
+		if ip == "" || ip == "0.0.0.0" {
+			zeros[port] = struct{}{}
+		}
+	}
+
+	data := make(map[string]struct{})
+	for port := range zeros {
+		data[fmt.Sprintf(":%d", port)] = struct{}{}
+	}
+
+	for _, ad := range addrs {
+		_, port := readAddr(ad)
+		if _, has := zeros[port]; !has {
+			data[ad] = struct{}{}
+		}
+
+	}
+
+	rs := make([]string, len(data))
+	for addr := range data {
+		rs = append(rs, addr)
+	}
+	return rs
 }
