@@ -297,20 +297,13 @@ func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {
 	} else {
 		input = nil
 	}
-	masterTraffic, err := traffic.ReadController(input, cfg.Client.ListenUrls, cfg.Peer.ListenUrls)
+	masterTraffic, err := traffic.ReadController(input, config.GetListens(cfg.Client, cfg.Peer)...)
 	if err != nil {
 		return nil, err
 	}
 	m.adminTraffic = masterTraffic
-	addrs := make([]*net.TCPAddr, 0, len(cfg.Ports()))
-	for _, p := range cfg.Ports() {
-		addrs = append(addrs, &net.TCPAddr{
-			IP:   net.IPv4zero,
-			Port: p,
-		})
-	}
 
-	workerTraffic, err := traffic.ReadController(input, addrs...)
+	workerTraffic, err := traffic.ReadController(input, config.GetListens(cfg.Gateway)...)
 	if err != nil {
 		return nil, err
 	}

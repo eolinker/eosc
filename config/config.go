@@ -7,11 +7,19 @@ import (
 	"github.com/ghodss/yaml"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
 const (
 	lastVersion = 1
+)
+
+var (
+	defaultPort = map[string]int{
+		"https": 443,
+		"http":  80,
+	}
 )
 
 type VersionConfig struct {
@@ -43,23 +51,39 @@ type Certificate struct {
 
 func GetListens(ucs ...UrlConfig) []string {
 	addrs := make(map[string]struct{})
+	ports := make(map[int]struct{})
 
+	rs := make([]string, 0, len(ucs))
 	for _, uc := range ucs {
 		for _, lu := range uc.ListenUrls {
 			u, err := url.Parse(lu)
 			if err != nil {
 				continue
 			}
-			addrs[u.Host] = struct{}{}
+
+			port, _ := strconv.Atoi(u.Port())
+			if port == 0 {
+				port = defaultPort[u.Scheme]
+			}
+
+			addr := u.Hostname()
+			if addr == "" || addr == "0.0.0.0" {
+	 
+				ports[port] = struct{}{}
+				addrs[fmt.Sprintf(":%d", port)] = struct{}{}
+			} else {
+				addrs[u.Host] = struct{}{}
+			}
+
 		}
 	}
 
-	rs := make([]string, 0, len(addrs))
 	for u := range addrs {
 		rs = append(rs, u)
 	}
 	return rs
 }
+
 func readConfigData() ([]byte, string, error) {
 	paths := env.ConfigPath()
 
@@ -90,7 +114,7 @@ func Load() NConfig {
 		config = new(NConfig)
 
 	} else {
-		config, upGradle, err = read(data)
+		config, upGradle, err = readConfig(data)
 		if err != nil {
 			log.Warn("read config:", err)
 			config = new(NConfig)
@@ -106,7 +130,7 @@ func Load() NConfig {
 	return *config
 }
 
-func read(data []byte) (config *NConfig, upGrade bool, err error) {
+func readConfig(data []byte) (config *NConfig, upGrade bool, err error) {
 	version := new(VersionConfig)
 	err = yaml.Unmarshal(data, version)
 	if err != nil {

@@ -9,7 +9,6 @@
 package traffic
 
 import (
-	"fmt"
 	"github.com/eolinker/eosc/log"
 	"io"
 	"net"
@@ -116,40 +115,9 @@ func ReadController(r io.Reader, addrs ...string) (IController, error) {
 		c.Traffic = NewTraffic(nil)
 	}
 
-	err := c.reset(unrepeated(addrs...))
+	err := c.reset(addrs)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
-}
-
-func unrepeated(addrs ...string) []string {
-
-	zeros := make(map[int]struct{})
-
-	for _, ad := range addrs {
-		ip, port := readAddr(ad)
-		if ip == "" || ip == "0.0.0.0" {
-			zeros[port] = struct{}{}
-		}
-	}
-
-	data := make(map[string]struct{})
-	for port := range zeros {
-		data[fmt.Sprintf(":%d", port)] = struct{}{}
-	}
-
-	for _, ad := range addrs {
-		_, port := readAddr(ad)
-		if _, has := zeros[port]; !has {
-			data[ad] = struct{}{}
-		}
-
-	}
-
-	rs := make([]string, len(data))
-	for addr := range data {
-		rs = append(rs, addr)
-	}
-	return rs
 }
