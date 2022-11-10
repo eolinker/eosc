@@ -2,9 +2,9 @@ package eoscli
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/eolinker/eosc/config"
+	"net/url"
+	"strings"
 
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
@@ -32,7 +32,7 @@ func Start() *cli.Command {
 	}
 }
 
-//StartFunc 开启节点
+// StartFunc 开启节点
 func StartFunc(c *cli.Context) error {
 	pidDir := env.PidFileDir()
 	// 判断程序是否存在
@@ -41,45 +41,60 @@ func StartFunc(c *cli.Context) error {
 	}
 
 	ClearPid(pidDir)
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return err
-	}
-	//args := make([]string, 0, 20)
-	ip := cfg.Admin.IP
-	port := cfg.Admin.Listen
-
-	err = utils.IsListen(fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		return err
-	}
-
-	for _, rPort := range cfg.Listen {
-		err = utils.IsListen(fmt.Sprintf("%s:%d", ip, rPort))
+	cfg := config.Load()
+	listenAddrs := listens(cfg)
+	errAddr := make([]string, 0, len(listenAddrs))
+	for _, addr := range listenAddrs {
+		err := utils.IsListen(addr)
 		if err != nil {
-			return err
+			errAddr = append(errAddr, addr)
+			continue
 		}
 	}
-
-	protocol := cfg.Admin.Scheme
-	if protocol == "" {
-		protocol = env.GetDefault(env.Protocol, "http")
+	if len(errAddr) > 0 {
+		return fmt.Errorf("address is listened:%s", strings.Join(errAddr, ","))
 	}
-
-	// 设置环境变量
-	env.SetEnv(env.IP, ip)
-	env.SetEnv(env.Port, strconv.Itoa(port))
-	env.SetEnv(env.Protocol, protocol)
 
 	cmd, err := StartMaster([]string{}, nil)
 	if err != nil {
 		log.Errorf("start process-master error: %s", err.Error())
 		return err
 	}
-	//cfg.Save()
 
 	if env.IsDebug() {
 		return cmd.Wait()
 	}
 	return nil
+}
+
+func listens(n config.NConfig) []string {
+	addrs := make(map[string]struct{})
+
+	for _, lu := range n.Peer.ListenUrls {
+		u, err := url.Parse(lu)
+		if err != nil {
+			continue
+		}
+		addrs[u.Host] = struct{}{}
+	}
+
+	for _, lu := range n.Client.ListenUrls {
+		u, err := url.Parse(lu)
+		if err != nil {
+			continue
+		}
+		addrs[u.Host] = struct{}{}
+	}
+	for _, lu := range n.Gateway.ListenUrls {
+		u, err := url.Parse(lu)
+		if err != nil {
+			continue
+		}
+		addrs[u.Host] = struct{}{}
+	}
+	rs := make([]string, 0, len(addrs))
+	for u := range addrs {
+		rs = append(rs, u)
+	}
+	return rs
 }

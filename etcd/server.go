@@ -15,6 +15,7 @@ import (
 var _ Etcd = (*_Server)(nil)
 
 type _Server struct {
+	config                  Config
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	mu                      sync.RWMutex
@@ -78,9 +79,10 @@ func (s *_Server) Version() Versions {
 	}
 }
 
-func NewServer(ctx context.Context, mux *http.ServeMux) (*_Server, error) {
+func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server, error) {
 	serverCtc, cancel := context.WithCancel(ctx)
 	s := &_Server{
+		config:         config,
 		ctx:            serverCtc,
 		cancel:         cancel,
 		requestTimeout: 10 * time.Second,

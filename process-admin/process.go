@@ -12,7 +12,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
@@ -126,10 +125,10 @@ func (pa *ProcessAdmin) wait() {
 //NewProcessAdmin 创建新的admin进程
 //启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
-	cfg := &config.ListensMsg{}
+
 	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
 	bean.Injection(&tf)
-	bean.Injection(&cfg)
+
 	register := initExtender(arg[eosc.NamespaceExtender])
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)

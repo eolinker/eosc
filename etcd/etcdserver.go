@@ -19,7 +19,7 @@ var (
 
 func (s *_Server) initEtcdServer() error {
 
-	c := etcdServerConfig()
+	c := s.etcdServerConfig()
 	s.name = c.Name
 	srv, err := createEtcdServer(c)
 	if err != nil {
@@ -79,8 +79,8 @@ func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error
 	if err != nil {
 		return nil, err
 	}
-	if memberInitialized {
-		if err = server.CheckInitialHashKV(); err != nil {
+	if memberInitialized && srvcfg.InitialCorruptCheck {
+		if err = server.CorruptionChecker().InitialCheck(); err != nil {
 			log.Warn("checkInitialHashKV failed", err)
 			server.Cleanup()
 			server = nil
@@ -104,7 +104,9 @@ func (s *_Server) restart() error {
 	}
 	return s.initEtcdServer()
 }
-func checkIsJoined() bool {
+func (s *_Server) checkIsJoined() bool {
+	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
+
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
 	InitialCluster, has := etcdConfig.Get("cluster")
@@ -123,10 +125,10 @@ func checkIsJoined() bool {
 }
 func (s *_Server) Join(target string) error {
 
-	if checkIsJoined() {
+	if s.checkIsJoined() {
 		return ErrorAlreadyInCluster
 	}
-	urls, clientUrls, err := CreatePeerUrl()
+	urls, clientUrls, err := s.config.CreatePeerUrl()
 	if err != nil {
 		return err
 	}
@@ -140,7 +142,7 @@ func (s *_Server) Join(target string) error {
 	}
 	InitialCluster := initialClusterString(clusters)
 
-	resetCluster(InitialCluster)
+	s.resetCluster(InitialCluster)
 
 	return s.restart()
 }
@@ -164,7 +166,7 @@ func (s *_Server) Leave() error {
 		return err
 	}
 	// 清楚集群配置
-	clearCluster()
+	s.clearCluster()
 	// 重启etcd服务
 
 	err = s.restart()

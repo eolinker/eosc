@@ -54,11 +54,8 @@ func ProcessDo(handler *MasterHandler) {
 		log.Errorf("the process-master is running:%v by:%d", err, os.Getpid())
 		return
 	}
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error("get config error: ", err)
-		return
-	}
+	cfg := config.Load()
+
 	master, err := NewMasterHandle(logWriter, cfg)
 	if err != nil {
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
@@ -147,7 +144,7 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 	return nil
 }
 
-func (m *Master) Start(handler *MasterHandler, cfg *config.Config) error {
+func (m *Master) Start(handler *MasterHandler, cfg *config.NConfig) error {
 
 	// 监听master监听地址，用于接口处理
 	l := m.adminTraffic.ListenTcp(cfg.Admin.Listen, traffic.Http1)
@@ -284,7 +281,7 @@ func (m *Master) close() {
 	m.adminController.Stop()
 }
 
-func NewMasterHandle(logWriter io.Writer, cfg *config.Config) (*Master, error) {
+func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {
 
 	cancel, cancelFunc := context.WithCancel(context.Background())
 	m := &Master{
@@ -315,6 +312,7 @@ func NewMasterHandle(logWriter io.Writer, cfg *config.Config) (*Master, error) {
 			Port: p,
 		})
 	}
+
 	workerTraffic, err := traffic.ReadController(input, addrs...)
 	if err != nil {
 		return nil, err

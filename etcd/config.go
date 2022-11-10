@@ -17,7 +17,6 @@ package etcd
 import (
 	"encoding/hex"
 	"fmt"
-	eoscConfig "github.com/eolinker/eosc/config"
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/google/uuid"
@@ -30,9 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"net"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -52,83 +49,36 @@ const (
 	DefaultEnableV2 = false
 )
 
-var etcdInitPath = filepath.Join(env.DataDir(), "cluster", "etcd.init")
+type Config struct {
+	PeerAdvertiseUrls   []string
+	ClientAdvertiseUrls []string
+	DataDir             string
+}
 
-func CreatePeerUrl() (types.URLs, types.URLs, error) {
-	c, err := eoscConfig.GetConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	admin := c.Admin
-	peerUrl, err := createPeerUrl(admin.Scheme, []int{admin.Listen}, []string{admin.IP})
+func (c *Config) CreatePeerUrl() (types.URLs, types.URLs, error) {
+
+	peerUrl, err := parseAndCheckURLs(c.PeerAdvertiseUrls)
 	if err != nil {
 		return nil, nil, err
 	}
-	clientUrl, err := createPeerUrl("eosc", c.Listen, nil)
+	clientUrl, err := parseAndCheckURLs(c.ClientAdvertiseUrls)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return peerUrl, clientUrl, nil
 }
-func createPeerUrl(schema string, ports []int, ips []string) (types.URLs, error) {
 
-	urls := make([]string, 0)
-	for _, ip := range ips {
-		if ip == "" || ip == "0.0.0.0" {
-			return createPeerUrl(schema, ports, readAllIp())
-		}
-		for _, port := range ports {
-			if schema != "" {
-				urls = append(urls, fmt.Sprintf("%s://%s:%d", schema, ip, port))
-			} else {
-				urls = append(urls, fmt.Sprintf("%s:%d", ip, port))
+func (s *_Server) etcdServerConfig() config.ServerConfig {
 
-			}
-		}
-	}
-	if len(urls) == 0 {
-		return createPeerUrl(schema, ports, readAllIp())
-	}
+	dataDir := s.config.DataDir
 
-	return parseAndCheckURLs(urls)
-}
-func readAllIp() []string {
-
-	addrs, err := net.InterfaceAddrs()
-
-	if err != nil {
-		log.Debug(err)
-		os.Exit(1)
-	}
-
-	ips := make([]string, 0, len(addrs))
-	for _, address := range addrs {
-
-		// 检查ip地址判断是否回环地址
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				ips = append(ips, ipnet.IP.String())
-			}
-
-		}
-	}
-	if len(ips) == 0 {
-
-		log.Fatal("not find valid ip")
-	}
-	return ips
-
-}
-func etcdServerConfig() config.ServerConfig {
-
-	dataDir := env.DataDir()
-
-	peerUrl, clientUrl, err := CreatePeerUrl()
+	peerUrl, clientUrl, err := s.config.CreatePeerUrl()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	name, InitialCluster, isNew := readCluster(peerUrl)
+	name, InitialCluster, isNew := s.readCluster(peerUrl)
 	var urlsmap types.URLsMap
 	var token string
 	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
@@ -201,18 +151,19 @@ func initialClusterString(clusters map[string][]string) string {
 	return strings.Join(ss, ",")
 
 }
-func resetCluster(InitialCluster string) {
+func (s *_Server) resetCluster(InitialCluster string) {
+	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
 	defer etcdConfig.Save()
 	etcdConfig.Set("cluster", InitialCluster)
 }
 
-func clearCluster() {
-	resetCluster("")
+func (s *_Server) clearCluster() {
+	s.resetCluster("")
 }
-func readCluster(peerUrl types.URLs) (name, InitialCluster string, isNew bool) {
-
+func (s *_Server) readCluster(peerUrl types.URLs) (name, InitialCluster string, isNew bool) {
+	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
 	defer etcdConfig.Save()
