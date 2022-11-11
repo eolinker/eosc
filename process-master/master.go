@@ -12,18 +12,16 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/process-master/extender"
 	open_api "github.com/eolinker/eosc/process-master/open-api"
+	raft_service "github.com/eolinker/eosc/process-master/raft-service"
+	"github.com/eolinker/eosc/traffic/mixl"
 	"github.com/eolinker/eosc/utils"
 	"io"
 	"net"
 	"net/http"
-	"strings"
-
-	raft_service "github.com/eolinker/eosc/process-master/raft-service"
 
 	"github.com/eolinker/eosc/config"
 
@@ -61,7 +59,7 @@ func ProcessDo(handler *MasterHandler) {
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
 	}
-	if err := master.Start(handler, cfg); err != nil {
+	if err := master.Start(handler); err != nil {
 		master.close()
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)
 		return
@@ -73,9 +71,10 @@ func ProcessDo(handler *MasterHandler) {
 
 type Master struct {
 	//service.UnimplementedMasterServer
+	config           config.NConfig
 	etcdServer       etcd.Etcd
-	adminTraffic     traffic.IController
-	workerTraffic    traffic.IController
+	adminTraffic     *traffic.TrafficData
+	workerTraffic    *traffic.TrafficData
 	masterSrv        *grpc.Server
 	ctx              context.Context
 	cancelFunc       context.CancelFunc
@@ -104,7 +103,7 @@ func (mh *MasterHandler) initHandler() {
 	}
 }
 
-func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, etcdServer etcd.Etcd) error {
+func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 
 	if handler == nil {
 		handler = new(MasterHandler)
@@ -132,7 +131,7 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 	})
 
 	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminClient))
-	m.workerController = NewWorkerController(m.workerTraffic, listensMsg, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
+	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
 
 	m.dispatcherServe = NewDispatcherServer()
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
@@ -144,33 +143,38 @@ func (m *Master) start(handler *MasterHandler, listensMsg *config.ListensMsg, et
 	return nil
 }
 
-func (m *Master) Start(handler *MasterHandler, cfg *config.NConfig) error {
+func (m *Master) Start(handler *MasterHandler) error {
 
-	// 监听master监听地址，用于接口处理
-	l := m.adminTraffic.ListenTcp(cfg.Admin.Listen, traffic.Http1)
-	if l == nil {
-		log.Error("master listen tcp error: ")
-		return errors.New("not allow")
-	}
+	tf := traffic.NewTraffic(m.adminTraffic)
+	tcp, ssl := tf.Listen(m.config.Peer.ListenUrls...)
 
-	if strings.ToLower(cfg.Admin.Scheme) == "https" {
-		// start https listener
-		log.Debug("start https listener...")
-		cert, err := config.LoadCert([]*config.Certificate{cfg.Admin.Certificate}, cfg.CertificateDir.Dir)
+	listener := make([]net.Listener, 0, len(tcp)+len(ssl))
+	listener = append(listener, tcp...)
+	if len(ssl) > 0 {
+		cert, err := config.LoadCert(m.config.Peer.Certificate, m.config.CertificateDir.Dir)
 		if err != nil {
 			return err
 		}
-		l = tls.NewListener(l, &tls.Config{GetCertificate: cert.GetCertificate})
+		tlsConf := &tls.Config{GetCertificate: cert.GetCertificate}
+		for _, l := range ssl {
+			listener = append(listener, tls.NewListener(l, tlsConf))
+		}
 	}
-	mux := m.startHttpServer(l)
-	etcdServer, err := etcd.NewServer(m.ctx, mux)
+
+	mux := m.startHttpServer(listener...)
+
+	etcdServer, err := etcd.NewServer(m.ctx, mux, etcd.Config{
+		PeerAdvertiseUrls:   m.config.Peer.AdvertiseUrls,
+		ClientAdvertiseUrls: m.config.Client.AdvertiseUrls,
+		DataDir:             env.DataDir(),
+	})
 	if err != nil {
 		log.Error("start etcd error:", err)
 		return err
 	}
 	m.adminClient = NewUnixClient()
 	m.etcdServer = etcdServer
-	err = m.start(handler, cfg.Export(), etcdServer)
+	err = m.start(handler, etcdServer)
 	if err != nil {
 		return err
 	}
@@ -195,13 +199,14 @@ func (m *Master) Start(handler *MasterHandler, cfg *config.NConfig) error {
 
 }
 
-func (m *Master) startHttpServer(l net.Listener) *http.ServeMux {
+func (m *Master) startHttpServer(lns ...net.Listener) *http.ServeMux {
 	mux := http.NewServeMux()
 	m.httpserver = &http.Server{
 		Handler: mux,
 	}
+	listen := mixl.NewMixListener(0, lns...)
 	go func() {
-		err := m.httpserver.Serve(l)
+		err := m.httpserver.Serve(listen)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -288,6 +293,7 @@ func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {
 		cancelFunc: cancelFunc,
 		ctx:        cancel,
 		logWriter:  logWriter,
+		config:     cfg,
 	}
 	var input io.Reader
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
@@ -297,13 +303,13 @@ func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {
 	} else {
 		input = nil
 	}
-	masterTraffic, err := traffic.ReadController(input, config.GetListens(cfg.Client, cfg.Peer)...)
+	masterTraffic, err := traffic.ReadTraffic(input, config.GetListens(cfg.Client, cfg.Peer)...)
 	if err != nil {
 		return nil, err
 	}
 	m.adminTraffic = masterTraffic
 
-	workerTraffic, err := traffic.ReadController(input, config.GetListens(cfg.Gateway)...)
+	workerTraffic, err := traffic.ReadTraffic(input, config.GetListens(cfg.Gateway)...)
 	if err != nil {
 		return nil, err
 	}

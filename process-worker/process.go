@@ -96,8 +96,8 @@ func (w *ProcessWorker) wait() {
 
 }
 
-//NewProcessWorker 创建新的worker进程
-//启动时通过stdin传输配置信息
+// NewProcessWorker 创建新的worker进程
+// 启动时通过stdin传输配置信息
 func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 	register := extends.InitRegister()
 	tf := createTraffic(arg.Traffic)
@@ -152,7 +152,7 @@ func readArg() *service.ProcessLoadArg {
 }
 
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
-	t := traffic.NewTraffic(tfConf)
+	t := traffic.TrafficFromArg(tfConf)
 
 	return t
 }

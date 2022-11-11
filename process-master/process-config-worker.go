@@ -18,7 +18,7 @@ type WorkerController struct {
 	locker        sync.Mutex
 	traffics      []*traffic.PbTraffic
 	trafficFiles  []*os.File
-	listensMsg    *config.ListensMsg
+	listensMsg    config.GatewayConfig
 	isRunning     bool
 }
 
@@ -50,8 +50,8 @@ func (wc *WorkerController) Update(status []*extender.Status, success bool) {
 	}
 }
 
-func NewWorkerController(traffic traffic.IController, listensMsg *config.ListensMsg, workerProcess *process.ProcessController) *WorkerController {
-	traffics, files := traffic.Export(3)
+func NewWorkerController(tfd *traffic.TrafficData, listensMsg config.GatewayConfig, workerProcess *process.ProcessController) *WorkerController {
+	traffics, files := traffic.Export(tfd, 3)
 	wc := &WorkerController{
 		traffics:      traffics,
 		trafficFiles:  files,

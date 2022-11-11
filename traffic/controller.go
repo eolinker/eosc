@@ -11,28 +11,12 @@ package traffic
 import (
 	"github.com/eolinker/eosc/log"
 	"io"
-	"net"
 	"os"
 )
 
-var (
-	_ IController = (*Controller)(nil)
-)
-
-type IController interface {
-	ITraffic
-	Shutdown()
-	//Reset(ports []int) (isCreate bool, err error)
-	Export(int) ([]*PbTraffic, []*os.File)
-}
-
-type Controller struct {
-	*Traffic
-}
-
-func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
+func Export(data *TrafficData, startIndex int) ([]*PbTraffic, []*os.File) {
 	log.Debug("traffic controller: Export: begin ", startIndex)
-	ms := c.data.All()
+	ms := data.All()
 	pts := make([]*PbTraffic, 0, len(ms))
 	files := make([]*os.File, 0, len(ms))
 	i := 0
@@ -57,67 +41,20 @@ func (c *Controller) Export(startIndex int) ([]*PbTraffic, []*os.File) {
 	return pts, files
 }
 
-func (c *Controller) Shutdown() {
-	c.locker.Lock()
-	list := c.data.All()
-	c.data = NewMatcherData(nil)
-	c.locker.Unlock()
-	for _, it := range list {
-		it.Close()
-	}
-}
-
-func (c *Controller) reset(addrs []string) error {
-
-	c.locker.Lock()
-	defer c.locker.Unlock()
-
-	old := c.data.clone()
-	datas := make(map[string]*net.TCPListener)
-
-	for _, ad := range addrs {
-
-		v, has := old[ad]
-		if has {
-			delete(datas, ad)
-		} else {
-			log.Debug("create traffic:", ad)
-
-			l, err := net.Listen("tcp", ad)
-			if err != nil {
-				log.Error("listen tcp:", err)
-				return err
-			}
-			v = l.(*net.TCPListener)
-		}
-		datas[ad] = v
-	}
-	for n, o := range old {
-		log.Debug("close old : ", n)
-		o.Close()
-		log.Debug("close old done:", n)
-	}
-	c.data = NewMatcherData(datas)
-	return nil
-}
-
-func ReadController(r io.Reader, addrs ...string) (IController, error) {
-	c := &Controller{
-		Traffic: nil,
-	}
+func ReadTraffic(r io.Reader, addrs ...string) (*TrafficData, error) {
+	var tf *TrafficData
 	if r != nil {
 		traffics, err := readTraffic(r)
 		if err != nil {
 			return nil, err
 		}
-		c.Traffic = NewTraffic(traffics)
-	} else {
-		c.Traffic = NewTraffic(nil)
-	}
+		listeners := toListeners(traffics)
+		log.Debug("read listeners: ", len(listeners))
+		tf = NewTrafficData(listeners)
 
-	err := c.reset(addrs)
-	if err != nil {
-		return nil, err
+	} else {
+		tf = NewTrafficData(nil)
 	}
-	return c, nil
+	return tf.replace(addrs)
+
 }

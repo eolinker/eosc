@@ -24,7 +24,7 @@ func NewCert(certs map[string]*tls.Certificate) *Cert {
 	return &Cert{certs: certs}
 }
 
-func LoadCert(certs []*Certificate, dir string) (*Cert, error) {
+func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
 	cs := make(map[string]*tls.Certificate)
 	for _, c := range certs {
 		if c.Key != "" && c.Cert != "" {
@@ -49,19 +49,19 @@ func LoadCert(certs []*Certificate, dir string) (*Cert, error) {
 			if err != nil {
 				return nil, err
 			}
-			certMap := make(map[string]*Certificate)
+			certMap := make(map[string]*CertConfig)
 			for _, fInfo := range infos {
 				name := fInfo.Name()
 				if strings.HasSuffix(name, ".pem") {
 					key := strings.Replace(name, ".pem", "", -1)
 					if _, ok := certMap[key]; !ok {
-						certMap[key] = &Certificate{}
+						certMap[key] = &CertConfig{}
 					}
 					certMap[key].Cert = name
 				} else if strings.HasSuffix(name, ".key") {
 					key := strings.Replace(name, ".key", "", -1)
 					if _, ok := certMap[key]; !ok {
-						certMap[key] = &Certificate{}
+						certMap[key] = &CertConfig{}
 					}
 					certMap[key].Key = name
 				}

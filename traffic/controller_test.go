@@ -38,7 +38,7 @@ func ExampleReadController() {
 		Certificate:   nil,
 		AdvertiseUrls: nil,
 	}
-	controller, err := ReadController(nil, config.GetListens(peer, clent)...)
+	controller, err := ReadTraffic(nil, config.GetListens(peer, clent)...)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -42,7 +42,7 @@ func readTraffic(r io.Reader) ([]*PbTraffic, error) {
 	return pts.Traffic, nil
 }
 
-func toListeners(tfConf []*PbTraffic) (map[string]*net.TCPListener, error) {
+func toListeners(tfConf []*PbTraffic) map[string]*net.TCPListener {
 
 	tfs := make(map[string]*net.TCPListener)
 	for _, pt := range tfConf {
@@ -57,7 +57,7 @@ func toListeners(tfConf []*PbTraffic) (map[string]*net.TCPListener, error) {
 			l, err := net.FileListener(f)
 			if err != nil {
 				log.Warn("error to read port-reqiure:", err)
-				return nil, err
+				continue
 			}
 
 			f.Close()
@@ -65,5 +65,5 @@ func toListeners(tfConf []*PbTraffic) (map[string]*net.TCPListener, error) {
 		}
 	}
 
-	return tfs, nil
+	return tfs
 }

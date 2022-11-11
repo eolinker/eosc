@@ -62,9 +62,9 @@ func fromAdmin(admin *AdminConfig) (UrlConfig, UrlConfig) {
 	return peer, client
 }
 
-func toGateway(ports []int, ssl []*ListenConfig) UrlConfig {
+func toGateway(ports []int, ssl []*ListenConfig) GatewayConfig {
 
-	config := UrlConfig{}
+	config := GatewayConfig{}
 
 	config.ListenUrls = make([]string, 0, len(ports)+len(ssl))
 
@@ -79,14 +79,14 @@ func toGateway(ports []int, ssl []*ListenConfig) UrlConfig {
 			certs[cert.Cert] = cert.Key
 		}
 	}
-
-	config.Certificate = make([]CertConfig, 0, len(certs))
-	for p, k := range certs {
-		config.Certificate = append(config.Certificate, CertConfig{
-			Cert: p,
-			Key:  k,
-		})
-	}
+	//
+	//config.Certificate = make([]CertConfig, 0, len(certs))
+	//for p, k := range certs {
+	//	config.Certificate = append(config.Certificate, CertConfig{
+	//		Cert: p,
+	//		Key:  k,
+	//	})
+	//}
 
 	return config
 

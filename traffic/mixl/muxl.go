@@ -10,7 +10,7 @@ import (
 
 type MixListener struct {
 	lock       sync.RWMutex
-	listeners  map[string]*net.TCPListener
+	listeners  map[string]net.Listener
 	acceptChan chan net.Conn
 	addr       net.Addr
 	closeCh    chan struct{}
@@ -18,8 +18,8 @@ type MixListener struct {
 	wg         sync.WaitGroup
 }
 
-func NewMixListener(port int, listeners ...*net.TCPListener) *MixListener {
-	lm := make(map[string]*net.TCPListener)
+func NewMixListener(port int, listeners ...net.Listener) *MixListener {
+	lm := make(map[string]net.Listener)
 
 	for _, listener := range listeners {
 		name := listener.Addr().String()

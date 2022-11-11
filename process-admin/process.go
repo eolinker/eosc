@@ -122,8 +122,8 @@ func (pa *ProcessAdmin) wait() {
 
 }
 
-//NewProcessAdmin 创建新的admin进程
-//启动时通过stdin传输配置信息
+// NewProcessAdmin 创建新的admin进程
+// 启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
 
 	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
@@ -132,13 +132,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	register := initExtender(arg[eosc.NamespaceExtender])
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
-	//for namespace, a := range arg {
-	//	log.Debug("namespace is ", namespace)
-	//	for k, v := range a {
-	//		log.Debug("key is ", k, " v is ", string(v))
-	//	}
-	//
-	//}
 
 	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{

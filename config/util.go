@@ -20,9 +20,9 @@ func createAdvertiseUrls(listenUrls []string) []string {
 		ip := strings.TrimSuffix(u.Host, fmt.Sprintf(":%s", port))
 		if port == "" {
 			switch u.Scheme {
-			case "http":
+			case "http", "tcp":
 				port = "80"
-			case "https":
+			case "https", "ssl":
 				port = "443"
 			}
 		}

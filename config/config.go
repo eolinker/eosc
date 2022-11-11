@@ -34,6 +34,11 @@ type UrlConfig struct {
 	Certificate   []CertConfig `json:"certificate"`
 	AdvertiseUrls []string     `json:"advertise_urls" yaml:"advertise_urls"`
 }
+type GatewayConfig struct {
+	ListenUrls    []string `json:"listen_urls" yaml:"listen_urls"`
+	AdvertiseUrls []string `json:"advertise_urls" yaml:"advertise_urls"`
+}
+
 type CertificateDir struct {
 	Dir string `json:"dir" yaml:"dir"`
 }
@@ -42,7 +47,7 @@ type NConfig struct {
 	CertificateDir *CertificateDir `json:"certificate" yaml:"certificate"`
 	Peer           UrlConfig       `json:"peer"`
 	Client         UrlConfig       `json:"client"`
-	Gateway        UrlConfig       `json:"gateway" yaml:"gateway"`
+	Gateway        GatewayConfig   `json:"gateway" yaml:"gateway"`
 }
 type Certificate struct {
 	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -51,9 +56,6 @@ type Certificate struct {
 
 func GetListens(ucs ...UrlConfig) []string {
 	addrs := make(map[string]struct{})
-	ports := make(map[int]struct{})
-
-	rs := make([]string, 0, len(ucs))
 	for _, uc := range ucs {
 		for _, lu := range uc.ListenUrls {
 			u, err := url.Parse(lu)
@@ -68,15 +70,15 @@ func GetListens(ucs ...UrlConfig) []string {
 
 			addr := u.Hostname()
 			if addr == "" || addr == "0.0.0.0" {
-	 
-				ports[port] = struct{}{}
+
 				addrs[fmt.Sprintf(":%d", port)] = struct{}{}
 			} else {
-				addrs[u.Host] = struct{}{}
+				addrs[fmt.Sprintf("%s:%d", addr, port)] = struct{}{}
 			}
 
 		}
 	}
+	rs := make([]string, 0, len(ucs))
 
 	for u := range addrs {
 		rs = append(rs, u)
@@ -177,7 +179,6 @@ func initial(c *NConfig) {
 
 	if len(c.Gateway.ListenUrls) == 0 {
 		c.Gateway.ListenUrls = []string{"http://0.0.0.0:80"}
-		c.Gateway.Certificate = nil
 	}
 
 	if len(c.Peer.AdvertiseUrls) == 0 {
