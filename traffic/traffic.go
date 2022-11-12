@@ -11,7 +11,11 @@ package traffic
 import (
 	"errors"
 	"github.com/eolinker/eosc/log"
+	"github.com/soheilhy/cmux"
 	"net"
+	"net/url"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -28,15 +32,78 @@ type Traffic struct {
 	*TrafficData
 }
 
+const (
+	bitTCP = 1 << iota
+	bitSSL
+
+	bitBoth = bitTCP | bitSSL
+)
+
 func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener) {
-	//TODO implement me
-	panic("implement me")
+
+	schemes := make(map[string]int)
+	for _, addr := range addrs {
+		addrValue, isSSl := readAddr(addr)
+		if isSSl {
+			schemes[addrValue] = schemes[addrValue] | bitSSL
+		} else {
+			schemes[addrValue] = schemes[addrValue] | bitTCP
+		}
+	}
+	for addr, v := range schemes {
+
+		listener, has := t.data[addr]
+		if !has {
+			continue
+		}
+		switch v {
+		case bitBoth:
+			{
+				cMux := cmux.New(listener)
+				ssl = append(ssl, cMux.Match(cmux.TLS()))
+				tcp = append(tcp, cMux.Match(cmux.Any()))
+
+			}
+		case bitTCP:
+			tcp = append(tcp, listener)
+		case bitSSL:
+			ssl = append(ssl, listener)
+		}
+
+	}
+	return tcp, ssl
+}
+func readAddr(addr string) (string, bool) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		u = &url.URL{Scheme: "tcp", Host: addr}
+	}
+	ssl := false
+	port, _ := strconv.Atoi(u.Port())
+
+	switch strings.ToLower(u.Scheme) {
+	case "https", "ssl", "tls":
+		ssl = true
+		if port == 0 {
+			port = 443
+		}
+	default:
+		ssl = false
+		if port == 0 {
+			port = 80
+		}
+	}
+	parseIP := net.ParseIP(u.Hostname())
+
+	tcpAddr := net.TCPAddr{IP: parseIP, Port: port}
+
+	return tcpAddr.String(), ssl
 }
 
 func NewTraffic(trafficData *TrafficData) ITraffic {
 	return &Traffic{TrafficData: trafficData}
 }
-func TrafficFromArg(traffics []*PbTraffic) ITraffic {
+func FromArg(traffics []*PbTraffic) ITraffic {
 	listeners := toListeners(traffics)
 	log.Debug("read listeners: ", len(listeners))
 

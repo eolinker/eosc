@@ -5,6 +5,7 @@ import (
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/ghodss/yaml"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -19,6 +20,9 @@ var (
 	defaultPort = map[string]int{
 		"https": 443,
 		"http":  80,
+		"tcp":   80,
+		"ssl":   443,
+		"tls":   443,
 	}
 )
 
@@ -54,37 +58,41 @@ type Certificate struct {
 }
 
 func GetListens(ucs ...ListenUrl) []string {
-	addrs := make(map[string]struct{})
+
+	urls := make([]string, 0, len(ucs))
 	for _, uc := range ucs {
-		for _, lu := range uc.ListenUrls {
-			u, err := url.Parse(lu)
-			if err != nil {
-				continue
-			}
-
-			port, _ := strconv.Atoi(u.Port())
-			if port == 0 {
-				port = defaultPort[u.Scheme]
-			}
-
-			addr := u.Hostname()
-			if addr == "" || addr == "0.0.0.0" {
-
-				addrs[fmt.Sprintf(":%d", port)] = struct{}{}
-			} else {
-				addrs[fmt.Sprintf("%s:%d", addr, port)] = struct{}{}
-			}
-
-		}
+		urls = append(urls, uc.ListenUrls...)
 	}
-	rs := make([]string, 0, len(ucs))
+	return FormatListenUrl(urls...)
+}
 
+func FormatListenUrl(urls ...string) []string {
+	addrs := make(map[string]struct{})
+	for _, lu := range urls {
+		u, err := url.Parse(lu)
+		if err != nil {
+			continue
+		}
+
+		port, _ := strconv.Atoi(u.Port())
+		if port == 0 {
+			port = defaultPort[strings.ToLower(u.Scheme)]
+		}
+		addr := net.TCPAddr{
+			IP:   net.ParseIP(u.Hostname()),
+			Port: port,
+			Zone: "",
+		}
+
+		addrs[addr.String()] = struct{}{}
+
+	}
+	rs := make([]string, 0, len(addrs))
 	for u := range addrs {
 		rs = append(rs, u)
 	}
 	return rs
 }
-
 func readConfigData() ([]byte, string, error) {
 	paths := env.ConfigPath()
 
