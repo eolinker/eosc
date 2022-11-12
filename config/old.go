@@ -28,40 +28,43 @@ type AdminConfig struct {
 }
 
 func fromAdmin(admin *AdminConfig) (UrlConfig, UrlConfig) {
-	peer := UrlConfig{}
+
 	scheme := strings.ToLower(admin.Scheme)
 	if scheme != "https" {
 		scheme = "http"
 	}
-	ssl := (scheme == "https") && (admin.Certificate != nil)
-	if !ssl {
-		scheme = "http"
-	}
+
 	port := admin.Listen
 	if port == 0 {
 		port = 9400
 	}
 	ip := admin.IP
+	certificate := admin.Certificate
+	return createDefault(scheme, port, ip, certificate), createDefault(scheme, port+1, ip, certificate)
+}
+func createDefault(scheme string, port int, ip string, certificate *Certificate) UrlConfig {
+	config := UrlConfig{}
 	if len(ip) == 0 {
 		ip = "0.0.0.0"
 	}
-	peer.ListenUrls = []string{fmt.Sprintf("%s://%s:%d", scheme, ip, port)}
+	ssl := (scheme == "https") && (certificate != nil)
+	if !ssl {
+		scheme = "http"
+	}
+	config.ListenUrls = []string{fmt.Sprintf("%s://%s:%d", scheme, ip, port)}
 
-	if admin.IP != "0.0.0.0" {
-		peer.AdvertiseUrls = []string{fmt.Sprintf("%s://%s:%d", scheme, admin.IP, port)}
+	if ip != "0.0.0.0" {
+		config.AdvertiseUrls = []string{fmt.Sprintf("%s://%s:%d", scheme, ip, port)}
 	}
 	if ssl {
-		peer.Certificate = make([]CertConfig, 0, 1)
-		peer.Certificate = append(peer.Certificate, CertConfig{
-			Cert: admin.Certificate.Cert,
-			Key:  admin.Certificate.Key,
+		config.Certificate = make([]CertConfig, 0, 1)
+		config.Certificate = append(config.Certificate, CertConfig{
+			Cert: certificate.Cert,
+			Key:  certificate.Key,
 		})
 	}
-
-	client := peer
-	return peer, client
+	return config
 }
-
 func toGateway(ports []int, ssl []*ListenConfig) ListenUrl {
 
 	config := ListenUrl{}

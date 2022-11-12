@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	lastVersion = 1
+	lastVersion = 2
 )
 
 var (
@@ -159,7 +159,7 @@ func readConfig(data []byte) (config *NConfig, upGrade bool, err error) {
 		if err != nil {
 			return
 		}
-
+		upGrade = true
 		config.Version = lastVersion
 		config.CertificateDir = o.CertificateDir
 		var ssl []*ListenConfig
