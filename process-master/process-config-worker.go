@@ -1,11 +1,11 @@
 package process_master
 
 import (
+	"encoding/json"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/process-master/extender"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/traffic"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"sync"
 
@@ -18,7 +18,7 @@ type WorkerController struct {
 	locker        sync.Mutex
 	traffics      []*traffic.PbTraffic
 	trafficFiles  []*os.File
-	listensMsg    config.GatewayConfig
+	listensMsg    config.ListenUrl
 	isRunning     bool
 }
 
@@ -40,7 +40,7 @@ func (wc *WorkerController) Update(status []*extender.Status, success bool) {
 			ListensMsg: wc.listensMsg,
 			Extends:    extends,
 		}
-		data, _ := proto.Marshal(args)
+		data, _ := json.Marshal(args)
 		if wc.isRunning {
 			wc.workerProcess.TryRestart(data, wc.trafficFiles)
 		} else {
@@ -50,7 +50,7 @@ func (wc *WorkerController) Update(status []*extender.Status, success bool) {
 	}
 }
 
-func NewWorkerController(tfd *traffic.TrafficData, listensMsg config.GatewayConfig, workerProcess *process.ProcessController) *WorkerController {
+func NewWorkerController(tfd *traffic.TrafficData, listensMsg config.ListenUrl, workerProcess *process.ProcessController) *WorkerController {
 	traffics, files := traffic.Export(tfd, 3)
 	wc := &WorkerController{
 		traffics:      traffics,

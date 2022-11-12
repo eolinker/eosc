@@ -62,9 +62,9 @@ func fromAdmin(admin *AdminConfig) (UrlConfig, UrlConfig) {
 	return peer, client
 }
 
-func toGateway(ports []int, ssl []*ListenConfig) GatewayConfig {
+func toGateway(ports []int, ssl []*ListenConfig) ListenUrl {
 
-	config := GatewayConfig{}
+	config := ListenUrl{}
 
 	config.ListenUrls = make([]string, 0, len(ports)+len(ssl))
 

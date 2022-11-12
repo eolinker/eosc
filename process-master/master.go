@@ -303,7 +303,7 @@ func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {
 	} else {
 		input = nil
 	}
-	masterTraffic, err := traffic.ReadTraffic(input, config.GetListens(cfg.Client, cfg.Peer)...)
+	masterTraffic, err := traffic.ReadTraffic(input, config.GetListens(cfg.Client.ListenUrl, cfg.Peer.ListenUrl)...)
 	if err != nil {
 		return nil, err
 	}

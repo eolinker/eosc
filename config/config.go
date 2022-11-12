@@ -30,11 +30,10 @@ type CertConfig struct {
 	Key  string `json:"key" yaml:"key"`
 }
 type UrlConfig struct {
-	ListenUrls    []string     `json:"listen_urls" yaml:"listen_urls"`
-	Certificate   []CertConfig `json:"certificate"`
-	AdvertiseUrls []string     `json:"advertise_urls" yaml:"advertise_urls"`
+	ListenUrl
+	Certificate []CertConfig `json:"certificate"`
 }
-type GatewayConfig struct {
+type ListenUrl struct {
 	ListenUrls    []string `json:"listen_urls" yaml:"listen_urls"`
 	AdvertiseUrls []string `json:"advertise_urls" yaml:"advertise_urls"`
 }
@@ -47,14 +46,14 @@ type NConfig struct {
 	CertificateDir *CertificateDir `json:"certificate" yaml:"certificate"`
 	Peer           UrlConfig       `json:"peer"`
 	Client         UrlConfig       `json:"client"`
-	Gateway        GatewayConfig   `json:"gateway" yaml:"gateway"`
+	Gateway        ListenUrl       `json:"gateway" yaml:"gateway"`
 }
 type Certificate struct {
 	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Cert string `protobuf:"bytes,2,opt,name=cert,proto3" json:"cert,omitempty"`
 }
 
-func GetListens(ucs ...UrlConfig) []string {
+func GetListens(ucs ...ListenUrl) []string {
 	addrs := make(map[string]struct{})
 	for _, uc := range ucs {
 		for _, lu := range uc.ListenUrls {

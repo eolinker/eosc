@@ -41,7 +41,7 @@ func StartFunc(c *cli.Context) error {
 
 	ClearPid(pidDir)
 	cfg := config.Load()
-	listenAddrs := config.GetListens(cfg.Peer, cfg.Client, cfg.Client)
+	listenAddrs := config.GetListens(cfg.Peer.ListenUrl, cfg.Client.ListenUrl, cfg.Gateway)
 	errAddr := make([]string, 0, len(listenAddrs))
 	for _, addr := range listenAddrs {
 		err := utils.IsListen(addr)

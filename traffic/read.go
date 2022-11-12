@@ -16,6 +16,7 @@ worker只允许使用传入进来的端口
 package traffic
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 func readTraffic(r io.Reader) ([]*PbTraffic, error) {
@@ -34,7 +34,7 @@ func readTraffic(r io.Reader) ([]*PbTraffic, error) {
 	}
 
 	pts := new(PbTraffics)
-	err = proto.Unmarshal(frame, pts)
+	err = json.Unmarshal(frame, pts)
 	if err != nil {
 		return nil, err
 	}
@@ -48,12 +48,12 @@ func toListeners(tfConf []*PbTraffic) map[string]*net.TCPListener {
 	for _, pt := range tfConf {
 		name := fmt.Sprintf("%s:/%s", pt.Network, pt.Addr)
 
-		log.DebugF("read traffic:%s=%d", name, pt.GetFD())
+		log.DebugF("read traffic:%s=%d", name, pt.FD)
 		switch pt.Network {
 
 		case "tcp", "tcp4", "tcp6":
 
-			f := os.NewFile(uintptr(pt.GetFD()), name)
+			f := os.NewFile(uintptr(pt.FD), name)
 			l, err := net.FileListener(f)
 			if err != nil {
 				log.Warn("error to read port-reqiure:", err)

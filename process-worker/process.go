@@ -9,6 +9,7 @@
 package process_worker
 
 import (
+	"encoding/json"
 	"os"
 	"os/signal"
 	"sync"
@@ -142,7 +143,7 @@ func readArg() *service.ProcessLoadArg {
 		log.Warn("read arg fail:", err)
 		return arg
 	}
-	err = proto.Unmarshal(frame, arg)
+	err = json.Unmarshal(frame, arg)
 	if err != nil {
 		log.Warn("unmarshal arg fail:", err)
 		return arg
