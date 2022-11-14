@@ -40,7 +40,7 @@ func fromAdmin(admin *AdminConfig) (UrlConfig, UrlConfig) {
 	}
 	ip := admin.IP
 	certificate := admin.Certificate
-	return createDefault(scheme, port, ip, certificate), createDefault(scheme, port+1, ip, certificate)
+	return createDefault(scheme, port+1, ip, certificate), createDefault(scheme, port, ip, certificate)
 }
 func createDefault(scheme string, port int, ip string, certificate *Certificate) UrlConfig {
 	config := UrlConfig{}

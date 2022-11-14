@@ -145,25 +145,15 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 
 func (m *Master) Start(handler *MasterHandler) error {
 
-	tf := traffic.NewTraffic(m.adminTraffic)
-	tcp, ssl := tf.Listen(m.config.Peer.ListenUrls...)
-
-	listener := make([]net.Listener, 0, len(tcp)+len(ssl))
-	listener = append(listener, tcp...)
-	if len(ssl) > 0 {
-		cert, err := config.LoadCert(m.config.Peer.Certificate, m.config.CertificateDir.Dir)
-		if err != nil {
-			return err
-		}
-		tlsConf := &tls.Config{GetCertificate: cert.GetCertificate}
-		for _, l := range ssl {
-			listener = append(listener, tls.NewListener(l, tlsConf))
-		}
+	etcdMux, err := m.listen(m.config.Peer)
+	if err != nil {
+		return err
 	}
-
-	mux := m.startHttpServer(listener...)
-
-	etcdServer, err := etcd.NewServer(m.ctx, mux, etcd.Config{
+	openApiMux, err := m.listen(m.config.Client)
+	if err != nil {
+		return err
+	}
+	etcdServer, err := etcd.NewServer(m.ctx, etcdMux, etcd.Config{
 		PeerAdvertiseUrls:   m.config.Peer.AdvertiseUrls,
 		ClientAdvertiseUrls: m.config.Client.AdvertiseUrls,
 		DataDir:             env.DataDir(),
@@ -180,10 +170,10 @@ func (m *Master) Start(handler *MasterHandler) error {
 	}
 	openApiProxy := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.adminClient)
 
-	mux.Handle("/system/version", handler.VersionHandler(etcdServer))
-	mux.HandleFunc("/system/info", m.EtcdInfoHandler)
-	mux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
-	mux.Handle("/", openApiProxy)
+	openApiMux.Handle("/system/version", handler.VersionHandler(etcdServer))
+	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)
+	openApiMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
+	openApiMux.Handle("/", openApiProxy)
 	log.Info("process-master start grpc service")
 	err = m.startService()
 	if err != nil {
@@ -198,7 +188,25 @@ func (m *Master) Start(handler *MasterHandler) error {
 	return nil
 
 }
+func (m *Master) listen(conf config.UrlConfig) (*http.ServeMux, error) {
+	tf := traffic.NewTraffic(m.adminTraffic)
+	tcp, ssl := tf.Listen(conf.ListenUrls...)
 
+	listener := make([]net.Listener, 0, len(tcp)+len(ssl))
+	listener = append(listener, tcp...)
+	if len(ssl) > 0 {
+		cert, err := config.LoadCert(conf.Certificate, m.config.CertificateDir.Dir)
+		if err != nil {
+			return nil, err
+		}
+		tlsConf := &tls.Config{GetCertificate: cert.GetCertificate}
+		for _, l := range ssl {
+			listener = append(listener, tls.NewListener(l, tlsConf))
+		}
+	}
+
+	return m.startHttpServer(listener...), nil
+}
 func (m *Master) startHttpServer(lns ...net.Listener) *http.ServeMux {
 	mux := http.NewServeMux()
 	m.httpserver = &http.Server{
