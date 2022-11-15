@@ -34,7 +34,9 @@ func (s *_Server) initEtcdServer() error {
 	go s.check(srv)
 	<-s.server.ReadyNotify()
 	s.client = v3client.New(s.server)
-
+	for _, ch := range s.clientCh {
+		ch <- s.client
+	}
 	return nil
 
 }

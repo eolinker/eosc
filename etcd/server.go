@@ -28,6 +28,7 @@ type _Server struct {
 	requestTimeout          time.Duration
 	name                    string
 	leaderChangeHandler     []ILeaderStateHandler
+	clientCh                []chan *clientv3.Client
 }
 
 func (s *_Server) Status() *Node {
@@ -86,6 +87,7 @@ func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server
 		ctx:            serverCtc,
 		cancel:         cancel,
 		requestTimeout: 10 * time.Second,
+		clientCh:       make([]chan *clientv3.Client, 0, 10),
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -142,34 +144,45 @@ func (s *_Server) Delete(key string) error {
 }
 
 func (s *_Server) Watch(prefix string, handler ServiceHandler) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	ctx, _ := s.requestContext()
-	response, err := s.client.Get(ctx, prefix, clientv3.WithPrefix())
-	if err != nil {
-		log.Warn("watch ", prefix, " error:", err)
-		return
-	}
-
-	watch := s.client.Watch(s.ctx, prefix, clientv3.WithPrefix())
+	clientCh := make(chan *clientv3.Client, 1)
+	s.mu.Lock()
+	s.clientCh = append(s.clientCh, clientCh)
+	clientCh <- s.client
+	s.mu.Unlock()
 
 	go func() {
-
-		init := make([]*KValue, 0, response.Count)
-		for _, kv := range response.Kvs {
-			init = append(init, &KValue{
-				Key:   kv.Key,
-				Value: kv.Value,
-			})
-		}
-		handler.Reset(init)
+		defer close(clientCh)
+		var watch clientv3.WatchChan = nil
 		for {
 			select {
+			case client, ok := <-clientCh:
+				{
+					if !ok {
+						continue
+					}
+					ctx, _ := s.requestContext()
+					response, err := client.Get(ctx, prefix, clientv3.WithPrefix())
+					if err != nil {
+						log.Warn("watch ", prefix, " error:", err)
+						return
+					}
+					watch = client.Watch(s.ctx, prefix, clientv3.WithPrefix())
+					init := make([]*KValue, 0, response.Count)
+					for _, kv := range response.Kvs {
+						init = append(init, &KValue{
+							Key:   kv.Key,
+							Value: kv.Value,
+						})
+					}
+					handler.Reset(init)
+				}
+
 			case <-s.ctx.Done():
 				return
 			case v, ok := <-watch:
 				if !ok {
-					return
+					watch = nil
+					continue
 				}
 				for _, e := range v.Events {
 					switch e.Type {
