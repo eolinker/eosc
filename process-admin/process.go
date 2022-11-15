@@ -11,6 +11,7 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+	"github.com/eolinker/eosc/config"
 
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -128,7 +129,8 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
 	bean.Injection(&tf)
-
+	var listenUrl = new(config.ListenUrl)
+	bean.Injection(&listenUrl)
 	register := initExtender(arg[eosc.NamespaceExtender])
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
