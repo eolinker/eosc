@@ -104,7 +104,8 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 	register := extends.InitRegister()
 	tf := createTraffic(arg.Traffic)
 	bean.Injection(&tf)
-	var listenUrl *config.ListenUrl = &arg.ListensMsg
+	var listenUrl = new(config.ListenUrl)
+	*listenUrl = arg.ListensMsg
 	bean.Injection(&listenUrl)
 
 	extends.LoadPlugins(arg.Extends, register)
