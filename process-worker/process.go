@@ -10,6 +10,7 @@ package process_worker
 
 import (
 	"encoding/json"
+	"github.com/eolinker/eosc/config"
 	"os"
 	"os/signal"
 	"sync"
@@ -103,7 +104,8 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 	register := extends.InitRegister()
 	tf := createTraffic(arg.Traffic)
 	bean.Injection(&tf)
-	bean.Injection(&arg.ListensMsg)
+	var listenUrl *config.ListenUrl = &arg.ListensMsg
+	bean.Injection(&listenUrl)
 
 	extends.LoadPlugins(arg.Extends, register)
 	var extenderDrivers eosc.IExtenderDrivers = register
