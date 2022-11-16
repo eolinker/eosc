@@ -2,12 +2,13 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/service"
 )
 
-//Join 加入集群操作
+// Join 加入集群操作
 func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
 
@@ -32,9 +33,9 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 		info.NodeID = uint64(mInfo.ID)
 		break
 	}
-	//if info.NodeID < 1 {
-	//	return &service.JoinResponse{}, errors.New("join error")
-	//}
+	if info.NodeID < 1 {
+		return &service.JoinResponse{}, errors.New("join error")
+	}
 
 	return &service.JoinResponse{
 		Msg:  "success",
@@ -43,7 +44,7 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 	}, nil
 }
 
-//Leave 将节点移除
+// Leave 将节点移除
 func (m *MasterCliServer) Leave(ctx context.Context, request *service.LeaveRequest) (*service.LeaveResponse, error) {
 
 	err := m.etcdServe.Leave()
@@ -65,13 +66,13 @@ func (m *MasterCliServer) Leave(ctx context.Context, request *service.LeaveReque
 	}, nil
 }
 
-//List 获取节点列表
+// List 获取节点列表
 func (m *MasterCliServer) List(ctx context.Context, request *service.ListRequest) (*service.ListResponse, error) {
 	// TODO: raft node list
 	return nil, nil
 }
 
-//Info 获取节点信息
+// Info 获取节点信息
 func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
 	status := "single"
 	raftState := "stand"

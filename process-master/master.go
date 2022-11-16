@@ -78,7 +78,7 @@ type Master struct {
 	masterSrv        *grpc.Server
 	ctx              context.Context
 	cancelFunc       context.CancelFunc
-	httpserver       *http.Server
+	httpserver       []*http.Server
 	logWriter        io.Writer
 	dataController   *DataController
 	workerController *WorkerController
@@ -154,9 +154,10 @@ func (m *Master) Start(handler *MasterHandler) error {
 		return err
 	}
 	etcdServer, err := etcd.NewServer(m.ctx, etcdMux, etcd.Config{
-		PeerAdvertiseUrls:   m.config.Peer.AdvertiseUrls,
-		ClientAdvertiseUrls: m.config.Client.AdvertiseUrls,
-		DataDir:             env.DataDir(),
+		PeerAdvertiseUrls:    m.config.Peer.AdvertiseUrls,
+		ClientAdvertiseUrls:  m.config.Client.AdvertiseUrls,
+		GatewayAdvertiseUrls: m.config.Gateway.AdvertiseUrls,
+		DataDir:              env.DataDir(),
 	})
 	if err != nil {
 		log.Error("start etcd error:", err)
@@ -174,6 +175,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)
 	openApiMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
 	openApiMux.Handle("/", openApiProxy)
+	etcdMux.Handle("/", openApiProxy) // 转发到leader 需要具体节点，所以peer上也要绑定 open api
+
 	log.Info("process-master start grpc service")
 	err = m.startService()
 	if err != nil {
@@ -209,16 +212,26 @@ func (m *Master) listen(conf config.UrlConfig) (*http.ServeMux, error) {
 }
 func (m *Master) startHttpServer(lns ...net.Listener) *http.ServeMux {
 	mux := http.NewServeMux()
-	m.httpserver = &http.Server{
+
+	if len(lns) == 0 {
+		return mux
+	}
+	var listen net.Listener
+	if len(lns) > 1 {
+		listen = mixl.NewMixListener(0, lns...)
+	} else {
+		listen = lns[0]
+	}
+	server := &http.Server{
 		Handler: mux,
 	}
-	listen := mixl.NewMixListener(0, lns...)
 	go func() {
-		err := m.httpserver.Serve(listen)
+		err := server.Serve(listen)
 		if err != nil {
 			log.Warn(err)
 		}
 	}()
+	m.httpserver = append(m.httpserver, server)
 	return mux
 }
 
@@ -281,7 +294,12 @@ func (m *Master) close() {
 
 	m.cancelFunc()
 	m.cancelFunc = nil
-	log.Debug("process-master shutdown http:", m.httpserver.Shutdown(context.Background()))
+	httpservers := m.httpserver
+	m.httpserver = nil
+	for _, server := range httpservers {
+		log.Debug("process-master shutdown http:", server.Shutdown(context.Background()))
+
+	}
 
 	m.adminTraffic.Close()
 	m.workerTraffic.Close()

@@ -1,9 +1,12 @@
 package etcd
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
+	"github.com/google/uuid"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/config"
@@ -37,7 +40,15 @@ func (s *_Server) initEtcdServer() error {
 	s.server = srv
 	go s.check(srv)
 	<-s.server.ReadyNotify()
+
 	s.client = v3client.New(s.server)
+	gatewayConfig := &NodeGatewayConfig{Urls: s.config.GatewayAdvertiseUrls}
+	data, _ := json.Marshal(gatewayConfig)
+
+	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
+
+	s.clusterData = NewClusters(s.ctx, s.client)
+
 	for _, ch := range s.clientCh {
 		ch <- s.client
 	}
@@ -58,6 +69,7 @@ func (s *_Server) check(srv *etcdserver.EtcdServer) {
 				for _, h := range hs {
 					h.LeaderChange(isLeader)
 				}
+
 			}
 
 		}
@@ -179,6 +191,7 @@ func (s *_Server) Leave() error {
 	if err != nil {
 		return err
 	}
+	s.clusterData.SetCluster(uuid.NewString())
 	s.resetAllData(allData)
 	return nil
 }

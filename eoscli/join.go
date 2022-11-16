@@ -31,7 +31,7 @@ func Join() *cli.Command {
 	}
 }
 
-//join 加入集群
+// join 加入集群
 func join(c *cli.Context) error {
 	// 执行join操作
 
@@ -42,6 +42,7 @@ func join(c *cli.Context) error {
 	validAddr := false
 	as := make([]string, 0, len(addr))
 	for _, a := range addr {
+		fmt.Println("join addr:", addr)
 		if !strings.Contains(a, "https://") && !strings.Contains(a, "http://") {
 			a = fmt.Sprintf("http://%s", a)
 		}
@@ -78,7 +79,7 @@ func join(c *cli.Context) error {
 	return nil
 }
 
-//JoinFunc 加入集群
+// JoinFunc 加入集群
 func JoinFunc(c *cli.Context) error {
 
 	err := join(c)

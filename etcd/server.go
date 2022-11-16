@@ -30,20 +30,28 @@ type _Server struct {
 	name                    string
 	leaderChangeHandler     []ILeaderStateHandler
 	clientCh                []chan *clientv3.Client
+	clusterData             *Clusters
 }
 
-func (s *_Server) Status() *Node {
+func (s *_Server) Status() ClusterInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.server == nil {
-		return nil
+		return ClusterInfo{}
 	}
 	member := s.server.Cluster().Member(s.server.ID())
 	if member == nil {
-		return nil
+		return ClusterInfo{}
 	}
+	members := s.server.Cluster().Members()
+	leaderId := s.server.Leader()
 
-	return parseMember(member, s.server.Leader())
+	nodes := s.clusterData.parse(leaderId, members...)
+
+	return ClusterInfo{
+		Cluster: s.clusterData.Cluster(),
+		Nodes:   nodes,
+	}
 }
 
 func (s *_Server) Nodes() []*Node {
@@ -53,13 +61,9 @@ func (s *_Server) Nodes() []*Node {
 	if s.server != nil {
 
 		members := s.server.Cluster().Members()
-		nodes := make([]*Node, 0, len(members))
 		leaderId := s.server.Leader()
-		for _, m := range members {
 
-			nodes = append(nodes, parseMember(m, leaderId))
-		}
-		return nodes
+		return s.clusterData.parse(leaderId, members...)
 	}
 	return []*Node{}
 }
