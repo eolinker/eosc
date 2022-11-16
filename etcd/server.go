@@ -102,8 +102,7 @@ func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server
 	return s, nil
 }
 func (s *_Server) Info() Info {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+
 	if s.server == nil {
 		return nil
 	}
@@ -126,8 +125,6 @@ func (s *_Server) isLeader() (bool, []string) {
 
 func (s *_Server) Put(key string, value []byte) error {
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	ctx, _ := s.requestContext()
 	_, err := s.client.Put(ctx, key, string(value))
 
@@ -136,8 +133,7 @@ func (s *_Server) Put(key string, value []byte) error {
 }
 
 func (s *_Server) Delete(key string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+
 	ctx, _ := s.requestContext()
 	_, err := s.client.Delete(ctx, key)
 
@@ -150,8 +146,10 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 	s.clientCh = append(s.clientCh, clientCh)
 	clientCh <- s.client
 	s.mu.Unlock()
-
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		once := sync.Once{}
 		defer close(clientCh)
 		var watch clientv3.WatchChan = nil
 		for {
@@ -176,6 +174,9 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 						})
 					}
 					handler.Reset(init)
+					once.Do(func() {
+						wg.Done()
+					})
 				}
 
 			case <-s.ctx.Done():
@@ -197,6 +198,7 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 			}
 		}
 	}()
+	wg.Wait()
 }
 
 func (s *_Server) requestContext() (context.Context, context.CancelFunc) {

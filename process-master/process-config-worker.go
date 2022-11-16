@@ -20,6 +20,7 @@ type WorkerController struct {
 	trafficFiles  []*os.File
 	listensMsg    config.ListenUrl
 	isRunning     bool
+	lastVersion   int64
 }
 
 func (wc *WorkerController) Stop() {

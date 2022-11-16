@@ -50,9 +50,10 @@ const (
 )
 
 type Config struct {
-	PeerAdvertiseUrls   []string
-	ClientAdvertiseUrls []string
-	DataDir             string
+	PeerAdvertiseUrls    []string
+	ClientAdvertiseUrls  []string
+	GatewayAdvertiseUrls []string
+	DataDir              string
 }
 
 func (c *Config) CreatePeerUrl() (types.URLs, types.URLs, error) {

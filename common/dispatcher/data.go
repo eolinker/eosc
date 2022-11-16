@@ -1,10 +1,9 @@
 package dispatcher
 
 import (
+	"github.com/eolinker/eosc"
 	"strings"
 	"sync"
-
-	"github.com/eolinker/eosc"
 )
 
 type Data struct {
@@ -67,18 +66,18 @@ func (d *Data) set(namespace, key string, data []byte) {
 	}
 	sub[key] = data
 }
-func (d *Data) GetNamespace(namespace string)(map[string][]byte,bool) {
+func (d *Data) GetNamespace(namespace string) (map[string][]byte, bool) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
-	data,has := d.data[namespace]
-	if has{
-		tmp:=make(map[string][]byte)
-		for k,v:=range data{
+	data, has := d.data[namespace]
+	if has {
+		tmp := make(map[string][]byte)
+		for k, v := range data {
 			tmp[k] = v
 		}
-		return tmp,has
+		return tmp, has
 	}
-	return nil,false
+	return nil, false
 }
 func (d *Data) GET() map[string]map[string][]byte {
 	d.lock.RLock()

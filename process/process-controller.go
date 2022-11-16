@@ -195,9 +195,8 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 func (pc *ProcessController) Start(configData []byte, extraFiles []*os.File) error {
 	pc.locker.Lock()
 	defer pc.locker.Unlock()
-	atomic.StoreInt32(&pc.isShutDown, 0)
-	return pc.create(configData, extraFiles)
 
+	return pc.create(configData, extraFiles)
 }
 
 func (pc *ProcessController) TryRestart(configData []byte, extraFiles []*os.File) {
@@ -224,7 +223,8 @@ func (pc *ProcessController) doControl() {
 	t := time.NewTimer(time.Second)
 	t.Stop()
 	defer t.Stop()
-	var lastConfig *StartArgs
+	var lastConfig *StartArgs = new(StartArgs)
+
 	for {
 		select {
 		case <-pc.ctx.Done():
@@ -233,8 +233,9 @@ func (pc *ProcessController) doControl() {
 		case arg, ok := <-pc.restartChan:
 			if ok {
 				lastConfig = arg
+				t.Reset(time.Second)
 			}
-			t.Reset(time.Second)
+
 		case <-t.C:
 			if atomic.LoadInt32(&pc.isShutDown) == 0 {
 				pc.restart(lastConfig.Data, lastConfig.ExtraFiles)

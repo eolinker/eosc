@@ -67,10 +67,7 @@ func (s *_Server) addHandler(mux *http.ServeMux) {
 
 		w.Header().Set("Content-Type", "application/json")
 		b, _ := json.Marshal(&vs)
-		//if err != nil {
-		//	log.Errorf("cannot marshal versions to json (%v)", err)
-		//	return
-		//}
+
 		w.Write(b)
 
 	})
