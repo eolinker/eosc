@@ -10,6 +10,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/wal"
+	"net/http"
 	"path/filepath"
 )
 
@@ -25,11 +26,14 @@ func (s *_Server) initEtcdServer() error {
 	if err != nil {
 		return err
 	}
-
-	s.raftHandler = srv.RaftHandler()
-	s.leaseHandler = srv.LeaseHandler()
-	s.downgradeEnabledHandler = srv.DowngradeEnabledHandler()
-	s.hashKVHandler = srv.HashKVHandler()
+	raftHandler := srv.RaftHandler()
+	s.raftHandler.Swap(&raftHandler)
+	leaseHandler := srv.LeaseHandler()
+	s.leaseHandler.Swap(&leaseHandler)
+	downgradeEnabledHandler := srv.DowngradeEnabledHandler()
+	s.downgradeEnabledHandler.Swap(&downgradeEnabledHandler)
+	hashKVHandler := srv.HashKVHandler()
+	s.hashKVHandler.Swap(&hashKVHandler)
 	s.server = srv
 	go s.check(srv)
 	<-s.server.ReadyNotify()
@@ -187,10 +191,11 @@ func (s *_Server) Close() error {
 	return s.close()
 }
 func (s *_Server) close() error {
-	s.raftHandler = nil
-	s.hashKVHandler = nil
-	s.downgradeEnabledHandler = nil
-	s.leaseHandler = nil
+	emptyHandler := http.NotFoundHandler()
+	s.raftHandler.Swap(&emptyHandler)
+	s.hashKVHandler.Swap(&emptyHandler)
+	s.downgradeEnabledHandler.Swap(&emptyHandler)
+	s.leaseHandler.Swap(&emptyHandler)
 	s.closeClient()
 	// 关闭etcd server
 	s.closeServer()

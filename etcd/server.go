@@ -9,6 +9,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,10 +21,10 @@ type _Server struct {
 	cancel                  context.CancelFunc
 	mu                      sync.RWMutex
 	server                  *etcdserver.EtcdServer
-	raftHandler             http.Handler
-	leaseHandler            http.Handler
-	downgradeEnabledHandler http.Handler
-	hashKVHandler           http.Handler
+	raftHandler             atomic.Pointer[http.Handler]
+	leaseHandler            atomic.Pointer[http.Handler]
+	downgradeEnabledHandler atomic.Pointer[http.Handler]
+	hashKVHandler           atomic.Pointer[http.Handler]
 	client                  *clientv3.Client
 	requestTimeout          time.Duration
 	name                    string
