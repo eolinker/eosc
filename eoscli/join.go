@@ -42,7 +42,6 @@ func join(c *cli.Context) error {
 	validAddr := false
 	as := make([]string, 0, len(addr))
 	for _, a := range addr {
-		fmt.Println("join addr:", addr)
 		if !strings.Contains(a, "https://") && !strings.Contains(a, "http://") {
 			a = fmt.Sprintf("http://%s", a)
 		}

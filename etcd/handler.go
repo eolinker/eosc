@@ -125,6 +125,10 @@ func (s *_Server) addMember(name string, urls []string, clients []string) (map[s
 	for _, m := range members {
 		res[m.Name] = m.PeerURLs
 	}
+
+	InitialCluster := initialClusterString(res)
+
+	s.resetCluster(InitialCluster)
 	return res, nil
 }
 

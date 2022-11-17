@@ -154,7 +154,7 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 	wg.Add(1)
 	go func() {
 		once := sync.Once{}
-		defer close(clientCh)
+
 		var watch clientv3.WatchChan = nil
 		for {
 			select {
