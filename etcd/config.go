@@ -152,6 +152,19 @@ func initialClusterString(clusters map[string][]string) string {
 	return strings.Join(ss, ",")
 
 }
+
+func readClusterString(clusters string) map[string][]string {
+	its := strings.Split(clusters, ",")
+	vs := make(map[string][]string)
+	for _, it := range its {
+		f := strings.Split(it, "=")
+		if len(f) != 2 {
+			continue
+		}
+		vs[f[0]] = append(vs[f[0]], f[1])
+	}
+	return vs
+}
 func (s *_Server) resetCluster(InitialCluster string) {
 	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
@@ -183,8 +196,12 @@ func (s *_Server) readCluster(peerUrl types.URLs) (name, InitialCluster string, 
 			name: peerUrl.StringSlice(),
 		}
 		InitialCluster = initialClusterString(members)
-		etcdConfig.Set("cluster", InitialCluster)
+	} else {
+		members := readClusterString(InitialCluster)
+		members[name] = peerUrl.StringSlice()
+		InitialCluster = initialClusterString(members)
 	}
+	etcdConfig.Set("cluster", InitialCluster)
 	return name, InitialCluster, isNew
 }
 
