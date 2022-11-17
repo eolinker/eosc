@@ -21,35 +21,18 @@ type NodeGatewayConfig struct {
 	Urls []string `json:"urls"`
 }
 type Clusters struct {
-	locker  sync.RWMutex
 	data    map[string]*NodeGatewayConfig
 	cluster string
-
-	client *clientv3.Client
-}
-
-func (cs *Clusters) Cluster() string {
-	cs.locker.RLock()
-	defer cs.locker.RUnlock()
-	return cs.cluster
-}
-
-func (cs *Clusters) SetCluster(cluster string) {
-	cs.locker.Lock()
-	defer cs.locker.Unlock()
-	cs.cluster = cluster
-
-	cs.client.Put(cs.client.Ctx(), string(_clusterId), cluster)
+	mu      sync.RWMutex
+	client  *clientv3.Client
 }
 
 type EventType = mvccpb.Event_EventType
 
-func NewClusters(ctx context.Context, client *clientv3.Client) *Clusters {
+func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clusters {
 	c := &Clusters{
-		locker:  sync.RWMutex{},
 		cluster: "",
 		data:    map[string]*NodeGatewayConfig{},
-		client:  client,
 	}
 
 	response, err := client.Get(ctx, "~/", clientv3.WithPrefix())
@@ -61,7 +44,14 @@ func NewClusters(ctx context.Context, client *clientv3.Client) *Clusters {
 	watch := client.Watch(ctx, "~/", clientv3.WithPrefix())
 
 	for _, kv := range response.Kvs {
-		c.doEvent(mvccpb.PUT, kv.Key, kv.Value)
+		if bytes.Equal(kv.Key, _clusterId) {
+			c.cluster = string(kv.Value)
+			continue
+		}
+		nodeId := string(bytes.TrimPrefix(kv.Key, _nodePre))
+		config := new(NodeGatewayConfig)
+		json.Unmarshal(kv.Value, config)
+		c.data[nodeId] = config
 	}
 	if c.cluster == "" {
 		c.cluster = uuid.NewString()
@@ -69,16 +59,26 @@ func NewClusters(ctx context.Context, client *clientv3.Client) *Clusters {
 	}
 	go func() {
 		for watcher := range watch {
-			c.locker.Lock()
+			c.mu.Lock()
 			for _, event := range watcher.Events {
-				c.doEvent(event.Type, event.Kv.Key, event.Kv.Value)
+				c.nodeEventDoer(event.Type, event.Kv.Key, event.Kv.Value)
 			}
-			c.locker.Unlock()
+
+			memberInitUrls := make(map[string][]string)
+			for _, m := range s.server.Cluster().Members() {
+				id := m.ID.String()
+				if _, has := c.data[id]; has {
+					memberInitUrls[id] = m.PeerURLs
+				}
+			}
+			clusterString := initialClusterString(memberInitUrls)
+			s.resetCluster(clusterString)
+			c.mu.Unlock()
 		}
 	}()
 	return c
 }
-func (cs *Clusters) doEvent(t EventType, key, v []byte) {
+func (cs *Clusters) nodeEventDoer(t EventType, key, v []byte) {
 	if bytes.Equal(key, _clusterId) {
 		cs.cluster = string(v)
 		return
@@ -98,8 +98,7 @@ func (cs *Clusters) doEvent(t EventType, key, v []byte) {
 
 func (cs *Clusters) parse(leader types.ID, members ...Info) []*Node {
 	nodes := make([]*Node, 0, len(members))
-	cs.locker.RLock()
-	defer cs.locker.RUnlock()
+
 	for _, m := range members {
 		n := &Node{
 			Id:       m.ID.String(),

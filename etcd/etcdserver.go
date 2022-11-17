@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
-	"github.com/google/uuid"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/config"
@@ -19,6 +18,7 @@ import (
 
 var (
 	ErrorAlreadyInCluster = errors.New("already in cluster")
+	ErrorNotInCluster     = errors.New("not in cluster")
 )
 
 func (s *_Server) initEtcdServer() error {
@@ -47,20 +47,21 @@ func (s *_Server) initEtcdServer() error {
 
 	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
 
-	s.clusterData = NewClusters(s.ctx, s.client)
+	s.clusterData = NewClusters(s.ctx, s.client, s)
 
 	for _, ch := range s.clientCh {
 		ch <- s.client
 	}
 	return nil
-
 }
+
 func (s *_Server) check(srv *etcdserver.EtcdServer) {
 	log.Debug("start check LeaderChanged")
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
+
 		case <-srv.LeaderChangedNotify():
 			{
 				log.Debug("Leader changed")
@@ -110,7 +111,7 @@ func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error
 }
 
 // Restart 加入新集群和离开集群的时候需要restart server， join操作需要清空缓存，leave操作需要reset缓存
-func (s *_Server) restart() error {
+func (s *_Server) restart(InitialCluster string) error {
 	err := s.close()
 	if err != nil {
 		return err
@@ -120,6 +121,7 @@ func (s *_Server) restart() error {
 	if err != nil {
 		return err
 	}
+	s.resetCluster(InitialCluster)
 	return s.initEtcdServer()
 }
 func (s *_Server) checkIsJoined() bool {
@@ -160,25 +162,33 @@ func (s *_Server) Join(target string) error {
 	}
 	InitialCluster := initialClusterString(clusters)
 
-	s.resetCluster(InitialCluster)
-
-	return s.restart()
+	return s.restart(InitialCluster)
 }
 
 func (s *_Server) Leave() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// 获取全部数据
+	currentId := s.server.ID()
+	members := s.server.Cluster().Members()
+	if len(members) == 0 && members[0].ID == currentId {
+		return ErrorNotInCluster
+	}
 	allData, err := s.getAllData()
 	if err != nil {
 		return err
 	}
 	// 当前节点
 	s.server.Cluster().ID()
-	current := s.server.Cluster().Member(s.server.ID())
+	current := s.server.Cluster().Member(currentId)
 
 	// leave相关操作
 	// 集群中删除自己
+	_, err = s.client.Delete(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()))
+	if err != nil {
+		return err
+	}
+
 	err = s.removeMember(uint64(current.ID))
 	if err != nil {
 		return err
@@ -187,11 +197,11 @@ func (s *_Server) Leave() error {
 	s.clearCluster()
 	// 重启etcd服务
 
-	err = s.restart()
+	err = s.restart("")
 	if err != nil {
 		return err
 	}
-	s.clusterData.SetCluster(uuid.NewString())
+
 	s.resetAllData(allData)
 	return nil
 }

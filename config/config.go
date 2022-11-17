@@ -131,11 +131,11 @@ func Load() NConfig {
 		}
 	}
 
-	initial(config)
 	if upGradle {
 		rebuild, _ := yaml.Marshal(config)
 		os.WriteFile(path, rebuild, 0644)
 	}
+	initial(config)
 	return *config
 }
 

@@ -49,7 +49,7 @@ func (s *_Server) Status() ClusterInfo {
 	nodes := s.clusterData.parse(leaderId, members...)
 
 	return ClusterInfo{
-		Cluster: s.clusterData.Cluster(),
+		Cluster: s.clusterData.cluster,
 		Nodes:   nodes,
 	}
 }

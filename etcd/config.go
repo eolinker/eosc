@@ -172,7 +172,10 @@ func (s *_Server) resetCluster(InitialCluster string) {
 	defer etcdConfig.Save()
 	etcdConfig.Set("cluster", InitialCluster)
 }
-
+func (s *_Server) updateCluster() {
+	ctx, _ := s.requestContext()
+	s.client.MemberList(ctx)
+}
 func (s *_Server) clearCluster() {
 	s.resetCluster("")
 }
