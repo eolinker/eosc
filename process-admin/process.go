@@ -12,7 +12,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/eolinker/eosc/config"
-
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
@@ -21,6 +20,7 @@ import (
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
+	"time"
 
 	"net/http"
 	"os"
@@ -69,13 +69,12 @@ func Process() {
 }
 
 type ProcessAdmin struct {
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	once       sync.Once
-	reg        eosc.IExtenderDriverRegister
-	router     *httprouter.Router
+	once   sync.Once
+	reg    eosc.IExtenderDriverRegister
+	router *httprouter.Router
 
 	apiLocker sync.Mutex
+	server    *http.Server
 }
 
 func (pa *ProcessAdmin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +113,8 @@ func (pa *ProcessAdmin) wait() {
 			}
 		case syscall.SIGUSR1:
 			{
-
+				pa.close()
+				return
 			}
 		default:
 			continue
@@ -135,12 +135,12 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
 
-	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{
-		ctx:        ctx,
-		cancelFunc: cancelFunc,
-		router:     httprouter.New(),
+
+		router: httprouter.New(),
+		server: &http.Server{},
 	}
+	p.server.Handler = p
 	extenderRequire := require.NewRequireManager()
 	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 	NewExtenderOpenApi(extenderData).Register(p.router)
@@ -190,7 +190,9 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 func (pa *ProcessAdmin) close() {
 	pa.once.Do(func() {
-		pa.cancelFunc()
+
+		timeout, _ := context.WithTimeout(context.Background(), time.Second*3)
+		pa.server.Shutdown(timeout)
 	})
 }
 func initExtender(config map[string][]byte) extends.IExtenderRegister {
@@ -244,18 +246,13 @@ func (pa *ProcessAdmin) OpenApiServer() error {
 	if err != nil {
 		return err
 	}
-	server := http.Server{Handler: pa}
+
 	go func() {
-		err := server.Serve(l)
+		err := pa.server.Serve(l)
 		if err != nil {
 			log.Info("http server error: ", err)
 		}
 		return
-	}()
-	go func() {
-		<-pa.ctx.Done()
-		server.Shutdown(context.Background())
-		syscall.Unlink(addr)
 	}()
 
 	return nil
