@@ -195,7 +195,7 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 func (pc *ProcessController) Start(configData []byte, extraFiles []*os.File) error {
 	pc.locker.Lock()
 	defer pc.locker.Unlock()
-
+	atomic.StoreInt32(&pc.isShutDown, 0)
 	return pc.create(configData, extraFiles)
 }
 

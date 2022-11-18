@@ -167,6 +167,7 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 					response, err := client.Get(ctx, prefix, clientv3.WithPrefix())
 					if err != nil {
 						log.Warn("watch ", prefix, " error:", err)
+						clientCh <- client
 						continue
 					}
 					watch = client.Watch(s.ctx, prefix, clientv3.WithPrefix())
