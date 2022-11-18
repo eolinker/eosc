@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/service"
@@ -11,9 +10,9 @@ import (
 // Join 加入集群操作
 func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest) (*service.JoinResponse, error) {
 	info := &service.NodeSecret{}
-
+	var err error
 	for _, address := range request.ClusterAddress {
-		err := m.etcdServe.Join(address)
+		err = m.etcdServe.Join(address)
 		if err != nil && err != etcd.ErrorAlreadyInCluster {
 
 			continue
@@ -34,7 +33,11 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 		break
 	}
 	if info.NodeID < 1 {
-		return &service.JoinResponse{}, errors.New("join error")
+		return &service.JoinResponse{
+			Msg:  err.Error(),
+			Code: "00002",
+			Info: info,
+		}, fmt.Errorf("join error:%w", err)
 	}
 
 	return &service.JoinResponse{

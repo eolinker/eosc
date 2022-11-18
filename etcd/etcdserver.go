@@ -171,15 +171,17 @@ func (s *_Server) Leave() error {
 	// 获取全部数据
 	currentId := s.server.ID()
 	members := s.server.Cluster().Members()
-	if len(members) == 0 && members[0].ID == currentId {
+	if len(members) == 1 && members[0].ID == currentId {
 		return ErrorNotInCluster
 	}
 	allData, err := s.getAllData()
 	if err != nil {
 		return err
 	}
-	// 当前节点
-	s.server.Cluster().ID()
+	if err = s.server.TransferLeadership(); err != nil {
+		log.Warn("leadership transfer failed ", currentId, " error:", err)
+		return err
+	}
 	current := s.server.Cluster().Member(currentId)
 
 	// leave相关操作

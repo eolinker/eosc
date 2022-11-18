@@ -66,7 +66,7 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 
 			memberInitUrls := make(map[string][]string)
 			for _, m := range s.server.Cluster().Members() {
-				id := m.ID.String()
+				id := m.Name
 				if _, has := c.data[id]; has {
 					memberInitUrls[id] = m.PeerURLs
 				}
