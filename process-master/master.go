@@ -294,6 +294,7 @@ func (m *Master) close() {
 
 	m.cancelFunc()
 	m.cancelFunc = nil
+
 	httpservers := m.httpserver
 	m.httpserver = nil
 	for _, server := range httpservers {
@@ -304,7 +305,7 @@ func (m *Master) close() {
 	m.adminTraffic.Close()
 	m.workerTraffic.Close()
 	m.dispatcherServe.Close()
-
+	m.dataController.Close()
 	m.stopService()
 	log.Debug("try remove pid")
 
