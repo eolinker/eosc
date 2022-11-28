@@ -2,9 +2,8 @@ package eoscli
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/eolinker/eosc/config"
+	"strings"
 
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
@@ -32,7 +31,7 @@ func Start() *cli.Command {
 	}
 }
 
-//StartFunc 开启节点
+// StartFunc 开启节点
 func StartFunc(c *cli.Context) error {
 	pidDir := env.PidFileDir()
 	// 判断程序是否存在
@@ -41,42 +40,25 @@ func StartFunc(c *cli.Context) error {
 	}
 
 	ClearPid(pidDir)
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return err
-	}
-	//args := make([]string, 0, 20)
-	ip := cfg.Admin.IP
-	port := cfg.Admin.Listen
-
-	err = utils.IsListen(fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		return err
-	}
-
-	for _, rPort := range cfg.Listen {
-		err = utils.IsListen(fmt.Sprintf("%s:%d", ip, rPort))
+	cfg := config.Load()
+	listenAddrs := config.GetListens(cfg.Peer.ListenUrl, cfg.Client.ListenUrl, cfg.Gateway)
+	errAddr := make([]string, 0, len(listenAddrs))
+	for _, addr := range listenAddrs {
+		err := utils.IsListen(addr)
 		if err != nil {
-			return err
+			errAddr = append(errAddr, addr)
+			continue
 		}
 	}
-
-	protocol := cfg.Admin.Scheme
-	if protocol == "" {
-		protocol = env.GetDefault(env.Protocol, "http")
+	if len(errAddr) > 0 {
+		return fmt.Errorf("address is listened:%s", strings.Join(errAddr, ","))
 	}
-
-	// 设置环境变量
-	env.SetEnv(env.IP, ip)
-	env.SetEnv(env.Port, strconv.Itoa(port))
-	env.SetEnv(env.Protocol, protocol)
 
 	cmd, err := StartMaster([]string{}, nil)
 	if err != nil {
 		log.Errorf("start process-master error: %s", err.Error())
 		return err
 	}
-	//cfg.Save()
 
 	if env.IsDebug() {
 		return cmd.Wait()

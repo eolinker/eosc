@@ -11,7 +11,6 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -21,6 +20,7 @@ import (
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
+	"time"
 
 	"net/http"
 	"os"
@@ -69,13 +69,12 @@ func Process() {
 }
 
 type ProcessAdmin struct {
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	once       sync.Once
-	reg        eosc.IExtenderDriverRegister
-	router     *httprouter.Router
+	once   sync.Once
+	reg    eosc.IExtenderDriverRegister
+	router *httprouter.Router
 
 	apiLocker sync.Mutex
+	server    *http.Server
 }
 
 func (pa *ProcessAdmin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +113,8 @@ func (pa *ProcessAdmin) wait() {
 			}
 		case syscall.SIGUSR1:
 			{
-
+				pa.close()
+				return
 			}
 		default:
 			continue
@@ -123,30 +123,24 @@ func (pa *ProcessAdmin) wait() {
 
 }
 
-//NewProcessAdmin 创建新的admin进程
-//启动时通过stdin传输配置信息
+// NewProcessAdmin 创建新的admin进程
+// 启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
-	cfg := &config.ListensMsg{}
+
 	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
 	bean.Injection(&tf)
-	bean.Injection(&cfg)
+	var listenUrl = new(config.ListenUrl)
+	bean.Injection(&listenUrl)
 	register := initExtender(arg[eosc.NamespaceExtender])
 	var extenderDrivers eosc.IExtenderDrivers = register
 	bean.Injection(&extenderDrivers)
-	//for namespace, a := range arg {
-	//	log.Debug("namespace is ", namespace)
-	//	for k, v := range a {
-	//		log.Debug("key is ", k, " v is ", string(v))
-	//	}
-	//
-	//}
 
-	ctx, cancelFunc := context.WithCancel(parent)
 	p := &ProcessAdmin{
-		ctx:        ctx,
-		cancelFunc: cancelFunc,
-		router:     httprouter.New(),
+
+		router: httprouter.New(),
+		server: &http.Server{},
 	}
+	p.server.Handler = p
 	extenderRequire := require.NewRequireManager()
 	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 	NewExtenderOpenApi(extenderData).Register(p.router)
@@ -196,7 +190,9 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 func (pa *ProcessAdmin) close() {
 	pa.once.Do(func() {
-		pa.cancelFunc()
+
+		timeout, _ := context.WithTimeout(context.Background(), time.Second*3)
+		pa.server.Shutdown(timeout)
 	})
 }
 func initExtender(config map[string][]byte) extends.IExtenderRegister {
@@ -250,18 +246,13 @@ func (pa *ProcessAdmin) OpenApiServer() error {
 	if err != nil {
 		return err
 	}
-	server := http.Server{Handler: pa}
+
 	go func() {
-		err := server.Serve(l)
+		err := pa.server.Serve(l)
 		if err != nil {
 			log.Info("http server error: ", err)
 		}
 		return
-	}()
-	go func() {
-		<-pa.ctx.Done()
-		server.Shutdown(context.Background())
-		syscall.Unlink(addr)
 	}()
 
 	return nil

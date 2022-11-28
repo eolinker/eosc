@@ -16,7 +16,7 @@ type Etcd interface {
 	Close() error
 	Info() Info
 	Nodes() []*Node
-	Status() *Node
+	Status() ClusterInfo
 	Version() Versions
 }
 
@@ -37,4 +37,4 @@ type ServiceHandler interface {
 type ILeaderStateHandler interface {
 	LeaderChange(isLeader bool)
 }
-type Info *membership.Member
+type Info = *membership.Member

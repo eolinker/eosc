@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-//AdminController admin控制器，管理admin进程的启动、重启
+// AdminController admin控制器，管理admin进程的启动、重启
 type AdminController struct {
 	adminProcess      *process.ProcessController
 	locker            sync.RWMutex
@@ -78,6 +78,7 @@ func (ac *AdminController) LeaderChange(isLeader bool) {
 				configs = map[string]map[string][]byte{}
 			}
 			data, _ := json.Marshal(configs)
+
 			ac.lastExtenderConfig = ac.toExtends(configs[eosc.NamespaceExtender])
 			ac.adminProcess.Start(data, nil)
 		} else {
@@ -86,6 +87,7 @@ func (ac *AdminController) LeaderChange(isLeader bool) {
 	}
 }
 func (ac *AdminController) restart() {
+
 	configs := ac.data.GET()
 	if configs == nil {
 		configs = map[string]map[string][]byte{}
