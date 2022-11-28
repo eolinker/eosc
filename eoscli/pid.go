@@ -40,6 +40,7 @@ func CheckPIDFILEAlreadyExists(dir string) bool {
 }
 
 func ClearPid(dir string) {
+
 	os.Remove(getPidFile(dir))
 }
 

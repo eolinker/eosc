@@ -69,7 +69,8 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			return err
 		}
 	default:
-		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
+		return nil
+		//return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
 	}
 
 }

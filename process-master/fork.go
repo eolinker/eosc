@@ -11,16 +11,15 @@ package process_master
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"syscall"
 	"time"
 
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
-
-	"github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc"
 
@@ -31,7 +30,7 @@ import (
 
 var runningMasterForked = new(ForkStatus)
 
-//Fork Master fork 子进程，入参为子进程需要的内容
+// Fork Master fork 子进程，入参为子进程需要的内容
 func (m *Master) Fork(pFile *pidfile.PidFile) error {
 	if !runningMasterForked.Start() {
 		return errors.New("Another process already forked. Ignoring this one.")
@@ -42,17 +41,17 @@ func (m *Master) Fork(pFile *pidfile.PidFile) error {
 		return err
 	}
 
-	tfMaster, filesMaster := m.adminTraffic.Export(3)
+	tfMaster, filesMaster := traffic.Export(m.adminTraffic, 3)
 
-	dataMasterTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfMaster})
+	dataMasterTraffic, err := json.Marshal(&traffic.PbTraffics{Traffic: tfMaster})
 	if err != nil {
 		return err
 	}
 
 	dataMasterTraffic = utils.EncodeFrame(dataMasterTraffic)
 
-	tfWorker, filesWorker := m.workerTraffic.Export(len(filesMaster) + 3)
-	dataWorkerTraffic, err := proto.Marshal(&traffic.PbTraffics{Traffic: tfWorker})
+	tfWorker, filesWorker := traffic.Export(m.workerTraffic, len(filesMaster)+3)
+	dataWorkerTraffic, err := json.Marshal(&traffic.PbTraffics{Traffic: tfWorker})
 
 	if err != nil {
 		return err

@@ -18,58 +18,45 @@ const (
 )
 
 func (s *_Server) addHandler(mux *http.ServeMux) {
+	emptyHandler := http.NotFoundHandler()
+	s.raftHandler.Store(&emptyHandler)
+	s.leaseHandler.Store(&emptyHandler)
+	s.hashKVHandler.Store(&emptyHandler)
+	s.downgradeEnabledHandler.Store(&emptyHandler)
 
 	mux.HandleFunc("/raft/node/join", s.join)
 
 	mux.HandleFunc(rafthttp.RaftPrefix, func(w http.ResponseWriter, r *http.Request) {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
-		if s.raftHandler != nil {
-			s.raftHandler.ServeHTTP(w, r)
-		}
-
+		handler := s.raftHandler.Load()
+		(*handler).ServeHTTP(w, r)
 	})
 	mux.HandleFunc(rafthttp.RaftPrefix+"/", func(w http.ResponseWriter, r *http.Request) {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
-		if s.raftHandler != nil {
-			s.raftHandler.ServeHTTP(w, r)
-		}
+		raftHandler := s.raftHandler.Load()
+		(*raftHandler).ServeHTTP(w, r)
 	})
 	mux.HandleFunc(peerMembersPath, s.peerMembersHandler)
 	mux.HandleFunc(peerMemberPromotePrefix, s.peerMemberPromoteHandler)
 
 	leaseHandler := func(w http.ResponseWriter, r *http.Request) {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
-		if s.leaseHandler != nil {
-			s.leaseHandler.ServeHTTP(w, r)
-			return
-		}
-		http.NotFound(w, r)
+		leaseHandler := s.leaseHandler.Load()
+		(*leaseHandler).ServeHTTP(w, r)
 	}
 
 	mux.HandleFunc(leasehttp.LeasePrefix, leaseHandler)
 	mux.HandleFunc(leasehttp.LeaseInternalPrefix, leaseHandler)
 
 	downgradeEnabledHandler := func(w http.ResponseWriter, r *http.Request) {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
-		if s.downgradeEnabledHandler != nil {
-			s.downgradeEnabledHandler.ServeHTTP(w, r)
-			return
-		}
-		http.NotFound(w, r)
+
+		downgradeEnabledHandler := s.downgradeEnabledHandler.Load()
+		(*downgradeEnabledHandler).ServeHTTP(w, r)
 	}
 
 	mux.HandleFunc(etcdserver.DowngradeEnabledPath, downgradeEnabledHandler)
 
 	mux.HandleFunc(etcdserver.PeerHashKVPath, func(w http.ResponseWriter, r *http.Request) {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
-		if s.hashKVHandler != nil {
-			s.hashKVHandler.ServeHTTP(w, r)
-		}
+		hashKVHandler := s.hashKVHandler.Load()
+		(*hashKVHandler).ServeHTTP(w, r)
+
 	})
 	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
 
@@ -80,10 +67,7 @@ func (s *_Server) addHandler(mux *http.ServeMux) {
 
 		w.Header().Set("Content-Type", "application/json")
 		b, _ := json.Marshal(&vs)
-		//if err != nil {
-		//	log.Errorf("cannot marshal versions to json (%v)", err)
-		//	return
-		//}
+
 		w.Write(b)
 
 	})
@@ -141,6 +125,10 @@ func (s *_Server) addMember(name string, urls []string, clients []string) (map[s
 	for _, m := range members {
 		res[m.Name] = m.PeerURLs
 	}
+
+	//InitialCluster := initialClusterString(res)
+	//
+	//s.resetCluster(InitialCluster)
 	return res, nil
 }
 

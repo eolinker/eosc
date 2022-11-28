@@ -31,7 +31,7 @@ func Join() *cli.Command {
 	}
 }
 
-//join 加入集群
+// join 加入集群
 func join(c *cli.Context) error {
 	// 执行join操作
 
@@ -71,14 +71,14 @@ func join(c *cli.Context) error {
 		ClusterAddress: as,
 	})
 	if err != nil {
-		log.Error(err)
+		//log.Error(err)
 		return err
 	}
 	log.Infof("join successful! node id is: %d", response.Info.NodeID)
 	return nil
 }
 
-//JoinFunc 加入集群
+// JoinFunc 加入集群
 func JoinFunc(c *cli.Context) error {
 
 	err := join(c)
