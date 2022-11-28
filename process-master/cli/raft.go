@@ -77,18 +77,28 @@ func (m *MasterCliServer) List(ctx context.Context, request *service.ListRequest
 
 // Info 获取节点信息
 func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
-	status := "single"
-	raftState := "stand"
-	addr := ""
-	info := m.etcdServe.Info()
 
-	return &service.InfoResponse{Info: &service.NodeInfo{
-		NodeKey: info.Name,
-		NodeID:  uint64(info.ID),
-		Status:  status,
-		//Term:      term,
-		//LeaderID:  leaderID,
-		RaftState: raftState,
-		Addr:      addr,
-	}}, nil
+	status := m.etcdServe.Status()
+	info := make([]*service.NodeInfo, 0, len(status.Nodes))
+	for _, s := range status.Nodes {
+		info = append(info, &service.NodeInfo{
+			Name:   s.Name,
+			Peer:   s.Peer,
+			Admin:  s.Admin,
+			Server: s.Server,
+			Leader: s.IsLeader,
+		})
+	}
+	return &service.InfoResponse{Info: info, Cluster: status.Cluster}, nil
+}
+func (m *MasterCliServer) Remove(ctx context.Context, request *service.RemoveRequest) (*service.RemoveResponse, error) {
+	name := request.GetId()
+
+	err := m.etcdServe.Remove(name)
+	if err != nil {
+		return &service.RemoveResponse{Msg: err.Error(),
+			Code: "000001"}, err
+	}
+	return &service.RemoveResponse{Msg: "success",
+		Code: "000000"}, nil
 }

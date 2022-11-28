@@ -17,14 +17,14 @@ type SSLConfig struct {
 
 type ListenConfig struct {
 	Port        int            `json:"port" yaml:"port"`
-	Certificate []*Certificate `json:"certificate" yaml:"certificate"`
+	Certificate []*Certificate `json:"certificate" yaml:"certificate,omitempty"`
 }
 
 type AdminConfig struct {
 	Scheme      string       `json:"scheme" yaml:"scheme"`
 	Listen      int          `json:"listen" yaml:"listen"`
 	IP          string       `json:"ip" yaml:"ip"`
-	Certificate *Certificate `json:"certificate" yaml:"certificate"`
+	Certificate *Certificate `json:"certificate,omitempty" yaml:"certificate"`
 }
 
 func fromAdmin(admin *AdminConfig) (UrlConfig, UrlConfig) {

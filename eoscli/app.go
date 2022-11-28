@@ -53,6 +53,7 @@ func (a *App) Default() {
 		Restart(),
 		//Env(),
 		Master(),
+		Remove(),
 		//Plugin(),
 	)
 }

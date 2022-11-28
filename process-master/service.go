@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-//startService 开启master
+// startService 开启master
 func (m *Master) startService() error {
 
 	addr := service.ServerAddr(os.Getpid(), eosc.ProcessMaster)

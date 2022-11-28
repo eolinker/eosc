@@ -32,7 +32,7 @@ func InjectionDefault(i interface{}) {
 	Default.InjectionDefault(i)
 }
 
-//Check 对默认的bean容器执行检查， 如果所有Autowired需求都被满足，返回nil，否则返回与缺失实例有关都error
+// Check 对默认的bean容器执行检查， 如果所有Autowired需求都被满足，返回nil，否则返回与缺失实例有关都error
 func Check() error {
 	err := Default.Check()
 	if err != nil {
@@ -41,12 +41,12 @@ func Check() error {
 	return err
 }
 
-//AddInitializingBean 注册完成回调接口， 执行check成功后会调用回调接口
+// AddInitializingBean 注册完成回调接口， 执行check成功后会调用回调接口
 func AddInitializingBean(handler InitializingBeanHandler) {
 	Default.AddInitializingBean(handler)
 }
 
-//AddInitializingBeanFunc 注册完成回调方法， 执行check成功后会调用回调方法
+// AddInitializingBeanFunc 注册完成回调方法， 执行check成功后会调用回调方法
 func AddInitializingBeanFunc(handler func()) {
 	Default.AddInitializingBeanFunc(handler)
 }

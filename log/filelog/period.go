@@ -5,16 +5,16 @@ import (
 	"strings"
 )
 
-//LogPeriod 日志周期
+// LogPeriod 日志周期
 type LogPeriod interface {
 	String() string
 	FormatLayout() string
 }
 
-//LogPeriodType 日志周期类型
+// LogPeriodType 日志周期类型
 type LogPeriodType int
 
-//ParsePeriod 解析周期
+// ParsePeriod 解析周期
 func ParsePeriod(v string) (LogPeriod, error) {
 	switch strings.ToLower(v) {
 	case "month":
@@ -49,7 +49,7 @@ const (
 	PeriodHour
 )
 
-//FormatLayout 格式化
+// FormatLayout 格式化
 func (period LogPeriodType) FormatLayout() string {
 	switch period {
 	case PeriodHour:

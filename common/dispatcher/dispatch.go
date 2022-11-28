@@ -69,7 +69,7 @@ func (t *tListener) Event() <-chan IEvent {
 
 type IDispatchCenter interface {
 	io.Closer
-	Register(handler CallBackFunc) (closeChan chan <- int)
+	Register(handler CallBackFunc) (closeChan chan<- int)
 	Listener() IListener
 	Send(e IEvent)
 }

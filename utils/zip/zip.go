@@ -61,9 +61,9 @@ func CompressFile(data map[string][]byte) ([]byte, error) {
 	return file.Export(), nil
 }
 
-//压缩文件
-//files 文件数组，可以是不同dir下的文件或者文件夹
-//dest 压缩文件存放地址
+// 压缩文件
+// files 文件数组，可以是不同dir下的文件或者文件夹
+// dest 压缩文件存放地址
 func Compress(data map[string][]byte) (*ZipFile, error) {
 	file := NewZipFile()
 	w := zip.NewWriter(file)

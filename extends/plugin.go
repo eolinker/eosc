@@ -26,7 +26,7 @@ func LoadPlugins(plugins map[string]string, register IExtenderRegister) {
 			if IsInner(group, project) {
 				continue
 			}
-			LoadProject(group,project,version,register)
+			LoadProject(group, project, version, register)
 		}
 	}
 }

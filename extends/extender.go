@@ -19,7 +19,7 @@ import (
 	"github.com/eolinker/eosc/log"
 )
 
-//RegisterFunc 注册函数
+// RegisterFunc 注册函数
 type RegisterFunc func(eosc.IExtenderDriverRegister)
 
 var (

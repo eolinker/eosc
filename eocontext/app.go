@@ -2,7 +2,7 @@ package eocontext
 
 import "time"
 
-//NodeStatus 节点状态类型
+// NodeStatus 节点状态类型
 type NodeStatus int
 
 const (
@@ -14,10 +14,10 @@ const (
 	Leave NodeStatus = 3
 )
 
-//Attrs 属性集合
+// Attrs 属性集合
 type Attrs map[string]string
 
-//IAttributes 属性接口
+// IAttributes 属性接口
 type IAttributes interface {
 	GetAttrs() Attrs
 	GetAttrByName(name string) (string, bool)
@@ -28,7 +28,7 @@ type EoApp interface {
 	TimeOut() time.Duration
 }
 
-//INode 节点接口
+// INode 节点接口
 type INode interface {
 	IAttributes
 	ID() string
