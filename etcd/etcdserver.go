@@ -19,6 +19,7 @@ import (
 var (
 	ErrorAlreadyInCluster = errors.New("already in cluster")
 	ErrorNotInCluster     = errors.New("not in cluster")
+	ErrorMemberNotExist   = errors.New("member not exist")
 )
 
 func (s *_Server) initEtcdServer() error {
@@ -165,9 +166,44 @@ func (s *_Server) Join(target string) error {
 	return s.restart(InitialCluster)
 }
 
+func (s *_Server) Remove(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.server == nil {
+		return ErrorNotInCluster
+	}
+	// 获取全部数据
+	currentId := s.server.ID()
+	members := s.server.Cluster().Members()
+	if len(members) == 1 && members[0].ID == currentId {
+		return ErrorNotInCluster
+	}
+	for _, m := range members {
+		if m.Name == name {
+			if m.ID == s.server.Leader() {
+				return fmt.Errorf("cannot remove leader")
+			}
+			_, err := s.client.Delete(s.ctx, fmt.Sprintf("~/nodes/%s", m.ID))
+			if err != nil {
+				return err
+			}
+			err = s.removeMember(uint64(m.ID))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return fmt.Errorf("%w name %s", ErrorMemberNotExist, name)
+}
+
 func (s *_Server) Leave() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.server == nil {
+		return ErrorNotInCluster
+	}
+
 	// 获取全部数据
 	currentId := s.server.ID()
 	members := s.server.Cluster().Members()

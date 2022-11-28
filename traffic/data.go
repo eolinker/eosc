@@ -38,10 +38,10 @@ func (t *TrafficData) replace(addrs []string) (*TrafficData, error) {
 	datas := make(map[string]*net.TCPListener)
 
 	for _, ad := range addrs {
-
+		log.Debug("check traffic:", ad)
 		v, has := old[ad]
 		if has {
-			delete(datas, ad)
+			delete(old, ad)
 		} else {
 			log.Debug("create traffic:", ad)
 
@@ -55,7 +55,7 @@ func (t *TrafficData) replace(addrs []string) (*TrafficData, error) {
 		datas[ad] = v
 	}
 	for n, o := range old {
-		log.Debug("close old : ", n)
+		log.Debug("close old :", n)
 		o.Close()
 		log.Debug("close old done:", n)
 	}

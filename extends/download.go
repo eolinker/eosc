@@ -31,7 +31,7 @@ type ExtenderInfo struct {
 	URL         string `json:"url"`
 }
 
-//DownLoadToRepository 下载指定版本的插件项目，并解压到仓库
+// DownLoadToRepository 下载指定版本的插件项目，并解压到仓库
 func DownLoadToRepository(group, project, version string) error {
 	info, err := ExtenderInfoRequest(group, project, version)
 	if err != nil {
@@ -62,7 +62,7 @@ func DownLoadToRepository(group, project, version string) error {
 	return eosc.Decompress(tarPath, dest)
 }
 
-//DownLoadToRepositoryById 下载插件， id格式为 {group}:{project}[:{version}]
+// DownLoadToRepositoryById 下载插件， id格式为 {group}:{project}[:{version}]
 func DownLoadToRepositoryById(id string) error {
 	group, project, version, err := DecodeExtenderId(id)
 	if err != nil {

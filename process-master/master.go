@@ -53,7 +53,7 @@ func ProcessDo(handler *MasterHandler) {
 		return
 	}
 	cfg := config.Load()
-
+	log.Debug(cfg)
 	master, err := NewMasterHandle(logWriter, cfg)
 	if err != nil {
 		log.Errorf("process-master[%d] start faild:%v", os.Getpid(), err)

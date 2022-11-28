@@ -46,7 +46,7 @@ func toListeners(tfConf []*PbTraffic) map[string]*net.TCPListener {
 
 	tfs := make(map[string]*net.TCPListener)
 	for _, pt := range tfConf {
-		name := fmt.Sprintf("%s:/%s", pt.Network, pt.Addr)
+		name := fmt.Sprintf("%s", pt.Addr)
 
 		log.DebugF("read traffic:%s=%d", name, pt.FD)
 		switch pt.Network {

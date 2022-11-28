@@ -11,7 +11,7 @@ type IFormatterFactory interface {
 	Create(cfg FormatterConfig) (IFormatter, error)
 }
 
-//IFormatter format config
+// IFormatter format config
 type IFormatter interface {
 	Format(entry IEntry) []byte
 }

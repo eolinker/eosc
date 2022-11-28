@@ -42,8 +42,6 @@ Generate(reflect.TypeOf(myDate{}), nil)
 Generate(reflect.TypeOf(myDate{}), &Schema{Dependencies: map[string][]string{"day": {"month","year"}}})
 ```
 
-
-
 **特别说明**：结构体中的field在json_schema中的属性对应的key为json的值，而required与json的子标签omitempty相关。例如：
 
 ```go
@@ -91,8 +89,6 @@ type MyObject struct {
 	]
 }
 ```
-
-
 
 ### 原支持的关键字
 
@@ -145,6 +141,7 @@ type Example struct {
     Foo string `json:"foo" format:"date-time"`
 }
 ```
+
 #### enum
 
 约束数据在枚举范围内进行取值
@@ -158,6 +155,7 @@ type ExampleTWO struct {
     Foo []string `json:"foo" enum:"one,two,three"`
 }
 ```
+
 #### minimum
 
 数值类型关键字，最小值，对数值取值范围的校验
@@ -167,6 +165,7 @@ type Example struct {
     Foo float64 `json:"foo" minimum:"1"`
 }
 ```
+
 #### maximum
 
 数值类型关键字，最大值，数值取值范围的校验
@@ -176,6 +175,7 @@ type Example struct {
     Foo float64 `json:"foo" maximum:"0"`
 }
 ```
+
 #### exclusiveMinimum
 
 数值类型关键字，开区间最小值
@@ -185,6 +185,7 @@ type Example struct {
     Foo float64 `json:"foo" exclusiveMinimum:"1"`
 }
 ```
+
 #### exclusiveMaximum
 
 数值类型关键字，开区间最大值
@@ -194,6 +195,7 @@ type Example struct {
     Foo float64 `json:"foo" exclusiveMaximum:"0"`
 }
 ```
+
 #### multipleOf
 
 数值类型关键字，该关键字可以校验 json 数据是否是给定条件数据的整数倍
@@ -203,9 +205,11 @@ type Example struct {
     Foo float64 `json:"foo" multipleOf:"10"` //表示foo需要能被10整除
 }
 ```
+
 #### minLength
 
 字符串类型关键字，最小长度，用于约束字符串的长度
+
 ```go
 type Example struct {
 	Foo string `json:"foo" minLength:"10"`
@@ -215,6 +219,7 @@ type Example struct {
 #### maxLength
 
 字符串类型关键字，最大长度，用于约束字符串的长度
+
 ```go
 type Example struct {
     Foo string `json:"foo" maxLength:"10"`
@@ -240,6 +245,7 @@ type Example struct {
     Foo []string `json:"foo" minItems:"10"`
 }
 ```
+
 #### maxItems
 
 数组类型关键字，定义数组的长度，最大长度
@@ -249,6 +255,7 @@ type Example struct {
     Foo []string `json:"foo" maxItems:"10"`
 }
 ```
+
 #### uniqueItems
 
 数组类型关键字，约束数组唯一性的关键字，即校验数组中的值均是唯一。
@@ -258,6 +265,7 @@ type Example struct {
     Foo []string `json:"foo" uniqueItems:"true"`
 }
 ```
+
 #### minProperties
 
 object类型关键字，待校验的JSON对象中一级key的个数限制，minProperties指定了待校验的JSON对象可以接受的最少一级key的个数
@@ -272,6 +280,7 @@ type Example struct {
     Foo *Bar `json:"foo" minProperties:"2"`
 }
 ```
+
 #### maxProperties
 
 object类型关键字，待校验的JSON对象中一级key的个数限制，maxProperties指定了待校验JSON对象可以接受的最多一级key的个数
@@ -286,6 +295,7 @@ type Example struct {
     Foo *Bar `json:"foo" maxProperties:"10"`
 }
 ```
+
 #### nullable
 
 是否允许为空
@@ -295,24 +305,29 @@ type Example struct {
     Foo string `json:"foo" nullable:"true"`
 }
 ```
+
 #### readOnly
 
-表示该数据只能作为响应的一部分被发送，而不应该作为请求的一部分被发送。若`readOnly`标签为true，同时该数据也在`required`列表里，那么该数据的`required`标签只会在响应时生效。同时`readOnly`和`writeOnly`不能同时为`true`.
+表示该数据只能作为响应的一部分被发送，而不应该作为请求的一部分被发送。若`readOnly`标签为true，同时该数据也在`required`
+列表里，那么该数据的`required`标签只会在响应时生效。同时`readOnly`和`writeOnly`不能同时为`true`.
 
 ```go
 type Example struct {
     Foo string `json:"foo" readOnly:"true"`
 }
 ```
+
 #### writeOnly
 
-表示该数据只能作为请求的一部分被发送，而不应该作为响应的一部分被发送。若`readOnly`标签为true，同时该数据也在`required`列表里，那么该数据的`required`标签只会在请求时生效。同时`readOnly`和`writeOnly`不能同时为`true`.
+表示该数据只能作为请求的一部分被发送，而不应该作为响应的一部分被发送。若`readOnly`标签为true，同时该数据也在`required`
+列表里，那么该数据的`required`标签只会在请求时生效。同时`readOnly`和`writeOnly`不能同时为`true`.
 
 ```go
 type Example struct {
     Foo string `json:"foo" writeOnly:"true"`
 }
 ```
+
 #### deprecated
 
 是否为废弃，表示该数据不应该被使用，或将来会被删除
@@ -322,7 +337,6 @@ type Example struct {
     Foo string `json:"foo" deprecated:"true"`
 }
 ```
-
 
 #### type
 
@@ -337,8 +351,6 @@ type Example struct {
 	Foo string `json:"foo" required:"true"`
 }
 ```
-
-
 
 ### 新增支持的关键字
 
@@ -371,8 +383,6 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 属性直接用**空格键**` `分割，单个属性内多个依赖属性用**分号**`;`分割
 
 **注意**： dependencies标签只适用结构体和map
-
-
 
 ##### 关键字说明
 
@@ -421,8 +431,6 @@ Generate(reflect.TypeOf(MyObject{}), &Schema{Dependencies: map[string][]string{"
 }
 ```
 
-
-
 #### skill
 
 自定义的关键字，用于指定target,upstream...的skill
@@ -467,15 +475,14 @@ type Config struct {
 }
 ```
 
-
-
 #### switch
 
 自定义的关键字，用于判断结构体中某个变量为特定值时才使当前变量生效
 
 ##### 注解规则及使用
 
-以下结构体表示以Schema和Health均以health_on为开关，当health_on为true时，health能够生效，schema不能生效; health_on为false时则相反。
+以下结构体表示以Schema和Health均以health_on为开关，当health_on为true时，health能够生效，schema不能生效;
+health_on为false时则相反。
 
 ```go
 type Config struct {
@@ -522,8 +529,6 @@ type Config struct {
 }
 ```
 
-
-
 #### label
 
 自定义的关键字，用于给变量赋予标签
@@ -553,19 +558,13 @@ ID string `json:"id,omitempty" label:"myID"`
 }
 ```
 
-
-
 #### eo:type
 
 自定义的关键字，用于给变量赋予eo类型
 
-
-
 #### ui:sort
 
 自定义的关键字，用于给properties排序
-
-
 
 #### skip
 

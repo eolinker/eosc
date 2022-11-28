@@ -33,7 +33,7 @@ func AddInnerExtendProject(group, project string, registerFunc ...RegisterFunc) 
 	}
 }
 
-//lookInner 查看内置插件
+// lookInner 查看内置插件
 func lookInner(group, project string) ([]RegisterFunc, bool) {
 	projects, has := innerExtender[group]
 	if has {
@@ -43,7 +43,7 @@ func lookInner(group, project string) ([]RegisterFunc, bool) {
 	return nil, false
 }
 
-//LoadInner 加载内置插件
+// LoadInner 加载内置插件
 func LoadInner(register eosc.IExtenderDriverRegister) {
 	innerLock.Lock()
 	defer innerLock.Unlock()

@@ -1,7 +1,7 @@
 # 自动注入
 
-
 demo
+
 ```go
 
 package main

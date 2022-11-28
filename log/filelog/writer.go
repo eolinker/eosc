@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-//MaxBufferd buffer最大值
+// MaxBufferd buffer最大值
 const MaxBufferd = 1024 * 500
 
 var (
@@ -24,7 +24,7 @@ var (
 	}
 )
 
-//FileWriterByPeriod 文件周期写入
+// FileWriterByPeriod 文件周期写入
 type FileWriterByPeriod struct {
 	wC         chan *bytes.Buffer
 	dir        string
@@ -37,7 +37,7 @@ type FileWriterByPeriod struct {
 	expire     time.Duration
 }
 
-//NewFileWriteByPeriod 获取新的FileWriterByPeriod
+// NewFileWriteByPeriod 获取新的FileWriterByPeriod
 func NewFileWriteByPeriod() *FileWriterByPeriod {
 	w := &FileWriterByPeriod{
 		locker: sync.Mutex{},
@@ -54,7 +54,7 @@ func (w *FileWriterByPeriod) getExpire() time.Duration {
 	return expire
 }
 
-//Set 设置
+// Set 设置
 func (w *FileWriterByPeriod) Set(dir, file string, period LogPeriod, expire time.Duration) {
 	fileName := strings.TrimSuffix(file, ".log")
 
@@ -66,7 +66,7 @@ func (w *FileWriterByPeriod) Set(dir, file string, period LogPeriod, expire time
 	w.locker.Unlock()
 }
 
-//Open 打开
+// Open 打开
 func (w *FileWriterByPeriod) Open() {
 	w.locker.Lock()
 	defer w.locker.Unlock()
@@ -83,7 +83,7 @@ func (w *FileWriterByPeriod) Open() {
 	go w.do(ctx)
 }
 
-//Close 关闭
+// Close 关闭
 func (w *FileWriterByPeriod) Close() {
 
 	isClose := false

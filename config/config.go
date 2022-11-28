@@ -35,11 +35,11 @@ type CertConfig struct {
 }
 type UrlConfig struct {
 	ListenUrl
-	Certificate []CertConfig `json:"certificate"`
+	Certificate []CertConfig `json:"certificate,omitempty" yaml:"certificate,omitempty"`
 }
 type ListenUrl struct {
 	ListenUrls    []string `json:"listen_urls" yaml:"listen_urls"`
-	AdvertiseUrls []string `json:"advertise_urls" yaml:"advertise_urls"`
+	AdvertiseUrls []string `json:"advertise_urls,omitempty" yaml:"advertise_urls,omitempty"`
 }
 
 type CertificateDir struct {

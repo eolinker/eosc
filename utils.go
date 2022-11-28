@@ -49,7 +49,7 @@ func SplitWorkerId(id string) (profession string, name string, success bool) {
 	return "", "", false
 }
 
-//Decompress 解压文件
+// Decompress 解压文件
 func Decompress(filePath string, dest string) error {
 	err := os.MkdirAll(dest, 0755)
 	if err != nil {
@@ -105,7 +105,7 @@ func FileSha1(file *os.File, size int64) (string, error) {
 	return SHA1(data), nil
 }
 
-//SHA1 生成SHA1加密后的16进制字符串
+// SHA1 生成SHA1加密后的16进制字符串
 func SHA1(data []byte) string {
 	h := sha1.New()
 	h.Write(data)
