@@ -11,6 +11,7 @@ package process_worker
 import (
 	"encoding/json"
 	"github.com/eolinker/eosc/config"
+	"github.com/eolinker/eosc/debug"
 	"github.com/eolinker/eosc/process"
 	"os"
 	"os/signal"
@@ -137,7 +138,7 @@ func (w *ProcessWorker) close() {
 }
 
 func (w *ProcessWorker) Start() error {
-	RunPProf()
+	debug.RunDebug()
 	return nil
 }
 

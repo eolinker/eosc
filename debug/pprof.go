@@ -1,4 +1,4 @@
-package process_worker
+package debug
 
 import (
 	"github.com/eolinker/eosc/env"
@@ -9,11 +9,25 @@ import (
 	"time"
 )
 
-func RunPProf() {
-	go func() {
-		// 延迟1s启动
+var (
+	mux = http.NewServeMux()
+)
 
-		time.Sleep(time.Second)
+func Register(path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {
+
+	mux.HandleFunc(path, handleFunc)
+}
+func RunDebug() {
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	go func() {
+		// 延迟3s启动
+
+		time.Sleep(time.Second * 3)
 
 		addr, has := env.GetEnv("pprof")
 		if has {
@@ -25,13 +39,6 @@ func RunPProf() {
 			lAddr := listen.Addr().(*net.TCPAddr)
 
 			log.Infof("start pprof:\thttp%s:%d", lAddr.IP.String(), lAddr.Port)
-
-			mux := http.NewServeMux()
-			mux.HandleFunc("/debug/pprof/", pprof.Index)
-			mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-			mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-			mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-			mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 			server := http.Server{
 				Handler: mux,
