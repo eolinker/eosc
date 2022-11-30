@@ -106,7 +106,8 @@ func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server
 	return s, nil
 }
 func (s *_Server) Info() Info {
-
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.server == nil {
 		return nil
 	}

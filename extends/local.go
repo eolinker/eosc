@@ -14,7 +14,7 @@ const (
 	tarSuffix = ".tar.gz"
 )
 
-//LoadCheck 加载插件前检查
+// LoadCheck 加载插件前检查
 func LoadCheck(group, project, version string) error {
 	err := LocalCheck(group, project, version)
 	if err != ErrorExtenderNotFindLocal {
@@ -41,7 +41,7 @@ func LoadCheck(group, project, version string) error {
 	return nil
 }
 
-//LocalCheck 检查本地拓展文件是否存在
+// LocalCheck 检查本地拓展文件是否存在
 func LocalCheck(group, project, version string) error {
 
 	dir := LocalExtenderPath(group, project, version)

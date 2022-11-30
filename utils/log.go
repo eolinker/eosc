@@ -33,7 +33,6 @@ func InitMasterLog() io.Writer {
 	level := env.ErrorLevel()
 
 	writer = ToCopyToIoWriter(os.Stdout, fileWriter)
-	level = log.DebugLevel
 
 	transport := log.NewTransport(writer, level)
 	transport.SetFormatter(formatter)

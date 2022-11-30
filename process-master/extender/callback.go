@@ -6,7 +6,7 @@ type ICallback interface {
 
 type CallbackList []ICallback
 
-func GenCallbackList(hs...ICallback) ICallback {
+func GenCallbackList(hs ...ICallback) ICallback {
 	return CallbackList(hs)
 }
 func (ecs CallbackList) Update(es []*Status, success bool) {

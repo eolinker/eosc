@@ -18,6 +18,7 @@ type Etcd interface {
 	Nodes() []*Node
 	Status() ClusterInfo
 	Version() Versions
+	Remove(name string) error
 }
 
 type KValue struct {

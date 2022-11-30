@@ -15,7 +15,7 @@ message ProfessionConfig{
     Worker = 0;
     Singleton = 1;
   }
-  ProfessionMod mod=7;
+  ProfessionMod mod = 7;
 }
 
 message ProfessionConfigs{
@@ -27,7 +27,7 @@ message DriverConfig{
   string name = 2;
   string label = 3;
   string desc = 4;
-  map<string,string> params = 5;
+  map<string, string> params = 5;
 }
 
 message WorkerConfig{
@@ -42,7 +42,7 @@ message WorkerConfig{
 }
 
 message ExtendersSettings{
-  map<string,string> Extenders=1;
+  map<string, string> Extenders = 1;
 }
 
 message ProcessStatus {

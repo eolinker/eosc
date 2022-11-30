@@ -3,7 +3,6 @@ package eoscli
 import (
 	"context"
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	"strings"
 
 	"github.com/eolinker/eosc/env"
@@ -21,7 +20,7 @@ func Info() *cli.Command {
 	}
 }
 
-//InfoFunc 获取节点信息
+// InfoFunc 获取节点信息
 func InfoFunc(c *cli.Context) error {
 	pid, err := readPid(env.PidFileDir())
 	if err != nil {
@@ -36,16 +35,28 @@ func InfoFunc(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	builder := strings.Builder{}
-	builder.WriteString("[Raft]\n")
-	builder.WriteString(fmt.Sprintf("ID: %d\n", response.Info.NodeID))
-	builder.WriteString(fmt.Sprintf("Address: %s\n", response.Info.Addr))
-	builder.WriteString(fmt.Sprintf("Key: %s\n", response.Info.NodeKey))
-	builder.WriteString(fmt.Sprintf("Status: %s\n", response.Info.Status))
-	builder.WriteString(fmt.Sprintf("State: %s\n", response.Info.RaftState))
-	builder.WriteString(fmt.Sprintf("Term: %d\n", response.Info.Term))
-	builder.WriteString(fmt.Sprintf("Leader: %d\n", response.Info.LeaderID))
 
-	log.Debug(builder.String())
+	builder := strings.Builder{}
+
+	builder.WriteString("[ETCD]\n")
+	builder.WriteString(fmt.Sprintf("CLuster:%s\n", response.Cluster))
+
+	for _, n := range response.Info {
+		if n.Leader {
+			builder.WriteString(fmt.Sprintf("Leader:\t%s\n", n.Name))
+			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Peer, ",")))
+			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Admin, ",")))
+			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Server, ",")))
+		}
+	}
+	for _, n := range response.Info {
+		if !n.Leader {
+			builder.WriteString(fmt.Sprintf("Node:\t%s\n", n.Name))
+			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Peer, ",")))
+			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Admin, ",")))
+			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Server, ",")))
+		}
+	}
+	fmt.Println(builder.String())
 	return nil
 }

@@ -20,7 +20,6 @@ type ITransporterManager interface {
 	Del(workerID string) error
 }
 
-
 func init() {
 	defaultNameSpaceManager = NewNameSpaceManager()
 	defaultNameSpaceManager.RegisterTransporterManager("default", log.Reset)
@@ -30,9 +29,6 @@ func GetTransporterManager(nameSpace string) ITransporterManager {
 	return defaultNameSpaceManager.GetTransporterManager(nameSpace)
 }
 
-func RegisterTransporterManager(nameSpace string, rh ResetHandler) error{
-	return defaultNameSpaceManager.RegisterTransporterManager(nameSpace,rh)
+func RegisterTransporterManager(nameSpace string, rh ResetHandler) error {
+	return defaultNameSpaceManager.RegisterTransporterManager(nameSpace, rh)
 }
-
-
-

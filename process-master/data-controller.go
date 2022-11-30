@@ -13,7 +13,6 @@ import (
 	"github.com/eolinker/eosc/common/dispatcher"
 )
 
-
 type DataController struct {
 	ctx               context.Context
 	cancel            context.CancelFunc

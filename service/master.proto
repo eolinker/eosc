@@ -8,7 +8,7 @@ message EmptyRequest {
 
 
 service MasterDispatcher {
- rpc Listen(EmptyRequest) returns(stream Event){};
+  rpc Listen(EmptyRequest) returns(stream Event){};
 }
 
 
