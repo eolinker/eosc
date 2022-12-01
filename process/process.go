@@ -11,6 +11,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/debug"
 	"os"
 	"os/exec"
 	"runtime"
@@ -98,6 +99,7 @@ func Run() bool {
 			//	}
 			//}()
 			env.SetProcessName(runnings[key])
+			debug.Rundebug(runnings[key])
 			ph()
 			return true
 		}
