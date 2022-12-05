@@ -1,164 +1,200 @@
 package config
 
 import (
-	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/utils"
-	"io"
-	"io/ioutil"
-	"strings"
-
-	"google.golang.org/protobuf/proto"
-
-	"github.com/ghodss/yaml"
-
 	"github.com/eolinker/eosc/env"
+	"github.com/eolinker/eosc/log"
+	"github.com/ghodss/yaml"
+	"net"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+)
+
+const (
+	lastVersion = 2
 )
 
 var (
-	errorCertificateNotExit = errors.New("not exist cert")
+	defaultPort = map[string]int{
+		"https": 443,
+		"http":  80,
+		"tcp":   80,
+		"ssl":   443,
+		"tls":   443,
+	}
 )
 
-type Config struct {
-	Listen         []int           `json:"listen" yaml:"listen"`
-	SSL            *SSLConfig      `json:"ssl" yaml:"ssl"`
-	Admin          *AdminConfig    `json:"admin" yaml:"admin"`
-	CertificateDir *CertificateDir `json:"certificate" yaml:"certificate"`
-	exportData     *ListensMsg
+type VersionConfig struct {
+	Version int `json:"version" yaml:"version"`
 }
-
-func (c *Config) Ports() []int {
-	portLen := len(c.Listen)
-	if c.SSL != nil {
-		portLen += len(c.SSL.Listen)
-	}
-	ports := make([]int, 0, portLen)
-	ports = append(ports, c.Listen...)
-	if c.SSL == nil {
-		return ports
-	}
-	for _, p := range c.SSL.Listen {
-		ports = append(ports, p.Port)
-	}
-	return ports
+type CertConfig struct {
+	Cert string `json:"cert" yaml:"cert"`
+	Key  string `json:"key" yaml:"key"`
 }
-func (c *Config) Export() *ListensMsg {
-	return c.exportData
+type UrlConfig struct {
+	ListenUrl
+	Certificate []CertConfig `json:"certificate,omitempty" yaml:"certificate,omitempty"`
 }
-
-func (c *Config) encode() {
-	portNum := len(c.Listen)
-	if c.SSL != nil {
-		portNum += len(c.SSL.Listen)
-	}
-	cfg := &ListensMsg{Listens: make([]*ListenMsg, 0, portNum), Dir: c.CertificateDir.Dir}
-	for _, p := range c.Listen {
-		cfg.Listens = append(cfg.Listens, &ListenMsg{
-			Port:        int32(p),
-			Scheme:      "http",
-			Certificate: nil,
-		})
-	}
-	if c.SSL != nil {
-		for _, info := range c.SSL.Listen {
-			cfg.Listens = append(cfg.Listens, &ListenMsg{
-				Port:        int32(info.Port),
-				Scheme:      "https",
-				Certificate: info.Certificate,
-			})
-		}
-	}
-	c.exportData = cfg
-
-}
-
-type SSLConfig struct {
-	Listen []*ListenConfig `json:"listen"`
-}
-
-type ListenConfig struct {
-	Port        int            `json:"port" yaml:"port"`
-	Certificate []*Certificate `json:"certificate" yaml:"certificate"`
-}
-
-type AdminConfig struct {
-	Scheme      string       `json:"scheme" yaml:"scheme"`
-	Listen      int          `json:"listen" yaml:"listen"`
-	IP          string       `json:"ip" yaml:"ip"`
-	Certificate *Certificate `json:"certificate" yaml:"certificate"`
+type ListenUrl struct {
+	ListenUrls    []string `json:"listen_urls" yaml:"listen_urls"`
+	AdvertiseUrls []string `json:"advertise_urls,omitempty" yaml:"advertise_urls,omitempty"`
 }
 
 type CertificateDir struct {
 	Dir string `json:"dir" yaml:"dir"`
 }
+type NConfig struct {
+	Version        int             `json:"version" yaml:"version"`
+	CertificateDir *CertificateDir `json:"certificate" yaml:"certificate"`
+	Peer           UrlConfig       `json:"peer"`
+	Client         UrlConfig       `json:"client"`
+	Gateway        ListenUrl       `json:"gateway" yaml:"gateway"`
+}
+type Certificate struct {
+	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Cert string `protobuf:"bytes,2,opt,name=cert,proto3" json:"cert,omitempty"`
+}
 
-func GetConfig() (*Config, error) {
-	paths := env.ConfigPath()
-	if len(paths) == 0 {
-		return nil, fmt.Errorf("need config")
+func GetListens(ucs ...ListenUrl) []string {
+
+	urls := make([]string, 0, len(ucs))
+	for _, uc := range ucs {
+		urls = append(urls, uc.ListenUrls...)
 	}
+	return FormatListenUrl(urls...)
+}
+
+func FormatListenUrl(urls ...string) []string {
+	addrs := make(map[string]struct{})
+	for _, lu := range urls {
+		u, err := url.Parse(lu)
+		if err != nil {
+			continue
+		}
+
+		port, _ := strconv.Atoi(u.Port())
+		if port == 0 {
+			port = defaultPort[strings.ToLower(u.Scheme)]
+		}
+		addr := net.TCPAddr{
+			IP:   net.ParseIP(u.Hostname()),
+			Port: port,
+			Zone: "",
+		}
+
+		addrs[addr.String()] = struct{}{}
+
+	}
+	rs := make([]string, 0, len(addrs))
+	for u := range addrs {
+		rs = append(rs, u)
+	}
+	return rs
+}
+func readConfigData() ([]byte, string, error) {
+	paths := env.ConfigPath()
+
 	var err error
 	var data []byte
+
 	for _, path := range paths {
-		data, err = ioutil.ReadFile(path)
+		data, err = os.ReadFile(path)
 		if err == nil {
-			break
+			return data, path, nil
 		}
+
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("read config fail in:[%s]", strings.Join(paths, ","))
+		return nil, "", fmt.Errorf("read config fail in:[%s]", strings.Join(paths, ","))
 	}
-	var cfg Config
-	err = yaml.Unmarshal(data, &cfg)
-	if cfg.Admin == nil {
-		cfg.Admin = &AdminConfig{Listen: 9400, IP: "", Scheme: "http"}
-	}
-	if cfg.CertificateDir == nil {
-		cfg.CertificateDir = &CertificateDir{
-			Dir: fmt.Sprintf("/etc/%s/cert", env.AppName()),
+
+	return nil, "", fmt.Errorf("need config")
+
+}
+func Load() NConfig {
+
+	var config *NConfig
+	var upGradle = false
+	data, path, err := readConfigData()
+	if err != nil {
+		config = new(NConfig)
+
+	} else {
+		config, upGradle, err = readConfig(data)
+		if err != nil {
+			log.Warn("read config:", err)
+			config = new(NConfig)
+			upGradle = true
 		}
 	}
-	err = cfg.checkPort()
-	if err != nil {
-		return nil, err
+
+	if upGradle {
+		rebuild, _ := yaml.Marshal(config)
+		os.WriteFile(path, rebuild, 0644)
 	}
-	cfg.encode()
-	return &cfg, err
+	initial(config)
+	return *config
 }
 
-func (c *Config) checkPort() error {
-	usedPorts := map[int]bool{c.Admin.Listen: true}
-	for _, p := range c.Listen {
-		if _, ok := usedPorts[p]; ok {
-			return errors.New(fmt.Sprintf("repeated port %d in listen config, please check config", p))
-		}
+func readConfig(data []byte) (config *NConfig, upGrade bool, err error) {
+	version := new(VersionConfig)
+	err = yaml.Unmarshal(data, version)
+	if err != nil {
+		return
 	}
-	if c.SSL != nil {
-		for _, cfg := range c.SSL.Listen {
-			if _, ok := usedPorts[cfg.Port]; ok {
-				return errors.New(fmt.Sprintf("repeated port %d in ssl listen config, please check config", cfg.Port))
-			}
-		}
-	}
+	config = new(NConfig)
+	switch version.Version {
+	case 2:
 
-	return nil
+		err = yaml.Unmarshal(data, config)
+		if err != nil {
+			return
+		}
+	default:
+		o := new(OConfig)
+		err = yaml.Unmarshal(data, o)
+		if err != nil {
+			return
+		}
+		upGrade = true
+		config.Version = lastVersion
+		config.CertificateDir = o.CertificateDir
+		var ssl []*ListenConfig
+		if o.SSL != nil {
+			ssl = o.SSL.Listen
+		}
+		config.Gateway = toGateway(o.Listen, ssl)
+
+		config.Peer, config.Client = fromAdmin(o.Admin)
+	}
+	return
 }
 
-func ReadHttpTrafficConfig(r io.Reader) *ListensMsg {
-	frame, err := utils.ReadFrame(r)
-	if err != nil {
-		log.Warn("read  workerIds frame :", err)
+func initial(c *NConfig) {
 
-		return nil
+	if len(c.Peer.ListenUrls) == 0 {
+		c.Peer.ListenUrls = []string{"http://0.0.0.0:9401"}
+		c.Peer.Certificate = nil
+	}
+	if len(c.Client.ListenUrls) == 0 {
+		c.Client.ListenUrls = []string{"http://0.0.0.0:9400"}
+		c.Client.Certificate = nil
 	}
 
-	msg := new(ListensMsg)
-	if e := proto.Unmarshal(frame, msg); e != nil {
-		log.Warn("unmarshal workerIds data :", e)
-		return nil
+	if len(c.Gateway.ListenUrls) == 0 {
+		c.Gateway.ListenUrls = []string{"http://0.0.0.0:80"}
 	}
 
-	return msg
+	if len(c.Peer.AdvertiseUrls) == 0 {
+		c.Peer.AdvertiseUrls = createAdvertiseUrls(c.Peer.ListenUrls)
+	}
+	if len(c.Client.AdvertiseUrls) == 0 {
+		c.Client.AdvertiseUrls = createAdvertiseUrls(c.Client.ListenUrls)
+	}
+	if len(c.Gateway.AdvertiseUrls) == 0 {
+		c.Gateway.AdvertiseUrls = createAdvertiseUrls(c.Gateway.ListenUrls)
+	}
 }

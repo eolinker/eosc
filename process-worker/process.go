@@ -9,12 +9,14 @@
 package process_worker
 
 import (
+	"encoding/json"
+	"github.com/eolinker/eosc/config"
+
+	"github.com/eolinker/eosc/process"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"github.com/eolinker/eosc/process"
 
 	"github.com/eolinker/eosc/extends"
 
@@ -46,6 +48,7 @@ func Process() {
 
 	w.Start()
 	writeOutput(process.StatusRunning, "")
+
 	w.wait()
 	log.Info("worker process end")
 }
@@ -96,13 +99,16 @@ func (w *ProcessWorker) wait() {
 
 }
 
-//NewProcessWorker 创建新的worker进程
-//启动时通过stdin传输配置信息
+// NewProcessWorker 创建新的worker进程
+// 启动时通过stdin传输配置信息
 func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
+
 	register := extends.InitRegister()
 	tf := createTraffic(arg.Traffic)
 	bean.Injection(&tf)
-	bean.Injection(&arg.ListensMsg)
+	var listenUrl = new(config.ListenUrl)
+	*listenUrl = arg.ListensMsg
+	bean.Injection(&listenUrl)
 
 	extends.LoadPlugins(arg.Extends, register)
 	var extenderDrivers eosc.IExtenderDrivers = register
@@ -132,6 +138,7 @@ func (w *ProcessWorker) close() {
 }
 
 func (w *ProcessWorker) Start() error {
+
 	return nil
 }
 
@@ -142,7 +149,7 @@ func readArg() *service.ProcessLoadArg {
 		log.Warn("read arg fail:", err)
 		return arg
 	}
-	err = proto.Unmarshal(frame, arg)
+	err = json.Unmarshal(frame, arg)
 	if err != nil {
 		log.Warn("unmarshal arg fail:", err)
 		return arg
@@ -152,7 +159,7 @@ func readArg() *service.ProcessLoadArg {
 }
 
 func createTraffic(tfConf []*traffic.PbTraffic) traffic.ITraffic {
-	t := traffic.NewTraffic(tfConf)
+	t := traffic.FromArg(tfConf)
 
 	return t
 }

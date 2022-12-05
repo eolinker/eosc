@@ -2,27 +2,26 @@ package eoscli
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/eolinker/eosc/env"
 
-	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
 	"github.com/urfave/cli/v2"
 )
 
-var CmdLeave = "leave"
+var CMDRemove = "remove"
 
-func Leave() *cli.Command {
+func Remove() *cli.Command {
 	return &cli.Command{
-		Name:   CmdLeave,
-		Usage:  "leave the cluster",
+		Name:   CMDRemove,
+		Usage:  "leave a node by name",
 		Flags:  []cli.Flag{},
-		Action: LeaveFunc,
+		Action: RemoveFunc,
 	}
 }
 
 // LeaveFunc 离开集群
-func LeaveFunc(c *cli.Context) error {
+func RemoveFunc(c *cli.Context) error {
 	pid, err := readPid(env.PidFileDir())
 	if err != nil {
 		return err
@@ -32,10 +31,14 @@ func LeaveFunc(c *cli.Context) error {
 		return err
 	}
 	defer client.Close()
-	response, err := client.Leave(context.Background(), &service.LeaveRequest{})
+	name := c.Args().First()
+
+	_, err = client.Remove(context.Background(), &service.RemoveRequest{Id: name})
 	if err != nil {
+
 		return err
 	}
-	log.Infof("leave successful! node id is: %d", response.Secret.NodeID)
+
+	fmt.Println("remove done! node is: ", name)
 	return nil
 }

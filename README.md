@@ -1,8 +1,6 @@
-
 # 架构
 
 ![image](https://user-images.githubusercontent.com/25589530/129505228-121923df-e4d0-4fa6-b216-4e815a5b8dbb.png)
-
 
 # 抽象概念
 
@@ -14,9 +12,9 @@ profession:职业,定义抽象分类
     * 例如: upstream,service,router,plugin
 1. profession 定义列表字段,以及列表默认值
 1. 所有的配置项目都是profession实例,实例必须具有如下属性
-     * id: uuid,全局唯一
-     * name: name, 同profession内唯一
-     * driver: 实现该实例的驱动名
+    * id: uuid,全局唯一
+    * name: name, 同profession内唯一
+    * driver: 实现该实例的驱动名
 1. profession 实例需要实现销毁方法,框架会检查依赖关系并中断销毁
 
 目前已知可能有的 profession 定义有

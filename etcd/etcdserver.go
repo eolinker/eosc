@@ -1,7 +1,9 @@
 package etcd
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -10,40 +12,57 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/wal"
+	"net/http"
 	"path/filepath"
 )
 
 var (
 	ErrorAlreadyInCluster = errors.New("already in cluster")
+	ErrorNotInCluster     = errors.New("not in cluster")
+	ErrorMemberNotExist   = errors.New("member not exist")
 )
 
 func (s *_Server) initEtcdServer() error {
 
-	c := etcdServerConfig()
+	c := s.etcdServerConfig()
 	s.name = c.Name
 	srv, err := createEtcdServer(c)
 	if err != nil {
 		return err
 	}
-
-	s.raftHandler = srv.RaftHandler()
-	s.leaseHandler = srv.LeaseHandler()
-	s.downgradeEnabledHandler = srv.DowngradeEnabledHandler()
-	s.hashKVHandler = srv.HashKVHandler()
+	raftHandler := srv.RaftHandler()
+	s.raftHandler.Swap(&raftHandler)
+	leaseHandler := srv.LeaseHandler()
+	s.leaseHandler.Swap(&leaseHandler)
+	downgradeEnabledHandler := srv.DowngradeEnabledHandler()
+	s.downgradeEnabledHandler.Swap(&downgradeEnabledHandler)
+	hashKVHandler := srv.HashKVHandler()
+	s.hashKVHandler.Swap(&hashKVHandler)
 	s.server = srv
 	go s.check(srv)
 	<-s.server.ReadyNotify()
+
 	s.client = v3client.New(s.server)
+	gatewayConfig := &NodeGatewayConfig{Urls: s.config.GatewayAdvertiseUrls}
+	data, _ := json.Marshal(gatewayConfig)
 
+	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
+
+	s.clusterData = NewClusters(s.ctx, s.client, s)
+
+	for _, ch := range s.clientCh {
+		ch <- s.client
+	}
 	return nil
-
 }
+
 func (s *_Server) check(srv *etcdserver.EtcdServer) {
 	log.Debug("start check LeaderChanged")
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
+
 		case <-srv.LeaderChangedNotify():
 			{
 				log.Debug("Leader changed")
@@ -52,6 +71,7 @@ func (s *_Server) check(srv *etcdserver.EtcdServer) {
 				for _, h := range hs {
 					h.LeaderChange(isLeader)
 				}
+
 			}
 
 		}
@@ -79,8 +99,8 @@ func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error
 	if err != nil {
 		return nil, err
 	}
-	if memberInitialized {
-		if err = server.CheckInitialHashKV(); err != nil {
+	if memberInitialized && srvcfg.InitialCorruptCheck {
+		if err = server.CorruptionChecker().InitialCheck(); err != nil {
 			log.Warn("checkInitialHashKV failed", err)
 			server.Cleanup()
 			server = nil
@@ -92,7 +112,7 @@ func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error
 }
 
 // Restart 加入新集群和离开集群的时候需要restart server， join操作需要清空缓存，leave操作需要reset缓存
-func (s *_Server) restart() error {
+func (s *_Server) restart(InitialCluster string) error {
 	err := s.close()
 	if err != nil {
 		return err
@@ -102,9 +122,12 @@ func (s *_Server) restart() error {
 	if err != nil {
 		return err
 	}
+	s.resetCluster(InitialCluster)
 	return s.initEtcdServer()
 }
-func checkIsJoined() bool {
+func (s *_Server) checkIsJoined() bool {
+	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
+
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
 	InitialCluster, has := etcdConfig.Get("cluster")
@@ -123,10 +146,10 @@ func checkIsJoined() bool {
 }
 func (s *_Server) Join(target string) error {
 
-	if checkIsJoined() {
+	if s.checkIsJoined() {
 		return ErrorAlreadyInCluster
 	}
-	urls, clientUrls, err := CreatePeerUrl()
+	urls, clientUrls, err := s.config.CreatePeerUrl()
 	if err != nil {
 		return err
 	}
@@ -140,37 +163,83 @@ func (s *_Server) Join(target string) error {
 	}
 	InitialCluster := initialClusterString(clusters)
 
-	resetCluster(InitialCluster)
+	return s.restart(InitialCluster)
+}
 
-	return s.restart()
+func (s *_Server) Remove(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.server == nil {
+		return ErrorNotInCluster
+	}
+	// 获取全部数据
+	currentId := s.server.ID()
+	members := s.server.Cluster().Members()
+	if len(members) == 1 && members[0].ID == currentId {
+		return ErrorNotInCluster
+	}
+	for _, m := range members {
+		if m.Name == name {
+			if m.ID == s.server.Leader() {
+				return fmt.Errorf("cannot remove leader")
+			}
+			_, err := s.client.Delete(s.ctx, fmt.Sprintf("~/nodes/%s", m.ID))
+			if err != nil {
+				return err
+			}
+			err = s.removeMember(uint64(m.ID))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return fmt.Errorf("%w name %s", ErrorMemberNotExist, name)
 }
 
 func (s *_Server) Leave() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.server == nil {
+		return ErrorNotInCluster
+	}
+
 	// 获取全部数据
+	currentId := s.server.ID()
+	members := s.server.Cluster().Members()
+	if len(members) == 1 && members[0].ID == currentId {
+		return ErrorNotInCluster
+	}
 	allData, err := s.getAllData()
 	if err != nil {
 		return err
 	}
-	// 当前节点
-	s.server.Cluster().ID()
-	current := s.server.Cluster().Member(s.server.ID())
+	if err = s.server.TransferLeadership(); err != nil {
+		log.Warn("leadership transfer failed ", currentId, " error:", err)
+		return err
+	}
+	current := s.server.Cluster().Member(currentId)
 
 	// leave相关操作
 	// 集群中删除自己
+	_, err = s.client.Delete(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()))
+	if err != nil {
+		return err
+	}
+
 	err = s.removeMember(uint64(current.ID))
 	if err != nil {
 		return err
 	}
 	// 清楚集群配置
-	clearCluster()
+	s.clearCluster()
 	// 重启etcd服务
 
-	err = s.restart()
+	err = s.restart("")
 	if err != nil {
 		return err
 	}
+
 	s.resetAllData(allData)
 	return nil
 }
@@ -183,10 +252,11 @@ func (s *_Server) Close() error {
 	return s.close()
 }
 func (s *_Server) close() error {
-	s.raftHandler = nil
-	s.hashKVHandler = nil
-	s.downgradeEnabledHandler = nil
-	s.leaseHandler = nil
+	emptyHandler := http.NotFoundHandler()
+	s.raftHandler.Swap(&emptyHandler)
+	s.hashKVHandler.Swap(&emptyHandler)
+	s.downgradeEnabledHandler.Swap(&emptyHandler)
+	s.leaseHandler.Swap(&emptyHandler)
 	s.closeClient()
 	// 关闭etcd server
 	s.closeServer()

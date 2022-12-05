@@ -36,7 +36,7 @@ func Reset(transports ...EntryTransporter) {
 	transport.Reset(transports...)
 }
 
-//Close 关闭
+// Close 关闭
 func Close() {
 	if transport != nil {
 		transport.Close()
@@ -46,7 +46,7 @@ func SetPrefix(prefix string) {
 	logger.SetPrefix(prefix)
 }
 
-//WithFields 写域
+// WithFields 写域
 func WithFields(fields Fields) Builder {
 
 	return logger.WithFields(fields)

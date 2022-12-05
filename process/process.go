@@ -11,6 +11,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/debug"
 	"os"
 	"os/exec"
 	"runtime"
@@ -56,7 +57,7 @@ func init() {
 	}
 }
 
-//Register 注册程序到进程处理器中
+// Register 注册程序到进程处理器中
 func Register(name string, processHandler func()) error {
 	key := toKey(name)
 	runnings[key] = name
@@ -98,6 +99,7 @@ func Run() bool {
 			//	}
 			//}()
 			env.SetProcessName(runnings[key])
+			debug.Rundebug(runnings[key])
 			ph()
 			return true
 		}

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-//解压
+// 解压
 func DeCompress(zipFile, dest string) error {
 	dest = strings.TrimSuffix(dest, "/")
 	reader, err := zip.OpenReader(zipFile)

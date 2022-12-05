@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"strings"
 )
+
 // Fields type, used to pass to `WithFields`.
 type Fields map[string]interface{}
+
 // Level type
 type Level uint32
 

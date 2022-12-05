@@ -51,8 +51,9 @@ func (a *App) Default() {
 		Info(),
 		Leave(),
 		Restart(),
-		Env(),
+		//Env(),
 		Master(),
+		Remove(),
 		//Plugin(),
 	)
 }

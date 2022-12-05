@@ -9,7 +9,7 @@ import (
 )
 
 func (s *_Server) cleanWalFile() error {
-	dir:=filepath.Join(env.DataDir(),"member")
+	dir := filepath.Join(env.DataDir(), "member")
 
 	if fileutil.Exist(dir) {
 		err := os.RemoveAll(dir)

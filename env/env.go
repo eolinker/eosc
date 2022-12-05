@@ -8,19 +8,6 @@ import (
 	"syscall"
 )
 
-const IP = "IP"
-const Port = "PORT"
-const Protocol = "PROTOCOL"
-const BroadcastIP = "BROADCAST_IP"
-
-const ClusterAddress = "CLUSTER_ADDRESS"
-const IsJoin = "IS_JOIN"
-const NodeID = "NODE_ID"
-const NodeKey = "NODE_KEY"
-
-var envs = []string{
-	IP, Port, Protocol, BroadcastIP, ClusterAddress, IsJoin, NodeID, NodeKey,
-}
 var (
 	appName     = createApp()
 	envAppName  = strings.ToUpper(appName)
@@ -37,10 +24,6 @@ func createApp() string {
 	}
 	tryReadEnv(app)
 	return app
-}
-
-func Envs() []string {
-	return envs
 }
 
 func GetEnv(name string) (string, bool) {
