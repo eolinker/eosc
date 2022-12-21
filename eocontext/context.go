@@ -3,6 +3,7 @@ package eocontext
 import (
 	"context"
 	"net"
+	"time"
 )
 
 type CompleteHandler interface {
@@ -15,6 +16,7 @@ type FinishHandler interface {
 
 type EoContext interface {
 	RequestId() string
+	AcceptTime() time.Time
 	Context() context.Context
 	Value(key interface{}) interface{}
 	WithValue(key, val interface{})

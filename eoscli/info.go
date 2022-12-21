@@ -31,7 +31,7 @@ func InfoFunc(c *cli.Context) error {
 		return err
 	}
 	defer client.Close()
-	response, err := client.Info(context.Background(), &service.InfoRequest{})
+	response, err := client.List(context.Background(), &service.ListRequest{})
 	if err != nil {
 		return err
 	}
@@ -41,22 +41,22 @@ func InfoFunc(c *cli.Context) error {
 	builder.WriteString("[ETCD]\n")
 	builder.WriteString(fmt.Sprintf("CLuster:%s\n", response.Cluster))
 
+	leaderBuilder := &strings.Builder{}
+	nodeBuilder := &strings.Builder{}
 	for _, n := range response.Info {
+		b := leaderBuilder
 		if n.Leader {
-			builder.WriteString(fmt.Sprintf("Leader:\t%s\n", n.Name))
-			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Peer, ",")))
-			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Admin, ",")))
-			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Server, ",")))
+			b.WriteString(fmt.Sprintf("Leader:\t%s\n", n.Name))
+		} else {
+			b = nodeBuilder
+			b.WriteString(fmt.Sprintf("Node:\t%s\n", n.Name))
 		}
+		b.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Peer, ",")))
+		b.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Admin, ",")))
+		b.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Server, ",")))
 	}
-	for _, n := range response.Info {
-		if !n.Leader {
-			builder.WriteString(fmt.Sprintf("Node:\t%s\n", n.Name))
-			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Peer, ",")))
-			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Admin, ",")))
-			builder.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Server, ",")))
-		}
-	}
+	builder.WriteString(leaderBuilder.String())
+	builder.WriteString(nodeBuilder.String())
 	fmt.Println(builder.String())
 	return nil
 }

@@ -3,13 +3,14 @@ package process_worker
 import (
 	"context"
 	"fmt"
+	"io"
+	"sync"
+	"time"
+
 	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/variable"
-	"io"
-	"sync"
-	"time"
 
 	"github.com/eolinker/eosc"
 

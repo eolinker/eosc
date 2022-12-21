@@ -44,6 +44,7 @@ message ListResponse{
   string msg = 1;
   string code = 2;
   repeated NodeInfo info = 3;
+  string cluster = 4;
 }
 
 message InfoRequest {
@@ -53,7 +54,7 @@ message InfoRequest {
 message InfoResponse {
   string msg = 1;
   string code = 2;
-  repeated NodeInfo info = 4;
+  NodeInfo info = 4;
   string cluster = 5;
 }
 

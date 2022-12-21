@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"path/filepath"
+
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -12,8 +15,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/wal"
-	"net/http"
-	"path/filepath"
 )
 
 var (
@@ -45,7 +46,6 @@ func (s *_Server) initEtcdServer() error {
 	s.client = v3client.New(s.server)
 	gatewayConfig := &NodeGatewayConfig{Urls: s.config.GatewayAdvertiseUrls}
 	data, _ := json.Marshal(gatewayConfig)
-
 	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
 
 	s.clusterData = NewClusters(s.ctx, s.client, s)
