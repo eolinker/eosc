@@ -17,6 +17,11 @@ package etcd
 import (
 	"encoding/hex"
 	"fmt"
+	"net/url"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/google/uuid"
@@ -29,10 +34,6 @@ import (
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"net/url"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const (

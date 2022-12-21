@@ -14,7 +14,7 @@ type Etcd interface {
 	Join(target string) error
 	Leave() error
 	Close() error
-	Info() Info
+	Info() *Node
 	Nodes() []*Node
 	Status() ClusterInfo
 	Version() Versions

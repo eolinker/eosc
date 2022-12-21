@@ -3,6 +3,7 @@ package eoscli
 import (
 	"context"
 	"fmt"
+
 	"github.com/eolinker/eosc/env"
 
 	"github.com/eolinker/eosc/service"
@@ -20,7 +21,7 @@ func Remove() *cli.Command {
 	}
 }
 
-// LeaveFunc 离开集群
+// RemoveFunc 离开集群
 func RemoveFunc(c *cli.Context) error {
 	pid, err := readPid(env.PidFileDir())
 	if err != nil {

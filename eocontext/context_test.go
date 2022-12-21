@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils/config"
@@ -94,6 +95,10 @@ func (e *ExampleHttpContext) Labels() map[string]string {
 
 func (e *ExampleHttpContext) RequestId() string {
 	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) AcceptTime() time.Time {
 	panic("implement me")
 }
 

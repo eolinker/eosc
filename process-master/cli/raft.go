@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/service"
 )
@@ -29,7 +30,7 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 			continue
 		}
 		info.NodeKey = mInfo.Name
-		info.NodeID = uint64(mInfo.ID)
+		info.NodeID = uint64(mInfo.Id)
 		break
 	}
 	if info.NodeID < 1 {
@@ -65,19 +66,12 @@ func (m *MasterCliServer) Leave(ctx context.Context, request *service.LeaveReque
 	return &service.LeaveResponse{
 		Msg:    "success",
 		Code:   "0000000",
-		Secret: &service.NodeSecret{NodeID: uint64(info.ID), NodeKey: info.Name},
+		Secret: &service.NodeSecret{NodeID: uint64(info.Id), NodeKey: info.Name},
 	}, nil
 }
 
 // List 获取节点列表
 func (m *MasterCliServer) List(ctx context.Context, request *service.ListRequest) (*service.ListResponse, error) {
-	// TODO: raft node list
-	return nil, nil
-}
-
-// Info 获取节点信息
-func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
-
 	status := m.etcdServe.Status()
 	info := make([]*service.NodeInfo, 0, len(status.Nodes))
 	for _, s := range status.Nodes {
@@ -89,7 +83,21 @@ func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest
 			Leader: s.IsLeader,
 		})
 	}
-	return &service.InfoResponse{Info: info, Cluster: status.Cluster}, nil
+	return &service.ListResponse{Info: info, Cluster: status.Cluster}, nil
+}
+
+// Info 获取节点信息
+func (m *MasterCliServer) Info(ctx context.Context, request *service.InfoRequest) (*service.InfoResponse, error) {
+
+	status := m.etcdServe.Status()
+	info := m.etcdServe.Info()
+	return &service.InfoResponse{Info: &service.NodeInfo{
+		Name:   info.Name,
+		Peer:   info.Peer,
+		Admin:  info.Admin,
+		Server: info.Server,
+		Leader: info.IsLeader,
+	}, Cluster: status.Cluster}, nil
 }
 func (m *MasterCliServer) Remove(ctx context.Context, request *service.RemoveRequest) (*service.RemoveResponse, error) {
 	name := request.GetId()
