@@ -4,13 +4,13 @@ import "sync"
 
 var (
 	labels map[string]string
-	locker sync.Mutex
+	locker sync.RWMutex
 )
 
 func GlobalLabelGet() map[string]string {
-	locker.Lock()
+	locker.RLock()
 	gLabel := labels
-	locker.Unlock()
+	locker.RUnlock()
 	return gLabel
 }
 

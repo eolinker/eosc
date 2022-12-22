@@ -167,6 +167,7 @@ type IProxy interface {
 	IRequest
 	StatusCode() int
 	Status() string
+	ProxyTime() time.Time
 	ResponseLength() int
 	ResponseTime() int64
 }
