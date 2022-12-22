@@ -82,6 +82,9 @@ func (ps *Professions) Sort() []*Profession {
 		}
 		list = tmp
 	}
+	for i, s := range sl {
+		log.Info("index: ", i, " name: ", s.Name)
+	}
 	return sl
 }
 
