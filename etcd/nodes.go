@@ -103,12 +103,13 @@ func (cs *Clusters) parse(leader types.ID, members ...Info) []*Node {
 	for _, m := range members {
 		n := &Node{
 			Id:       m.ID,
+			ID:       m.ID.String(),
 			Name:     m.Name,
 			Peer:     m.PeerURLs,
 			Admin:    m.ClientURLs,
 			IsLeader: leader == m.ID,
 		}
-		if g, has := cs.data[n.Id.String()]; has {
+		if g, has := cs.data[n.ID]; has {
 			n.Server = g.Urls
 		}
 		nodes = append(nodes, n)
