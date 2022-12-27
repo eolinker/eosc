@@ -3,15 +3,16 @@ package etcd
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 var _ Etcd = (*_Server)(nil)
@@ -189,7 +190,7 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 					}
 					init = append(init, &KValue{
 						Key:   []byte("/cluster/node"),
-						Value: []byte(fmt.Sprintf("{\"cluster_id\":\"%s\",\"node_id\":\"%s\"}", s.server.Cluster().ID().String(), s.server.ID().String())),
+						Value: []byte(fmt.Sprintf("{\"cluster_id\":\"%s\",\"node_id\":\"%s\"}", s.clusterData.cluster, s.server.ID().String())),
 					})
 					handler.Reset(init)
 					once.Do(func() {
