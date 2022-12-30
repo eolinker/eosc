@@ -2,15 +2,17 @@ package etcd
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 var _ Etcd = (*_Server)(nil)
@@ -105,13 +107,20 @@ func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server
 
 	return s, nil
 }
-func (s *_Server) Info() Info {
+func (s *_Server) Info() *Node {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.server == nil {
 		return nil
 	}
-	return s.server.Cluster().Member(s.server.ID())
+	member := s.server.Cluster().Member(s.server.ID())
+	leaderId := s.server.Leader()
+	nodes := s.clusterData.parse(leaderId, member)
+	if len(nodes) < 1 {
+		return nil
+	}
+
+	return nodes[0]
 }
 func (s *_Server) IsLeader() (bool, []string) {
 	s.mu.RLock()
@@ -172,13 +181,17 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 						continue
 					}
 					watch = client.Watch(s.ctx, prefix, clientv3.WithPrefix())
-					init := make([]*KValue, 0, response.Count)
+					init := make([]*KValue, 0, response.Count+1)
 					for _, kv := range response.Kvs {
 						init = append(init, &KValue{
 							Key:   kv.Key,
 							Value: kv.Value,
 						})
 					}
+					init = append(init, &KValue{
+						Key:   []byte("/cluster/node"),
+						Value: []byte(fmt.Sprintf("{\"cluster_id\":\"%s\",\"node_id\":\"%s\"}", s.clusterData.cluster, s.server.ID().String())),
+					})
 					handler.Reset(init)
 					once.Do(func() {
 						wg.Done()

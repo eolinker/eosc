@@ -25,7 +25,7 @@ type IHttpContext interface {
 	Proxy() IRequest         // 读写转发请求
 	Response() IResponse     // 处理返回结果，可读可写
 	SendTo(address string, timeout time.Duration) error
-	Proxies() []IRequest
+	Proxies() []IProxy
 	FastFinish()
 }
 
@@ -147,15 +147,29 @@ type IRequestReader interface {
 	URI() IURIReader
 	Method() string
 	String() string
+	ContentLength() int
+	ContentType() string
 }
 
 // 用于组装转发的request
 type IRequest interface {
 	Method() string
+	ContentLength() int
+	ContentType() string
 	Header() IHeaderWriter
 	Body() IBodyDataWriter
 	URI() IURIWriter
 	SetMethod(method string)
+}
+
+// IProxy 记录转发相关信息
+type IProxy interface {
+	IRequest
+	StatusCode() int
+	Status() string
+	ProxyTime() time.Time
+	ResponseLength() int
+	ResponseTime() int64
 }
 
 // 返回给client端的
@@ -168,4 +182,8 @@ type IResponse interface {
 	IStatusSet // 设置返回状态
 	IBodySet   // 设置返回内容
 	IBodyGet
+	SetResponseTime(duration time.Duration)
+	ResponseTime() time.Duration
+	ContentLength() int
+	ContentType() string
 }

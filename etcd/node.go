@@ -1,7 +1,10 @@
 package etcd
 
+import "go.etcd.io/etcd/client/pkg/v3/types"
+
 type Node struct {
-	Id       string   `json:"id,omitempty"`
+	Id       types.ID `json:"-"`
+	ID       string   `json:"id,omitempty"`
 	Name     string   `json:"name,omitempty"`
 	Peer     []string `json:"peer,omitempty"`
 	Admin    []string `json:"admin,omitempty"`

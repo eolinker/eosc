@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sync"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/google/uuid"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"sync"
 )
 
 var (
@@ -101,13 +102,14 @@ func (cs *Clusters) parse(leader types.ID, members ...Info) []*Node {
 
 	for _, m := range members {
 		n := &Node{
-			Id:       m.ID.String(),
+			Id:       m.ID,
+			ID:       m.ID.String(),
 			Name:     m.Name,
 			Peer:     m.PeerURLs,
 			Admin:    m.ClientURLs,
 			IsLeader: leader == m.ID,
 		}
-		if g, has := cs.data[n.Id]; has {
+		if g, has := cs.data[n.ID]; has {
 			n.Server = g.Urls
 		}
 		nodes = append(nodes, n)
