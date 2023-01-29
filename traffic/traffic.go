@@ -62,9 +62,7 @@ func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listene
 				cMux := cmux.New(listener)
 				ssl = append(ssl, cMux.Match(cmux.TLS()))
 				tcp = append(tcp, cMux.Match(cmux.Any()))
-				go func(c cmux.CMux) {
-					c.Serve()
-				}(cMux)
+				go runMux(cMux)
 
 			}
 		case bitTCP:
@@ -75,6 +73,13 @@ func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listene
 
 	}
 	return tcp, ssl
+}
+func runMux(c cmux.CMux) {
+	err := c.Serve()
+	if err != nil {
+		log.Info("close cmux:", err)
+	}
+
 }
 func readAddr(addr string) (string, bool) {
 	u, err := url.Parse(addr)
