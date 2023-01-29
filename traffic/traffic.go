@@ -62,6 +62,9 @@ func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listene
 				cMux := cmux.New(listener)
 				ssl = append(ssl, cMux.Match(cmux.TLS()))
 				tcp = append(tcp, cMux.Match(cmux.Any()))
+				go func(c cmux.CMux) {
+					c.Serve()
+				}(cMux)
 
 			}
 		case bitTCP:
