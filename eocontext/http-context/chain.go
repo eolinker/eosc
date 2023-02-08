@@ -15,3 +15,9 @@ func WebsocketAssert(ctx eocontext.EoContext) (IWebsocketContext, error) {
 	err := ctx.Assert(&websocketContext)
 	return websocketContext, err
 }
+
+func DubboAssert(ctx eocontext.EoContext) (IDubboContext, error) {
+	var dubboContext IDubboContext
+	err := ctx.Assert(&dubboContext)
+	return dubboContext, err
+}

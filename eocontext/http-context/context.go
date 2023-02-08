@@ -19,6 +19,20 @@ type IWebsocketContext interface {
 	IsWebsocket() bool
 }
 
+type IDubboContext interface {
+	IHttpContext
+	// MethodName 方法名
+	MethodName() string
+	// Interface 服务接口名 cn.org.api.UserService
+	Interface() string
+	// Serialization 序列化方式 hessian2、fastjson、gson、jdk、kryo、protobuf、avro
+	Serialization() string
+	// SetAttachment 类似http headers中的键值对，用于处理RPC请求和响应过程中需要但又不属于具体业务的信息
+	SetAttachment(key string, value interface{})
+	Attachments() map[string]interface{}
+	Attachment(string) (interface{}, bool)
+}
+
 type IHttpContext interface {
 	eocontext.EoContext
 	Request() IRequestReader // 读取原始请求
