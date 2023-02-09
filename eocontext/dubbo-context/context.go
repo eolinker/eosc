@@ -9,6 +9,7 @@ type IRequestReader interface {
 	Header() IHeaderReader
 	Service() IServiceReader
 	Body() interface{}
+	Host() string
 	Attachments() map[string]interface{}
 	Attachment(string) (interface{}, bool)
 }
