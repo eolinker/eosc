@@ -6,7 +6,6 @@ import (
 	"github.com/eolinker/eosc/eocontext"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -28,6 +27,7 @@ type IGrpcContext interface {
 	InsecureCertificateVerify(bool)
 	// Invoke grpc调用
 	Invoke(address string, timeout time.Duration) error
+	FastFinish()
 }
 
 type IRequest interface {
@@ -38,15 +38,18 @@ type IRequest interface {
 	Method() string
 	SetMethod(string)
 	FullMethodName() string
+	RealIP() string
+	ForwardIP() string
 	// Message 获取原始请求内容，在grpc协议需要转其他协议时使用
 	Message(*desc.MessageDescriptor) *dynamic.Message
 }
 
 type IResponse interface {
 	Headers() metadata.MD
-	Message(*desc.MessageDescriptor) *dynamic.Message
+	Message() *dynamic.Message
 	Trailer() metadata.MD
-	ClientStream() grpc.ClientStream
+	Write(msg *dynamic.Message)
+	//ClientStream() grpc.ClientStream
 }
 
 type ITrailer interface {
