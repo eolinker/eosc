@@ -19,7 +19,7 @@ type IServiceReader interface {
 	Interface() string
 	Group() string
 	Version() string
-	Method() string         //固定值：$invoke
+	Method() string
 	Timeout() time.Duration //request timeout
 }
 
@@ -36,13 +36,33 @@ type IDubboContext interface {
 	eocontext.EoContext
 	HeaderReader() IRequestReader // 读取原始请求
 	Proxy() IProxy                // 读写转发请求
+	Response() IResponse          // 处理返回结果，可读可写
 	SendTo(address string, timeout time.Duration) error
+}
+
+type IResponse interface {
+	ResponseError() error
+	SetResponseTime(duration time.Duration)
+	ResponseTime() time.Duration
+	IBodyGet
+	IBodySet
+}
+
+type IBodyGet interface {
+	GetBody() interface{}
+}
+
+type IBodySet interface {
+	SetBody(interface{})
 }
 
 type IProxy interface {
 	Header() IHeaderWriter
 	Service() IServiceWriter
-	SetBody(interface{})
+	IBodySet
+	IBodyGet
+	SetAttachment(string, interface{})
+	Attachments() map[string]interface{}
 }
 
 type IServiceWriter interface {
@@ -51,7 +71,7 @@ type IServiceWriter interface {
 	SetInterface(string)
 	SetGroup(string)
 	SetVersion(string)
-	SetMethod(string)                  //固定值：$invoke
+	SetMethod(string)
 	SetTimeout(duration time.Duration) //request timeout
 }
 
