@@ -37,7 +37,7 @@ type IDubboContext interface {
 	HeaderReader() IRequestReader // 读取原始请求
 	Proxy() IProxy                // 读写转发请求
 	Response() IResponse          // 处理返回结果，可读可写
-	SendTo(address string, timeout time.Duration) error
+	Invoke(address string, timeout time.Duration) error
 }
 
 type IResponse interface {
@@ -59,8 +59,8 @@ type IBodySet interface {
 type IProxy interface {
 	Header() IHeaderWriter
 	Service() IServiceWriter
-	IBodySet
-	IBodyGet
+	SetParam(interface{})
+	GetParam() interface{}
 	SetAttachment(string, interface{})
 	Attachments() map[string]interface{}
 }
