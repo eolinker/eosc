@@ -172,10 +172,12 @@ func (m *Master) Start(handler *MasterHandler) error {
 		return err
 	}
 	openApiProxy := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.adminClient)
+	openApiWorkerProxy := open_api.NewOpenApiWorkerProxy(m.workerClient)
 
 	openApiMux.Handle("/system/version", handler.VersionHandler(etcdServer))
 	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)
 	openApiMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
+	openApiMux.Handle("/apinto/metrics/", openApiWorkerProxy) //master转发至worker的路由
 	openApiMux.Handle("/", openApiProxy)
 	etcdMux.Handle("/", openApiProxy) // 转发到leader 需要具体节点，所以peer上也要绑定 open api
 
