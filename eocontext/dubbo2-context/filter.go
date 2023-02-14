@@ -1,4 +1,4 @@
-package dubbo_context
+package dubbo2_context
 
 import (
 	"github.com/eolinker/eosc/eocontext"
@@ -10,7 +10,7 @@ var (
 )
 
 type DubboFilter interface {
-	DoDubboFilter(ctx IDubboContext, next eocontext.IChain) (err error)
+	DoDubboFilter(ctx IDubbo2Context, next eocontext.IChain) (err error)
 }
 
 func DoDubboFilter(httpFilter DubboFilter, ctx eocontext.EoContext, next eocontext.IChain) (err error) {

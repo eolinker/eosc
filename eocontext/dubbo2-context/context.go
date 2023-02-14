@@ -1,4 +1,4 @@
-package dubbo_context
+package dubbo2_context
 
 import (
 	"github.com/eolinker/eosc/eocontext"
@@ -32,7 +32,7 @@ type IHeaderReader interface {
 	ResponseStatus() byte
 }
 
-type IDubboContext interface {
+type IDubbo2Context interface {
 	eocontext.EoContext
 	HeaderReader() IRequestReader // 读取原始请求
 	Proxy() IProxy                // 读写转发请求
