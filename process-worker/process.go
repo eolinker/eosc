@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"time"
@@ -132,7 +131,7 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 
 	w := newProcessWorker(tf, server)
 
-	//注册metricsServer路由
+	//注册metricsServer路由 TODO Router包
 	NewMetricsApi().Register(w.router)
 
 	return w, nil
@@ -147,17 +146,7 @@ func newProcessWorker(tf traffic.ITraffic, server *WorkerServer) *ProcessWorker 
 	}
 
 	w.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := &open_api.Response{
-			StatusCode: 404,
-			Header:     nil,
-			Data:       nil,
-			Event:      nil,
-		}
-
-		data, _ := json.Marshal(response)
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(200)
-		w.Write(data)
+		http.NotFound(w, r)
 	})
 
 	w.metricsServer.Handler = w.router

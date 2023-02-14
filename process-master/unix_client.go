@@ -2,7 +2,6 @@ package process_master
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -15,32 +14,35 @@ import (
 )
 
 var (
-	ErrorAdminProcessNotInit = errors.New("admin process not init")
+	ErrorProcessNotInitFormat = "%s process not init"
 )
 
 type UnixClient struct {
 	addr    string
+	name    string
 	client  *http.Client
 	timeout time.Duration
 }
 
 func (uc *UnixClient) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	if uc.addr == "" {
-		return nil, ErrorAdminProcessNotInit
+		return nil, fmt.Errorf(ErrorProcessNotInitFormat, uc.name)
 	}
 	return net.DialTimeout("unix", uc.addr, uc.timeout)
 }
-func (uc *UnixClient) Update(process *exec.Cmd, processName string) {
-	log.DebugF("unix client update: %s %s", processName, process)
+func (uc *UnixClient) Update(process *exec.Cmd) {
+	log.DebugF("unix client update: %s %s", uc.name, process)
 	if process == nil {
 		uc.addr = ""
 		return
 	}
-	uc.addr = service.ServerUnixAddr(process.Process.Pid, processName)
+	uc.addr = service.ServerUnixAddr(process.Process.Pid, uc.name)
 }
 
-func NewUnixClient() *UnixClient {
-	ul := &UnixClient{}
+func NewUnixClient(name string) *UnixClient {
+	ul := &UnixClient{
+		name: name,
+	}
 	transport := &http.Transport{
 		DialContext: ul.DialContext,
 	}
@@ -53,7 +55,7 @@ func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	if uc.addr == "" {
 		writer.WriteHeader(http.StatusBadGateway)
 
-		fmt.Fprintf(writer, "%v", ErrorAdminProcessNotInit)
+		fmt.Fprintf(writer, ErrorProcessNotInitFormat, uc.name)
 		return
 	}
 
