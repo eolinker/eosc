@@ -27,7 +27,7 @@ type IGrpcContext interface {
 	InsecureCertificateVerify(bool)
 	// Invoke grpc调用
 	Invoke(address string, timeout time.Duration) error
-	FastFinish()
+	FastFinish() error
 }
 
 type IRequest interface {
