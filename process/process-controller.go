@@ -19,14 +19,14 @@ import (
 
 type IProcessUpdates []IProcessUpdate
 
-func (I IProcessUpdates) Update(cmd *exec.Cmd) {
+func (I IProcessUpdates) Update(cmd *exec.Cmd, processName string) {
 	for _, i := range I {
-		i.Update(cmd)
+		i.Update(cmd, processName)
 	}
 }
 
 type IProcessUpdate interface {
-	Update(cmd *exec.Cmd)
+	Update(cmd *exec.Cmd, processName string)
 }
 
 type IConfigBuild interface {
@@ -176,15 +176,15 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 		log.Debug(pc.name, " controller ping...")
 
 		if pc.current == nil {
-			pc.callback.Update(nil)
+			pc.callback.Update(nil, pc.name)
 			return errors.New("process not exist")
 		}
 		switch pc.current.Status() {
 		case StatusRunning:
-			pc.callback.Update(pc.current.Cmd())
+			pc.callback.Update(pc.current.Cmd(), pc.name)
 			return nil
 		case StatusExit, StatusError:
-			pc.callback.Update(nil)
+			pc.callback.Update(nil, pc.name)
 			return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
 		}
 

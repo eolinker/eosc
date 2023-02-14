@@ -85,6 +85,7 @@ type Master struct {
 	adminController  *AdminController
 	dispatcherServe  *DispatcherServer
 	adminClient      *UnixClient
+	workerClient     *UnixClient
 }
 
 type MasterHandler struct {
@@ -131,7 +132,7 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 	})
 
 	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminClient))
-	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
+	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter, m.workerClient))
 
 	m.dispatcherServe = NewDispatcherServer()
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
@@ -164,6 +165,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 		return err
 	}
 	m.adminClient = NewUnixClient()
+	m.workerClient = NewUnixClient()
 	m.etcdServer = etcdServer
 	err = m.start(handler, etcdServer)
 	if err != nil {

@@ -30,13 +30,13 @@ func (uc *UnixClient) DialContext(ctx context.Context, network, addr string) (ne
 	}
 	return net.DialTimeout("unix", uc.addr, uc.timeout)
 }
-func (uc *UnixClient) Update(process *exec.Cmd) {
-	log.Debug("unix client update: admin ", process)
+func (uc *UnixClient) Update(process *exec.Cmd, processName string) {
+	log.DebugF("unix client update: %s %s", processName, process)
 	if process == nil {
 		uc.addr = ""
 		return
 	}
-	uc.addr = service.ServerUnixAddr(process.Process.Pid, "admin")
+	uc.addr = service.ServerUnixAddr(process.Process.Pid, processName)
 }
 
 func NewUnixClient() *UnixClient {
