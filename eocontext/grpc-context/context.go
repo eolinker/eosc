@@ -49,6 +49,8 @@ type IResponse interface {
 	Message() *dynamic.Message
 	Trailer() metadata.MD
 	Write(msg *dynamic.Message)
+	SetErr(err error)
+	Error() error
 	//ClientStream() grpc.ClientStream
 }
 
