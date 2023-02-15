@@ -1,11 +1,11 @@
 package mixl
 
 import (
-	"github.com/eolinker/eosc/log"
-	cmuxMatch "github.com/eolinker/eosc/traffic/cmux-match"
 	"net"
 	"sync"
 	"sync/atomic"
+
+	"github.com/eolinker/eosc/log"
 )
 
 type MixListener struct {
@@ -114,7 +114,7 @@ func (m *MixListener) Accept() (net.Conn, error) {
 	case <-m.closeCh:
 	}
 
-	return nil, cmuxMatch.ErrorListenerClosed
+	return nil, net.ErrClosed
 
 }
 
