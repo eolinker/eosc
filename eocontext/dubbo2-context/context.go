@@ -6,12 +6,12 @@ import (
 )
 
 type IRequestReader interface {
-	Header() IHeaderReader
 	Service() IServiceReader
 	Body() interface{}
 	Host() string
 	Attachments() map[string]interface{}
 	Attachment(string) (interface{}, bool)
+	RemoteIp() string
 }
 
 type IServiceReader interface {
@@ -21,15 +21,6 @@ type IServiceReader interface {
 	Version() string
 	Method() string
 	Timeout() time.Duration //request timeout
-}
-
-type IHeaderReader interface {
-	ID() int64
-	SerialID() byte
-	// Type PackageType
-	Type() int
-	BodyLen() int
-	ResponseStatus() byte
 }
 
 type IDubbo2Context interface {
@@ -44,20 +35,11 @@ type IResponse interface {
 	ResponseError() error
 	SetResponseTime(duration time.Duration)
 	ResponseTime() time.Duration
-	IBodyGet
-	IBodySet
-}
-
-type IBodyGet interface {
 	GetBody() interface{}
-}
-
-type IBodySet interface {
 	SetBody(interface{})
 }
 
 type IProxy interface {
-	Header() IHeaderWriter
 	Service() IServiceWriter
 	SetParam(interface{})
 	GetParam() interface{}
@@ -73,12 +55,4 @@ type IServiceWriter interface {
 	SetVersion(string)
 	SetMethod(string)
 	SetTimeout(duration time.Duration) //request timeout
-}
-
-type IHeaderWriter interface {
-	IHeaderReader
-	SetID(int64)
-	SetSerialID(byte)
-	SetType(int)
-	SetBodyLen(int)
 }
