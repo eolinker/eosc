@@ -33,6 +33,7 @@ type IGrpcContext interface {
 type IRequest interface {
 	Headers() metadata.MD
 	Host() string
+	SetHost(string)
 	Service() string
 	SetService(string)
 	Method() string
