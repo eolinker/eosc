@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	"github.com/julienschmidt/httprouter"
+	"github.com/eolinker/eosc/router/manager"
 	"net/http"
 	"time"
 
@@ -74,7 +74,6 @@ type ProcessWorker struct {
 
 	once          sync.Once
 	server        *WorkerServer
-	router        *httprouter.Router
 	metricsServer *http.Server
 }
 
@@ -131,9 +130,6 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 
 	w := newProcessWorker(tf, server)
 
-	//注册metricsServer路由 TODO Router包
-	NewMetricsApi().Register(w.router)
-
 	return w, nil
 }
 
@@ -141,15 +137,10 @@ func newProcessWorker(tf traffic.ITraffic, server *WorkerServer) *ProcessWorker 
 	w := &ProcessWorker{
 		tf:            tf,
 		server:        server,
-		router:        httprouter.New(),
 		metricsServer: &http.Server{},
 	}
 
-	w.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	})
-
-	w.metricsServer.Handler = w.router
+	w.metricsServer.Handler = manager.GetGlobalRouterManager()
 
 	return w
 }
