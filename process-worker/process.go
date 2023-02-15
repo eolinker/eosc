@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	"github.com/eolinker/eosc/router/manager"
+	"github.com/eolinker/eosc/router"
 	"net/http"
 	"time"
 
@@ -140,7 +140,7 @@ func newProcessWorker(tf traffic.ITraffic, server *WorkerServer) *ProcessWorker 
 		metricsServer: &http.Server{},
 	}
 
-	w.metricsServer.Handler = manager.GetGlobalRouterManager()
+	w.metricsServer.Handler = router.GetHandler()
 
 	return w
 }

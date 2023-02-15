@@ -1,4 +1,4 @@
-package manager
+package router
 
 import (
 	"github.com/eolinker/eosc/log"
@@ -6,45 +6,45 @@ import (
 	"sync"
 )
 
-var _ IRouterManager = (*RouterManager)(nil)
+var _ IRouter = (*router)(nil)
 
-var globalRouterManager *RouterManager
+var globalRouter *router
 
-type IRouterManager interface {
+type IRouter interface {
 	http.Handler
 	Set(id string, path string, handler http.Handler) error
 	Delete(id string)
 }
 
-type RouterManager struct {
+type router struct {
 	lock sync.RWMutex
 
 	serverMux   *http.ServeMux
-	routersData IRouterData
+	routersData *routerData
 }
 
 // NewRouterManager 创建路由管理器
-func NewRouterManager() *RouterManager {
-	return &RouterManager{routersData: new(RouterData)}
+func newRouter() *router {
+	return &router{routersData: new(routerData)}
 }
 
-func GetGlobalRouterManager() IRouterManager {
-	return globalRouterManager
+func GetHandler() *router {
+	return globalRouter
 }
 
-func GlobalRouterManagerAdd(id string, path string, handler http.Handler) error {
-	return globalRouterManager.Set(id, path, handler)
+func AddPath(id string, path string, handler http.Handler) error {
+	return globalRouter.Set(id, path, handler)
 }
 
-func GlobalRouterManagerDel(id string) {
-	globalRouterManager.Delete(id)
+func DeletePath(id string) {
+	globalRouter.Delete(id)
 }
 
-func (m *RouterManager) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (m *router) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	m.serverMux.ServeHTTP(writer, request)
 }
 
-func (m *RouterManager) Set(id string, path string, handler http.Handler) error {
+func (m *router) Set(id string, path string, handler http.Handler) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	routersData := m.routersData.Set(id, path, handler)
@@ -58,7 +58,7 @@ func (m *RouterManager) Set(id string, path string, handler http.Handler) error 
 	return nil
 }
 
-func (m *RouterManager) Delete(id string) {
+func (m *router) Delete(id string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	routersData := m.routersData.Delete(id)
