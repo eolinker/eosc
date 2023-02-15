@@ -11,6 +11,7 @@ type IRequestReader interface {
 	Host() string
 	Attachments() map[string]interface{}
 	Attachment(string) (interface{}, bool)
+	RemoteIp() string
 }
 
 type IServiceReader interface {
