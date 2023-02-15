@@ -37,7 +37,7 @@ func NewLocker(path string, timeout int, name string) *Locker {
 	return &Locker{path: fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), lockerSuffix), timeout: int64(time.Duration(timeout) * time.Second), name: name}
 }
 
-//TryLock 尝试加锁，加锁失败则返回报错
+// TryLock 尝试加锁，加锁失败则返回报错
 func (l *Locker) TryLock() error {
 	msg, err := l.read()
 	if err != nil {
@@ -55,7 +55,7 @@ func (l *Locker) TryLock() error {
 	return lockerExistError
 }
 
-//lock 加锁
+// lock 加锁
 func (l *Locker) lock(msg *LockMsg) error {
 	mux.Lock()
 	defer mux.Unlock()
@@ -79,7 +79,7 @@ func (l *Locker) lock(msg *LockMsg) error {
 	return nil
 }
 
-//read 读取文件锁内容，当文件不存在，返回nil
+// read 读取文件锁内容，当文件不存在，返回nil
 func (l *Locker) read() (*LockMsg, error) {
 	_, err := os.Stat(l.path)
 	if err != nil {

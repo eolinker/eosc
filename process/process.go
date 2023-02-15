@@ -11,6 +11,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/debug"
 	"os"
 	"os/exec"
 	"runtime"
@@ -32,16 +33,19 @@ var (
 	runIdx                      = 0
 	path                        = ""
 	appName                     = env.AppName()
+
+	runnings = make(map[string]string)
 )
 
 func init() {
 
-	if p, has := os.LookupEnv(EnvDaemonPath); !has {
-		os.Setenv(EnvDaemonPath, os.Args[0])
-		path = os.Args[0]
-	} else {
-		path = p
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
 	}
+	path = exePath
+
 	log.Debug(EnvDaemonName, "=", os.Getenv(EnvDaemonName))
 	idx, err := strconv.Atoi(os.Getenv(EnvDaemonName))
 	if err != nil {
@@ -53,9 +57,10 @@ func init() {
 	}
 }
 
-//Register 注册程序到进程处理器中
+// Register 注册程序到进程处理器中
 func Register(name string, processHandler func()) error {
 	key := toKey(name)
+	runnings[key] = name
 	_, has := processHandlers[key]
 	if has {
 		return fmt.Errorf("%w by %s", ErrorProcessHandlerConflict, name)
@@ -85,24 +90,28 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 // run process
 func Run() bool {
 	if runIdx > 0 {
-		ph, exists := processHandlers[os.Args[0]]
+		key := os.Args[0]
+		ph, exists := processHandlers[key]
 		if exists {
 			//defer func() {
 			//	if v := recover(); v != nil {
 			//		log.Error("Run recover: ", os.Args[0], " ", v)
 			//	}
 			//}()
+			env.SetProcessName(runnings[key])
+			debug.Rundebug(runnings[key])
 			ph()
 			return true
 		}
 	}
-
+	env.SetProcessName("cli")
 	return false
 }
 func RunDebug(name string) bool {
 
 	ph, exists := processHandlers[toKey(name)]
 	if exists {
+		env.SetProcessName(name)
 		ph()
 		return true
 	}

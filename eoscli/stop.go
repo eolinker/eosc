@@ -17,7 +17,7 @@ func Stop() *cli.Command {
 	}
 }
 
-//StopFunc 停止节点
+// StopFunc 停止节点
 func StopFunc(c *cli.Context) error {
 	pidDir := env.PidFileDir()
 	// 判断程序是否存在

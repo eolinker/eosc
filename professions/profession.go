@@ -50,7 +50,7 @@ func NewProfession(professionConfig *eosc.ProfessionConfig, extends eosc.IExtend
 			continue
 		}
 
-		ds.data.Set(driverConfig.Name, driver)
+		ds.Set(driverConfig.Name, driver)
 	}
 	return &Profession{
 		ProfessionConfig: professionConfig,

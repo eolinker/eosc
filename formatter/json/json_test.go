@@ -9,8 +9,8 @@ import (
 )
 
 type Entry struct {
-	data     eosc.IUntyped
-	children eosc.IUntyped
+	data     eosc.Untyped[string, string]
+	children eosc.Untyped[string, eosc.IEntry]
 }
 
 func initRootEntry() *Entry {
@@ -22,8 +22,8 @@ func initRootEntry() *Entry {
 }
 func genEntry(index string) *Entry {
 	var en = &Entry{
-		data:     eosc.NewUntyped(),
-		children: eosc.NewUntyped(),
+		data:     eosc.BuildUntyped[string, string](),
+		children: eosc.BuildUntyped[string, eosc.IEntry](),
 	}
 	en.data.Set("id", "123")
 	en.data.Set("request_uri", "/path")
@@ -35,13 +35,9 @@ func genEntry(index string) *Entry {
 }
 
 func (e *Entry) Read(pattern string) string {
-	v, b := e.data.Get(pattern)
+	s, b := e.data.Get(pattern)
 	if b {
-		s, ok := v.(string)
-		if ok {
-			return s
-		}
-		return ""
+		return s
 	}
 	return ""
 }

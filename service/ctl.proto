@@ -9,22 +9,17 @@ message JoinRequest {
 }
 
 message JoinResponse{
-  string msg  = 1;
+  string msg = 1;
   string code = 2;
   NodeSecret info = 3;
 }
 
 message NodeInfo {
-  string nodeKey = 1;
-  uint64 nodeID = 2;
-  uint64 term = 3;
-  uint64 leaderID = 4;
-
-  // status 状态：running | leave | stop | timeout
-  string status = 5;
-  // role 角色
-  string raftState = 6;
-  string addr = 7;
+  string name = 1;
+  repeated string peer = 2;
+  repeated string admin = 3;
+  repeated string server = 4;
+  bool leader = 5;
 }
 
 message NodeSecret {
@@ -36,7 +31,7 @@ message LeaveRequest{
 }
 
 message LeaveResponse{
-  string msg  = 1;
+  string msg = 1;
   string code = 2;
   NodeSecret secret = 3;
 }
@@ -46,9 +41,10 @@ message ListRequest{
 }
 
 message ListResponse{
-  string msg  = 1;
+  string msg = 1;
   string code = 2;
   repeated NodeInfo info = 3;
+  string cluster = 4;
 }
 
 message InfoRequest {
@@ -56,14 +52,21 @@ message InfoRequest {
 }
 
 message InfoResponse {
-  string msg  = 1;
+  string msg = 1;
   string code = 2;
-  NodeInfo info = 3;
+  NodeInfo info = 4;
+  string cluster = 5;
 }
 
+message RemoveRequest{
+  string id = 1;
+}
 
-message ClusterRequest{}
-message ClusterResponse{}
+message RemoveResponse{
+  string msg = 1;
+  string code = 2;
+}
+
 
 message EnvConfig {
   string key = 1;
@@ -75,9 +78,6 @@ service CtiService {
   rpc Leave(LeaveRequest)returns(LeaveResponse){}
   rpc List(ListRequest)returns(ListResponse){}
   rpc Info(InfoRequest)returns(InfoResponse){}
-//  rpc ExtendsInstall(ExtendsRequest)returns(ExtendsResponse){}
-//  rpc ExtendsUpdate(ExtendsRequest)returns(ExtendsResponse){}
-//  rpc ExtendsUninstall(ExtendsRequest)returns(ExtendsUninstallResponse){}
-//  rpc Extends(ExtendsRequest) returns(ExtendsResponse){}
+  rpc Remove(RemoveRequest)returns(RemoveResponse){}
 
 }

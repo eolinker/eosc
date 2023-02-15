@@ -2,7 +2,7 @@ package dispatcher
 
 import "context"
 
-//DataDispatchCenter 数据广播中心
+// DataDispatchCenter 数据广播中心
 type DataDispatchCenter struct {
 	addChannel   chan *_CallbackBox
 	eventChannel chan IEvent

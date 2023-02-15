@@ -1,9 +1,10 @@
 package traffic
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/eolinker/eosc/config"
 	"net"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -25,36 +26,50 @@ func Test_listener(t *testing.T) {
 	}
 	acceptTCP.Close()
 }
-func Test_rebuildAddr(t *testing.T) {
-	type args struct {
-		addrs []*net.TCPAddr
-	}
-	tests := []struct {
-		name string
-		args args
-		want map[int][]net.IP
-	}{
-		{
-			name: "nil",
-			args: args{
-				addrs: []*net.TCPAddr{{
-					IP:   net.ParseIP(""),
-					Port: 80,
-				}},
-			},
-			want: map[int][]net.IP{80: nil},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := rebuildAddr(tt.args.addrs); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("rebuildAddr() = %v, want %v", got, tt.want)
-			} else {
-				for p, ips := range got {
-					fmt.Printf("port:%d=>%v", p, ips)
-				}
-			}
 
-		})
+func ExampleReadController2() {
+	addrs := []string{"http://0.0.0.0:19001", "https://0.0.0.0:19001", "tcp://:9988"}
+	traffic, err := ReadTraffic(nil, config.FormatListenUrl(addrs...)...)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
+	export, files := Export(traffic, 3)
+	fmt.Println("export:", len(files))
+	data, err := json.Marshal(export)
+	if err != nil {
+		return
+	}
+	fmt.Println(string(data))
+	//output:
+}
+func ExampleReadController() {
+	peer := config.UrlConfig{
+		ListenUrl: config.ListenUrl{
+			ListenUrls:    []string{"http://0.0.0.0", "https://0.0.0.0"},
+			AdvertiseUrls: nil,
+		},
+		Certificate: nil,
+	}
+	clent := config.UrlConfig{
+		ListenUrl: config.ListenUrl{
+			ListenUrls:    []string{"http://0.0.0.0", "https://0.0.0.0"},
+			AdvertiseUrls: nil,
+		},
+		Certificate: nil,
+	}
+	traffic, err := ReadTraffic(nil, config.GetListens(peer.ListenUrl, clent.ListenUrl)...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	export, files := Export(traffic, 3)
+	fmt.Println("export:", len(files))
+	data, err := json.Marshal(export)
+	if err != nil {
+		return
+	}
+	fmt.Println(string(data))
+	//output:
+
 }

@@ -10,106 +10,130 @@ package traffic
 
 import (
 	"errors"
-	cmuxMatch "github.com/eolinker/eosc/traffic/cmux-match"
+	"github.com/eolinker/eosc/log"
+	"github.com/soheilhy/cmux"
 	"net"
+	"net/url"
 	"strconv"
 	"strings"
-	"sync"
-
-	"github.com/eolinker/eosc/log"
 )
 
 var (
-	ErrorInvalidListener          = errors.New("invalid port-reqiure")
-	_                    ITraffic = (*Traffic)(nil)
-	_                    ITraffic = (*EmptyTraffic)(nil)
+	ErrorInvalidListener = errors.New("invalid port-reqiure")
 )
-
-type TrafficType = cmuxMatch.MatchType
-
-const (
-	Any TrafficType = iota
-	Http1
-	Https
-	Http2
-	Websocket
-	GRPC
-)
-
-type Traffic struct {
-	locker sync.Mutex
-	data   *MatcherData
-
-	stop bool
-}
-
-func (t *Traffic) IsStop() bool {
-	return t.stop
-}
-
-func NewTraffic(traffics []*PbTraffic) *Traffic {
-	data := NewMatcherData(traffics...)
-
-	tf := &Traffic{
-		data:   data,
-		locker: sync.Mutex{},
-	}
-	return tf
-}
-
-func (t *Traffic) ListenTcp(port int, trafficType TrafficType) net.Listener {
-	log.Debug("traffic try ListenTcp for:", port)
-
-	t.locker.Lock()
-	defer t.locker.Unlock()
-	l := t.data.Get(port)
-	if l == nil {
-		log.Warn("listen to un open port: ", port, " for :", trafficType)
-		return nil
-	}
-
-	return l.Match(trafficType)
-}
 
 type ITraffic interface {
-	ListenTcp(port int, trafficType TrafficType) net.Listener
+	Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener)
 	IsStop() bool
 	Close()
 }
 
-func (t *Traffic) Close() {
-	t.locker.Lock()
-	list := t.data.All()
-	t.data = NewMatcherData()
-	t.locker.Unlock()
-	for _, it := range list {
-		it.Close()
-	}
+type Traffic struct {
+	*TrafficData
 }
 
-func readPort(addr net.Addr) int {
-	ipPort := addr.String()
-	i := strings.LastIndex(ipPort, ":")
-	port := ipPort[i+1:]
-	pv, _ := strconv.Atoi(port)
-	return pv
+const (
+	bitTCP = 1 << iota
+	bitSSL
+
+	bitBoth = bitTCP | bitSSL
+)
+
+func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener) {
+
+	schemes := make(map[string]int)
+	for _, addr := range addrs {
+		addrValue, isSSl := readAddr(addr)
+		if isSSl {
+			schemes[addrValue] = schemes[addrValue] | bitSSL
+		} else {
+			schemes[addrValue] = schemes[addrValue] | bitTCP
+		}
+	}
+	for addr, v := range schemes {
+
+		listener, has := t.data[addr]
+		if !has {
+			continue
+		}
+		switch v {
+		case bitBoth:
+			{
+				cMux := cmux.New(listener)
+				ssl = append(ssl, cMux.Match(cmux.TLS()))
+				tcp = append(tcp, cMux.Match(cmux.Any()))
+				go runMux(cMux)
+
+			}
+		case bitTCP:
+			tcp = append(tcp, listener)
+		case bitSSL:
+			ssl = append(ssl, listener)
+		}
+
+	}
+	return tcp, ssl
+}
+func runMux(c cmux.CMux) {
+	err := c.Serve()
+	if err != nil {
+		log.Info("close cmux:", err)
+	}
+
+}
+func readAddr(addr string) (string, bool) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		u = &url.URL{Scheme: "tcp", Host: addr}
+	}
+	ssl := false
+	port, _ := strconv.Atoi(u.Port())
+
+	switch strings.ToLower(u.Scheme) {
+	case "https", "ssl", "tls":
+		ssl = true
+		if port == 0 {
+			port = 443
+		}
+	default:
+		ssl = false
+		if port == 0 {
+			port = 80
+		}
+	}
+	parseIP := net.ParseIP(u.Hostname())
+
+	tcpAddr := net.TCPAddr{IP: parseIP, Port: port}
+
+	return tcpAddr.String(), ssl
+}
+
+func NewTraffic(trafficData *TrafficData) ITraffic {
+	return &Traffic{TrafficData: trafficData}
+}
+func FromArg(traffics []*PbTraffic) ITraffic {
+	listeners := toListeners(traffics)
+	log.Debug("read listeners: ", len(listeners))
+
+	data := NewTrafficData(listeners)
+	return NewTraffic(data)
 }
 
 type EmptyTraffic struct {
 }
 
-func NewEmptyTraffic() *EmptyTraffic {
-	return &EmptyTraffic{}
-}
-
-func (e *EmptyTraffic) ListenTcp(port int, trafficType TrafficType) net.Listener {
-	return nil
+func (e *EmptyTraffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener) {
+	return nil, nil
 }
 
 func (e *EmptyTraffic) IsStop() bool {
-	return true
+	return false
 }
 
 func (e *EmptyTraffic) Close() {
-	return
+
+}
+
+func NewEmptyTraffic() ITraffic {
+	return &EmptyTraffic{}
 }

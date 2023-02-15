@@ -5,6 +5,7 @@ const (
 	NamespaceWorker     = "worker"
 	NamespaceExtender   = "extender"
 	NamespaceVariable   = "variable"
+	NamespaceCluster    = "cluster"
 )
 
 var Namespaces = []string{

@@ -14,15 +14,13 @@ import (
 	"strings"
 )
 
-
-
 func (s *_Server) peerMembersHandler(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if !allowMethod(w, r, "GET") {
 		return
 	}
-	cluster:= s.server.Cluster()
+	cluster := s.server.Cluster()
 
 	w.Header().Set("X-Etcd-Cluster-ID", cluster.ID().String())
 

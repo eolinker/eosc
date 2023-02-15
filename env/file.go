@@ -16,11 +16,11 @@ import (
 
 type Config struct {
 	path string
-	args eosc.IUntyped
+	args eosc.Untyped[string, string]
 }
 
 func NewConfig(path string) *Config {
-	return &Config{path: path, args: eosc.NewUntyped()}
+	return &Config{path: path, args: eosc.BuildUntyped[string, string]()}
 }
 
 func (c *Config) ReadFile(paths ...string) {
@@ -61,24 +61,13 @@ func (c *Config) Set(name string, value string) {
 
 func (c *Config) Get(name string) (string, bool) {
 
-	vl, has := c.args.Get(name)
-	if !has {
-		return "", false
-	}
-	v, ok := vl.(string)
-	if !ok {
-		return "", false
-	}
-	return v, true
+	return c.args.Get(name)
+
 }
 
 func (c *Config) GetDefault(name string, value string) string {
-	vl, has := c.args.Get(name)
+	v, has := c.args.Get(name)
 	if !has {
-		return value
-	}
-	v, ok := vl.(string)
-	if !ok {
 		return value
 	}
 	return v
@@ -87,13 +76,9 @@ func (c *Config) GetDefault(name string, value string) string {
 func (c *Config) Save() error {
 	builder := strings.Builder{}
 	for key, value := range c.args.All() {
-		v, ok := value.(string)
-		if !ok {
-			continue
-		}
 		builder.WriteString(key)
 		builder.WriteString("=")
-		builder.WriteString(v)
+		builder.WriteString(value)
 		builder.WriteString("\n")
 	}
 	f, err := os.OpenFile(c.path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)

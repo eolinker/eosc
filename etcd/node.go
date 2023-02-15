@@ -3,19 +3,16 @@ package etcd
 import "go.etcd.io/etcd/client/pkg/v3/types"
 
 type Node struct {
-	Id       string   `json:"id,omitempty"`
+	Id       types.ID `json:"-"`
+	ID       string   `json:"id,omitempty"`
 	Name     string   `json:"name,omitempty"`
+	Peer     []string `json:"peer,omitempty"`
 	Admin    []string `json:"admin,omitempty"`
 	Server   []string `json:"server,omitempty"`
 	IsLeader bool     `json:"leader,omitempty"`
 }
 
-func parseMember(info Info, leader types.ID) *Node {
-	return &Node{
-		Id:       info.ID.String(),
-		Name:     info.Name,
-		Admin:    info.PeerURLs,
-		Server:   info.ClientURLs,
-		IsLeader: leader == info.ID,
-	}
+type ClusterInfo struct {
+	Cluster string  `json:"cluster"`
+	Nodes   []*Node `json:"nodes,omitempty"`
 }

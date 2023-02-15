@@ -9,14 +9,14 @@ import (
 
 type transporterManager struct {
 	locker       sync.Mutex
-	data         eosc.IUntyped
+	data         eosc.Untyped[string, log.EntryTransporter]
 	resetHandler ResetHandler
 }
 
 func newTransporterManager(rh ResetHandler) *transporterManager {
 	return &transporterManager{
 		locker:       sync.Mutex{},
-		data:         eosc.NewUntyped(),
+		data:         eosc.BuildUntyped[string, log.EntryTransporter](),
 		resetHandler: rh,
 	}
 }
@@ -46,12 +46,5 @@ func (t *transporterManager) Del(workerID string) error {
 }
 
 func (t *transporterManager) reset() {
-	transporters := make([]log.EntryTransporter, 0, t.data.Count())
-	for _, t := range t.data.List() {
-		if o, ok := t.(log.EntryTransporter); ok {
-			transporters = append(transporters, o)
-		}
-	}
-
-	t.resetHandler(transporters...)
+	t.resetHandler(t.data.List()...)
 }

@@ -16,14 +16,13 @@ worker只允许使用传入进来的端口
 package traffic
 
 import (
-	"fmt"
+	"encoding/json"
 	"io"
 	"net"
 	"os"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 func readTraffic(r io.Reader) ([]*PbTraffic, error) {
@@ -34,7 +33,7 @@ func readTraffic(r io.Reader) ([]*PbTraffic, error) {
 	}
 
 	pts := new(PbTraffics)
-	err = proto.Unmarshal(frame, pts)
+	err = json.Unmarshal(frame, pts)
 	if err != nil {
 		return nil, err
 	}
@@ -42,35 +41,28 @@ func readTraffic(r io.Reader) ([]*PbTraffic, error) {
 	return pts.Traffic, nil
 }
 
-func toListeners(tfConf []*PbTraffic) ([]*net.TCPListener, error) {
+func toListeners(tfConf []*PbTraffic) map[string]*net.TCPListener {
 
-	tfs := make([]*net.TCPListener, 0, len(tfConf))
+	tfs := make(map[string]*net.TCPListener)
 	for _, pt := range tfConf {
-		name := fmt.Sprintf("%s:/%s", pt.Network, pt.Addr)
+		name := pt.Addr
 
-		//addr, err := net.ResolveTCPAddr(pt.GetNetwork(), pt.GetAddr())
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
-		log.DebugF("read traffic:%s=%d", name, pt.GetFD())
+		log.DebugF("read traffic:%s=%d", name, pt.FD)
 		switch pt.Network {
-		//case "udp","udp4","udp8":
-		//
-		//	c,err:=net.FilePacketConn(f)
+
 		case "tcp", "tcp4", "tcp6":
 
-			f := os.NewFile(uintptr(pt.GetFD()), name)
+			f := os.NewFile(uintptr(pt.FD), name)
 			l, err := net.FileListener(f)
 			if err != nil {
 				log.Warn("error to read port-reqiure:", err)
-				return nil, err
+				continue
 			}
 
 			f.Close()
-			tfs = append(tfs, l.(*net.TCPListener))
+			tfs[pt.Addr] = l.(*net.TCPListener)
 		}
 	}
 
-	return tfs, nil
+	return tfs
 }

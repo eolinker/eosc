@@ -1,13 +1,37 @@
 package http_context
 
 import (
-	"github.com/eolinker/eosc/eocontext"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
 	"time"
+
+	"github.com/fasthttp/websocket"
+
+	"github.com/eolinker/eosc/eocontext"
 )
+
+type IWebsocketContext interface {
+	IHttpContext
+	Upgrade() error
+	SetUpstreamConn(conn *websocket.Conn)
+	IsWebsocket() bool
+}
+
+type IDubboContext interface {
+	IHttpContext
+	// MethodName 方法名
+	MethodName() string
+	// Interface 服务接口名 cn.org.api.UserService
+	Interface() string
+	// Serialization 序列化方式 hessian2、fastjson、gson、jdk、kryo、protobuf、avro
+	Serialization() string
+	// SetAttachment 类似http headers中的键值对，用于处理RPC请求和响应过程中需要但又不属于具体业务的信息
+	SetAttachment(key string, value interface{})
+	Attachments() map[string]interface{}
+	Attachment(string) (interface{}, bool)
+}
 
 type IHttpContext interface {
 	eocontext.EoContext
@@ -15,7 +39,7 @@ type IHttpContext interface {
 	Proxy() IRequest         // 读写转发请求
 	Response() IResponse     // 处理返回结果，可读可写
 	SendTo(address string, timeout time.Duration) error
-	Proxies() []IRequest
+	Proxies() []IProxy
 	FastFinish()
 }
 
@@ -137,15 +161,29 @@ type IRequestReader interface {
 	URI() IURIReader
 	Method() string
 	String() string
+	ContentLength() int
+	ContentType() string
 }
 
 // 用于组装转发的request
 type IRequest interface {
 	Method() string
+	ContentLength() int
+	ContentType() string
 	Header() IHeaderWriter
 	Body() IBodyDataWriter
 	URI() IURIWriter
 	SetMethod(method string)
+}
+
+// IProxy 记录转发相关信息
+type IProxy interface {
+	IRequest
+	StatusCode() int
+	Status() string
+	ProxyTime() time.Time
+	ResponseLength() int
+	ResponseTime() int64
 }
 
 // 返回给client端的
@@ -158,4 +196,8 @@ type IResponse interface {
 	IStatusSet // 设置返回状态
 	IBodySet   // 设置返回内容
 	IBodyGet
+	SetResponseTime(duration time.Duration)
+	ResponseTime() time.Duration
+	ContentLength() int
+	ContentType() string
 }

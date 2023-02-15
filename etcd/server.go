@@ -2,45 +2,58 @@ package etcd
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"net/http"
-	"sync"
-	"time"
 )
 
 var _ Etcd = (*_Server)(nil)
 
 type _Server struct {
+	config                  Config
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	mu                      sync.RWMutex
 	server                  *etcdserver.EtcdServer
-	raftHandler             http.Handler
-	leaseHandler            http.Handler
-	downgradeEnabledHandler http.Handler
-	hashKVHandler           http.Handler
+	raftHandler             atomic.Pointer[http.Handler]
+	leaseHandler            atomic.Pointer[http.Handler]
+	downgradeEnabledHandler atomic.Pointer[http.Handler]
+	hashKVHandler           atomic.Pointer[http.Handler]
 	client                  *clientv3.Client
 	requestTimeout          time.Duration
 	name                    string
 	leaderChangeHandler     []ILeaderStateHandler
+	clientCh                []chan *clientv3.Client
+	clusterData             *Clusters
 }
 
-func (s *_Server) Status() *Node {
+func (s *_Server) Status() ClusterInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.server == nil {
-		return nil
+		return ClusterInfo{}
 	}
 	member := s.server.Cluster().Member(s.server.ID())
 	if member == nil {
-		return nil
+		return ClusterInfo{}
 	}
+	members := s.server.Cluster().Members()
+	leaderId := s.server.Leader()
 
-	return parseMember(member, s.server.Leader())
+	nodes := s.clusterData.parse(leaderId, members...)
+
+	return ClusterInfo{
+		Cluster: s.clusterData.cluster,
+		Nodes:   nodes,
+	}
 }
 
 func (s *_Server) Nodes() []*Node {
@@ -50,13 +63,9 @@ func (s *_Server) Nodes() []*Node {
 	if s.server != nil {
 
 		members := s.server.Cluster().Members()
-		nodes := make([]*Node, 0, len(members))
 		leaderId := s.server.Leader()
-		for _, m := range members {
 
-			nodes = append(nodes, parseMember(m, leaderId))
-		}
-		return nodes
+		return s.clusterData.parse(leaderId, members...)
 	}
 	return []*Node{}
 }
@@ -78,12 +87,14 @@ func (s *_Server) Version() Versions {
 	}
 }
 
-func NewServer(ctx context.Context, mux *http.ServeMux) (*_Server, error) {
+func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server, error) {
 	serverCtc, cancel := context.WithCancel(ctx)
 	s := &_Server{
+		config:         config,
 		ctx:            serverCtc,
 		cancel:         cancel,
 		requestTimeout: 10 * time.Second,
+		clientCh:       make([]chan *clientv3.Client, 0, 10),
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -96,13 +107,20 @@ func NewServer(ctx context.Context, mux *http.ServeMux) (*_Server, error) {
 
 	return s, nil
 }
-func (s *_Server) Info() Info {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *_Server) Info() *Node {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.server == nil {
 		return nil
 	}
-	return s.server.Cluster().Member(s.server.ID())
+	member := s.server.Cluster().Member(s.server.ID())
+	leaderId := s.server.Leader()
+	nodes := s.clusterData.parse(leaderId, member)
+	if len(nodes) < 1 {
+		return nil
+	}
+
+	return nodes[0]
 }
 func (s *_Server) IsLeader() (bool, []string) {
 	s.mu.RLock()
@@ -121,8 +139,6 @@ func (s *_Server) isLeader() (bool, []string) {
 
 func (s *_Server) Put(key string, value []byte) error {
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	ctx, _ := s.requestContext()
 	_, err := s.client.Put(ctx, key, string(value))
 
@@ -131,8 +147,7 @@ func (s *_Server) Put(key string, value []byte) error {
 }
 
 func (s *_Server) Delete(key string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+
 	ctx, _ := s.requestContext()
 	_, err := s.client.Delete(ctx, key)
 
@@ -140,34 +155,55 @@ func (s *_Server) Delete(key string) error {
 }
 
 func (s *_Server) Watch(prefix string, handler ServiceHandler) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	ctx, _ := s.requestContext()
-	response, err := s.client.Get(ctx, prefix, clientv3.WithPrefix())
-	if err != nil {
-		log.Warn("watch ", prefix, " error:", err)
-		return
-	}
-
-	watch := s.client.Watch(s.ctx, prefix, clientv3.WithPrefix())
-
+	clientCh := make(chan *clientv3.Client, 1)
+	s.mu.Lock()
+	s.clientCh = append(s.clientCh, clientCh)
+	clientCh <- s.client
+	s.mu.Unlock()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		once := sync.Once{}
 
-		init := make([]*KValue, 0, response.Count)
-		for _, kv := range response.Kvs {
-			init = append(init, &KValue{
-				Key:   kv.Key,
-				Value: kv.Value,
-			})
-		}
-		handler.Reset(init)
+		var watch clientv3.WatchChan = nil
 		for {
 			select {
+			case client, ok := <-clientCh:
+				{
+					if !ok {
+						continue
+					}
+					ctx, _ := s.requestContext()
+					response, err := client.Get(ctx, prefix, clientv3.WithPrefix())
+					if err != nil {
+						log.Warn("watch ", prefix, " error:", err)
+						clientCh <- client
+						continue
+					}
+					watch = client.Watch(s.ctx, prefix, clientv3.WithPrefix())
+					init := make([]*KValue, 0, response.Count+1)
+					for _, kv := range response.Kvs {
+						init = append(init, &KValue{
+							Key:   kv.Key,
+							Value: kv.Value,
+						})
+					}
+					init = append(init, &KValue{
+						Key:   []byte("/cluster/node"),
+						Value: []byte(fmt.Sprintf("{\"cluster_id\":\"%s\",\"node_id\":\"%s\"}", s.clusterData.cluster, s.server.ID().String())),
+					})
+					handler.Reset(init)
+					once.Do(func() {
+						wg.Done()
+					})
+				}
+
 			case <-s.ctx.Done():
 				return
 			case v, ok := <-watch:
 				if !ok {
-					return
+					watch = nil
+					continue
 				}
 				for _, e := range v.Events {
 					switch e.Type {
@@ -181,6 +217,7 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 			}
 		}
 	}()
+	wg.Wait()
 }
 
 func (s *_Server) requestContext() (context.Context, context.CancelFunc) {

@@ -14,10 +14,11 @@ type Etcd interface {
 	Join(target string) error
 	Leave() error
 	Close() error
-	Info() Info
+	Info() *Node
 	Nodes() []*Node
-	Status() *Node
+	Status() ClusterInfo
 	Version() Versions
+	Remove(name string) error
 }
 
 type KValue struct {
@@ -37,4 +38,4 @@ type ServiceHandler interface {
 type ILeaderStateHandler interface {
 	LeaderChange(isLeader bool)
 }
-type Info *membership.Member
+type Info = *membership.Member

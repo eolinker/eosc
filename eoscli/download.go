@@ -15,7 +15,7 @@ func Download() *cli.Command {
 	}
 }
 
-//DownloadFunc download plugin
+// DownloadFunc download plugin
 func DownloadFunc(c *cli.Context) error {
 	return nil
 }

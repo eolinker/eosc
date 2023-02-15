@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-//LineFormatter 格式化
+// LineFormatter 格式化
 type LineFormatter struct {
 	TimestampFormat  string
 	CallerPrettyfier func(*runtime.Frame) (function string, file string)
 }
 
-//Format 格式化
+// Format 格式化
 func (f *LineFormatter) Format(entry *Entry) ([]byte, error) {
 
 	data := make(Fields)

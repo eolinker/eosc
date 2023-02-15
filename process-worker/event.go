@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/eolinker/eosc/utils"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/variable"
@@ -69,7 +72,8 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			return err
 		}
 	default:
-		return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
+		return nil
+		//return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
 	}
 
 }
@@ -138,6 +142,14 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 		case eosc.NamespaceVariable:
 			{
 				ws.variableManager = variable.NewVariables(config)
+			}
+		case eosc.NamespaceCluster:
+			{
+				if v, ok := config["node"]; ok {
+					info := make(map[string]string)
+					json.Unmarshal(v, &info)
+					utils.GlobalLabelSet(info)
+				}
 			}
 		}
 	}
