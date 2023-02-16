@@ -11,7 +11,7 @@ type IRequestReader interface {
 	Host() string
 	Attachments() map[string]interface{}
 	Attachment(string) (interface{}, bool)
-	RemoteIp() string
+	RemoteIP() string
 }
 
 type IServiceReader interface {
@@ -20,7 +20,6 @@ type IServiceReader interface {
 	Group() string
 	Version() string
 	Method() string
-	Timeout() time.Duration //request timeout
 }
 
 type IDubbo2Context interface {
@@ -54,5 +53,4 @@ type IServiceWriter interface {
 	SetGroup(string)
 	SetVersion(string)
 	SetMethod(string)
-	SetTimeout(duration time.Duration) //request timeout
 }
