@@ -25,7 +25,10 @@ type router struct {
 
 // NewRouterManager 创建路由管理器
 func newRouter() *router {
-	return &router{routersData: new(routerData)}
+	return &router{
+		serverMux:   &http.ServeMux{},
+		routersData: new(routerData),
+	}
 }
 
 func GetHandler() *router {
