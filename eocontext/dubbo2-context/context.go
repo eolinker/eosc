@@ -40,8 +40,8 @@ type IResponse interface {
 
 type IProxy interface {
 	Service() IServiceWriter
-	SetParam(interface{})
-	GetParam() interface{}
+	SetParam(*Dubbo2ParamBody)
+	GetParam() *Dubbo2ParamBody
 	SetAttachment(string, interface{})
 	Attachments() map[string]interface{}
 }
