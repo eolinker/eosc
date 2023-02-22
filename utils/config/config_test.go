@@ -2,9 +2,9 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/eolinker/eosc/utils/schema"
 	_ "github.com/stretchr/testify/assert"
+	"log"
 	"reflect"
 )
 
@@ -15,10 +15,10 @@ func Example() {
 	}
 	sc, err := schema.Generate(reflect.TypeOf(MyConfig{}), nil)
 	if err != nil {
-		log.Debug(err)
+		log.Println(err)
 		return
 	}
 	data, _ := json.MarshalIndent(sc, "", "\t")
-	log.Debug(string(data))
+	log.Println(string(data))
 	//output: ""
 }
