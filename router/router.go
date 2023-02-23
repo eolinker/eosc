@@ -35,7 +35,7 @@ func GetHandler() *router {
 	return globalRouter
 }
 
-func AddPath(id string, path string, handler http.Handler) error {
+func SetPath(id string, path string, handler http.Handler) error {
 	return globalRouter.Set(id, path, handler)
 }
 
