@@ -87,9 +87,9 @@ func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]eosc.IWo
 		}
 		return requires, nil
 	default:
-		return nil, nil
+		return nil, eosc.ErrorConfigFieldUnknown
 	}
-	return nil, eosc.ErrorConfigFieldUnknown
+	//return nil, eosc.ErrorConfigFieldUnknown
 }
 
 func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (map[RequireId]eosc.IWorker, error) {
@@ -175,11 +175,4 @@ func merge(dist map[RequireId]eosc.IWorker, source map[RequireId]eosc.IWorker) m
 		dist[k] = v
 	}
 	return dist
-}
-
-func newConfig(t reflect.Type) interface{} {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return reflect.New(t).Interface()
 }

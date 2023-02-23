@@ -83,7 +83,10 @@ func Decompress(filePath string, dest string) error {
 		if err != nil {
 			return err
 		}
-		io.Copy(file, tr)
+		_, e := io.Copy(file, tr)
+		if e != nil {
+			return e
+		}
 	}
 	return nil
 }
