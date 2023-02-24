@@ -2,12 +2,11 @@ package http_context
 
 import (
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"net/url"
 	"time"
-
-	"github.com/fasthttp/websocket"
 
 	"github.com/eolinker/eosc/eocontext"
 )
@@ -15,7 +14,7 @@ import (
 type IWebsocketContext interface {
 	IHttpContext
 	Upgrade() error
-	SetUpstreamConn(conn *websocket.Conn)
+	SetUpstreamConn(conn net.Conn)
 	IsWebsocket() bool
 }
 
