@@ -45,6 +45,9 @@ type IRequest interface {
 	Message(*desc.MessageDescriptor) *dynamic.Message
 }
 
+type IMessageDescriptor interface {
+}
+
 type IResponse interface {
 	Headers() metadata.MD
 	Message() *dynamic.Message
