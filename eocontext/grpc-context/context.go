@@ -1,7 +1,6 @@
 package grpc_context
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/eolinker/eosc/eocontext"
@@ -32,7 +31,7 @@ type IGrpcContext interface {
 }
 
 type IRequest interface {
-	Headers() http.Header
+	Headers() metadata.MD
 	Host() string
 	SetHost(string)
 	Service() string
