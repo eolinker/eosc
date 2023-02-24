@@ -168,8 +168,8 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, body []byt
 		return nil, err
 	}
 	if dc, ok := driver.(eosc.IExtenderConfigChecker); ok {
-		if e := dc.Check(conf, requires); err != nil {
-			return nil, e
+		if err = dc.Check(conf, requires); err != nil {
+			return nil, err
 		}
 	}
 	wInfo, hasInfo := oe.data.GetInfo(id)

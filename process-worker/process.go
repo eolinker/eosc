@@ -9,8 +9,13 @@
 package process_worker
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/eolinker/eosc/config"
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/router"
+	"net/http"
+	"time"
 
 	"github.com/eolinker/eosc/process"
 	"os"
@@ -67,8 +72,9 @@ func writeOutput(status int, msg string) {
 type ProcessWorker struct {
 	tf traffic.ITraffic
 
-	once   sync.Once
-	server *WorkerServer
+	once          sync.Once
+	server        *WorkerServer
+	metricsServer *http.Server
 }
 
 func (w *ProcessWorker) wait() {
@@ -122,22 +128,54 @@ func NewProcessWorker(arg *service.ProcessLoadArg) (*ProcessWorker, error) {
 		return nil, err
 	}
 
-	w := &ProcessWorker{
-		server: server,
-		tf:     tf,
-	}
+	w := newProcessWorker(tf, server)
 
 	return w, nil
+}
+
+func newProcessWorker(tf traffic.ITraffic, server *WorkerServer) *ProcessWorker {
+	w := &ProcessWorker{
+		tf:            tf,
+		server:        server,
+		metricsServer: &http.Server{},
+	}
+
+	w.metricsServer.Handler = router.GetHandler()
+
+	return w
 }
 
 func (w *ProcessWorker) close() {
 	w.once.Do(func() {
 		w.tf.Close()
 		w.server.Stop()
+
+		timeout, _ := context.WithTimeout(context.Background(), time.Second*3)
+		w.metricsServer.Shutdown(timeout)
 	})
 }
 
 func (w *ProcessWorker) Start() error {
+	w.OpenMetricsServer()
+	return nil
+}
+
+func (w *ProcessWorker) OpenMetricsServer() error {
+	addr := service.ServerUnixAddr(os.Getpid(), eosc.ProcessWorker)
+	syscall.Unlink(addr)
+	log.Info("start worker unix server: ", addr)
+	l, err := grpc_unixsocket.Listener(addr)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		err := w.metricsServer.Serve(l)
+		if err != nil {
+			log.Info("http server error: ", err)
+		}
+		return
+	}()
 
 	return nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/eolinker/eosc/process-master/extender"
 	open_api "github.com/eolinker/eosc/process-master/open-api"
 	raft_service "github.com/eolinker/eosc/process-master/raft-service"
+	"github.com/eolinker/eosc/router"
 	"github.com/eolinker/eosc/traffic/mixl"
 	"github.com/eolinker/eosc/utils"
 	"io"
@@ -85,6 +86,7 @@ type Master struct {
 	adminController  *AdminController
 	dispatcherServe  *DispatcherServer
 	adminClient      *UnixClient
+	workerClient     *UnixClient
 }
 
 type MasterHandler struct {
@@ -131,7 +133,7 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 	})
 
 	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminClient))
-	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter))
+	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter, m.workerClient))
 
 	m.dispatcherServe = NewDispatcherServer()
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
@@ -163,7 +165,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("start etcd error:", err)
 		return err
 	}
-	m.adminClient = NewUnixClient()
+	m.adminClient = NewUnixClient(eosc.ProcessAdmin)
+	m.workerClient = NewUnixClient(eosc.ProcessWorker)
 	m.etcdServer = etcdServer
 	err = m.start(handler, etcdServer)
 	if err != nil {
@@ -174,6 +177,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 	openApiMux.Handle("/system/version", handler.VersionHandler(etcdServer))
 	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)
 	openApiMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
+	openApiMux.Handle(router.RouterPrefix, m.workerClient) //master转发至worker的路由
 	openApiMux.Handle("/", openApiProxy)
 	etcdMux.Handle("/", openApiProxy) // 转发到leader 需要具体节点，所以peer上也要绑定 open api
 
