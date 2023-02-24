@@ -17,7 +17,7 @@ type GzipFile struct {
 type EoFiles []GzipFile
 
 func (f *GzipFile) DecodeData() ([]byte, error) {
-	d, err := base64.RawStdEncoding.DecodeString(f.Data)
+	d, err := base64.StdEncoding.DecodeString(f.Data)
 	if err != nil {
 		return nil, err
 	}

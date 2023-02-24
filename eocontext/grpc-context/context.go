@@ -1,6 +1,7 @@
 package grpc_context
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/eolinker/eosc/eocontext"
@@ -31,7 +32,7 @@ type IGrpcContext interface {
 }
 
 type IRequest interface {
-	Headers() metadata.MD
+	Headers() http.Header
 	Host() string
 	SetHost(string)
 	Service() string
@@ -43,6 +44,9 @@ type IRequest interface {
 	ForwardIP() string
 	// Message 获取原始请求内容，在grpc协议需要转其他协议时使用
 	Message(*desc.MessageDescriptor) *dynamic.Message
+}
+
+type IMessageDescriptor interface {
 }
 
 type IResponse interface {

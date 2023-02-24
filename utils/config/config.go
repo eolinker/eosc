@@ -87,7 +87,7 @@ func checkConfig(v reflect.Value, workers eosc.IWorkers) (map[RequireId]eosc.IWo
 		}
 		return requires, nil
 	default:
-		return nil, eosc.ErrorConfigFieldUnknown
+		return nil, nil
 	}
 	//return nil, eosc.ErrorConfigFieldUnknown
 }
