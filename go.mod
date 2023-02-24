@@ -3,7 +3,6 @@ module github.com/eolinker/eosc
 go 1.19
 
 require (
-	github.com/apache/dubbo-go-hessian2 v1.11.6
 	github.com/fasthttp/websocket v1.5.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.5.2
@@ -35,7 +34,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dubbogo/gost v1.13.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
