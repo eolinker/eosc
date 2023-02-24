@@ -2,6 +2,7 @@ package process_master
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -14,7 +15,7 @@ import (
 )
 
 var (
-	ErrorProcessNotInitFormat = "%s process not init"
+	ErrorProcessNotInit = errors.New("process not init")
 )
 
 type UnixClient struct {
@@ -26,7 +27,7 @@ type UnixClient struct {
 
 func (uc *UnixClient) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	if uc.addr == "" {
-		return nil, fmt.Errorf(ErrorProcessNotInitFormat, uc.name)
+		return nil, fmt.Errorf("%s %w", uc.name, ErrorProcessNotInit)
 	}
 	return net.DialTimeout("unix", uc.addr, uc.timeout)
 }
@@ -55,7 +56,7 @@ func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	if uc.addr == "" {
 		writer.WriteHeader(http.StatusBadGateway)
 
-		fmt.Fprintf(writer, ErrorProcessNotInitFormat, uc.name)
+		fmt.Fprintf(writer, "%s %s", uc.name, ErrorProcessNotInit.Error())
 		return
 	}
 
