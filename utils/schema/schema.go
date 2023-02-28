@@ -25,6 +25,8 @@ var ErrSchemaInvalid = errors.New("schema is invalid")
 type Mode int
 type RequireId = eosc.RequireId
 type FormatterConfigType = eosc.FormatterConfig
+type EoFile = eosc.GzipFile
+type EoFileList = eosc.EoFiles
 
 const (
 	// ModeAll is for general purpose use and includes all fields.
@@ -46,11 +48,16 @@ const (
 	TypeObject    = "object"
 	TypeMap       = "map"
 	TypeRequireId = "require"
+	TypeFileList  = "eofiles"
+	TypeFile      = "eofile"
 	TypeFormatter = "formatter"
 )
 
 var (
-	requireType   = reflect.TypeOf(RequireId(""))
+	requireType  = reflect.TypeOf(RequireId(""))
+	fileType     = reflect.TypeOf(EoFile{})
+	fileListType = reflect.TypeOf(EoFileList{})
+
 	formatterType = reflect.TypeOf(FormatterConfigType{})
 	timeType      = reflect.TypeOf(time.Time{})
 	ipType        = reflect.TypeOf(net.IP{})
@@ -530,24 +537,44 @@ func generateWithMode(t reflect.Type, mode Mode, schema *Schema) (r *Schema, err
 				r.Type = TypeString
 			case TypeMap:
 				r.Type = TypeObject
+			case TypeFile:
+				r.Type = TypeObject
+			case TypeFileList:
+				r.Type = TypeArray
+				r.Items = &Schema{Type: TypeObject}
 			}
 		}
 	}()
-	if t == requireType {
-		schema.Type = TypeRequireId
-		return schema, nil
-	}
 
-	if t == formatterType {
-		schema.Type = TypeFormatter
-		return schema, nil
-	}
+	switch t {
+	case requireType:
+		{
+			schema.Type = TypeRequireId
+			return schema, nil
+		}
+	case fileType:
+		{
+			schema.Type = TypeFile
+			return schema, nil
 
-	if t == ipType {
-		// Special case: IP address.
-		schema.Type = TypeString
-		schema.Format = "ipv4"
-		return schema, nil
+		}
+	case fileListType:
+		{
+			schema.Type = TypeFileList
+			return schema, nil
+		}
+	case formatterType:
+		{
+			schema.Type = TypeFormatter
+			return schema, nil
+		}
+	case ipType:
+		{
+			// Special case: IP address.
+			schema.Type = TypeString
+			schema.Format = "ipv4"
+			return schema, nil
+		}
 	}
 
 	switch t.Kind() {
