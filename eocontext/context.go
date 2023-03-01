@@ -42,4 +42,7 @@ type EoContext interface {
 	LocalIP() net.IP
 	LocalAddr() net.Addr
 	LocalPort() int
+
+	IsCloneable() bool
+	Clone() (EoContext, error)
 }
