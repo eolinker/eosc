@@ -11,6 +11,16 @@ import (
 	"github.com/eolinker/eosc/eocontext"
 )
 
+type keyCloneCtx struct{}
+type keyHttpRetry struct{}
+type keyHttpTimeout struct{}
+
+var (
+	KeyHttpRetry   = keyHttpRetry{}
+	KeyHttpTimeout = keyHttpTimeout{}
+	KeyCloneCtx    = keyCloneCtx{}
+)
+
 type IWebsocketContext interface {
 	IHttpContext
 	Upgrade() error
