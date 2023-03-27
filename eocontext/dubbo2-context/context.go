@@ -27,7 +27,7 @@ type IDubbo2Context interface {
 	HeaderReader() IRequestReader // 读取原始请求
 	Proxy() IProxy                // 读写转发请求
 	Response() IResponse          // 处理返回结果，可读可写
-	Invoke(address string, timeout time.Duration) error
+	Invoke(no eocontext.INode, timeout time.Duration) error
 }
 
 type IResponse interface {

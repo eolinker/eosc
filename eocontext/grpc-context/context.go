@@ -26,7 +26,7 @@ type IGrpcContext interface {
 	// InsecureCertificateVerify 是否跳过证书检查
 	InsecureCertificateVerify(bool)
 	// Invoke grpc调用
-	Invoke(address string, timeout time.Duration) error
+	Invoke(node eocontext.INode, timeout time.Duration) error
 	FastFinish() error
 }
 
