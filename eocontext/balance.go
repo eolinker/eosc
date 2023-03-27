@@ -1,5 +1,5 @@
 package eocontext
 
 type BalanceHandler interface {
-	Select(ctx EoContext) (INode, error)
+	Select(ctx EoContext) (INode, int, error)
 }
