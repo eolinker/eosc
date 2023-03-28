@@ -151,7 +151,7 @@ type IRequestReader interface {
 	Body() IBodyDataReader
 	RemoteAddr() string
 	RemotePort() string
-	ReadIP() string
+	RealIp() string
 	ForwardIP() string
 	URI() IURIReader
 	Method() string

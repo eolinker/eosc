@@ -42,7 +42,7 @@ type EoContext interface {
 	GetUpstreamHostHandler() UpstreamHostHandler
 	SetUpstreamHostHandler(handler UpstreamHostHandler)
 
-	ReadIP() string
+	RealIP() string
 	LocalIP() net.IP
 	LocalAddr() net.Addr
 	LocalPort() int
