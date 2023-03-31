@@ -9,6 +9,7 @@ type Untyped[K comparable, T any] interface {
 	Set(k K, v T)
 	Get(k K) (T, bool)
 	Del(k K) (T, bool)
+	Dels(k ...K) []T
 	List() []T
 	Keys() []K
 	All() map[K]T
@@ -41,7 +42,24 @@ func cloneUntyped[K comparable, T any](data map[K]T, sort []K) *tUntyped[K, T] {
 		mutex: &sync.RWMutex{},
 	}
 }
+func (u *tUntyped[K, T]) Dels(names ...K) []T {
+	if len(names) == 0 {
+		return nil
+	}
+	rs := make([]T, 0, len(names))
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
+	for _, name := range names {
+		v, ok := u.data[name]
+		if ok {
+			u.sort = remove(u.sort, name)
+			delete(u.data, name)
+		}
+		rs = append(rs, v)
+	}
+	return rs
 
+}
 func (u *tUntyped[K, T]) Del(name K) (T, bool) {
 
 	u.mutex.Lock()

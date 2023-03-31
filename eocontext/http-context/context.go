@@ -33,7 +33,7 @@ type IHttpContext interface {
 	Request() IRequestReader // 读取原始请求
 	Proxy() IRequest         // 读写转发请求
 	Response() IResponse     // 处理返回结果，可读可写
-	SendTo(address string, timeout time.Duration) error
+	SendTo(scheme string, node eocontext.INode, timeout time.Duration) error
 	Proxies() []IProxy
 	FastFinish()
 }
@@ -151,7 +151,7 @@ type IRequestReader interface {
 	Body() IBodyDataReader
 	RemoteAddr() string
 	RemotePort() string
-	ReadIP() string
+	RealIp() string
 	ForwardIP() string
 	URI() IURIReader
 	Method() string

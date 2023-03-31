@@ -1,7 +1,5 @@
 package eocontext
 
-import "time"
-
 // NodeStatus 节点状态类型
 type NodeStatus int
 
@@ -22,10 +20,9 @@ type IAttributes interface {
 	GetAttrs() Attrs
 	GetAttrByName(name string) (string, bool)
 }
+
 type EoApp interface {
 	Nodes() []INode
-	Scheme() string
-	TimeOut() time.Duration
 }
 
 // INode 节点接口
