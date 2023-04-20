@@ -3,12 +3,15 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type BaseArg struct {
@@ -16,6 +19,17 @@ type BaseArg struct {
 	Name        string `json:"name,omitempty" yaml:"name"`
 	Driver      string `json:"driver,omitempty" yaml:"driver"`
 	Description string `json:"description" yaml:"description"`
+	Version     string `json:"version" yaml:"version"`
+}
+
+//func NewBaseArg() *BaseArg {
+//	return &BaseArg{
+//		Version: genVersion(),
+//	}
+//}
+
+func genVersion() string {
+	return time.Now().Format("20060102150405000")
 }
 
 func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -36,8 +50,11 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	}
 
 	name := cb.Name
+	if cb.Version == "" {
+		cb.Version = genVersion()
+	}
 
-	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, decoder)
+	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, cb.Version, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -78,6 +95,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		return http.StatusInternalServerError, nil, nil, "nothing to patch"
 
 	}
+
 	workerInfo, err := oe.workers.GetEmployee(profession, name)
 	if err != nil {
 		return 0, nil, nil, "not exist"
@@ -102,8 +120,15 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	data, _ := json.Marshal(current)
 	log.Debug("patch betfor:", string(workerInfo.config.Body))
 	log.Debug("patch after:", string(data))
+	version := genVersion()
+	if v, has := options[version]; has {
+		t, ok := v.(string)
+		if ok {
+			version = t
+		}
+	}
 	decoder = JsonData(data)
-	obj, err := oe.workers.Update(profession, name, workerInfo.config.Driver, description, decoder)
+	obj, err := oe.workers.Update(profession, name, workerInfo.config.Driver, version, description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -137,7 +162,10 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, decoder)
+	if cb.Version == "" {
+		cb.Version = genVersion()
+	}
+	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Version, cb.Description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}

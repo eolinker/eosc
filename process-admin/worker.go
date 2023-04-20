@@ -2,8 +2,9 @@ package process_admin
 
 import (
 	"encoding/json"
-	"github.com/eolinker/eosc"
 	"reflect"
+
+	"github.com/eolinker/eosc"
 )
 
 type WorkerInfo struct {
@@ -15,7 +16,7 @@ type WorkerInfo struct {
 	configType   reflect.Type
 }
 
-func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, desc, create, update string, body []byte, configType reflect.Type) *WorkerInfo {
+func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, version, desc, create, update string, body []byte, configType reflect.Type) *WorkerInfo {
 
 	return &WorkerInfo{
 
@@ -29,17 +30,22 @@ func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driv
 			Update:      update,
 			Description: desc,
 			Body:        body,
+			Version:     version,
 		},
 		configType: configType,
 		attr:       nil,
 	}
 }
 
-func (w *WorkerInfo) reset(driver, desc string, body []byte, worker eosc.IWorker, configType reflect.Type) {
-	w.config.Update = eosc.Now()
+func (w *WorkerInfo) reset(driver, version, desc string, body []byte, worker eosc.IWorker, configType reflect.Type) {
+	//w.config.Update = eosc.Now()
+	if version != w.config.Version {
+		w.config.Update = eosc.Now()
+	}
 	w.config.Driver = driver
 	w.config.Description = desc
 	w.config.Body = body
+	w.config.Version = version
 	w.configType = configType
 	w.worker = worker
 	w.info = nil
@@ -57,6 +63,7 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 		m["profession"] = w.config.Profession
 		m["name"] = w.config.Name
 		m["driver"] = w.config.Driver
+		m["version"] = w.config.Version
 		m["description"] = w.config.Description
 		m["update"] = w.config.Update
 		m["create"] = w.config.Create
@@ -76,6 +83,7 @@ func (w *WorkerInfo) Info(appendLabels ...string) interface{} {
 		w.info["profession"] = w.config.Profession
 		w.info["name"] = w.config.Name
 		w.info["driver"] = w.config.Driver
+		w.info["version"] = w.config.Version
 		w.info["description"] = w.config.Description
 		w.info["update"] = w.config.Update
 		w.info["create"] = w.config.Create
