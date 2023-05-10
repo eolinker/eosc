@@ -29,7 +29,7 @@ type BaseArg struct {
 //}
 
 func genVersion() string {
-	return time.Now().Format("20060102150405000")
+	return time.Now().Format("20060102150405")
 }
 
 func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
