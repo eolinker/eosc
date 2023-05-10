@@ -39,6 +39,7 @@ message WorkerConfig{
   string update = 6;
   bytes body = 7;
   string description = 8;
+  string version = 9;
 }
 
 message ExtendersSettings{

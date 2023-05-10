@@ -2,13 +2,15 @@ package process_admin
 
 import (
 	"fmt"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/require"
 
+	"reflect"
+
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
-	"reflect"
 )
 
 type Workers struct {
@@ -38,7 +40,7 @@ func (oe *Workers) Init(professions professions.IProfessions, data *WorkerDatas,
 
 	for _, pw := range ps {
 		for _, v := range pm[pw.Name] {
-			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Description, JsonData(v.config.Body))
+			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Version, v.config.Description, JsonData(v.config.Body))
 			if err != nil {
 				log.Errorf("init %s:%s", v.config.Id, err.Error())
 			}
@@ -62,7 +64,7 @@ func (oe *Workers) ListEmployees(profession string) ([]interface{}, error) {
 
 }
 
-func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*WorkerInfo, error) {
+func (oe *Workers) Update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error) {
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
 		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
@@ -77,7 +79,7 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 		driver = employee.config.Driver
 	}
 	body, _ := data.Encode()
-	w, err := oe.set(id, profession, name, driver, desc, body)
+	w, err := oe.set(id, profession, name, driver, version, desc, body)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +90,7 @@ func (oe *Workers) Update(profession, name, driver, desc string, data IData) (*W
 func (oe *Workers) rebuild(id string) error {
 	info, has := oe.data.GetInfo(id)
 	if has {
-		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Description, info.config.Body)
+		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Version, info.config.Description, info.config.Body)
 		return err
 	}
 	return nil
@@ -143,7 +145,7 @@ func (oe *Workers) GetEmployee(profession, name string) (*WorkerInfo, error) {
 	return d, nil
 }
 
-func (oe *Workers) set(id, profession, name, driverName, desc string, body []byte) (*WorkerInfo, error) {
+func (oe *Workers) set(id, profession, name, driverName, version, desc string, body []byte) (*WorkerInfo, error) {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := oe.professions.Get(profession)
@@ -180,7 +182,7 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, body []byt
 			return nil, e
 		}
 		oe.requireManager.Set(id, getIds(requires))
-		wInfo.reset(driverName, desc, body, wInfo.worker, driver.ConfigType())
+		wInfo.reset(driverName, version, desc, body, wInfo.worker, driver.ConfigType())
 		oe.variables.SetVariablesById(id, usedVariables)
 		return wInfo, nil
 	}
@@ -192,9 +194,9 @@ func (oe *Workers) set(id, profession, name, driverName, desc string, body []byt
 	}
 
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, version, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
 	} else {
-		wInfo.reset(driverName, desc, body, worker, driver.ConfigType())
+		wInfo.reset(driverName, version, desc, body, worker, driver.ConfigType())
 	}
 
 	// store
