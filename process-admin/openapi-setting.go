@@ -3,14 +3,15 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"reflect"
+	"strings"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/setting"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"reflect"
-	"strings"
 )
 
 type SettingApi struct {
@@ -137,8 +138,9 @@ func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configTyp
 	if len(cannotDelete) > 0 {
 		return nil, nil, fmt.Errorf("should not delete:%s", strings.Join(cannotDelete, ","))
 	}
+	version := genVersion()
 	for id, cfg := range cfgs {
-		info, errSet := oe.workers.set(id, cfg.profession, cfg.name, cfg.driver, cfg.desc, cfg.configBody)
+		info, errSet := oe.workers.set(id, cfg.profession, cfg.name, cfg.driver, version, cfg.desc, cfg.configBody)
 		if errSet != nil {
 			log.Warnf("bath set skip %s by error:%v", id, ":", errSet)
 			continue
