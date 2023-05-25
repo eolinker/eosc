@@ -3,7 +3,7 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/eolinker/eosc"
@@ -173,7 +173,7 @@ func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (s
 		return http.StatusInternalServerError, nil, nil, ErrorNotExist
 	}
 
-	bodyData, err := ioutil.ReadAll(r.Body)
+	bodyData, err := io.ReadAll(r.Body)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -202,7 +202,7 @@ func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (s
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
-	bodyData, err := ioutil.ReadAll(r.Body)
+	bodyData, err := io.ReadAll(r.Body)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -239,7 +239,7 @@ func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params)
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
 
-	bodyData, err := ioutil.ReadAll(r.Body)
+	bodyData, err := io.ReadAll(r.Body)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}

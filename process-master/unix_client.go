@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os/exec"
@@ -78,7 +78,7 @@ func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)

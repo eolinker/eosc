@@ -14,7 +14,7 @@ import (
 
 func DownloadCheck(group string, project string, version string) error {
 	path := LocalExtenderPath(group, project, version)
-	err := os.MkdirAll(path, 0755)
+	err := os.MkdirAll(path, 0666)
 	if err != nil {
 		return errors.New("create extender path " + path + " error: " + err.Error())
 	}
