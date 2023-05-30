@@ -103,6 +103,7 @@ func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	for k, vs := range resp.Header {
 		for _, v := range vs {
 			writer.Header().Add(k, v)
