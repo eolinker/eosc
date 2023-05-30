@@ -1,9 +1,18 @@
-package process_master
+/*
+ * Copyright (c) 2023. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+ * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
+ * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
+ * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
+ * Vestibulum commodo. Ut rhoncus gravida arcu.
+ */
+
+package unix_proxy
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/common/pool"
 	"io"
 	"net"
 	"net/http"
@@ -14,8 +23,14 @@ import (
 	"github.com/eolinker/eosc/service"
 )
 
+const BuffSize = 4096
+
 var (
 	ErrorProcessNotInit = errors.New("process not init")
+
+	bufPool = pool.New(func() []byte {
+		return make([]byte, BuffSize)
+	})
 )
 
 type UnixClient struct {
@@ -95,7 +110,8 @@ func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 	defer resp.Body.Close()
 
-	buf := make([]byte, 4096)
+	buf := bufPool.Get()
+	defer bufPool.PUT(buf)
 	for {
 		select {
 		case <-request.Context().Done():
