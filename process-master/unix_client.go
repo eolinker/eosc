@@ -71,25 +71,49 @@ func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	req.URL.Host = uc.addr
 	req.Header = request.Header
 	resp, err := uc.client.Do(req)
+
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(writer, "%v", err)
 		log.Errorf("proxy to unix err:%v", err)
 		return
 	}
-
-	data, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(writer, "%v", err)
-		log.Errorf("fetch error: reading %v", err)
+	if resp.Header.Get("Content-Length") != "" {
+		defer resp.Body.Close()
+		io.Copy(writer, resp.Body)
 		return
 	}
-
-	for k, _ := range resp.Header {
-		writer.Header().Set(k, resp.Header.Get(k))
+	flusher, ok := writer.(http.Flusher)
+	if !ok {
+		writer.WriteHeader(http.StatusBadRequest)
+		return
 	}
-	writer.WriteHeader(resp.StatusCode)
-	writer.Write(data)
+	for k, vs := range resp.Header {
+		for _, v := range vs {
+			writer.Header().Add(k, v)
+		}
+	}
+	defer resp.Body.Close()
+
+	buf := make([]byte, 4096)
+	for {
+		select {
+		case <-request.Context().Done():
+			return
+		default:
+
+			n, err2 := resp.Body.Read(buf)
+			if n > 0 {
+				_, err := writer.Write(buf[:n])
+				if err != nil {
+					return
+				}
+				flusher.Flush()
+			}
+			if err2 != nil {
+				return
+			}
+		}
+
+	}
 }
