@@ -13,7 +13,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/common/pool"
 	"io"
 	"net"
 	"net/http"
@@ -28,10 +27,6 @@ const BuffSize = 4096
 
 var (
 	ErrorProcessNotInit = errors.New("process not init")
-
-	bufPool = pool.New(func() []byte {
-		return make([]byte, BuffSize)
-	})
 )
 
 type UnixClient struct {
