@@ -37,7 +37,7 @@ var (
 type UnixClient struct {
 	addr    string
 	name    string
-	client  *http.Client
+	client  http.RoundTripper
 	timeout time.Duration
 }
 
@@ -63,7 +63,7 @@ func NewUnixClient(name string) *UnixClient {
 	transport := &http.Transport{
 		DialContext: ul.DialContext,
 	}
-	ul.client = &http.Client{Transport: transport}
+	ul.client = transport
 	return ul
 }
 func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
@@ -78,7 +78,7 @@ func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	request.URL.Scheme = "http"
 	request.URL.Host = uc.name
 	if !tokenListContainsValue(request.Header, "Connection", "Upgrade") {
-		response, err := uc.client.Transport.RoundTrip(request)
+		response, err := uc.client.RoundTrip(request)
 		if err != nil {
 			return
 		}
