@@ -9,6 +9,7 @@
 package unix_proxy
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -65,72 +66,68 @@ func NewUnixClient(name string) *UnixClient {
 	ul.client = &http.Client{Transport: transport}
 	return ul
 }
-func (uc *UnixClient) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	log.Debug("proxy:", request.RequestURI)
 
 	if uc.addr == "" {
-		writer.WriteHeader(http.StatusBadGateway)
+		w.WriteHeader(http.StatusBadGateway)
 
-		fmt.Fprintf(writer, "%s %s", uc.name, ErrorProcessNotInit.Error())
+		fmt.Fprintf(w, "%s %s", uc.name, ErrorProcessNotInit.Error())
 		return
 	}
-
-	req, err := http.NewRequest(request.Method, request.RequestURI, request.Body)
-	if err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(writer, "%v", err)
-		log.Warnf("clone request to unix error:%v", err)
-		return
-	}
-	req.URL.Scheme = "http"
-	req.URL.Host = uc.addr
-	req.Header = request.Header
-	resp, err := uc.client.Do(req)
-
-	if err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(writer, "%v", err)
-		log.Errorf("proxy to unix err:%v", err)
-		return
-	}
-	if resp.Header.Get("Content-Length") != "" {
-		defer resp.Body.Close()
-		io.Copy(writer, resp.Body)
-		return
-	}
-	flusher, ok := writer.(http.Flusher)
-	if !ok {
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	for k, vs := range resp.Header {
-		for _, v := range vs {
-			writer.Header().Add(k, v)
-		}
-	}
-	defer resp.Body.Close()
-
-	buf := bufPool.Get()
-	defer bufPool.PUT(buf)
-	for {
-		select {
-		case <-request.Context().Done():
+	request.URL.Scheme = "http"
+	request.URL.Host = uc.name
+	if !tokenListContainsValue(request.Header, "Connection", "Upgrade") {
+		response, err := uc.client.Transport.RoundTrip(request)
+		if err != nil {
 			return
-		default:
-
-			n, err2 := resp.Body.Read(buf)
-			if n > 0 {
-				_, err := writer.Write(buf[:n])
-				if err != nil {
-					return
-				}
-				flusher.Flush()
-			}
-			if err2 != nil {
-				return
-			}
 		}
 
+		defer func() {
+			response.Body.Close()
+		}()
+		for k, vs := range response.Header {
+			for _, v := range vs {
+				w.Header().Add(k, v)
+			}
+		}
+		io.Copy(w, response.Body)
+	} else {
+
+		h, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		var brw *bufio.ReadWriter
+		netConn, brw, err := h.Hijack()
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		defer func() {
+
+			netConn.Close()
+		}()
+		if brw.Reader.Buffered() > 0 {
+
+			return
+		}
+
+		upstream, resp, err := uc.DialContextUpgrade(request)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		defer upstream.Close()
+		err = resp.Write(netConn)
+		if err != nil {
+			return
+		}
+		go func() {
+			io.Copy(netConn, upstream)
+		}()
+		io.Copy(upstream, netConn)
 	}
+
 }
