@@ -23,6 +23,21 @@ type ExampleHttpContext struct {
 	finish   FinishHandler
 }
 
+func (e *ExampleHttpContext) RealIP() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) IsCloneable() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExampleHttpContext) Clone() (EoContext, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (e *ExampleHttpContext) GetComplete() CompleteHandler {
 	//TODO implement me
 	panic("implement me")
