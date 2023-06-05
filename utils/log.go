@@ -25,10 +25,13 @@ func InitMasterLog() io.Writer {
 		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
-	fileWriter := filelog.NewFileWriteByPeriod()
-	period, _ := filelog.ParsePeriod(env.ErrorPeriod())
-	fileWriter.Set(dir, fmt.Sprintf("%s.log", env.ErrorName()), period, env.ErrorExpire())
-	fileWriter.Open()
+	fileWriter := filelog.NewFileWriteByPeriod(&filelog.Config{
+		Dir:    dir,
+		File:   fmt.Sprintf("%s.log", env.ErrorName()),
+		Expire: env.ErrorExpire(),
+		Period: filelog.ParsePeriod(env.ErrorPeriod()),
+	})
+
 	var writer io.Writer = fileWriter
 	level := env.ErrorLevel()
 
