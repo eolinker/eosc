@@ -54,7 +54,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		cb.Version = genVersion()
 	}
 
-	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Description, cb.Version, decoder)
+	obj, err := oe.workers.Update(profession, name, cb.Driver, cb.Version, cb.Description, decoder)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
