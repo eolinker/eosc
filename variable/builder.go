@@ -1,8 +1,9 @@
 package variable
 
 import (
-	"github.com/eolinker/eosc"
 	"strings"
+
+	"github.com/eolinker/eosc"
 )
 
 const (
@@ -78,7 +79,7 @@ func (b *Builder) Replace(variables eosc.IVariable) (string, []string, bool) {
 		}
 
 	}
-	if status == InputStatus {
+	if status == InputStatus || status == ReadyStatus {
 		strBuilder.WriteString(b.str[startIndex:])
 	}
 

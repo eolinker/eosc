@@ -17,6 +17,7 @@ import (
 	"github.com/eolinker/eosc/process-master/extender"
 	open_api "github.com/eolinker/eosc/process-master/open-api"
 	raft_service "github.com/eolinker/eosc/process-master/raft-service"
+	"github.com/eolinker/eosc/process-master/unix-proxy"
 	"github.com/eolinker/eosc/router"
 	"github.com/eolinker/eosc/traffic/mixl"
 	"github.com/eolinker/eosc/utils"
@@ -85,8 +86,8 @@ type Master struct {
 	workerController *WorkerController
 	adminController  *AdminController
 	dispatcherServe  *DispatcherServer
-	adminClient      *UnixClient
-	workerClient     *UnixClient
+	adminClient      *unix_proxy.UnixClient
+	workerClient     *unix_proxy.UnixClient
 }
 
 type MasterHandler struct {
@@ -165,8 +166,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("start etcd error:", err)
 		return err
 	}
-	m.adminClient = NewUnixClient(eosc.ProcessAdmin)
-	m.workerClient = NewUnixClient(eosc.ProcessWorker)
+	m.adminClient = unix_proxy.NewUnixClient(eosc.ProcessAdmin)
+	m.workerClient = unix_proxy.NewUnixClient(eosc.ProcessWorker)
 	m.etcdServer = etcdServer
 	err = m.start(handler, etcdServer)
 	if err != nil {

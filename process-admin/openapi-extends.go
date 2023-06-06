@@ -7,7 +7,7 @@ import (
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/julienschmidt/httprouter"
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 )
@@ -59,7 +59,7 @@ func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (statu
 	if mediaType != "application/json" {
 		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("Content-Type must application/json")
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Debug(err)
 		return http.StatusInternalServerError, nil, nil, err.Error()

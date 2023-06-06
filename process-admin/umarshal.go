@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/log"
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 	"strings"
@@ -70,7 +70,7 @@ func GetData(req *http.Request) (IData, error) {
 
 	switch strings.ToLower(mediaType) {
 	case "application/json":
-		data, e := ioutil.ReadAll(req.Body)
+		data, e := io.ReadAll(req.Body)
 		if e != nil {
 			return nil, e
 		}
@@ -78,7 +78,7 @@ func GetData(req *http.Request) (IData, error) {
 		log.Debug("GetData:JsonData:", string(data))
 		return JsonData(data), nil
 	case "application/yaml":
-		data, e := ioutil.ReadAll(req.Body)
+		data, e := io.ReadAll(req.Body)
 		if e != nil {
 			return nil, e
 		}
