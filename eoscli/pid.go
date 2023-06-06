@@ -3,7 +3,6 @@ package eoscli
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -50,7 +49,7 @@ func getPidFile(dir string) string {
 }
 
 func readPid(dir string) (int, error) {
-	pidByte, err := ioutil.ReadFile(getPidFile(dir))
+	pidByte, err := os.ReadFile(getPidFile(dir))
 	if err != nil {
 		return 0, err
 	}

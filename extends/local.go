@@ -2,7 +2,6 @@ package extends
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 
 	"github.com/eolinker/eosc/common/fileLocker"
@@ -23,7 +22,7 @@ func LoadCheck(group, project, version string) error {
 
 	// 当本地不存在当前插件时，从插件市场中下载
 	path := LocalExtenderPath(group, project, version)
-	err = os.MkdirAll(path, 0755)
+	err = os.MkdirAll(path, 0666)
 	if err != nil {
 		return errors.New("create extender path " + path + " error: " + err.Error())
 	}
@@ -58,7 +57,7 @@ func LocalCheck(group, project, version string) error {
 		return err
 	}
 	// check dir so num
-	fs, err := ioutil.ReadDir(dir)
+	fs, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}

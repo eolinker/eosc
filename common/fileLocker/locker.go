@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -74,7 +73,7 @@ func (l *Locker) lock(msg *LockMsg) error {
 		}
 		msg.LocalTime = now.Format("2006-01-02 15:04:05")
 		data, _ := json.Marshal(msg)
-		return ioutil.WriteFile(l.path, data, 0755)
+		return os.WriteFile(l.path, data, 0666)
 	}
 	return nil
 }
@@ -89,7 +88,7 @@ func (l *Locker) read() (*LockMsg, error) {
 		}
 		return nil, err
 	}
-	data, err := ioutil.ReadFile(l.path)
+	data, err := os.ReadFile(l.path)
 	if err != nil {
 		return nil, err
 	}

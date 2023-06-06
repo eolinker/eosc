@@ -69,7 +69,7 @@ func (s *_Server) sendJoinRequest(target string, addr []string, client []string)
 //		return nil, err
 //	}
 //	defer resp.Body.Close()
-//	content, err := ioutil.ReadAll(resp.Body)
+//	content, err := io.ReadAll(resp.Body)
 //	if err != nil {
 //		return nil, err
 //	}
@@ -96,7 +96,7 @@ func (s *_Server) sendJoinRequest(target string, addr []string, client []string)
 //		return nil, err
 //	}
 //	defer resp.Body.Close()
-//	content, err = ioutil.ReadAll(resp.Body)
+//	content, err = io.ReadAll(resp.Body)
 //	if err != nil {
 //		return nil, err
 //	}
@@ -139,7 +139,7 @@ func (s *_Server) sendJoinRequest(target string, addr []string, client []string)
 //		return err
 //	}
 //	defer resp.Body.Close()
-//	content, err := ioutil.ReadAll(resp.Body)
+//	content, err := io.ReadAll(resp.Body)
 //	if err != nil {
 //		return err
 //	}
@@ -167,7 +167,7 @@ func (s *_Server) sendJoinRequest(target string, addr []string, client []string)
 //		return "", err
 //	}
 //	defer resp.Body.Close()
-//	content, err := ioutil.ReadAll(resp.Body)
+//	content, err := io.ReadAll(resp.Body)
 //	if err != nil {
 //		return "", err
 //	}

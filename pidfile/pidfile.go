@@ -11,7 +11,6 @@ package pidfile
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,7 +37,7 @@ func New() (*PidFile, error) {
 	if err := checkPIDFileAlreadyExists(path); err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0755)); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0666)); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(path, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
@@ -110,7 +109,7 @@ func (p *PidFile) TryFork() error {
 
 func processExistsByFile(path string) bool {
 	if exist(path) {
-		pidByte, err := ioutil.ReadFile(path)
+		pidByte, err := os.ReadFile(path)
 		if err != nil {
 			return false
 		}
