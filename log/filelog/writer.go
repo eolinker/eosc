@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
+	"github.com/eolinker/eosc/common/pool"
 	"github.com/eolinker/eosc/log"
-	"os"
 	"sync"
 	"time"
 )
@@ -14,11 +15,8 @@ import (
 const MaxBuffer = 1024 * 500
 
 var (
-	bufferPool = &sync.Pool{
-		New: func() interface{} {
-			return new(bytes.Buffer)
-		},
-	}
+	bufferPool         = pool.New(func() *bytes.Buffer { return new(bytes.Buffer) })
+	ErrorWriterNotOpen = errors.New("writer close")
 )
 
 // FileWriterByPeriod 文件周期写入
@@ -29,53 +27,55 @@ type FileWriterByPeriod struct {
 	cancelFunc context.CancelFunc
 	locker     sync.RWMutex
 	wg         sync.WaitGroup
-	resetChan  chan FileController
+	resetChan  chan Config
+
+	watcher *Watcher
 }
 
 // NewFileWriteByPeriod 获取新的FileWriterByPeriod
-func NewFileWriteByPeriod(cfg *Config) *FileWriterByPeriod {
+func NewFileWriteByPeriod(cfg Config) *FileWriterByPeriod {
 	w := &FileWriterByPeriod{
 		locker:    sync.RWMutex{},
 		wg:        sync.WaitGroup{},
 		enable:    false,
-		resetChan: make(chan FileController),
+		resetChan: make(chan Config),
 	}
 
-	w.Open(&FileController{
-		dir:    cfg.Dir,
-		file:   cfg.File,
-		period: cfg.Period,
-		expire: cfg.Expire,
-	})
+	w.Open(cfg)
 	return w
 }
-
-func (w *FileWriterByPeriod) Reset(cfg *Config) {
-	w.resetChan <- FileController{
-		dir:    cfg.Dir,
-		file:   cfg.File,
-		period: cfg.Period,
-		expire: cfg.Expire,
+func (w *FileWriterByPeriod) Watch() (*WatchHandler, error) {
+	w.locker.RLock()
+	defer w.locker.RUnlock()
+	if !w.enable {
+		return nil, ErrorWriterNotOpen
 	}
+
+	return w.watcher.Watch(), nil
+}
+func (w *FileWriterByPeriod) Reset(cfg Config) {
+
+	w.resetChan <- cfg
 }
 
 // Open 打开
-func (w *FileWriterByPeriod) Open(config *FileController) {
+func (w *FileWriterByPeriod) Open(cfg Config) {
+
 	w.locker.Lock()
 	defer w.locker.Unlock()
 
 	if w.enable {
 		return
 	}
-
+	w.watcher = NewWatcher()
 	ctx, cancel := context.WithCancel(context.Background())
 	w.cancelFunc = cancel
 	w.wC = make(chan *bytes.Buffer, 100)
 
 	w.enable = true
+	w.wg.Add(1)
 	go func() {
-		w.wg.Add(1)
-		w.do(ctx, config)
+		w.do(ctx, cfg)
 		w.wg.Done()
 	}()
 }
@@ -85,8 +85,8 @@ func (w *FileWriterByPeriod) Close() {
 
 	isClose := false
 	w.locker.Lock()
+	defer w.locker.Unlock()
 	if !w.enable {
-		w.locker.Unlock()
 		return
 	}
 
@@ -95,17 +95,17 @@ func (w *FileWriterByPeriod) Close() {
 		w.cancelFunc()
 		w.cancelFunc = nil
 	}
+	if w.watcher != nil {
+		w.watcher.Close()
+		w.watcher = nil
+	}
 	w.enable = false
-	w.locker.Unlock()
+
 	if isClose {
 		w.wg.Wait()
 	}
 }
-func (w *FileWriterByPeriod) isEnable() bool {
-	w.locker.Lock()
-	defer w.locker.Unlock()
-	return w.enable
-}
+
 func (w *FileWriterByPeriod) Write(p []byte) (n int, err error) {
 
 	l := len(p)
@@ -113,48 +113,54 @@ func (w *FileWriterByPeriod) Write(p []byte) (n int, err error) {
 	if l == 0 {
 		return
 	}
-	if !w.isEnable() {
-		return l, nil
-	}
-	buffer := bufferPool.Get().(*bytes.Buffer)
+	buffer := bufferPool.Get()
 	buffer.Reset()
 	buffer.Write(p)
 	if p[l-1] != '\n' {
 		buffer.WriteByte('\n')
 	}
+	w.locker.RLock()
+	defer w.locker.RUnlock()
+	if !w.enable {
+		bufferPool.PUT(buffer)
+		return l, nil
+	}
+
 	w.wC <- buffer
+	w.watcher.write(p)
 	return l, nil
 }
 
-func (w *FileWriterByPeriod) do(ctx context.Context, config *FileController) {
-	fileController := *config
+func (w *FileWriterByPeriod) do(ctx context.Context, config Config) {
+	lastConfig := config
+	fileController := NewFileController(config)
 	fileController.initFile()
-	f, lastTag, e := fileController.openFile()
+	currFile, lastTag, e := fileController.openFile()
 	if e != nil {
 		log.Errorf("open log file:%s\n", e.Error())
 		return
 	}
 
-	buf := bufio.NewWriter(f)
+	buf := bufio.NewWriter(currFile)
 	t := time.NewTicker(time.Second * 5)
 	defer t.Stop()
 	tFlush := time.NewTimer(time.Second)
 
-	resetFunc := func(controller FileController) {
+	resetFunc := func() {
 		if lastTag != fileController.timeTag(time.Now()) {
 			if buf.Buffered() > 0 {
 				buf.Flush()
 				tFlush.Reset(time.Second)
 			}
-			f.Close()
+			currFile.Close()
 			fileController.history(lastTag)
 			fnew, tag, err := fileController.openFile()
 			if err != nil {
 				return
 			}
 			lastTag = tag
-			f = fnew
-			buf.Reset(f)
+			currFile = fnew
+			buf.Reset(currFile)
 
 			go fileController.dropHistory()
 		}
@@ -167,10 +173,10 @@ func (w *FileWriterByPeriod) do(ctx context.Context, config *FileController) {
 				for len(w.wC) > 0 {
 					p := <-w.wC
 					buf.Write(p.Bytes())
-					bufferPool.Put(p)
+					bufferPool.PUT(p)
 				}
 				buf.Flush()
-				f.Close()
+				currFile.Close()
 				t.Stop()
 				//w.wg.Done()
 				return
@@ -179,63 +185,34 @@ func (w *FileWriterByPeriod) do(ctx context.Context, config *FileController) {
 		case <-t.C:
 			{
 
-				resetFunc(fileController)
+				resetFunc()
 
 			}
 		case <-tFlush.C:
 			{
 				if buf.Buffered() > 0 {
-					buf.Flush()
+					_ = buf.Flush()
 				}
 				tFlush.Reset(time.Second)
 			}
 		case p := <-w.wC:
 			{
-				buf.Write(p.Bytes())
-				bufferPool.Put(p)
+				_, _ = buf.Write(p.Bytes())
+				bufferPool.PUT(p)
+
 				if buf.Buffered() > MaxBuffer {
-					buf.Flush()
+					_ = buf.Flush()
 				}
 				tFlush.Reset(time.Second)
 			}
-		case controller, ok := <-w.resetChan:
+		case cfg, ok := <-w.resetChan:
 			{
-				if ok {
-					resetFunc(controller)
-					fileController = controller
+				if ok && lastConfig.IsUpdate(&cfg) {
+					lastConfig = cfg
+					fileController = NewFileController(cfg)
+					resetFunc()
 				}
 			}
 		}
 	}
-}
-
-func (w *FileController) initFile() {
-	err := os.MkdirAll(w.dir, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	path := w.fileName()
-	nowHistoryName := w.timeTag(time.Now())
-	if info, e := os.Stat(path); e == nil {
-
-		timeTag := w.timeTag(info.ModTime())
-		if timeTag != nowHistoryName {
-			w.history(timeTag)
-		}
-	}
-
-	w.dropHistory()
-
-}
-
-func (w *FileController) openFile() (*os.File, string, error) {
-	path := w.fileName()
-	nowTag := w.timeTag(time.Now())
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-
-	if err != nil {
-		return nil, "", err
-	}
-	return f, nowTag, err
-
 }

@@ -15,27 +15,26 @@ import (
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
 	"io"
+	"net/http"
 	"os"
 )
 
-func InitMasterLog() io.Writer {
+func InitMasterLog() (io.Writer, func(prefix string) http.Handler) {
 	dir := env.LogDir()
 
 	formatter := &log.LineFormatter{
 		TimestampFormat:  "2006-01-02 15:04:05",
 		CallerPrettyfier: nil,
 	}
-	fileWriter := filelog.NewFileWriteByPeriod(&filelog.Config{
+	fileWriter := filelog.NewFileWriteByPeriod(filelog.Config{
 		Dir:    dir,
 		File:   fmt.Sprintf("%s.log", env.ErrorName()),
 		Expire: env.ErrorExpire(),
 		Period: filelog.ParsePeriod(env.ErrorPeriod()),
 	})
 
-	var writer io.Writer = fileWriter
 	level := env.ErrorLevel()
-
-	writer = ToCopyToIoWriter(os.Stdout, fileWriter)
+	writer := ToCopyToIoWriter(os.Stdout, fileWriter)
 
 	transport := log.NewTransport(writer, level)
 	transport.SetFormatter(formatter)
@@ -43,7 +42,7 @@ func InitMasterLog() io.Writer {
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", eosc.ProcessMaster, os.Getpid()))
 
-	return writer
+	return writer, fileWriter.ServeHTTP
 }
 
 type writes []io.Writer

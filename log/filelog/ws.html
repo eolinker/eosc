@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+    <input id="input" type="text" />
+    <button onclick="connect()">Send</button>
+    <div id="output"></div>
+
+...
+<script>
+    var input = document.getElementById("input");
+    var output = document.getElementById("output");
+
+
+    function connect() {
+         var socket = new WebSocket(`ws://${input.value}/apinto/log/node/tail`);
+
+        socket.onopen = function () {
+            output.innerHTML += "<p>Status: Connected</p>";
+        };
+
+        socket.onmessage = function (e) {
+            output.innerHTML += "<p>" + e.data + "</p>";
+        };
+    }
+</script>
+
+</body>
+</html>
