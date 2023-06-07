@@ -17,12 +17,14 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/dustin/go-humanize"
 	"github.com/gorilla/websocket"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -132,6 +134,13 @@ func (f *fileServer) file(prefix string) func(w http.ResponseWriter, r *http.Req
 
 	}
 }
+
+type FileInfo struct {
+	Name    string `json:"name,omitempty"`
+	Size    string `json:"size,omitempty"`
+	ModTime string `json:"modTime,omitempty"`
+}
+
 func (f *fileServer) files(w http.ResponseWriter, r *http.Request) {
 	fileController := f.w.fileController
 	if fileController == nil {
@@ -148,9 +157,21 @@ func (f *fileServer) files(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fs := make([]string, 0, len(fileMatched))
+	fs := make([]FileInfo, 0, len(fileMatched))
 	for _, path := range fileMatched {
-		fs = append(fs, filepath.Base(path))
+		fileInfo, err := os.Stat(path)
+		if err != nil {
+			return
+		}
+		if fileInfo.IsDir() {
+			continue
+		}
+
+		fs = append(fs, FileInfo{
+			Name:    fileInfo.Name(),
+			Size:    humanize.Bytes(uint64(fileInfo.Size())),
+			ModTime: fileInfo.ModTime().Format(time.RFC3339),
+		})
 	}
 
 	if _, has := r.URL.Query()["show"]; has {

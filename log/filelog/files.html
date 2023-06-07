@@ -3,14 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <title>log files</title>
+    <style>
+        table{
+            margin: 5px auto;
+            padding: 0;
+        }
+        tr{
+            margin: 5px 0;
+        }
+        td{
+            padding: 0 5px;
+        }
+    </style>
 </head>
 <body>
-<ul>
-  {{ range . }}
-  <li><a href="file/{{.}}">{{.}}</a> </li>
-  {{ end}}
+<table >
 
-</ul>
-<a href="tail?show">tail for new</a>
+  {{ range . }}
+    <tr>
+        <td style="text-align: right">{{.Size}}</td><td>{{.ModTime}}</td><td><a href="file/{{.Name}}">{{.Name}}</a> </td></li>
+    </tr>
+  {{ end}}
+    <tfoot>
+    <tr>
+        <td rowspan="3">
+            <a href="tail?show">tail for new</a>
+        </td>
+    </tr>
+    </tfoot>
+</table>
+
 </body>
 </html>
