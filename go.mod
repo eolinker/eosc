@@ -6,6 +6,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/jhump/protoreflect v1.14.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/nxadm/tail v1.4.8

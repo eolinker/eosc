@@ -30,6 +30,8 @@ type FileWriterByPeriod struct {
 	resetChan  chan Config
 
 	watcher *Watcher
+
+	fileController *FileController
 }
 
 // NewFileWriteByPeriod 获取新的FileWriterByPeriod
@@ -133,9 +135,9 @@ func (w *FileWriterByPeriod) Write(p []byte) (n int, err error) {
 
 func (w *FileWriterByPeriod) do(ctx context.Context, config Config) {
 	lastConfig := config
-	fileController := NewFileController(config)
-	fileController.initFile()
-	currFile, lastTag, e := fileController.openFile()
+	w.fileController = NewFileController(config)
+	w.fileController.initFile()
+	currFile, lastTag, e := w.fileController.openFile()
 	if e != nil {
 		log.Errorf("open log file:%s\n", e.Error())
 		return
@@ -147,14 +149,14 @@ func (w *FileWriterByPeriod) do(ctx context.Context, config Config) {
 	tFlush := time.NewTimer(time.Second)
 
 	resetFunc := func() {
-		if lastTag != fileController.timeTag(time.Now()) {
+		if lastTag != w.fileController.timeTag(time.Now()) {
 			if buf.Buffered() > 0 {
 				buf.Flush()
 				tFlush.Reset(time.Second)
 			}
 			currFile.Close()
-			fileController.history(lastTag)
-			fnew, tag, err := fileController.openFile()
+			w.fileController.history(lastTag)
+			fnew, tag, err := w.fileController.openFile()
 			if err != nil {
 				return
 			}
@@ -162,7 +164,7 @@ func (w *FileWriterByPeriod) do(ctx context.Context, config Config) {
 			currFile = fnew
 			buf.Reset(currFile)
 
-			go fileController.dropHistory()
+			go w.fileController.dropHistory()
 		}
 	}
 
@@ -209,7 +211,7 @@ func (w *FileWriterByPeriod) do(ctx context.Context, config Config) {
 			{
 				if ok && lastConfig.IsUpdate(&cfg) {
 					lastConfig = cfg
-					fileController = NewFileController(cfg)
+					w.fileController = NewFileController(cfg)
 					resetFunc()
 				}
 			}

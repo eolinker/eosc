@@ -2,31 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>apinto log tail</title>
 </head>
 <body>
+<div id="output"></div>
 
-    <input id="input" type="text" />
-    <button onclick="connect()">Send</button>
-    <div id="output"></div>
-
-...
 <script>
-    var input = document.getElementById("input");
+
+    function getWsUrl()
+    {
+        var url = document.location.toString();
+        url = url.replace("https://","wss://")
+        url = url.replace("http://","ws://")
+        if(url.indexOf("?") !== -1){
+            url = url.split("?")[0];
+        }
+        return url
+    }
+
+
     var output = document.getElementById("output");
 
-
-    function connect() {
-         var socket = new WebSocket(`ws://${input.value}/apinto/log/node/tail`);
-
-        socket.onopen = function () {
-            output.innerHTML += "<p>Status: Connected</p>";
-        };
-
-        socket.onmessage = function (e) {
-            output.innerHTML += "<p>" + e.data + "</p>";
-        };
+    var socket = new WebSocket(getWsUrl());
+    socket.onerror = function (e){
+        output.innerHTML += "<p>Error "+e+"</p>";
     }
+    socket.onopen = function () {
+        output.innerHTML += "<p>Connected</p>";
+    };
+
+    socket.onmessage = function (e) {
+        output.innerHTML += "<p>" + e.data + "</p>";
+    };
+
 </script>
 
 </body>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>log files</title>
+</head>
+<body>
+<ul>
+  {{ range . }}
+  <li><a href="file/{{.}}">{{.}}</a> </li>
+  {{ end}}
+
+</ul>
+<a href="tail?show">tail for new</a>
+</body>
+</html>
