@@ -27,10 +27,8 @@ func (c *Config) ReadFile(paths ...string) {
 	for _, path := range paths {
 		// 参数配置文件格式：分行获取
 
-		err := fileutil.CreateDirAll(zap.NewNop(), filepath.Dir(path))
-		if err != nil {
-			continue
-		}
+		_ = fileutil.CreateDirAll(zap.NewNop(), filepath.Dir(path))
+
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
