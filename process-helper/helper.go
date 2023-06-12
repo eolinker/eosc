@@ -10,7 +10,7 @@ package process_helper
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/eolinker/eosc/service"
@@ -28,7 +28,7 @@ import (
 func Process() {
 	// 从stdin中读取配置，获取拓展列表
 	utils.InitStdTransport(eosc.ProcessHelper)
-	inData, err := ioutil.ReadAll(os.Stdin)
+	inData, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		log.Error("read stdin data error: ", err)
 		return

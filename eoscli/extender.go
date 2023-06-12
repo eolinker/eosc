@@ -286,7 +286,7 @@ package eoscli
 //		}
 //		// 当本地不存在当前插件时，从插件市场中下载
 //		path := extends.LocalExtenderPath(group, name, version)
-//		err = os.MkdirAll(path, 0755)
+//		err = os.MkdirAll(path, 0666)
 //		if err != nil {
 //			return errors.New("create extender path " + path + " error: " + err.Error())
 //		}

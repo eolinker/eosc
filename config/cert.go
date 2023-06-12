@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +44,7 @@ func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
 			return nil, err
 		}
 		if info.IsDir() {
-			infos, err := ioutil.ReadDir(dir)
+			infos, err := os.ReadDir(dir)
 			if err != nil {
 				return nil, err
 			}

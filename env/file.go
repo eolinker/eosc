@@ -3,8 +3,8 @@ package env
 import (
 	"bytes"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.uber.org/zap"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,8 +27,11 @@ func (c *Config) ReadFile(paths ...string) {
 	for _, path := range paths {
 		// 参数配置文件格式：分行获取
 
-		fileutil.CreateDirAll(filepath.Dir(path))
-		data, err := ioutil.ReadFile(path)
+		err := fileutil.CreateDirAll(zap.NewNop(), filepath.Dir(path))
+		if err != nil {
+			continue
+		}
+		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
 		}

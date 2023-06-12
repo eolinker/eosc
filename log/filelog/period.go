@@ -1,7 +1,6 @@
 package filelog
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -15,17 +14,18 @@ type LogPeriod interface {
 type LogPeriodType int
 
 // ParsePeriod 解析周期
-func ParsePeriod(v string) (LogPeriod, error) {
+func ParsePeriod(v string) LogPeriod {
 	switch strings.ToLower(v) {
 	case "month":
-		return PeriodMonth, nil
+		return PeriodMonth
 	case "day":
-		return PeriodDay, nil
+		return PeriodDay
 	case "hour":
-		return PeriodHour, nil
+		return PeriodHour
+	default:
+		return PeriodDay
 	}
 
-	return nil, fmt.Errorf("not a valid period: %q", v)
 }
 func (period LogPeriodType) String() string {
 	switch period {
