@@ -2,9 +2,12 @@ package eocontext
 
 import (
 	"context"
+	"errors"
 	"net"
 	"time"
 )
+
+var ErrEoCtxUnCloneable = errors.New("EoContext is UnCloneable. ")
 
 type CompleteHandler interface {
 	Complete(ctx EoContext) error
@@ -32,14 +35,16 @@ type EoContext interface {
 	SetCompleteHandler(handler CompleteHandler)
 	GetFinish() FinishHandler
 	SetFinish(handler FinishHandler)
-	GetApp() EoApp
-	SetApp(app EoApp)
 	GetBalance() BalanceHandler
 	SetBalance(handler BalanceHandler)
 	GetUpstreamHostHandler() UpstreamHostHandler
 	SetUpstreamHostHandler(handler UpstreamHostHandler)
 
+	RealIP() string
 	LocalIP() net.IP
 	LocalAddr() net.Addr
 	LocalPort() int
+
+	IsCloneable() bool
+	Clone() (EoContext, error)
 }

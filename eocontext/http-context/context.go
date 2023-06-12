@@ -2,35 +2,30 @@ package http_context
 
 import (
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"net/url"
 	"time"
 
-	"github.com/fasthttp/websocket"
-
 	"github.com/eolinker/eosc/eocontext"
+)
+
+type keyCloneCtx struct{}
+type keyHttpRetry struct{}
+type keyHttpTimeout struct{}
+
+var (
+	KeyHttpRetry   = keyHttpRetry{}
+	KeyHttpTimeout = keyHttpTimeout{}
+	KeyCloneCtx    = keyCloneCtx{}
 )
 
 type IWebsocketContext interface {
 	IHttpContext
 	Upgrade() error
-	SetUpstreamConn(conn *websocket.Conn)
+	SetUpstreamConn(conn net.Conn)
 	IsWebsocket() bool
-}
-
-type IDubboContext interface {
-	IHttpContext
-	// MethodName 方法名
-	MethodName() string
-	// Interface 服务接口名 cn.org.api.UserService
-	Interface() string
-	// Serialization 序列化方式 hessian2、fastjson、gson、jdk、kryo、protobuf、avro
-	Serialization() string
-	// SetAttachment 类似http headers中的键值对，用于处理RPC请求和响应过程中需要但又不属于具体业务的信息
-	SetAttachment(key string, value interface{})
-	Attachments() map[string]interface{}
-	Attachment(string) (interface{}, bool)
 }
 
 type IHttpContext interface {
@@ -38,7 +33,7 @@ type IHttpContext interface {
 	Request() IRequestReader // 读取原始请求
 	Proxy() IRequest         // 读写转发请求
 	Response() IResponse     // 处理返回结果，可读可写
-	SendTo(address string, timeout time.Duration) error
+	SendTo(scheme string, node eocontext.INode, timeout time.Duration) error
 	Proxies() []IProxy
 	FastFinish()
 }
@@ -156,7 +151,7 @@ type IRequestReader interface {
 	Body() IBodyDataReader
 	RemoteAddr() string
 	RemotePort() string
-	ReadIP() string
+	RealIp() string
 	ForwardIP() string
 	URI() IURIReader
 	Method() string

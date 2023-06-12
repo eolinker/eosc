@@ -7,7 +7,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -89,7 +89,7 @@ type Response struct {
 }
 
 func (s *_Server) join(w http.ResponseWriter, r *http.Request) {
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return
 	}

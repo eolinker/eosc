@@ -30,6 +30,9 @@ func (m *Variables) Get(id string) (string, bool) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	namespace, key := readId(id)
+	if namespace == "" {
+		namespace = "default"
+	}
 	vs, has := m.data[namespace]
 	if has {
 		val, has := vs[key]

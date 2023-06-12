@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -157,7 +156,7 @@ func read(path string) (map[string]string, error) {
 		return nil, err
 	}
 
-	data, err := ioutil.ReadFile(abs)
+	data, err := os.ReadFile(abs)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +169,7 @@ func read(path string) (map[string]string, error) {
 }
 
 func SocketAddr(name string, pid int) string {
-	os.MkdirAll(socketSocketDirValue, os.FileMode(0755))
+	os.MkdirAll(socketSocketDirValue, os.FileMode(0666))
 
 	return fmt.Sprintf("%s/%s.%s-%d.sock", socketSocketDirValue, appName, name, pid)
 }

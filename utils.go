@@ -51,7 +51,7 @@ func SplitWorkerId(id string) (profession string, name string, success bool) {
 
 // Decompress 解压文件
 func Decompress(filePath string, dest string) error {
-	err := os.MkdirAll(dest, 0755)
+	err := os.MkdirAll(dest, 0666)
 	if err != nil {
 		return err
 	}
@@ -83,13 +83,16 @@ func Decompress(filePath string, dest string) error {
 		if err != nil {
 			return err
 		}
-		io.Copy(file, tr)
+		_, e := io.Copy(file, tr)
+		if e != nil {
+			return e
+		}
 	}
 	return nil
 }
 
 func CreateFile(name string) (*os.File, error) {
-	err := os.MkdirAll(string([]rune(name)[0:strings.LastIndex(name, "/")]), 0755)
+	err := os.MkdirAll(string([]rune(name)[0:strings.LastIndex(name, "/")]), 0666)
 	if err != nil {
 		return nil, err
 	}

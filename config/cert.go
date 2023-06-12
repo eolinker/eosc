@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +44,7 @@ func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
 			return nil, err
 		}
 		if info.IsDir() {
-			infos, err := ioutil.ReadDir(dir)
+			infos, err := os.ReadDir(dir)
 			if err != nil {
 				return nil, err
 			}
@@ -93,32 +92,36 @@ func loadCert(pem string, key string, dir string) (*tls.Certificate, error) {
 	return &cert, err
 }
 
-func (c *Cert) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (c *Cert) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	if c.certs == nil {
 		return nil, errorCertificateNotExit
 	}
-	certificate, has := c.Get(strings.ToLower(info.ServerName))
-	if !has {
-		return nil, errorCertificateNotExit
+	if len(c.certs) == 1 {
+		// There's only one choice, so no point doing any work.
+		for _, cert := range c.certs {
+			return cert, nil
+		}
+	}
+	name := strings.ToLower(clientHello.ServerName)
+	if cert, ok := c.certs[name]; ok {
+		return cert, nil
+	}
+	if len(name) > 0 {
+		labels := strings.Split(name, ".")
+		labels[0] = "*"
+		wildcardName := strings.Join(labels, ".")
+		if cert, ok := c.certs[wildcardName]; ok {
+			return cert, nil
+		}
+	}
+	for _, cert := range c.certs {
+		if err := clientHello.SupportsCertificate(cert); err == nil {
+			return cert, nil
+		}
+	}
+	for _, cert := range c.certs {
+		return cert, nil
 	}
 
-	return certificate, nil
-}
-
-// Get 获取证书
-func (c *Cert) Get(hostName string) (*tls.Certificate, bool) {
-	if c == nil || len(c.certs) == 0 {
-		return nil, true
-	}
-	cert, has := c.certs[hostName]
-	if has {
-		return cert, true
-	}
-	hs := strings.Split(hostName, ".")
-	if len(hs) < 1 {
-		return nil, false
-	}
-
-	cert, has = c.certs[fmt.Sprintf("*.%s", strings.Join(hs[1:], "."))]
-	return cert, has
+	return nil, errorCertificateNotExit
 }
