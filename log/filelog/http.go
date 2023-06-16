@@ -210,30 +210,35 @@ func (f *fileServer) watch(w http.ResponseWriter, r *http.Request) {
 
 	grep := []byte(r.URL.Query().Get("grep"))
 	ctx, cancel := context.WithCancel(r.Context())
+
+	defer cancel()
+
 	go func() {
-		defer cancel()
+		err = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
+		if err != nil {
+			return
+		}
 		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
+			select {
+			case msg, ok := <-h.C:
+				if !ok {
+					return
+				}
+				if len(grep) == 0 || bytes.Contains(msg, grep) {
+					err := conn.WriteMessage(websocket.TextMessage, msg)
+					if err != nil {
+						return
+					}
+				}
+
+			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-	conn.WriteMessage(websocket.TextMessage, []byte("connected"))
 	for {
-		select {
-		case msg, ok := <-h.C:
-			if !ok {
-				return
-			}
-			if len(grep) == 0 || bytes.Contains(msg, grep) {
-				err := conn.WriteMessage(websocket.TextMessage, msg)
-				if err != nil {
-					return
-				}
-			}
-
-		case <-ctx.Done():
+		_, _, err := conn.ReadMessage()
+		if err != nil {
 			return
 		}
 	}
