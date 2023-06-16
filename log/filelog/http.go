@@ -219,6 +219,7 @@ func (f *fileServer) watch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
+	conn.WriteMessage(websocket.TextMessage, []byte("connected"))
 	for {
 		select {
 		case msg, ok := <-h.C:
