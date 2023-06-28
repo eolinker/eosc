@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/process-master/extender"
@@ -46,7 +47,8 @@ func Process() {
 	ProcessDo(nil)
 }
 func ProcessDo(handler *MasterHandler) {
-	logWriter := utils.InitMasterLog()
+	logWriter, logHandler := utils.InitMasterLog()
+	handler.logHandler = logHandler
 	log.Debug("master start:", os.Getpid(), ":", os.Getppid())
 
 	pFile, err := pidfile.New()
@@ -93,6 +95,7 @@ type Master struct {
 type MasterHandler struct {
 	InitProfession func() []*eosc.ProfessionConfig
 	VersionHandler func(etcd2 etcd.Etcd) http.Handler
+	logHandler     func(prefix string) http.Handler
 }
 
 func (mh *MasterHandler) initHandler() {
@@ -179,6 +182,9 @@ func (m *Master) Start(handler *MasterHandler) error {
 	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)
 	openApiMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
 	openApiMux.Handle(router.RouterPrefix, m.workerClient) //master转发至worker的路由
+	//node log
+	logPrefix := fmt.Sprintf("%slog/node/", router.RouterPrefix)
+	openApiMux.Handle(logPrefix, handler.logHandler(logPrefix)) //master转发至worker的路由
 	openApiMux.Handle("/", openApiProxy)
 	etcdMux.Handle("/", openApiProxy) // 转发到leader 需要具体节点，所以peer上也要绑定 open api
 

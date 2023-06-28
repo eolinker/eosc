@@ -23,7 +23,10 @@ func (rs *routerData) Parse() (*http.ServeMux, error) {
 		}
 		tmpSet[path] = struct{}{}
 
-		mux.Handle(path, v.Router)
+		if !strings.HasSuffix(v.Path, "/") {
+			mux.Handle(path, v.Router)
+		}
+
 		mux.Handle(fmt.Sprint(path, "/"), v.Router)
 	}
 	return mux, nil

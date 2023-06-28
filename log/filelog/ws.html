@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>apinto log tail</title>
+</head>
+<body>
+<div id="output"></div>
+
+<script>
+
+    function getWsUrl()
+    {
+        var url = document.location.toString();
+        url = url.replace("https://","wss://")
+        url = url.replace("http://","ws://")
+        if(url.indexOf("?") !== -1){
+            url = url.split("?")[0];
+        }
+        return url
+    }
+
+
+    var output = document.getElementById("output");
+
+    var socket = new WebSocket(getWsUrl());
+    socket.onerror = function (e){
+        output.innerHTML += "<p>Error "+e+"</p>";
+    }
+    socket.onopen = function () {
+        output.innerHTML += "<p>Connected</p>";
+    };
+
+    socket.onmessage = function (e) {
+        output.innerHTML += "<p>" + e.data + "</p>";
+    };
+
+</script>
+
+</body>
+</html>

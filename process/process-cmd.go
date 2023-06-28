@@ -3,7 +3,6 @@ package process
 import (
 	"io"
 	"os/exec"
-	"sync"
 	"syscall"
 
 	"google.golang.org/protobuf/proto"
@@ -26,7 +25,7 @@ type ProcessCmd struct {
 	name   string
 	cmd    *exec.Cmd
 	reader io.Reader
-	once   sync.Once
+
 	status int
 }
 
