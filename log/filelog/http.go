@@ -214,7 +214,7 @@ func (f *fileServer) watch(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	go func() {
-		err = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
+		err = conn.WriteMessage(websocket.TextMessage, []byte("connected\n"))
 		if err != nil {
 			return
 		}
