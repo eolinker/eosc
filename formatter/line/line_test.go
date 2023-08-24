@@ -1,16 +1,17 @@
 package line
 
 import (
-	"github.com/eolinker/eosc"
 	"reflect"
 	"testing"
+
+	"github.com/eolinker/eosc"
 )
 
 type myEntry struct {
 	data map[string]string
 }
 
-func (m *myEntry) Read(pattern string) string {
+func (m *myEntry) Read(pattern string) interface{} {
 	return m.data[pattern]
 }
 

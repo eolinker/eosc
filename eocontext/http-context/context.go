@@ -180,6 +180,7 @@ type IProxy interface {
 	StatusCode() int
 	Status() string
 	ProxyTime() time.Time
+	ResponseBody() string
 	ResponseLength() int
 	ResponseTime() int64
 }

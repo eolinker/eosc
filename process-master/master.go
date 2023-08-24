@@ -13,6 +13,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/process-master/extender"
@@ -22,9 +28,6 @@ import (
 	"github.com/eolinker/eosc/router"
 	"github.com/eolinker/eosc/traffic/mixl"
 	"github.com/eolinker/eosc/utils"
-	"io"
-	"net"
-	"net/http"
 
 	"github.com/eolinker/eosc/config"
 
@@ -150,7 +153,18 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 }
 
 func (m *Master) Start(handler *MasterHandler) error {
+	for _, uri := range m.config.Gateway.AdvertiseUrls {
+		// 设置网关IP
+		u, err := url.Parse(uri)
+		if err != nil {
+			log.Errorf("parse advertise url(%s) error:", uri, err)
+			continue
+		}
+		index := strings.Index(u.Host, ":")
 
+		os.Setenv("gateway_ip", u.Host[:index])
+		break
+	}
 	etcdMux, err := m.listen(m.config.Peer)
 	if err != nil {
 		return err

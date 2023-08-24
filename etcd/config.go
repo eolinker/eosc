@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -81,6 +82,7 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 	}
 
 	name, InitialCluster, isNew := s.readCluster(peerUrl)
+	os.Setenv("node_id", name)
 	var urlsmap types.URLsMap
 	var token string
 	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
@@ -88,7 +90,7 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 		token = "APINTO_CLUSTER"
 	}
 
-	srvcfg := config.ServerConfig{
+	srvCfg := config.ServerConfig{
 
 		ClientURLs:                               clientUrl,
 		PeerURLs:                                 peerUrl,
@@ -127,7 +129,7 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
 		V2Deprecation:                            config.V2_DEPR_DEFAULT,
 	}
-	return srvcfg
+	return srvCfg
 }
 
 // parseAndCheckURLs parses list of strings to url.URL objects.
@@ -151,7 +153,6 @@ func initialClusterString(clusters map[string][]string) string {
 		}
 	}
 	return strings.Join(ss, ",")
-
 }
 
 func readClusterString(clusters string) map[string][]string {
