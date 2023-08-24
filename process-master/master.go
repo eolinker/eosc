@@ -161,8 +161,11 @@ func (m *Master) Start(handler *MasterHandler) error {
 			continue
 		}
 		index := strings.Index(u.Host, ":")
-
-		os.Setenv("gateway_ip", u.Host[:index])
+		host := u.Host
+		if index >= 0 {
+			host = u.Host[:index]
+		}
+		os.Setenv("gateway_ip", host)
 		break
 	}
 	etcdMux, err := m.listen(m.config.Peer)
