@@ -2,7 +2,6 @@ package etcd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -188,10 +187,10 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 							Value: kv.Value,
 						})
 					}
-					init = append(init, &KValue{
-						Key:   []byte("/cluster/node"),
-						Value: []byte(fmt.Sprintf("{\"cluster_id\":\"%s\",\"node_id\":\"%s\"}", s.clusterData.cluster, s.server.ID().String())),
-					})
+					//init = append(init, &KValue{
+					//	Key:   []byte("/cluster/node"),
+					//	Value: []byte(fmt.Sprintf("{\"cluster_id\":\"%s\",\"node_id\":\"%s\"}", s.clusterData.cluster, s.server.ID().String())),
+					//})
 					handler.Reset(init)
 					once.Do(func() {
 						wg.Done()

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/eolinker/eosc/env"
@@ -49,7 +50,7 @@ func (s *_Server) initEtcdServer() error {
 	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
 
 	s.clusterData = NewClusters(s.ctx, s.client, s)
-
+	os.Setenv("cluster_id", s.clusterData.cluster)
 	for _, ch := range s.clientCh {
 		ch <- s.client
 	}

@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/eolinker/eosc"
+
 	"github.com/eolinker/eosc/eocontext"
 )
 
@@ -36,6 +38,7 @@ type IHttpContext interface {
 	SendTo(scheme string, node eocontext.INode, timeout time.Duration) error
 	Proxies() []IProxy
 	FastFinish()
+	GetEntry() eosc.IEntry
 }
 
 type IHeaderReader interface {
@@ -177,6 +180,7 @@ type IProxy interface {
 	StatusCode() int
 	Status() string
 	ProxyTime() time.Time
+	ResponseBody() string
 	ResponseLength() int
 	ResponseTime() int64
 }
