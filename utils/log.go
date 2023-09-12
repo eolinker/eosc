@@ -10,13 +10,14 @@ package utils
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/log/filelog"
-	"io"
-	"net/http"
-	"os"
 )
 
 func InitMasterLog() (io.Writer, func(prefix string) http.Handler) {
@@ -38,7 +39,7 @@ func InitMasterLog() (io.Writer, func(prefix string) http.Handler) {
 
 	transport := log.NewTransport(writer, level)
 	transport.SetFormatter(formatter)
-
+	transport.Output()
 	log.Reset(transport)
 	log.SetPrefix(fmt.Sprintf("[%s-%d]", eosc.ProcessMaster, os.Getpid()))
 
