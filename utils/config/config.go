@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 
@@ -98,7 +99,7 @@ func checkField(f reflect.StructField, v reflect.Value, workers eosc.IWorkers) (
 	switch typeName {
 	case _RequireTypeName:
 		{
-			id := v.String()
+			id, _ := url.PathUnescape(v.String())
 			if id == "" {
 				require, has := f.Tag.Lookup("required")
 				if !has || strings.ToLower(require) != "false" {
