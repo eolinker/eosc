@@ -104,7 +104,11 @@ func (ws *WorkerServer) createClient() (*grpc.ClientConn, service.MasterDispatch
 	}
 
 	client := service.NewMasterDispatcherClient(conn)
-	c, err := client.Listen(ws.ctx, &service.EmptyRequest{})
+	opts := []grpc.CallOption{
+		grpc.MaxCallRecvMsgSize(1024 * 1024 * 1024),
+		grpc.MaxCallSendMsgSize(1024 * 1024 * 1024),
+	}
+	c, err := client.Listen(ws.ctx, &service.EmptyRequest{}, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("listen master service error: %w,pid: %d\n", err, ws.masterPid)
 	}
@@ -116,8 +120,9 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 	defer conn.Close()
 	for {
 		event, err := c.Recv()
-		log.Debug("recv:", err)
+
 		if err != nil {
+			log.Error("recv:", err)
 			if err == io.EOF {
 				log.Debug("listen closed... ", err)
 				return

@@ -36,8 +36,11 @@ func (m *Master) startService() error {
 		log.Error("start service error: ", err)
 		return err
 	}
-
-	grpcServer := grpc.NewServer()
+	var opts = []grpc.ServerOption{
+		grpc.MaxRecvMsgSize(64 * 1024 * 1024),
+		grpc.MaxSendMsgSize(64 * 1024 * 1024),
+	}
+	grpcServer := grpc.NewServer(opts...)
 
 	service.RegisterCtiServiceServer(grpcServer, cli.NewMasterCliServer(m.etcdServer))
 	service.RegisterMasterDispatcherServer(grpcServer, m.dispatcherServe)
