@@ -10,6 +10,7 @@ type Factory struct {
 }
 
 func (f *Factory) Create(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
+
 	return NewFormatter(cfg)
 }
 

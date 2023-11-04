@@ -183,6 +183,8 @@ type IProxy interface {
 	ResponseBody() string
 	ResponseLength() int
 	ResponseTime() int64
+	RemoteIP() string
+	RemotePort() int
 }
 
 // 返回给client端的
@@ -199,4 +201,6 @@ type IResponse interface {
 	ResponseTime() time.Duration
 	ContentLength() int
 	ContentType() string
+	RemoteIP() string
+	RemotePort() int
 }
