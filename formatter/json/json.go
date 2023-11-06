@@ -36,9 +36,15 @@ type fieldInfo struct {
 
 type jsonFormat struct {
 	fields map[string]fieldInfo
+	ctRs   []contentResize
 }
 
-func NewFormatter(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
+type contentResize struct {
+	Size   int    `json:"size"`
+	Suffix string `json:"suffix"`
+}
+
+func NewFormatter(cfg eosc.FormatterConfig, ctRs []contentResize) (eosc.IFormatter, error) {
 
 	fields, ok := cfg[ROOT]
 	if !ok {
@@ -48,7 +54,7 @@ func NewFormatter(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &jsonFormat{fields: data}, nil
+	return &jsonFormat{fields: data, ctRs: ctRs}, nil
 }
 
 func (j *jsonFormat) Format(entry eosc.IEntry) []byte {
@@ -62,7 +68,7 @@ func (j *jsonFormat) Format(entry eosc.IEntry) []byte {
 
 func (j *jsonFormat) getValue(fields map[string]fieldInfo, entry eosc.IEntry) map[string]interface{} {
 	res := make(map[string]interface{})
-
+	tmp := make(map[string]interface{})
 	for key, info := range fields {
 		ok := true
 		var value interface{}
@@ -71,7 +77,21 @@ func (j *jsonFormat) getValue(fields map[string]fieldInfo, entry eosc.IEntry) ma
 			// 常量
 			value = info.name
 		case Variable:
-			value = entry.Read(info.name)
+			var has bool
+			value, has = tmp[info.name]
+			if !has {
+				value = entry.Read(info.name)
+				for _, c := range j.ctRs {
+					if strings.HasSuffix(info.name, c.Suffix) {
+						if c.Size > 0 && len(value.(string)) > c.Size<<20 {
+							value = value.(string)[:c.Size]
+							tmp[fmt.Sprintf("%s_complete", info.name)] = 0
+						} else {
+							tmp[fmt.Sprintf("%s_complete", info.name)] = 1
+						}
+					}
+				}
+			}
 		case Array:
 			value = j.getArray(info.childKey, info.child, entry)
 		case Object:
