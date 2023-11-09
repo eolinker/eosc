@@ -29,13 +29,13 @@ type fieldInfo struct {
 	cname string
 
 	t            filedType
-	child        map[string]fieldInfo
+	child        []fieldInfo
 	childKey     string
 	attrHandlers []IAttrHandler
 }
 
 type jsonFormat struct {
-	fields map[string]fieldInfo
+	fields []fieldInfo
 	ctRs   []contentResize
 }
 
@@ -66,10 +66,11 @@ func (j *jsonFormat) Format(entry eosc.IEntry) []byte {
 	return b
 }
 
-func (j *jsonFormat) getValue(fields map[string]fieldInfo, entry eosc.IEntry) map[string]interface{} {
+func (j *jsonFormat) getValue(fields []fieldInfo, entry eosc.IEntry) map[string]interface{} {
 	res := make(map[string]interface{})
 	tmp := make(map[string]interface{})
-	for key, info := range fields {
+
+	for _, info := range fields {
 		ok := true
 		var value interface{}
 		switch info.t {
@@ -102,14 +103,14 @@ func (j *jsonFormat) getValue(fields map[string]fieldInfo, entry eosc.IEntry) ma
 			value, ok = handler.Handle(value, info.t)
 		}
 		if ok {
-			res[key] = value
+			res[info.cname] = value
 		}
 	}
 	return res
 
 }
 
-func (j *jsonFormat) getArray(key string, arr map[string]fieldInfo, entry eosc.IEntry) []interface{} {
+func (j *jsonFormat) getArray(key string, arr []fieldInfo, entry eosc.IEntry) []interface{} {
 	ens := entry.Children(key)
 	res := make([]interface{}, 0, len(ens))
 	for _, en := range ens {
@@ -118,8 +119,8 @@ func (j *jsonFormat) getArray(key string, arr map[string]fieldInfo, entry eosc.I
 	return res
 }
 
-func ParseConfig(root []string, cfg eosc.FormatterConfig) (map[string]fieldInfo, error) {
-	data := make(map[string]fieldInfo)
+func ParseConfig(root []string, cfg eosc.FormatterConfig) ([]fieldInfo, error) {
+	data := make([]fieldInfo, 0, len(root))
 	for _, field := range root {
 		// 键值,别名,类型
 		info := parse(field)
@@ -134,7 +135,7 @@ func ParseConfig(root []string, cfg eosc.FormatterConfig) (map[string]fieldInfo,
 			}
 			info.child = child
 		}
-		data[info.cname] = info
+		data = append(data, info)
 	}
 	return data, nil
 }
