@@ -13,6 +13,6 @@ func NewFactory() *Factory {
 	return &Factory{}
 }
 
-func (f *Factory) Create(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
+func (f *Factory) Create(cfg eosc.FormatterConfig, extendCfg ...interface{}) (eosc.IFormatter, error) {
 	return NewLine(cfg)
 }

@@ -38,7 +38,7 @@ type IMetricEntry interface {
 type FormatterConfig map[string][]string
 
 type IFormatterFactory interface {
-	Create(cfg FormatterConfig) (IFormatter, error)
+	Create(cfg FormatterConfig, extendCfg ...interface{}) (IFormatter, error)
 }
 
 // IFormatter format config

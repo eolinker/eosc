@@ -81,12 +81,13 @@ func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 		defer func() {
 			response.Body.Close()
 		}()
-		w.WriteHeader(response.StatusCode)
+
 		for k, vs := range response.Header {
 			for _, v := range vs {
 				w.Header().Add(k, v)
 			}
 		}
+		w.WriteHeader(response.StatusCode)
 		io.Copy(w, response.Body)
 	} else {
 
