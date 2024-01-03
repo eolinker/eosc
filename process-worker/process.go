@@ -11,17 +11,19 @@ package process_worker
 import (
 	"context"
 	"encoding/json"
-	"github.com/eolinker/eosc/config"
-	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
-	"github.com/eolinker/eosc/router"
 	"net/http"
 	"time"
 
-	"github.com/eolinker/eosc/process"
+	"github.com/eolinker/eosc/config"
+	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
+	"github.com/eolinker/eosc/router"
+
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/eolinker/eosc/process"
 
 	"github.com/eolinker/eosc/extends"
 
@@ -39,7 +41,7 @@ import (
 
 func Process() {
 
-	utils.InitStdTransport(eosc.ProcessWorker)
+	//utils.InitStdTransport(eosc.ProcessWorker)
 	arg := readArg()
 	log.Info("worker process start...")
 

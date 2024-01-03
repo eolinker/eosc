@@ -181,6 +181,7 @@ type IProxy interface {
 	Status() string
 	ProxyTime() time.Time
 	ResponseBody() string
+	ResponseHeaders() http.Header
 	ResponseLength() int
 	ResponseTime() int64
 	RemoteIP() string
