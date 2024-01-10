@@ -2,11 +2,12 @@ package debug
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/env"
-	"github.com/eolinker/eosc/log"
 	"net"
 	"net/http"
 	"net/http/pprof"
+
+	"github.com/eolinker/eosc/env"
+	"github.com/eolinker/eosc/log"
 )
 
 var (
@@ -18,7 +19,7 @@ func Register(path string, handleFunc func(w http.ResponseWriter, r *http.Reques
 		mux.HandleFunc(path, handleFunc)
 	}
 }
-func Rundebug(name string) {
+func RunDebug(name string) {
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -27,6 +28,7 @@ func Rundebug(name string) {
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	addr, has := env.GetEnv(fmt.Sprintf("PPROF_%s", name))
+	log.Debug("pprof addr:", addr, " ", name, fmt.Sprintf("PPROF_%s", name))
 	if has {
 
 		listen, err := net.Listen("tcp", addr)

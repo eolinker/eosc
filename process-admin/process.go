@@ -11,6 +11,8 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/eolinker/eosc/config"
 	grpc_unixsocket "github.com/eolinker/eosc/grpc-unixsocket"
 	open_api "github.com/eolinker/eosc/open-api"
@@ -20,7 +22,6 @@ import (
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
-	"time"
 
 	"net/http"
 	"os"
@@ -46,7 +47,7 @@ import (
 )
 
 func Process() {
-	utils.InitStdTransport(eosc.ProcessAdmin)
+	//utils.InitStdTransport(eosc.ProcessAdmin)
 	log.Info("admin process start...")
 
 	arg := readConfig()
