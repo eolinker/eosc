@@ -34,7 +34,7 @@ func genEntry(index string) *Entry {
 	return en
 }
 
-func (e *Entry) Read(pattern string) string {
+func (e *Entry) Read(pattern string) interface{} {
 	s, b := e.data.Get(pattern)
 	if b {
 		return s
@@ -158,7 +158,7 @@ func Test_json_Format(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			wantData, _ := json.Marshal(tt.want)
 
-			j, _ := NewFormatter(tt.config)
+			j, _ := NewFormatter(tt.config, bodyConfig{})
 			got := j.Format(tt.args.entry)
 			gotObj := map[string]interface{}{}
 			err := json.Unmarshal(got, &gotObj)

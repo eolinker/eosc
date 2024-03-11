@@ -136,7 +136,7 @@ func (l *Line) recursionField(fields []*executor, entry eosc.IEntry, level int) 
 		case constant:
 			data[i] = ext.key
 		case variable:
-			value := entry.Read(ext.key)
+			value := eosc.ReadStringFromEntry(entry, ext.key)
 			if objFields[ext.key] {
 				value = base64.StdEncoding.EncodeToString([]byte(value))
 			}

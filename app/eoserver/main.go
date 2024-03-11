@@ -12,10 +12,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/eolinker/eosc/env"
 	process_admin "github.com/eolinker/eosc/process-admin"
-	"github.com/eolinker/eosc/utils"
-	"os"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/eoscli"
@@ -48,7 +48,7 @@ func main() {
 		log.Close()
 		return
 	}
-	utils.InitStdTransport()
+	//utils.InitStdTransport()
 
 	app := eoscli.NewApp()
 	app.Default()

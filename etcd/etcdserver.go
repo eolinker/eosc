@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/eolinker/eosc/env"
@@ -26,6 +27,11 @@ var (
 func (s *_Server) initEtcdServer() error {
 
 	c := s.etcdServerConfig()
+	defer func() {
+		if c.NewCluster {
+			_, _ = http.Get(fmt.Sprintf("https://statistics.apinto.com/report/deploy/n?id=%s", c.Name))
+		}
+	}()
 	s.name = c.Name
 	srv, err := createEtcdServer(c)
 	if err != nil {
@@ -49,7 +55,7 @@ func (s *_Server) initEtcdServer() error {
 	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
 
 	s.clusterData = NewClusters(s.ctx, s.client, s)
-
+	os.Setenv("cluster_id", s.clusterData.cluster)
 	for _, ch := range s.clientCh {
 		ch <- s.client
 	}

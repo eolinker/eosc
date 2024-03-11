@@ -11,11 +11,14 @@ package process
 import (
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/debug"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
+
+	"github.com/eolinker/eosc/utils"
+
+	"github.com/eolinker/eosc/debug"
 
 	"github.com/eolinker/eosc/env"
 
@@ -89,21 +92,25 @@ func Cmd(name string, args []string) (*exec.Cmd, error) {
 
 // run process
 func Run() bool {
+
 	if runIdx > 0 {
 		key := os.Args[0]
 		ph, exists := processHandlers[key]
 		if exists {
+			utils.InitStdTransport(runnings[key])
+			log.Debug("run process: ", os.Args[0], " ", runIdx)
 			//defer func() {
 			//	if v := recover(); v != nil {
 			//		log.Error("Run recover: ", os.Args[0], " ", v)
 			//	}
 			//}()
 			env.SetProcessName(runnings[key])
-			debug.Rundebug(runnings[key])
+			debug.RunDebug(runnings[key])
 			ph()
 			return true
 		}
 	}
+	log.Debug("run process: ", os.Args[0], " ", runIdx)
 	env.SetProcessName("cli")
 	return false
 }

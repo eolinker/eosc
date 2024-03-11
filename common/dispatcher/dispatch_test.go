@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/log"
 	"testing"
 	"time"
 )
@@ -19,7 +20,7 @@ func (e *EventServer) TEST(target int) {
 		select {
 		case event := <-listener.Event():
 			index++
-			log.Debugf("%d===>%s %s::%s=>%s\n", target, event.Event(), event.Namespace(), event.Key(), string(event.Data()))
+			log.DebugF("%d===>%s %s::%s=>%s\n", target, event.Event(), event.Namespace(), event.Key(), string(event.Data()))
 			if index > 3 {
 				return
 			}
@@ -38,6 +39,11 @@ type MyEvent struct {
 	key       string
 	event     string
 	data      []byte
+}
+
+func (m *MyEvent) All() map[string]map[string][]byte {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m *MyEvent) Namespace() string {

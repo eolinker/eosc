@@ -25,18 +25,26 @@ const (
 )
 
 type fieldInfo struct {
-	name     string
-	cname    string
-	t        filedType
-	child    map[string]fieldInfo
-	childKey string
+	name  string
+	cname string
+
+	t            filedType
+	child        []fieldInfo
+	childKey     string
+	attrHandlers []IAttrHandler
 }
 
 type jsonFormat struct {
-	fields map[string]fieldInfo
+	fields []fieldInfo
+	ctRs   []contentResize
 }
 
-func NewFormatter(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
+type contentResize struct {
+	Size   int    `json:"size"`
+	Suffix string `json:"suffix"`
+}
+
+func NewFormatter(cfg eosc.FormatterConfig, ctRs []contentResize) (eosc.IFormatter, error) {
 
 	fields, ok := cfg[ROOT]
 	if !ok {
@@ -46,7 +54,7 @@ func NewFormatter(cfg eosc.FormatterConfig) (eosc.IFormatter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &jsonFormat{fields: data}, nil
+	return &jsonFormat{fields: data, ctRs: ctRs}, nil
 }
 
 func (j *jsonFormat) Format(entry eosc.IEntry) []byte {
@@ -58,26 +66,51 @@ func (j *jsonFormat) Format(entry eosc.IEntry) []byte {
 	return b
 }
 
-func (j *jsonFormat) getValue(fields map[string]fieldInfo, entry eosc.IEntry) map[string]interface{} {
+func (j *jsonFormat) getValue(fields []fieldInfo, entry eosc.IEntry) map[string]interface{} {
 	res := make(map[string]interface{})
-	for key, info := range fields {
+	tmp := make(map[string]interface{})
+
+	for _, info := range fields {
+		ok := true
+		var value interface{}
 		switch info.t {
 		case Constants:
 			// 常量
-			res[key] = info.name
+			value = info.name
 		case Variable:
-			res[key] = entry.Read(info.name)
+			var has bool
+			value, has = tmp[info.name]
+			if !has {
+				value = entry.Read(info.name)
+				for _, c := range j.ctRs {
+					if strings.HasSuffix(info.name, c.Suffix) {
+						if c.Size > 0 && len(value.(string)) > c.Size<<20 {
+							value = value.(string)[:c.Size]
+							tmp[fmt.Sprintf("%s_complete", info.name)] = 0
+						} else {
+							tmp[fmt.Sprintf("%s_complete", info.name)] = 1
+						}
+					}
+				}
+			}
 		case Array:
-			res[key] = j.getArray(info.childKey, info.child, entry)
+			value = j.getArray(info.childKey, info.child, entry)
 		case Object:
-			res[key] = j.getValue(info.child, entry)
+			value = j.getValue(info.child, entry)
+		}
+
+		for _, handler := range info.attrHandlers {
+			value, ok = handler.Handle(value, info.t)
+		}
+		if ok {
+			res[info.cname] = value
 		}
 	}
 	return res
 
 }
 
-func (j *jsonFormat) getArray(key string, arr map[string]fieldInfo, entry eosc.IEntry) []interface{} {
+func (j *jsonFormat) getArray(key string, arr []fieldInfo, entry eosc.IEntry) []interface{} {
 	ens := entry.Children(key)
 	res := make([]interface{}, 0, len(ens))
 	for _, en := range ens {
@@ -86,8 +119,8 @@ func (j *jsonFormat) getArray(key string, arr map[string]fieldInfo, entry eosc.I
 	return res
 }
 
-func ParseConfig(root []string, cfg eosc.FormatterConfig) (map[string]fieldInfo, error) {
-	data := make(map[string]fieldInfo)
+func ParseConfig(root []string, cfg eosc.FormatterConfig) ([]fieldInfo, error) {
+	data := make([]fieldInfo, 0, len(root))
 	for _, field := range root {
 		// 键值,别名,类型
 		info := parse(field)
@@ -102,16 +135,19 @@ func ParseConfig(root []string, cfg eosc.FormatterConfig) (map[string]fieldInfo,
 			}
 			info.child = child
 		}
-		data[info.cname] = info
+		data = append(data, info)
 	}
 	return data, nil
 }
 
-func parse(filed string) fieldInfo {
-	filed = strings.Trim(filed, " ")
-	fs := strings.Split(filed, " ")
+func parse(field string) fieldInfo {
+	field = strings.TrimSpace(field)
+	// 以分号拆分属性列
+	fields := strings.Split(field, ";")
+	fs := strings.Split(fields[0], " ")
 	key := fs[0]
 	res := fieldInfo{name: key, t: Constants}
+
 	if strings.HasPrefix(key, "$") {
 		key = strings.TrimLeft(key, "$")
 		// 常量
@@ -135,11 +171,33 @@ func parse(filed string) fieldInfo {
 			res = fieldInfo{name: key, t: Object}
 		}
 	}
+	if len(fields) > 1 {
+		res.attrHandlers = parseAttr(fields[1:])
+	}
 	l := len(fs)
-	if l == 3 && strings.Contains(filed, "as") {
+	if l == 3 && strings.Contains(field, "as") {
 		res.cname = fs[l-1]
 	} else {
 		res.cname = res.name
 	}
 	return res
+}
+
+func parseAttr(attrs []string) []IAttrHandler {
+	if len(attrs) == 0 {
+		return nil
+	}
+	handlers := make([]IAttrHandler, 0, len(attrs))
+	for _, attr := range attrs {
+		attr = strings.TrimSpace(attr)
+		as := strings.SplitN(attr, ":", 1)
+		if v, ok := genAttrHandlerMap[as[0]]; ok {
+			arg := ""
+			if len(as) > 1 {
+				arg = as[1]
+			}
+			handlers = append(handlers, v(arg))
+		}
+	}
+	return handlers
 }

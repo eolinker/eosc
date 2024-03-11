@@ -1,16 +1,17 @@
 package line
 
 import (
-	"github.com/eolinker/eosc"
 	"reflect"
 	"testing"
+
+	"github.com/eolinker/eosc"
 )
 
 type myEntry struct {
 	data map[string]string
 }
 
-func (m *myEntry) Read(pattern string) string {
+func (m *myEntry) Read(pattern string) interface{} {
 	return m.data[pattern]
 }
 
@@ -89,7 +90,7 @@ func TestLine_Format(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fields, _ = NewLine(tt.args.conf)
+			tt.fields, _ = NewLine(tt.args.conf, nil)
 
 			if got := tt.fields.Format(tt.args.entry); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Format() = %v \n want %v", string(got), string(tt.want))
