@@ -1,10 +1,19 @@
-package process_admin
+/*
+ * Copyright (c) 2024. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+ * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
+ * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
+ * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
+ * Vestibulum commodo. Ut rhoncus gravida arcu.
+ */
+
+package marshal
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/log"
+	"github.com/eolinker/eosc/process-admin/workers"
 	"io"
 	"mime"
 	"net/http"
@@ -17,10 +26,6 @@ var (
 	ErrorUnknownContentType = errors.New("unknown content type")
 )
 
-type IData interface {
-	UnMarshal(v interface{}) error
-	Encode() ([]byte, error)
-}
 type JsonData []byte
 
 func (j JsonData) String() string {
@@ -62,7 +67,7 @@ func (y YamlData) Marshal() ([]byte, error) {
 	return y, nil
 }
 
-func GetData(req *http.Request) (IData, error) {
+func GetData(req *http.Request) (workers.IData, error) {
 	mediaType, _, err := mime.ParseMediaType(req.Header.Get("content-type"))
 	if err != nil {
 		return nil, err

@@ -1,32 +1,57 @@
-package process_admin
+/*
+ * Copyright (c) 2024. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+ * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
+ * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
+ * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
+ * Vestibulum commodo. Ut rhoncus gravida arcu.
+ */
+
+package workers
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/require"
-
-	"reflect"
 
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/config"
 )
 
-type Workers struct {
+type IWorkers interface {
+	Begin(ctx context.Context) ITransactionCtx
+	GetEmployee(profession, name string) (*WorkerInfo, error)
+	Export() map[string][]*WorkerInfo
+	ListEmployees(profession string) ([]interface{}, error)
+	GetProfession(profession string) (*professions.Profession, bool)
+	CheckDelete(ids ...string) (requires []string)
+	Rebuild(id string) error
+}
+
+type imlWorkers struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
 	requireManager eosc.IRequires
 	variables      eosc.IVariable
 }
 
-func NewWorkers() *Workers {
+func (oe *imlWorkers) GetProfession(profession string) (*professions.Profession, bool) {
+	return oe.professions.Get(profession)
+}
 
-	ws := &Workers{requireManager: require.NewRequireManager()}
+func (oe *imlWorkers) Begin(ctx context.Context) ITransactionCtx {
+	//TODO implement me
+	panic("implement me")
+}
 
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) IWorkers {
+
+	ws := &imlWorkers{requireManager: require.NewRequireManager()}
+	ws.init(professions, data, variables)
 	return ws
 }
-func (oe *Workers) Init(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) {
+func (oe *imlWorkers) init(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) {
 	oe.professions = professions
 	oe.data = data
 	oe.variables = variables
@@ -40,14 +65,14 @@ func (oe *Workers) Init(professions professions.IProfessions, data *WorkerDatas,
 
 	for _, pw := range ps {
 		for _, v := range pm[pw.Name] {
-			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Version, v.config.Description, JsonData(v.config.Body))
+			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Version, v.config.Description, v.config.Body)
 			if err != nil {
 				log.Errorf("init %s:%s", v.config.Id, err.Error())
 			}
 		}
 	}
 }
-func (oe *Workers) ListEmployees(profession string) ([]interface{}, error) {
+func (oe *imlWorkers) ListEmployees(profession string) ([]interface{}, error) {
 	p, has := oe.professions.Get(profession)
 	if !has {
 		return nil, eosc.ErrorProfessionNotExist
@@ -64,7 +89,7 @@ func (oe *Workers) ListEmployees(profession string) ([]interface{}, error) {
 
 }
 
-func (oe *Workers) Update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error) {
+func (oe *imlWorkers) update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error) {
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
 		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
@@ -87,7 +112,7 @@ func (oe *Workers) Update(profession, name, driver, version, desc string, data I
 	return w, nil
 
 }
-func (oe *Workers) rebuild(id string) error {
+func (oe *imlWorkers) Rebuild(id string) error {
 	info, has := oe.data.GetInfo(id)
 	if has {
 		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Version, info.config.Description, info.config.Body)
@@ -96,14 +121,14 @@ func (oe *Workers) rebuild(id string) error {
 	return nil
 
 }
-func (oe *Workers) Export() map[string][]*WorkerInfo {
+func (oe *imlWorkers) Export() map[string][]*WorkerInfo {
 	all := make(map[string][]*WorkerInfo)
 	for _, w := range oe.data.All() {
 		all[w.config.Profession] = append(all[w.config.Profession], w)
 	}
 	return all
 }
-func (oe *Workers) DeleteTest(ids ...string) (requires []string) {
+func (oe *imlWorkers) CheckDelete(ids ...string) (requires []string) {
 	for _, id := range ids {
 		if oe.requireManager.RequireByCount(id) > 0 {
 			requires = append(requires, id)
@@ -111,7 +136,7 @@ func (oe *Workers) DeleteTest(ids ...string) (requires []string) {
 	}
 	return requires
 }
-func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
+func (oe *imlWorkers) delete(id string) (*WorkerInfo, error) {
 
 	worker, has := oe.data.GetInfo(id)
 	if !has {
@@ -122,16 +147,19 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 		return nil, eosc.ErrorRequire
 	}
 
-	oe.data.Del(id)
 	if destroy, ok := worker.worker.(eosc.IWorkerDestroy); ok {
-		destroy.Destroy()
+		err := destroy.Destroy()
+		if err != nil {
+			return nil, err
+		}
 	}
+	oe.data.Del(id)
 	oe.requireManager.Del(id)
 	oe.variables.RemoveRequire(id)
 	return worker, nil
 }
 
-func (oe *Workers) GetEmployee(profession, name string) (*WorkerInfo, error) {
+func (oe *imlWorkers) GetEmployee(profession, name string) (*WorkerInfo, error) {
 
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
@@ -144,7 +172,7 @@ func (oe *Workers) GetEmployee(profession, name string) (*WorkerInfo, error) {
 	return d, nil
 }
 
-func (oe *Workers) set(id, profession, name, driverName, version, desc string, body []byte) (*WorkerInfo, error) {
+func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string, body []byte) (*WorkerInfo, error) {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := oe.professions.Get(profession)
@@ -216,11 +244,4 @@ func getIds(m map[eosc.RequireId]eosc.IWorker) []string {
 		rs = append(rs, string(k))
 	}
 	return rs
-}
-
-func newConfig(t reflect.Type) interface{} {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return reflect.New(t).Interface()
 }
