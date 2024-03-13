@@ -62,11 +62,3 @@ func (w *WorkerDatas) All() map[string]*WorkerInfo {
 	ds := w.data.All()
 	return ds
 }
-
-func (w *WorkerDatas) Clone() *WorkerDatas {
-	return &WorkerDatas{data: w.data.Clone()}
-}
-
-func (w *WorkerDatas) Count() int {
-	return w.data.Count()
-}

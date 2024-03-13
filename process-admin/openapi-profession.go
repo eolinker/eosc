@@ -60,8 +60,8 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 	for _, dependency := range dependencies {
 		dps[dependency] = true
 	}
-	ws := make([]interface{}, 0, pi.workerData.Count())
 	all := pi.workerData.All()
+	ws := make([]interface{}, 0, len(all))
 
 	for _, w := range all {
 		if w.worker != nil {

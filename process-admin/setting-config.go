@@ -11,16 +11,16 @@ func (c *configProxy) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-func splitConfig(data []byte) [][]byte {
+func splitConfig(data []byte) []IData {
 	var ps []*configProxy
 
 	err := json.Unmarshal(data, &ps)
 	if err != nil {
-		return [][]byte{data}
+		return nil
 	}
-	r := make([][]byte, 0, len(ps))
+	r := make([]IData, 0, len(ps))
 	for _, v := range ps {
-		r = append(r, v.data)
+		r = append(r, JsonData(v.data))
 	}
 	return r
 }

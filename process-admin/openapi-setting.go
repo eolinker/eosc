@@ -98,7 +98,7 @@ func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configTyp
 		name       string
 		driver     string
 		desc       string
-		configBody []byte
+		configBody IData
 	}
 	inputList := splitConfig(inputData)
 	cfgs := make(map[string]BatchWorkerInfo, len(inputList))
@@ -106,7 +106,8 @@ func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configTyp
 	events := make([]*open_api.EventResponse, 0, len(allWorkers))
 	responseBody := make([]interface{}, 0, len(inputList))
 	for _, inp := range inputList {
-		cfg, _, err2 := oe.variable.Unmarshal(inp, configType)
+		configData, _ := inp.Encode()
+		cfg, _, err2 := oe.variable.Unmarshal(configData, configType)
 		if err2 != nil {
 
 			return nil, nil, err2
@@ -140,7 +141,7 @@ func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configTyp
 	}
 	version := genVersion()
 	for id, cfg := range cfgs {
-		info, errSet := oe.workers.set(id, cfg.profession, cfg.name, cfg.driver, version, cfg.desc, cfg.configBody)
+		info, errSet := oe.workers.Update(cfg.profession, cfg.name, cfg.driver, version, cfg.desc, cfg.configBody)
 		if errSet != nil {
 			log.Warnf("bath set skip %s by error:%v", id, ":", errSet)
 			continue

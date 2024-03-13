@@ -123,8 +123,7 @@ func (oe *Workers) Delete(id string) (*WorkerInfo, error) {
 	}
 
 	oe.data.Del(id)
-	destroy, ok := worker.worker.(eosc.IWorkerDestroy)
-	if ok {
+	if destroy, ok := worker.worker.(eosc.IWorkerDestroy); ok {
 		destroy.Destroy()
 	}
 	oe.requireManager.Del(id)
