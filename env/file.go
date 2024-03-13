@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/eolinker/eosc"
-
-	"github.com/eolinker/eosc/log"
 )
 
 type Config struct {
@@ -92,7 +90,6 @@ func (c *Config) Save() error {
 	if err != nil {
 		return err
 	}
-	log.Info("write args file succeed!")
 
 	return nil
 }

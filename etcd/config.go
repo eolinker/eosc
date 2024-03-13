@@ -171,7 +171,14 @@ func (s *_Server) resetCluster(InitialCluster string) {
 	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
-	defer etcdConfig.Save()
+	defer func() {
+		err := etcdConfig.Save()
+		if err != nil {
+			log.Warn("write args file fail:", err)
+			return
+		}
+		log.Info("write args file succeed!")
+	}()
 	etcdConfig.Set("cluster", InitialCluster)
 }
 func (s *_Server) updateCluster() {
@@ -185,7 +192,14 @@ func (s *_Server) readCluster(peerUrl types.URLs) (name, InitialCluster string, 
 	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
-	defer etcdConfig.Save()
+	defer func() {
+		err := etcdConfig.Save()
+		if err != nil {
+			log.Warn("write args file fail:", err)
+			return
+		}
+		log.Info("write args file succeed!")
+	}()
 
 	var has bool
 	name, has = etcdConfig.Get("name")

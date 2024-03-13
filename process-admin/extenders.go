@@ -163,6 +163,10 @@ func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProj
 
 func (e *ExtenderData) load(group, project, version string) (*ExtenderProject, error) {
 	log.DebugF("load extender:%s:%s@%s", group, project, version)
+	defer func() {
+		log.DebugF("load extender done:%s:%s@%s", group, project, version)
+
+	}()
 	id := toVersion(group, project, version)
 
 	if e.history[toProject(group, project)] {

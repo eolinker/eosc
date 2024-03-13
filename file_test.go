@@ -44,7 +44,7 @@ func TestGzipFile_DecodeData(t *testing.T) {
 				Data: tt.fields.Data,
 			}
 			got, err := f.DecodeData()
-			if !tt.wantErr(t, err, fmt.Sprintf("DecodeData()")) {
+			if !tt.wantErr(t, err, fmt.Errorf("DecodeData()")) {
 				return
 			}
 			assert.Equalf(t, tt.want, got, "DecodeData()")
