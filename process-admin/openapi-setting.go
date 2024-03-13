@@ -1,8 +1,11 @@
 package process_admin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/eolinker/eosc/process-admin/marshal"
+	workers "github.com/eolinker/eosc/process-admin/workers"
 	"net/http"
 	"reflect"
 	"strings"
@@ -15,7 +18,7 @@ import (
 )
 
 type SettingApi struct {
-	workers  *Workers
+	workers  workers.IWorkers
 	settings setting.ISettings
 	variable eosc.IVariable
 }
@@ -46,7 +49,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 		return http.StatusMethodNotAllowed, nil, nil, http.StatusText(http.StatusMethodNotAllowed)
 	}
 
-	idata, err := GetData(req)
+	idata, err := marshal.GetData(req)
 	if err != nil {
 		return http.StatusServiceUnavailable, nil, nil, http.StatusText(http.StatusServiceUnavailable)
 	}
@@ -78,7 +81,7 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 			Data:      eventData,
 		}}, setting.FormatConfig(inputData, configType)
 	} else {
-		events, body, err = oe.batchSet(inputData, driver, configType)
+		events, body, err = oe.batchSet(req.Context(), inputData, driver, configType)
 		if err != nil {
 			status = http.StatusServiceUnavailable
 			body = err.Error()
@@ -91,14 +94,14 @@ func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status i
 	}
 }
 
-func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configType reflect.Type) ([]*open_api.EventResponse, interface{}, error) {
+func (oe *SettingApi) batchSet(ctx context.Context, inputData []byte, driver eosc.ISetting, configType reflect.Type) (outEvent []*open_api.EventResponse, outBody interface{}, errorOut error) {
 	type BatchWorkerInfo struct {
 		id         string
 		profession string
 		name       string
 		driver     string
 		desc       string
-		configBody IData
+		configBody workers.IData
 	}
 	inputList := splitConfig(inputData)
 	cfgs := make(map[string]BatchWorkerInfo, len(inputList))
@@ -134,30 +137,42 @@ func (oe *SettingApi) batchSet(inputData []byte, driver eosc.ISetting, configTyp
 	for id := range allWorkers {
 		idtoDelete = append(idtoDelete, id)
 	}
+	transaction := oe.workers.Begin(ctx)
+	defer func() {
+		if errorOut != nil {
+			transaction.Rollback()
+		} else {
+			transaction.Commit()
+		}
 
-	cannotDelete := oe.workers.DeleteTest(idtoDelete...)
+	}()
+	cannotDelete := transaction.CheckDelete(idtoDelete...)
 	if len(cannotDelete) > 0 {
 		return nil, nil, fmt.Errorf("should not delete:%s", strings.Join(cannotDelete, ","))
 	}
 	version := genVersion()
 	for id, cfg := range cfgs {
-		info, errSet := oe.workers.Update(cfg.profession, cfg.name, cfg.driver, version, cfg.desc, cfg.configBody)
+		info, errSet := transaction.Update(cfg.profession, cfg.name, cfg.driver, version, cfg.desc, cfg.configBody)
 		if errSet != nil {
-			log.Warnf("bath set skip %s by error:%v", id, ":", errSet)
-			continue
+			log.Warnf("bath set  %s fail :%v", id, errSet)
+			return nil, nil, errSet
 		}
-		configData, _ := json.Marshal(info.config)
+
 		responseBody = append(responseBody, info.Detail())
 		events = append(events, &open_api.EventResponse{
 			Event:     eosc.EventSet,
 			Namespace: eosc.NamespaceWorker,
 			Key:       id,
-			Data:      configData,
+			Data:      info.ConfigData(),
 		})
 	}
 
 	for _, id := range idtoDelete {
-		oe.workers.Delete(id)
+		_, err := transaction.Delete(id)
+		if err != nil {
+
+			return nil, nil, fmt.Errorf("delete worker %s %w", id, err)
+		}
 		events = append(events, &open_api.EventResponse{
 			Event:     eosc.EventDel,
 			Namespace: eosc.NamespaceWorker,
@@ -178,7 +193,7 @@ func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status i
 	return http.StatusOK, nil, nil, oe.settings.GetConfig(name)
 }
 
-func NewSettingApi(init map[string][]byte, workers *Workers, variable eosc.IVariable) *SettingApi {
+func NewSettingApi(init map[string][]byte, workers workers.IWorkers, variable eosc.IVariable) *SettingApi {
 	datas := setting.GetSettings()
 	for id, conf := range init {
 

@@ -2,6 +2,7 @@ package process_admin
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/process-admin/workers"
 	"net/http"
 	"time"
 
@@ -15,11 +16,11 @@ import (
 
 type ExportApi struct {
 	extenders  *ExtenderData
-	workers    *Workers
+	workers    workers.IWorkers
 	profession professions.IProfessions
 }
 
-func NewExportApi(extenders *ExtenderData, profession professions.IProfessions, workers *Workers) *ExportApi {
+func NewExportApi(extenders *ExtenderData, profession professions.IProfessions, workers workers.IWorkers) *ExportApi {
 	return &ExportApi{extenders: extenders, workers: workers, profession: profession}
 }
 

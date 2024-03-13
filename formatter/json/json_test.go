@@ -43,12 +43,7 @@ func (e *Entry) Read(pattern string) interface{} {
 }
 
 func (e *Entry) Children(name string) []eosc.IEntry {
-	res := make([]eosc.IEntry, 0)
-	for _, child := range e.children.List() {
-		c, _ := child.(eosc.IEntry)
-		res = append(res, c)
-	}
-	return res
+	return e.children.List()
 }
 
 var config = eosc.FormatterConfig{
@@ -154,11 +149,25 @@ func Test_json_Format(t *testing.T) {
 			},
 		},
 	}
+	bodyConfig := []contentResize{
+		{
+			Size:   1024,
+			Suffix: "kb",
+		},
+		{
+			Size:   1024 * 1024,
+			Suffix: "mb",
+		},
+		{
+			Size:   1024 * 1024 * 1024,
+			Suffix: "gb",
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			wantData, _ := json.Marshal(tt.want)
 
-			j, _ := NewFormatter(tt.config, bodyConfig{})
+			j, _ := NewFormatter(tt.config, bodyConfig)
 			got := j.Format(tt.args.entry)
 			gotObj := map[string]interface{}{}
 			err := json.Unmarshal(got, &gotObj)

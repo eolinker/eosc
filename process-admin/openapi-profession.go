@@ -3,6 +3,7 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/eolinker/eosc/process-admin/workers"
 	"io"
 	"net/http"
 
@@ -16,10 +17,10 @@ import (
 
 type ProfessionApi struct {
 	data       professions.IProfessions
-	workerData *WorkerDatas
+	workerData *workers.WorkerDatas
 }
 
-func NewProfessionApi(data professions.IProfessions, ws *WorkerDatas) *ProfessionApi {
+func NewProfessionApi(data professions.IProfessions, ws *workers.WorkerDatas) *ProfessionApi {
 	return &ProfessionApi{data: data, workerData: ws}
 }
 
@@ -64,12 +65,13 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 	ws := make([]interface{}, 0, len(all))
 
 	for _, w := range all {
-		if w.worker != nil {
-			if w.worker.CheckSkill(skill) {
+		wk := w.GetWorker()
+		if wk != nil {
+			if wk.CheckSkill(skill) {
 				ws = append(ws, w.Info(pn.AppendLabels...))
 			}
 		}
-		log.Debug("worker is: ", w.worker)
+		log.Debug("worker is: ", wk)
 	}
 	return http.StatusOK, nil, nil, ws
 }

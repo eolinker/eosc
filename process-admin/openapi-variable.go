@@ -2,6 +2,8 @@ package process_admin
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/process-admin/marshal"
+	"github.com/eolinker/eosc/process-admin/workers"
 	"net/http"
 
 	"github.com/eolinker/eosc"
@@ -13,12 +15,12 @@ import (
 
 type VariableApi struct {
 	extenderData *ExtenderData
-	workers      *Workers
+	workers      workers.IWorkers
 	variableData eosc.IVariable
 	setting      eosc.ISettings
 }
 
-func NewVariableApi(extenderData *ExtenderData, workers *Workers, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
+func NewVariableApi(extenderData *ExtenderData, workers workers.IWorkers, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
 	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData, setting: setting}
 }
 
@@ -70,7 +72,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	if namespace == "" {
 		namespace = "default"
 	}
-	decoder, err := GetData(r)
+	decoder, err := marshal.GetData(r)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
@@ -97,7 +99,7 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
 			}
-			_, _, err = parse.Unmarshal(info.Body(), info.configType)
+			_, _, err = parse.Unmarshal(info.Body(), info.ConfigType())
 			if err != nil {
 				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
 			}
@@ -118,17 +120,29 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 
 	}
 	log.Debug("update variable...")
+	transaction := oe.workers.Begin(r.Context())
 	for _, w := range workerToUpdate {
 		if w.profession != Setting {
-			oe.workers.rebuild(w.id)
+			err := transaction.Rebuild(w.id)
+			if err != nil {
+				transaction.Rollback()
+				return http.StatusInternalServerError, nil, nil, err
+			}
 		} else {
-			oe.setting.Update(w.id, oe.variableData)
+
+			if err := oe.setting.Update(w.id, oe.variableData); err != nil {
+				transaction.Rollback()
+				return http.StatusInternalServerError, nil, nil, err
+			}
 		}
 	}
-	log.Debug("set variable...")
-	oe.variableData.SetByNamespace(namespace, cb)
-	log.Debug("set variable over...")
 
+	log.Debug("set variable...")
+
+	if err := oe.variableData.SetByNamespace(namespace, cb); err != nil {
+		return http.StatusInternalServerError, nil, nil, err
+	}
+	log.Debug("set variable over...")
 	data, _ := decoder.Encode()
 	return http.StatusOK, nil, []*open_api.EventResponse{{
 			Event:     "set",
