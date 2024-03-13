@@ -16,12 +16,11 @@ import (
 )
 
 type WorkerInfo struct {
-	worker       eosc.IWorker
-	config       *eosc.WorkerConfig
-	appendLabels []string
-	attr         map[string]interface{}
-	info         map[string]interface{}
-	configType   reflect.Type
+	worker     eosc.IWorker
+	config     *eosc.WorkerConfig
+	attr       map[string]interface{}
+	info       map[string]interface{}
+	configType reflect.Type
 }
 
 func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, version, desc, create, update string, body []byte, configType reflect.Type) *WorkerInfo {
@@ -45,11 +44,18 @@ func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driv
 	}
 }
 
-func (w *WorkerInfo) reset(driver, version, desc string, body []byte, worker eosc.IWorker, configType reflect.Type) {
+func (w *WorkerInfo) reset(driver, version, desc string, body []byte, worker eosc.IWorker, configType reflect.Type, updateAt, createAt string) {
 	//w.config.Update = eosc.Now()
-	if version != w.config.Version {
-		w.config.Update = eosc.Now()
+	if createAt == "" {
+		createAt = eosc.Now()
 	}
+	if updateAt == "" {
+		updateAt = eosc.Now()
+	}
+
+	w.config.Update = updateAt
+	w.config.Create = createAt
+
 	w.config.Driver = driver
 	w.config.Description = desc
 	w.config.Body = body

@@ -10,6 +10,13 @@ package workers
 
 import (
 	"context"
+	"fmt"
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/log"
+)
+
+const (
+	defaultBuffAction = 20
 )
 
 type ITransaction interface {
@@ -38,29 +45,96 @@ var (
 
 type imlTransaction struct {
 	*imlWorkers
+	ctx     context.Context
+	actions []*actionContent
 }
 
-func (i *imlTransaction) CheckDelete(ids ...string) (requires []string) {
-	//TODO implement me
-	panic("implement me")
+func newImlTransaction(ctx context.Context, imlWorkers *imlWorkers) *imlTransaction {
+	return &imlTransaction{ctx: ctx, imlWorkers: imlWorkers, actions: make([]*actionContent, 0, defaultBuffAction)}
 }
 
-func (i *imlTransaction) Delete(id string) (*WorkerInfo, error) {
-	//TODO implement me
-	panic("implement me")
+func (t *imlTransaction) Delete(id string) (*WorkerInfo, error) {
+	info, err := t.imlWorkers.delete(id)
+	if err != nil {
+		return nil, err
+	}
+	t.actions = append(t.actions, newActionContent(actionDelete, id, info.config))
+	return info, nil
 }
 
-func (i *imlTransaction) Update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error) {
-	//TODO implement me
-	panic("implement me")
+func (t *imlTransaction) Update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error) {
+	body, err := data.Encode()
+	if err != nil {
+		return nil, err
+	}
+	id, ok := eosc.ToWorkerId(name, profession)
+	if !ok {
+		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
+	}
+
+	log.Debug("update:", id, " ", profession, ",", name, ",", driver, ",", body)
+	old, exits := t.data.GetInfo(id)
+	if exits {
+		// update
+		if driver == "" {
+			driver = old.Driver()
+		}
+
+		info, err := t.imlWorkers.set(id, profession, name, driver, version, desc, body, eosc.Now(), old.config.Create)
+		if err != nil {
+			return nil, err
+		}
+		t.actions = append(t.actions, newActionContent(actionSet, id, old.config))
+		return info, nil
+	}
+	// create
+	if driver == "" {
+		return nil, fmt.Errorf("require driver")
+	}
+	info, err := t.imlWorkers.set(id, profession, name, driver, version, desc, body, eosc.Now(), eosc.Now())
+	if err != nil {
+		return nil, err
+	}
+	t.actions = append(t.actions, newActionContent(actionCreate, id, nil))
+	return info, nil
+
 }
 
-func (i *imlTransaction) Commit() {
-	//TODO implement me
-	panic("implement me")
+func (t *imlTransaction) Commit() {
+	t.actions = nil
+	t.imlWorkers.lockTransaction.Unlock()
 }
 
-func (i *imlTransaction) Rollback() {
-	//TODO implement me
-	panic("implement me")
+func (t *imlTransaction) Rollback() {
+	defer func() {
+		t.imlWorkers.lockTransaction.Lock()
+		t.actions = nil
+	}()
+	max := len(t.actions)
+	for i := max - 1; i >= 0; i-- {
+		a := t.actions[i]
+		switch a.action {
+		case actionCreate:
+			_, err := t.imlWorkers.delete(a.id)
+			if err != nil {
+				log.Errorf("rollback create %s to delete error:%s", a.id, err)
+				continue
+			}
+		case actionDelete:
+			_, err := t.imlWorkers.set(a.id, a.config.Profession, a.config.Name, a.config.Driver, a.config.Version, a.config.Description, a.config.Body, a.config.Update, a.config.Create)
+			if err != nil {
+				log.Errorf("rollback delete %s to create error:%s", a.id, err)
+
+				continue
+			}
+		case actionSet:
+
+			_, err := t.imlWorkers.set(a.id, a.config.Profession, a.config.Name, a.config.Driver, a.config.Version, a.config.Description, a.config.Body, a.config.Update, a.config.Create)
+			if err != nil {
+				log.Errorf("rollback delete %s to create error:%s", a.id, err)
+
+				continue
+			}
+		}
+	}
 }

@@ -13,10 +13,10 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/require"
-
 	"github.com/eolinker/eosc/professions"
+	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/utils/config"
+	"sync"
 )
 
 type IWorkers interface {
@@ -34,6 +34,8 @@ type imlWorkers struct {
 	data           *WorkerDatas
 	requireManager eosc.IRequires
 	variables      eosc.IVariable
+
+	lockTransaction sync.Mutex
 }
 
 func (oe *imlWorkers) GetProfession(profession string) (*professions.Profession, bool) {
@@ -41,8 +43,8 @@ func (oe *imlWorkers) GetProfession(profession string) (*professions.Profession,
 }
 
 func (oe *imlWorkers) Begin(ctx context.Context) ITransactionCtx {
-	//TODO implement me
-	panic("implement me")
+	oe.lockTransaction.Lock()
+	return newImlTransaction(ctx, oe)
 }
 
 func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) IWorkers {
@@ -65,7 +67,7 @@ func (oe *imlWorkers) init(professions professions.IProfessions, data *WorkerDat
 
 	for _, pw := range ps {
 		for _, v := range pm[pw.Name] {
-			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Version, v.config.Description, v.config.Body)
+			_, err := oe.set(v.config.Id, v.config.Profession, v.config.Name, v.config.Driver, v.config.Version, v.config.Description, v.config.Body, v.config.Update, v.config.Create)
 			if err != nil {
 				log.Errorf("init %s:%s", v.config.Id, err.Error())
 			}
@@ -89,33 +91,10 @@ func (oe *imlWorkers) ListEmployees(profession string) ([]interface{}, error) {
 
 }
 
-func (oe *imlWorkers) update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error) {
-	id, ok := eosc.ToWorkerId(name, profession)
-	if !ok {
-		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
-	}
-	log.Debug("update:", id, " ", profession, ",", name, ",", driver, ",", data)
-	if driver == "" {
-
-		employee, err := oe.GetEmployee(profession, name)
-		if err != nil {
-			return nil, err
-		}
-		driver = employee.config.Driver
-	}
-	body, _ := data.Encode()
-	w, err := oe.set(id, profession, name, driver, version, desc, body)
-	if err != nil {
-		return nil, err
-	}
-
-	return w, nil
-
-}
 func (oe *imlWorkers) Rebuild(id string) error {
 	info, has := oe.data.GetInfo(id)
 	if has {
-		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Version, info.config.Description, info.config.Body)
+		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Version, info.config.Description, info.config.Body, info.config.Update, info.config.Create)
 		return err
 	}
 	return nil
@@ -172,7 +151,7 @@ func (oe *imlWorkers) GetEmployee(profession, name string) (*WorkerInfo, error) 
 	return d, nil
 }
 
-func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string, body []byte) (*WorkerInfo, error) {
+func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string, body []byte, updateAt, createAt string) (*WorkerInfo, error) {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := oe.professions.Get(profession)
@@ -209,7 +188,7 @@ func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string
 			return nil, e
 		}
 		oe.requireManager.Set(id, getIds(requires))
-		wInfo.reset(driverName, version, desc, body, wInfo.worker, driver.ConfigType())
+		wInfo.reset(driverName, version, desc, body, wInfo.worker, driver.ConfigType(), updateAt, createAt)
 		oe.variables.SetVariablesById(id, usedVariables)
 		return wInfo, nil
 	}
@@ -221,9 +200,21 @@ func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string
 	}
 
 	if !hasInfo {
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, version, desc, eosc.Now(), eosc.Now(), body, driver.ConfigType())
+		if updateAt == "" {
+			updateAt = eosc.Now()
+		}
+		if createAt == "" {
+			createAt = eosc.Now()
+		}
+		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, version, desc, createAt, updateAt, body, driver.ConfigType())
 	} else {
-		wInfo.reset(driverName, version, desc, body, worker, driver.ConfigType())
+		if updateAt == "" {
+			updateAt = eosc.Now()
+		}
+
+		createAt = wInfo.config.Create
+
+		wInfo.reset(driverName, version, desc, body, worker, driver.ConfigType(), updateAt, createAt)
 	}
 
 	// store
