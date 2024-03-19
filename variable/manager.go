@@ -22,6 +22,12 @@ type Variables struct {
 	requireManager eosc.IRequires
 }
 
+func (m *Variables) MarshalJSON() ([]byte, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	return json.Marshal(m.data)
+}
+
 func (m *Variables) RemoveRequire(id string) {
 	m.requireManager.Del(id)
 }
@@ -71,6 +77,8 @@ func (m *Variables) Len() int {
 }
 
 func (m *Variables) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return NewParse(m).Unmarshal(buf, typ)
 }
 

@@ -71,6 +71,7 @@ func Process() {
 }
 
 type ProcessAdmin struct {
+	ctx    context.Context
 	once   sync.Once
 	reg    eosc.IExtenderDriverRegister
 	router *httprouter.Router
@@ -138,7 +139,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	bean.Injection(&extenderDrivers)
 
 	p := &ProcessAdmin{
-
+		ctx:    parent,
 		router: httprouter.New(),
 		server: &http.Server{},
 	}
@@ -192,8 +193,13 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 func (pa *ProcessAdmin) close() {
 	pa.once.Do(func() {
 
-		timeout, _ := context.WithTimeout(context.Background(), time.Second*3)
-		pa.server.Shutdown(timeout)
+		timeout, cancel := context.WithTimeout(pa.ctx, time.Second*3)
+		err := pa.server.Shutdown(timeout)
+		defer cancel()
+		if err != nil {
+			log.Warn("shutdown server error: ", err)
+			return
+		}
 	})
 }
 func initExtender(config map[string][]byte) extends.IExtenderRegister {
@@ -240,7 +246,7 @@ func readConfig() map[string]map[string][]byte {
 
 func (pa *ProcessAdmin) OpenApiServer() error {
 
-	addr := service.ServerUnixAddr(os.Getpid(), eosc.ProcessAdmin)
+	addr := service.ServerAddr(os.Getpid(), eosc.ProcessAdmin)
 	syscall.Unlink(addr)
 	log.Info("start admin unix server: ", addr)
 	l, err := grpc_unixsocket.Listener(addr)
