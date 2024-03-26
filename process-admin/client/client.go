@@ -1,26 +1,28 @@
 package client
 
 import (
+	"context"
 	"github.com/eolinker/eosc/process-admin/model"
 )
 
 type Client interface {
-	Get(id string) (any, error)
-	Set(id string, value any) error
-	Del(id string) error
-	Exists(id string) (bool, error)
-	PList() ([]*model.ProfessionInfo, error)
-	PGet(name string) (*model.ProfessionConfig, error)
-	SGet(name string) (any, error)
-	SSet(name string, value any) error
-	VAll() (map[string]model.Variables, error)
-	VGet(namespace string) (model.Variables, error)
-	VSet(namespace string, v model.Variables) error
-	Begin() error
+	List(ctx context.Context, profession string) ([]model.Object, error)
+	Get(ctx context.Context, id string) (model.Object, error)
+	Set(ctx context.Context, id string, value any) error
+	Del(ctx context.Context, id string) error
+	Exists(ctx context.Context, id string) (bool, error)
+	PList(ctx context.Context) ([]*model.ProfessionInfo, error)
+	PGet(ctx context.Context, name string) (*model.ProfessionConfig, error)
+	SGet(ctx context.Context, name string) (any, error)
+	SSet(ctx context.Context, name string, value any) error
+	VAll(ctx context.Context) (map[string]model.Variables, error)
+	VGet(ctx context.Context, namespace string) (model.Variables, error)
+	VSet(ctx context.Context, namespace string, v model.Variables) error
+	Transaction(ctx context.Context) (Transaction, error)
 }
 
 type Transaction interface {
 	Client
-	Commit() error
-	Rollback() error
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
 }
