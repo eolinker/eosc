@@ -11,7 +11,7 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
-	"github.com/eolinker/eosc/process-admin/workers"
+	"github.com/eolinker/eosc/process-admin/admin"
 	"time"
 
 	"github.com/eolinker/eosc/config"
@@ -154,9 +154,9 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
 
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
-	wd := workers.NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
+	wd := admin.NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
 
-	ws := workers.NewWorkers(ps, wd, vd)
+	ws := admin.NewWorkers(ps, wd, vd)
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 

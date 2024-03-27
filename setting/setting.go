@@ -102,7 +102,7 @@ type tSettings struct {
 //			return
 //		}
 //		for i := range cfgs {
-//			variable.SetVariablesById(update[i].Id, usagesAll[i])
+//			variable.SetRequire(update[i].Id, usagesAll[i])
 //		}
 //		for _, id := range delete {
 //			variable.RemoveRequire(id)
@@ -140,7 +140,7 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) error {
 	if err != nil {
 		return err
 	}
-	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), useVariable)
+	variable.SetRequire(fmt.Sprintf("%s@setting", name), useVariable)
 
 	return nil
 
@@ -207,7 +207,7 @@ func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariab
 	if err != nil {
 		return err
 	}
-	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), vs)
+	variable.SetRequire(fmt.Sprintf("%s@setting", name), vs)
 	config := FormatConfig(org, configType)
 	s.lock.Lock()
 	s.configs[name] = config

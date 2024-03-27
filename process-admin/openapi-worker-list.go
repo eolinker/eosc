@@ -16,7 +16,7 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 	if isSkip {
 		return
 	}
-	es, err := oe.workers.ListEmployees(profession)
+	es, err := oe.admin.ListEmployees(profession)
 	if err != nil {
 		return 500, nil, nil, err
 	}
@@ -36,7 +36,7 @@ func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params
 	}
 
 	name := params.ByName("name")
-	eo, err := oe.workers.GetEmployee(profession, name)
+	eo, err := oe.admin.GetEmployee(profession, name)
 	if err != nil {
 		return 404, nil, nil, err
 	}

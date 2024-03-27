@@ -163,7 +163,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 		if e != nil {
 			return e
 		}
-		wm.variables.SetVariablesById(id, useVariables)
+		wm.variables.SetRequire(id, useVariables)
 		wm.configs[id] = &ConfigCache{
 			profession: profession,
 			name:       name,
@@ -186,7 +186,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 
 	// store
 	wm.data.Set(id, worker)
-	wm.variables.SetVariablesById(id, useVariables)
+	wm.variables.SetRequire(id, useVariables)
 	wm.configs[id] = &ConfigCache{
 		profession: profession,
 		name:       name,

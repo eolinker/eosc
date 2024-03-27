@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process-admin/workers"
+	"github.com/eolinker/eosc/process-admin/admin"
 	"io"
 	"mime"
 	"net/http"
@@ -67,7 +67,7 @@ func (y YamlData) Marshal() ([]byte, error) {
 	return y, nil
 }
 
-func GetData(req *http.Request) (workers.IData, error) {
+func GetData(req *http.Request) (admin.IData, error) {
 	mediaType, _, err := mime.ParseMediaType(req.Header.Get("content-type"))
 	if err != nil {
 		return nil, err

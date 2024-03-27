@@ -2,8 +2,8 @@ package process_admin
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/marshal"
-	"github.com/eolinker/eosc/process-admin/workers"
 	"net/http"
 
 	"github.com/eolinker/eosc"
@@ -15,12 +15,12 @@ import (
 
 type VariableApi struct {
 	extenderData *ExtenderData
-	workers      workers.IWorkers
+	workers      admin.IAdmin
 	variableData eosc.IVariable
 	setting      eosc.ISettings
 }
 
-func NewVariableApi(extenderData *ExtenderData, workers workers.IWorkers, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
+func NewVariableApi(extenderData *ExtenderData, workers admin.IAdmin, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
 	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData, setting: setting}
 }
 

@@ -54,7 +54,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	if cb.Version == "" {
 		cb.Version = genVersion()
 	}
-	transaction := oe.workers.Begin(r.Context())
+	transaction := oe.admin.Begin(r.Context())
 
 	obj, err := transaction.Update(profession, name, cb.Driver, cb.Version, cb.Description, decoder)
 	if err != nil {
@@ -97,7 +97,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 
 	}
 
-	workerInfo, err := oe.workers.GetEmployee(profession, name)
+	workerInfo, err := oe.admin.GetEmployee(profession, name)
 	if err != nil {
 		return 0, nil, nil, "not exist"
 	}
@@ -129,7 +129,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		}
 	}
 	decoder = marshal.JsonData(data)
-	transaction := oe.workers.Begin(r.Context())
+	transaction := oe.admin.Begin(r.Context())
 	obj, err := transaction.Update(profession, name, workerInfo.Driver(), version, description, decoder)
 	if err != nil {
 		transaction.Rollback()
@@ -167,7 +167,7 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	if cb.Version == "" {
 		cb.Version = genVersion()
 	}
-	transaction := oe.workers.Begin(r.Context())
+	transaction := oe.admin.Begin(r.Context())
 
 	obj, err := transaction.Update(profession, name, cb.Driver, cb.Version, cb.Description, decoder)
 	if err != nil {
@@ -195,14 +195,14 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 	if !ok {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid name:%s for %s", name, profession)
 	}
-	p, has := oe.workers.GetProfession(profession)
+	p, has := oe.admin.GetProfession(profession)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid profession:%s", profession)
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
 		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
 	}
-	transaction := oe.workers.Begin(r.Context())
+	transaction := oe.admin.Begin(r.Context())
 	wInfo, err := transaction.Delete(id)
 	if err != nil {
 		transaction.Rollback()

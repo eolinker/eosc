@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	workers "github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/marshal"
-	workers "github.com/eolinker/eosc/process-admin/workers"
+	"github.com/eolinker/eosc/utils/set"
 	"net/http"
 	"reflect"
 	"strings"
@@ -18,7 +19,7 @@ import (
 )
 
 type SettingApi struct {
-	workers  workers.IWorkers
+	workers  workers.IAdmin
 	settings setting.ISettings
 	variable eosc.IVariable
 }
@@ -105,8 +106,8 @@ func (oe *SettingApi) batchSet(ctx context.Context, inputData []byte, driver eos
 	}
 	inputList := splitConfig(inputData)
 	cfgs := make(map[string]BatchWorkerInfo, len(inputList))
-	allWorkers := toSet(driver.AllWorkers())
-	events := make([]*open_api.EventResponse, 0, len(allWorkers))
+	allWorkers := set.NewSet(driver.AllWorkers()...)
+	events := make([]*open_api.EventResponse, 0, allWorkers.Size())
 	responseBody := make([]interface{}, 0, len(inputList))
 	for _, inp := range inputList {
 		configData, _ := inp.Encode()
@@ -121,8 +122,8 @@ func (oe *SettingApi) batchSet(ctx context.Context, inputData []byte, driver eos
 			return nil, nil, errCk
 		}
 		id, _ := eosc.ToWorkerId(workerName, profession)
-		if allWorkers[id] {
-			delete(allWorkers, id)
+		if allWorkers.Contains(id) {
+			allWorkers.Remove(id)
 		}
 		cfgs[id] = BatchWorkerInfo{
 			id:         id,
@@ -133,8 +134,8 @@ func (oe *SettingApi) batchSet(ctx context.Context, inputData []byte, driver eos
 			configBody: inp,
 		}
 	}
-	idtoDelete := make([]string, 0, len(allWorkers))
-	for id := range allWorkers {
+	idtoDelete := make([]string, 0, allWorkers.Size())
+	for _, id := range allWorkers.List() {
 		idtoDelete = append(idtoDelete, id)
 	}
 	transaction := oe.workers.Begin(ctx)
@@ -193,7 +194,7 @@ func (oe *SettingApi) Get(req *http.Request, params httprouter.Params) (status i
 	return http.StatusOK, nil, nil, oe.settings.GetConfig(name)
 }
 
-func NewSettingApi(init map[string][]byte, workers workers.IWorkers, variable eosc.IVariable) *SettingApi {
+func NewSettingApi(init map[string][]byte, workers workers.IAdmin, variable eosc.IVariable) *SettingApi {
 	datas := setting.GetSettings()
 	for id, conf := range init {
 
@@ -216,12 +217,4 @@ func NewSettingApi(init map[string][]byte, workers workers.IWorkers, variable eo
 		variable: variable,
 		settings: datas,
 	}
-}
-
-func toSet(ids []string) map[string]bool {
-	s := make(map[string]bool)
-	for _, id := range ids {
-		s[id] = true
-	}
-	return s
 }

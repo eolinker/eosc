@@ -3,7 +3,8 @@ package process_admin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc/process-admin/workers"
+	"github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/model"
 	"io"
 	"net/http"
 
@@ -17,10 +18,10 @@ import (
 
 type ProfessionApi struct {
 	data       professions.IProfessions
-	workerData *workers.WorkerDatas
+	workerData *admin.WorkerDatas
 }
 
-func NewProfessionApi(data professions.IProfessions, ws *workers.WorkerDatas) *ProfessionApi {
+func NewProfessionApi(data professions.IProfessions, ws *admin.WorkerDatas) *ProfessionApi {
 	return &ProfessionApi{data: data, workerData: ws}
 }
 
@@ -37,13 +38,6 @@ func (pi *ProfessionApi) Register(router *httprouter.Router) {
 	router.Handle(http.MethodDelete, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.Delete))
 	router.GET("/profession/:profession/skill", open_api.CreateHandleFunc(pi.Skill))
 
-}
-
-type ProfessionInfo struct {
-	Name   string   `json:"name,omitempty"`
-	Label  string   `json:"label,omitempty"`
-	Desc   string   `json:"desc,omitempty"`
-	Driver []string `json:"driver,omitempty"`
 }
 
 func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -78,13 +72,13 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 
 func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	list := pi.data.List()
-	res := make([]*ProfessionInfo, 0, len(list))
+	res := make([]*model.ProfessionInfo, 0, len(list))
 	for _, p := range list {
 		drivers := make([]string, 0, len(p.Drivers))
 		for _, d := range p.Drivers {
 			drivers = append(drivers, d.Name)
 		}
-		res = append(res, &ProfessionInfo{
+		res = append(res, &model.ProfessionInfo{
 			Name:   p.Name,
 			Label:  p.Label,
 			Desc:   p.Desc,

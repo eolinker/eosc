@@ -2,8 +2,8 @@ package process_admin
 
 import (
 	"encoding/json"
+	"github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/marshal"
-	"github.com/eolinker/eosc/process-admin/workers"
 )
 
 type configProxy struct {
@@ -15,14 +15,14 @@ func (c *configProxy) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-func splitConfig(data []byte) []workers.IData {
+func splitConfig(data []byte) []admin.IData {
 	var ps []*configProxy
 
 	err := json.Unmarshal(data, &ps)
 	if err != nil {
 		return nil
 	}
-	r := make([]workers.IData, 0, len(ps))
+	r := make([]admin.IData, 0, len(ps))
 	for _, v := range ps {
 		r = append(r, marshal.JsonData(v.data))
 	}
