@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package workers
+package admin
 
 import (
 	"context"
@@ -19,17 +19,7 @@ import (
 	"sync"
 )
 
-type IWorkers interface {
-	Begin(ctx context.Context) ITransactionCtx
-	GetEmployee(profession, name string) (*WorkerInfo, error)
-	Export() map[string][]*WorkerInfo
-	ListEmployees(profession string) ([]interface{}, error)
-	GetProfession(profession string) (*professions.Profession, bool)
-	CheckDelete(ids ...string) (requires []string)
-	Rebuild(id string) error
-}
-
-type imlWorkers struct {
+type imlAdmin struct {
 	professions    professions.IProfessions
 	data           *WorkerDatas
 	requireManager eosc.IRequires
@@ -38,22 +28,38 @@ type imlWorkers struct {
 	lockTransaction sync.Mutex
 }
 
-func (oe *imlWorkers) GetProfession(profession string) (*professions.Profession, bool) {
+func (oe *imlAdmin) lock() {
+	oe.lockTransaction.Lock()
+}
+
+func (oe *imlAdmin) unLock() {
+	oe.lockTransaction.Unlock()
+}
+
+func (oe *imlAdmin) Get(id string) (eosc.IWorker, bool) {
+	return oe.data.Get(id)
+}
+
+func (oe *imlAdmin) GetInfo(id string) (*WorkerInfo, bool) {
+	return oe.data.GetInfo(id)
+}
+
+func (oe *imlAdmin) GetProfession(profession string) (*professions.Profession, bool) {
 	return oe.professions.Get(profession)
 }
 
-func (oe *imlWorkers) Begin(ctx context.Context) ITransactionCtx {
+func (oe *imlAdmin) Begin(ctx context.Context) ITransactionCtx {
 	oe.lockTransaction.Lock()
 	return newImlTransaction(ctx, oe)
 }
 
-func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) IWorkers {
+func NewWorkers(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) IAdmin {
 
-	ws := &imlWorkers{requireManager: require.NewRequireManager()}
+	ws := &imlAdmin{requireManager: require.NewRequireManager()}
 	ws.init(professions, data, variables)
 	return ws
 }
-func (oe *imlWorkers) init(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) {
+func (oe *imlAdmin) init(professions professions.IProfessions, data *WorkerDatas, variables eosc.IVariable) {
 	oe.professions = professions
 	oe.data = data
 	oe.variables = variables
@@ -74,7 +80,7 @@ func (oe *imlWorkers) init(professions professions.IProfessions, data *WorkerDat
 		}
 	}
 }
-func (oe *imlWorkers) ListEmployees(profession string) ([]interface{}, error) {
+func (oe *imlAdmin) ListEmployees(profession string) ([]interface{}, error) {
 	p, has := oe.professions.Get(profession)
 	if !has {
 		return nil, eosc.ErrorProfessionNotExist
@@ -91,7 +97,7 @@ func (oe *imlWorkers) ListEmployees(profession string) ([]interface{}, error) {
 
 }
 
-func (oe *imlWorkers) Rebuild(id string) error {
+func (oe *imlAdmin) Rebuild(id string) error {
 	info, has := oe.data.GetInfo(id)
 	if has {
 		_, err := oe.set(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Version, info.config.Description, info.config.Body, info.config.Update, info.config.Create)
@@ -100,14 +106,14 @@ func (oe *imlWorkers) Rebuild(id string) error {
 	return nil
 
 }
-func (oe *imlWorkers) Export() map[string][]*WorkerInfo {
+func (oe *imlAdmin) Export() map[string][]*WorkerInfo {
 	all := make(map[string][]*WorkerInfo)
 	for _, w := range oe.data.All() {
 		all[w.config.Profession] = append(all[w.config.Profession], w)
 	}
 	return all
 }
-func (oe *imlWorkers) CheckDelete(ids ...string) (requires []string) {
+func (oe *imlAdmin) CheckDelete(ids ...string) (requires []string) {
 	for _, id := range ids {
 		if oe.requireManager.RequireByCount(id) > 0 {
 			requires = append(requires, id)
@@ -115,7 +121,7 @@ func (oe *imlWorkers) CheckDelete(ids ...string) (requires []string) {
 	}
 	return requires
 }
-func (oe *imlWorkers) delete(id string) (*WorkerInfo, error) {
+func (oe *imlAdmin) Delete(id string) (*WorkerInfo, error) {
 
 	worker, has := oe.data.GetInfo(id)
 	if !has {
@@ -138,7 +144,7 @@ func (oe *imlWorkers) delete(id string) (*WorkerInfo, error) {
 	return worker, nil
 }
 
-func (oe *imlWorkers) GetEmployee(profession, name string) (*WorkerInfo, error) {
+func (oe *imlAdmin) GetEmployee(profession, name string) (*WorkerInfo, error) {
 
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
@@ -151,7 +157,7 @@ func (oe *imlWorkers) GetEmployee(profession, name string) (*WorkerInfo, error) 
 	return d, nil
 }
 
-func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string, body []byte, updateAt, createAt string) (*WorkerInfo, error) {
+func (oe *imlAdmin) set(id, profession, name, driverName, version, desc string, body []byte, updateAt, createAt string) (*WorkerInfo, error) {
 
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := oe.professions.Get(profession)
@@ -189,7 +195,7 @@ func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string
 		}
 		oe.requireManager.Set(id, getIds(requires))
 		wInfo.reset(driverName, version, desc, body, wInfo.worker, driver.ConfigType(), updateAt, createAt)
-		oe.variables.SetVariablesById(id, usedVariables)
+		oe.variables.SetRequire(id, usedVariables)
 		return wInfo, nil
 	}
 	// create
@@ -220,7 +226,7 @@ func (oe *imlWorkers) set(id, profession, name, driverName, version, desc string
 	// store
 	oe.data.Set(id, wInfo)
 	oe.requireManager.Set(id, getIds(requires))
-	oe.variables.SetVariablesById(id, usedVariables)
+	oe.variables.SetRequire(id, usedVariables)
 	log.Debug("worker-data set worker done:", id)
 
 	return wInfo, nil

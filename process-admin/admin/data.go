@@ -6,7 +6,7 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package workers
+package admin
 
 type IData interface {
 	UnMarshal(v interface{}) error
