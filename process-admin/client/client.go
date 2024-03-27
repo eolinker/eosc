@@ -21,6 +21,10 @@ type Client interface {
 	Transaction(ctx context.Context) (Transaction, error)
 }
 
+func New() Client {
+	return nil
+}
+
 type Transaction interface {
 	Client
 	Commit(ctx context.Context) error
