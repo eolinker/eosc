@@ -30,6 +30,13 @@ type tSettings struct {
 	orgConfig map[string][]byte
 }
 
+func (s *tSettings) GetConfigBody(name string) ([]byte, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	c, has := s.orgConfig[name]
+	return c, has
+}
+
 //func (s *tSettings) Set(name string, body []byte, variable eosc.IVariable) (format interface{}, update []*eosc.WorkerConfig, delete []string, err error) {
 //	driver, has := s.GetDriver(name)
 //	if !has {
@@ -175,7 +182,9 @@ func (s *tSettings) GetConfig(name string) interface{} {
 				return driver.Get()
 			}
 		case eosc.SettingModeSingleton:
+			s.lock.RLock()
 			v, yes := s.configs[name]
+			s.lock.RUnlock()
 			if yes {
 				return v
 			}

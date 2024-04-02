@@ -13,4 +13,5 @@ import "errors"
 var (
 	ErrorNotMatch = errors.New("not match profession")
 	ErrorNotExist = errors.New("not exist")
+	ErrorReadOnly = errors.New("read only")
 )

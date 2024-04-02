@@ -40,4 +40,5 @@ type ISettings interface {
 	Update(name string, variable IVariable) (err error)
 	CheckVariable(name string, variable IVariable) (err error)
 	GetConfig(name string) interface{}
+	GetConfigBody(name string) ([]byte, bool)
 }

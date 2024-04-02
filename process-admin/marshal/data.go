@@ -6,11 +6,9 @@
  * Vestibulum commodo. Ut rhoncus gravida arcu.
  */
 
-package admin_o
+package marshal
 
-import "errors"
-
-var (
-	ErrorNotMatch = errors.New("not match profession")
-	ErrorNotExist = errors.New("not exist")
-)
+type IData interface {
+	UnMarshal(v interface{}) error
+	Encode() ([]byte, error)
+}

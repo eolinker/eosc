@@ -2,26 +2,25 @@ package process_admin
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/process-admin/admin"
+	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
+	"github.com/eolinker/eosc/utils"
 	"net/http"
 	"time"
 
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/zip"
 	"github.com/ghodss/yaml"
 	"github.com/julienschmidt/httprouter"
 )
 
 type ExportApi struct {
-	extenders  *ExtenderData
-	workers    admin.IAdmin
-	profession professions.IProfessions
+	version      map[string]string
+	adminHandler admin_o.AdminController
 }
 
-func NewExportApi(extenders *ExtenderData, profession professions.IProfessions, workers admin.IAdmin) *ExportApi {
-	return &ExportApi{extenders: extenders, workers: workers, profession: profession}
+func NewExportApi(extenders *ExtenderData, adminHandler admin_o.AdminController) *ExportApi {
+	return &ExportApi{adminHandler: adminHandler, version: extenders.versions()}
 }
 
 func (oe *ExportApi) Register(router *httprouter.Router) {
@@ -29,13 +28,14 @@ func (oe *ExportApi) Register(router *httprouter.Router) {
 
 }
 func (oe *ExportApi) export(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	workerData := oe.allWorker()
-	extenderList := oe.extenders.versions()
-	professionList := oe.profession.List()
+
+	workerData := oe.adminHandler.AllWorkers(r.Context())
+	extenderList := oe.version
+	professionList := oe.adminHandler.ListProfession(r.Context())
 
 	id := time.Now().Format("2006-01-02 150405")
 
-	exportData := getExportData(workerData)
+	exportData := getExportData(utils.GroupBy(workerData, admin_o.GetProfession))
 
 	extenderData := make([]interface{}, 0, len(extenderList))
 	for k, v := range extenderList {
@@ -61,8 +61,8 @@ func (oe *ExportApi) export(r *http.Request, params httprouter.Params) (status i
 	return 200, header, nil, content
 
 }
-func yamlEncode(k string, v []interface{}) ([]byte, error) {
-	newValue := map[string][]interface{}{
+func yamlEncode[T any](k string, v []T) ([]byte, error) {
+	newValue := map[string][]T{
 		k: v,
 	}
 	d, err := yaml.Marshal(newValue)
@@ -72,23 +72,13 @@ func yamlEncode(k string, v []interface{}) ([]byte, error) {
 	}
 	return d, nil
 }
-func getExportData(value map[string][]interface{}) map[string][]byte {
+func getExportData(value map[string][]*admin_o.WorkerInfo) map[string][]byte {
 	data := make(map[string][]byte)
-	for k, v := range value {
-		data[fmt.Sprintf("profession-%s", k)], _ = yamlEncode(k, v)
-	}
-	return data
-}
-
-func (oe *ExportApi) allWorker() map[string][]interface{} {
-	ps := oe.workers.Export()
-	data := make(map[string][]interface{})
-	for key, pl := range ps {
-		list := make([]interface{}, 0, len(pl))
-		for _, p := range pl {
-			list = append(list, p.Detail())
-		}
-		data[key] = list
+	for k, vs := range value {
+		utils.ArrayType(vs, func(t *admin_o.WorkerInfo) any {
+			return t.Detail()
+		})
+		data[fmt.Sprintf("profession-%s", k)], _ = yamlEncode(k, vs)
 	}
 	return data
 }

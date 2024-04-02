@@ -11,7 +11,7 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
-	"github.com/eolinker/eosc/process-admin/admin"
+	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
 	"time"
 
 	"github.com/eolinker/eosc/config"
@@ -20,7 +20,6 @@ import (
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
 
@@ -151,25 +150,34 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	ps := professions.NewProfessions(register)
 
 	ps = NewProfessionsRequire(ps, extenderRequire)
-	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
+
+	ps.Reset(utils.MapValue(utils.MapType(arg[eosc.NamespaceProfession], func(k string, v []byte) (*eosc.ProfessionConfig, bool) {
+		c := new(eosc.ProfessionConfig)
+		err := json.Unmarshal(v, c)
+		if err != nil {
+			log.Error("read profession config:", err)
+			return nil, false
+		}
+		return c, true
+	})))
 
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
-	wd := admin.NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
 
-	ws := admin.NewWorkers(ps, wd, vd)
+	wd := admin_o.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd)
+
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 
 	_ = bean.Check()
 
-	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), ws, vd)
+	settingApi := NewSettingApi(wd)
 
 	// openAPI handler register
-	NewProfessionApi(ps, wd).Register(p.router)
-	NewWorkerApi(ws, settingApi.request).Register(p.router)
+	NewProfessionApi(wd).Register(p.router)
+	NewWorkerApi(wd, settingApi.request).Register(p.router)
 	settingApi.RegisterSetting(p.router)
-	NewExportApi(extenderData, ps, ws).Register(p.router)
-	NewVariableApi(extenderData, ws, vd, setting.GetSettings()).Register(p.router)
+	NewExportApi(extenderData, wd).Register(p.router)
+	NewVariableApi(wd).Register(p.router)
 
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{

@@ -1,9 +1,10 @@
 package process_admin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc/process-admin/admin"
+	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
 	"github.com/eolinker/eosc/process-admin/model"
 	"io"
 	"net/http"
@@ -11,18 +12,16 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/utils/schema"
 	"github.com/julienschmidt/httprouter"
 )
 
 type ProfessionApi struct {
-	data       professions.IProfessions
-	workerData *admin.WorkerDatas
+	data admin_o.AdminController
 }
 
-func NewProfessionApi(data professions.IProfessions, ws *admin.WorkerDatas) *ProfessionApi {
-	return &ProfessionApi{data: data, workerData: ws}
+func NewProfessionApi(ws admin_o.AdminController) *ProfessionApi {
+	return &ProfessionApi{data: ws}
 }
 
 func (pi *ProfessionApi) Register(router *httprouter.Router) {
@@ -35,7 +34,7 @@ func (pi *ProfessionApi) Register(router *httprouter.Router) {
 
 	router.Handle(http.MethodPut, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.SetDriver))
 	router.Handle(http.MethodPost, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.AddDriver))
-	router.Handle(http.MethodDelete, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.Delete))
+	router.Handle(http.MethodDelete, "/profession/:profession/driver", open_api.CreateHandleFunc(pi.DeleteDriver))
 	router.GET("/profession/:profession/skill", open_api.CreateHandleFunc(pi.Skill))
 
 }
@@ -46,7 +45,7 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 	if skill == "" {
 		return http.StatusBadRequest, nil, nil, "skill invalid"
 	}
-	pn, has := pi.data.Get(name)
+	pn, has := pi.data.GetProfession(req.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -55,7 +54,8 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 	for _, dependency := range dependencies {
 		dps[dependency] = true
 	}
-	all := pi.workerData.All()
+	all := pi.data.AllWorkers(req.Context())
+
 	ws := make([]interface{}, 0, len(all))
 
 	for _, w := range all {
@@ -71,7 +71,7 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 }
 
 func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
-	list := pi.data.List()
+	list := pi.data.ListProfession(r.Context())
 	res := make([]*model.ProfessionInfo, 0, len(list))
 	for _, p := range list {
 		drivers := make([]string, 0, len(p.Drivers))
@@ -90,7 +90,7 @@ func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status 
 
 func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
-	profession, has := pi.data.Get(name)
+	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -99,7 +99,7 @@ func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (stat
 
 func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
-	profession, has := pi.data.Get(name)
+	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -130,7 +130,7 @@ func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (
 		return http.StatusInternalServerError, nil, nil, "invalid driver name"
 
 	}
-	profession, has := pi.data.Get(professionName)
+	profession, has := pi.data.GetProfession(r.Context(), professionName)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -160,7 +160,7 @@ func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (
 func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	driverName := r.URL.Query().Get("name")
-	profession, has := pi.data.Get(name)
+	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -179,22 +179,20 @@ func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (s
 	}
 	pConfig := profession.ProfessionConfig
 
-	err = pi.data.Set(name, pConfig)
+	events, err = pi.data.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+		return api.SetProfession(name, pConfig)
+	})
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceProfession,
-		Key:       name,
-		Data:      data,
-	}}, data
+
+	return http.StatusOK, nil, events, data
 
 }
 func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
-	profession, has := pi.data.Get(name)
+	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -215,22 +213,19 @@ func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (s
 	pConfig := profession.ProfessionConfig
 	pConfig.Drivers = append(profession.Drivers, driverConfig)
 
-	err = pi.data.Set(name, pConfig)
+	events, err = pi.data.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+		return api.SetProfession(name, pConfig)
+	})
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceProfession,
-		Key:       name,
-		Data:      data,
-	}}, data
+	return http.StatusOK, nil, events, data
 
 }
 func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
-	profession, has := pi.data.Get(name)
+	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -246,23 +241,21 @@ func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params)
 	}
 	pConfig := profession.ProfessionConfig
 	pConfig.Drivers = driverConfigs
-	err = pi.data.Set(name, pConfig)
+	events, err = pi.data.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+		return api.SetProfession(name, pConfig)
+	})
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceProfession,
-		Key:       name,
-		Data:      data,
-	}}, data
+
+	return http.StatusOK, nil, events, data
 
 }
-func (pi *ProfessionApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (pi *ProfessionApi) DeleteDriver(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	name := params.ByName("profession")
 	driverName := r.URL.Query().Get("name")
-	profession, has := pi.data.Get(name)
+	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
 		return http.StatusNotFound, nil, nil, ErrorNotExist
 	}
@@ -282,15 +275,14 @@ func (pi *ProfessionApi) Delete(r *http.Request, params httprouter.Params) (stat
 	if index > -1 {
 		pConfig.Drivers = append(pConfig.Drivers[:index], pConfig.Drivers[index+1:]...)
 	}
-	err := pi.data.Set(name, pConfig)
+	events, err := pi.data.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+		return api.SetProfession(name, pConfig)
+	})
+
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, err
 	}
 	data, _ := json.Marshal(pConfig)
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceProfession,
-		Key:       name,
-		Data:      data,
-	}}, data
+	return http.StatusOK, nil, events, data
+
 }

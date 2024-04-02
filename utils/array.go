@@ -19,3 +19,11 @@ func GroupBy[K comparable, V any](l []V, f func(V) K) map[K][]V {
 	})
 	return r
 }
+
+func ArrayType[T any, V any](l []T, f func(T) V) []V {
+	r := make([]V, len(l))
+	for i, v := range l {
+		r[i] = f(v)
+	}
+	return r
+}

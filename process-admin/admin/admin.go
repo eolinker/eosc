@@ -1,41 +1,48 @@
-/*
- * Copyright (c) 2024. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
- * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
- * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
- * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
- * Vestibulum commodo. Ut rhoncus gravida arcu.
- */
-
 package admin
 
 import (
 	"context"
 	"github.com/eolinker/eosc"
+	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/process-admin/marshal"
 	"github.com/eolinker/eosc/professions"
 )
 
-type IAdminApi interface {
-	GetEmployee(profession, name string) (*WorkerInfo, error)
-	Export() map[string][]*WorkerInfo
-	ListEmployees(profession string) ([]interface{}, error)
-	GetProfession(profession string) (*professions.Profession, bool)
-	Delete(id string) (*WorkerInfo, error)
-	Update(profession, name, driver, version, desc string, data IData) (*WorkerInfo, error)
-	Rebuild(id string) error
-	//AllWorker() *WorkerInfo
-	CheckDelete(ids ...string) (requires []string)
-	Get(id string) (eosc.IWorker, bool)
-	GetInfo(id string) (*WorkerInfo, bool)
-	lock()
-	unLock()
-}
+type AdminController interface {
+	IAdminApiReader
 
-type IAdmin interface {
-	Begin(ctx context.Context) ITransactionCtx
-	GetEmployee(profession, name string) (*WorkerInfo, error)
-	Export() map[string][]*WorkerInfo
-	ListEmployees(profession string) ([]interface{}, error)
-	GetProfession(profession string) (*professions.Profession, bool)
-	CheckDelete(ids ...string) (requires []string)
-	Rebuild(id string) error
+	Transaction(context.Context, func(ctx context.Context, api AdminApiWrite) error) ([]*open_api.EventResponse, error)
+	Begin(ctx context.Context) AdminTransaction
+}
+type IAdminApiReader interface {
+	eosc.IWorkers
+	ListWorker(ctx context.Context, profession string) ([]*WorkerInfo, error)
+	GetWorker(ctx context.Context, id string) (*WorkerInfo, error)
+	AllWorkers(ctx context.Context) []*WorkerInfo
+
+	GetProfession(ctx context.Context, profession string) (*professions.Profession, bool)
+	ListProfession(ctx context.Context) []*professions.Profession
+
+	GetSetting(ctx context.Context, name string) (any, bool)
+
+	AllVariables(ctx context.Context) map[string]map[string]string
+	GetVariables(ctx context.Context, namespace string) (map[string]string, bool)
+	GetVariable(ctx context.Context, namespace, key string) (string, bool)
+}
+type AdminTransaction interface {
+	AdminApiWrite
+	IAdminApiReader
+	Commit() ([]*open_api.EventResponse, error)
+	Rollback() error
+}
+type AdminApiWrite interface {
+	IAdminApiReader
+
+	SetProfession(name string, profession *eosc.ProfessionConfig) error
+	ResetProfession(configs []*eosc.ProfessionConfig)
+	DeleteWorker(ctx context.Context, id string) (*WorkerInfo, error)
+	SetWorker(ctx context.Context, profession, name, driver, version, desc string, data marshal.IData) (*WorkerInfo, error)
+
+	SetSetting(ctx context.Context, name string, data marshal.IData) error
+	SetVariable(ctx context.Context, namespace string, values map[string]string) error
 }

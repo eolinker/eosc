@@ -23,6 +23,10 @@ type WorkerInfo struct {
 	configType reflect.Type
 }
 
+func GetProfession(w *WorkerInfo) string {
+	return w.config.Profession
+
+}
 func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, version, desc, create, update string, body []byte, configType reflect.Type) *WorkerInfo {
 
 	return &WorkerInfo{

@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2024. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
- * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
- * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
- * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
- * Vestibulum commodo. Ut rhoncus gravida arcu.
- */
-
 package marshal
 
 import (
@@ -13,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process-admin/admin"
 	"io"
 	"mime"
 	"net/http"
@@ -67,7 +58,7 @@ func (y YamlData) Marshal() ([]byte, error) {
 	return y, nil
 }
 
-func GetData(req *http.Request) (admin.IData, error) {
+func GetData(req *http.Request) (IData, error) {
 	mediaType, _, err := mime.ParseMediaType(req.Header.Get("content-type"))
 	if err != nil {
 		return nil, err

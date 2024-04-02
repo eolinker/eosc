@@ -1,14 +1,13 @@
 package process_admin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc/process-admin/marshal"
-	"time"
-
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/process-admin/marshal"
 
 	"net/http"
 
@@ -29,10 +28,6 @@ type BaseArg struct {
 //	}
 //}
 
-func genVersion() string {
-	return time.Now().Format("20060102150405")
-}
-
 func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
 	isSkip := true
@@ -52,24 +47,22 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 
 	name := cb.Name
 	if cb.Version == "" {
-		cb.Version = genVersion()
+		cb.Version = admin.GenVersion()
 	}
-	transaction := oe.admin.Begin(r.Context())
-
-	obj, err := transaction.Update(profession, name, cb.Driver, cb.Version, cb.Description, decoder)
+	var out *admin.WorkerInfo
+	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+		worker, err := api.SetWorker(ctx, profession, name, cb.Driver, cb.Version, cb.Description, decoder)
+		if err != nil {
+			return err
+		}
+		out = worker
+		return nil
+	})
 	if err != nil {
-		transaction.Rollback()
-
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	transaction.Commit()
 
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceWorker,
-		Key:       obj.Id(),
-		Data:      obj.ConfigData(),
-	}}, obj.Detail()
+	return http.StatusOK, nil, event, out.Detail()
 }
 func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 	profession := params.ByName("profession")
@@ -81,6 +74,10 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	name := params.ByName("name")
 	if name == "" {
 		return http.StatusInternalServerError, nil, nil, "require name"
+	}
+	id, ok := eosc.ToWorkerId(name, profession)
+	if !ok {
+		return http.StatusInternalServerError, nil, nil, fmt.Errorf("invalid name:%s", name)
 	}
 	decoder, err := marshal.GetData(r)
 	if err != nil {
@@ -96,13 +93,12 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		return http.StatusInternalServerError, nil, nil, "nothing to patch"
 
 	}
-
-	workerInfo, err := oe.admin.GetEmployee(profession, name)
+	workerInfo, err := oe.admin.GetWorker(r.Context(), id)
 	if err != nil {
 		return 0, nil, nil, "not exist"
 	}
 	current := make(map[string]interface{})
-	json.Unmarshal(workerInfo.Body(), &current)
+	_ = json.Unmarshal(workerInfo.Body(), &current)
 
 	for k, v := range options {
 		if v != nil {
@@ -121,27 +117,26 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	data, _ := json.Marshal(current)
 	log.Debug("patch betfor:", string(workerInfo.Body()))
 	log.Debug("patch after:", string(data))
-	version := genVersion()
-	if v, has := options[version]; has {
+	version := admin.GenVersion()
+	if v, has := options["version"]; has {
 		t, ok := v.(string)
 		if ok {
 			version = t
 		}
 	}
 	decoder = marshal.JsonData(data)
-	transaction := oe.admin.Begin(r.Context())
-	obj, err := transaction.Update(profession, name, workerInfo.Driver(), version, description, decoder)
+	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+		w, err := api.SetWorker(ctx, profession, name, workerInfo.Driver(), version, description, decoder)
+		if err != nil {
+			workerInfo = w
+		}
+		return err
+	})
+
 	if err != nil {
-		transaction.Rollback()
 		return http.StatusInternalServerError, nil, nil, err
 	}
-	transaction.Commit()
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceWorker,
-		Key:       obj.Id(),
-		Data:      obj.ConfigData(),
-	}}, obj.Detail()
+	return http.StatusOK, nil, event, workerInfo.Detail()
 }
 func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
@@ -165,21 +160,19 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
 	if cb.Version == "" {
-		cb.Version = genVersion()
+		cb.Version = admin.GenVersion()
 	}
-	transaction := oe.admin.Begin(r.Context())
+	var out *admin.WorkerInfo
+	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+		w, err := api.SetWorker(ctx, profession, name, cb.Driver, cb.Version, cb.Description, decoder)
+		if err != nil {
+			return err
+		}
+		out = w
+		return nil
+	})
 
-	obj, err := transaction.Update(profession, name, cb.Driver, cb.Version, cb.Description, decoder)
-	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
-	}
-	transaction.Commit()
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventSet,
-		Namespace: eosc.NamespaceWorker,
-		Key:       obj.Id(),
-		Data:      obj.ConfigData(),
-	}}, obj.Detail()
+	return http.StatusOK, nil, event, out.Detail()
 }
 
 func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -195,24 +188,26 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 	if !ok {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid name:%s for %s", name, profession)
 	}
-	p, has := oe.admin.GetProfession(profession)
+	p, has := oe.admin.GetProfession(r.Context(), profession)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid profession:%s", profession)
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
 		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
 	}
-	transaction := oe.admin.Begin(r.Context())
-	wInfo, err := transaction.Delete(id)
+
+	var out *admin.WorkerInfo
+	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+		worker, err := api.DeleteWorker(ctx, id)
+		if err != nil {
+			return err
+		}
+		out = worker
+		return nil
+	})
 	if err != nil {
-		transaction.Rollback()
-		return 404, nil, nil, err
+		return http.StatusNotFound, nil, nil, err
 	}
-	transaction.Commit()
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-		Event:     eosc.EventDel,
-		Namespace: eosc.NamespaceWorker,
-		Key:       id,
-		Data:      nil,
-	}}, wInfo.Detail()
+
+	return http.StatusOK, nil, event, out.Detail()
 }

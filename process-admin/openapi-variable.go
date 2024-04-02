@@ -1,27 +1,24 @@
 package process_admin
 
 import (
+	"context"
 	"fmt"
-	"github.com/eolinker/eosc/process-admin/admin"
+	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
 	"github.com/eolinker/eosc/process-admin/marshal"
 	"net/http"
 
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/eolinker/eosc/variable"
 	"github.com/julienschmidt/httprouter"
 )
 
 type VariableApi struct {
-	extenderData *ExtenderData
-	workers      admin.IAdmin
-	variableData eosc.IVariable
-	setting      eosc.ISettings
+	adminHandler admin_o.AdminController
 }
 
-func NewVariableApi(extenderData *ExtenderData, workers admin.IAdmin, variableData eosc.IVariable, setting eosc.ISettings) *VariableApi {
-	return &VariableApi{extenderData: extenderData, workers: workers, variableData: variableData, setting: setting}
+func NewVariableApi(adminHandler admin_o.AdminController) *VariableApi {
+	return &VariableApi{
+		adminHandler: adminHandler,
+	}
 }
 
 func (oe *VariableApi) Register(router *httprouter.Router) {
@@ -35,7 +32,13 @@ func (oe *VariableApi) Register(router *httprouter.Router) {
 
 func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
 
-	return http.StatusOK, nil, nil, oe.variableData
+	status = http.StatusOK
+	events, _ = oe.adminHandler.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+		body = api.AllVariables(ctx)
+		return nil
+	})
+
+	return
 }
 
 func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
@@ -43,7 +46,7 @@ func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params)
 	if namespace == "" {
 		namespace = "default"
 	}
-	data, has := oe.variableData.GetByNamespace(namespace)
+	data, has := oe.adminHandler.GetVariables(r.Context(), namespace)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
@@ -56,14 +59,11 @@ func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (stat
 	if namespace == "" {
 		namespace = "default"
 	}
-	data, has := oe.variableData.GetByNamespace(namespace)
+	value, has := oe.adminHandler.GetVariable(r.Context(), namespace, key)
 	if !has {
 		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	value, ok := data[fmt.Sprintf("%s@%s", key, namespace)]
-	if !ok {
-		return http.StatusNotFound, nil, nil, fmt.Sprintf("key{%s} not found", key)
-	}
+
 	return http.StatusOK, nil, nil, value
 }
 
@@ -81,77 +81,15 @@ func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params)
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	log.Debug("check variable...")
-	affectIds, clone, err := oe.variableData.Check(namespace, cb)
+	event, err := oe.adminHandler.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+		return api.SetVariable(ctx, namespace, cb)
+	})
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
+		return http.StatusInternalServerError, nil, nil, errUnmarshal
 	}
-	log.Debug("parse variable...")
-	parse := variable.NewParse(clone)
-	workerToUpdate := make([]CacheItem, 0, len(affectIds))
-	for _, id := range affectIds {
-		profession, name, success := eosc.SplitWorkerId(id)
-		if !success {
-			continue
-		}
-		if profession != Setting {
-			info, err := oe.workers.GetEmployee(profession, name)
-			if err != nil {
-				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("worker(%s) not found, error is %s", id, err)
-			}
-			_, _, err = parse.Unmarshal(info.Body(), info.ConfigType())
-			if err != nil {
-				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
-			}
-			workerToUpdate = append(workerToUpdate, CacheItem{
-				id:         id,
-				profession: profession,
-			})
-		} else {
-			err := oe.setting.CheckVariable(name, clone)
-			if err != nil {
-				return http.StatusInternalServerError, nil, nil, fmt.Sprintf("setting %s unmarshal error:%s", name, err)
-			}
-			workerToUpdate = append(workerToUpdate, CacheItem{
-				id:         name,
-				profession: Setting,
-			})
-		}
-
-	}
-	log.Debug("update variable...")
-	transaction := oe.workers.Begin(r.Context())
-	for _, w := range workerToUpdate {
-		if w.profession != Setting {
-			err := transaction.Rebuild(w.id)
-			if err != nil {
-				transaction.Rollback()
-				return http.StatusInternalServerError, nil, nil, err
-			}
-		} else {
-
-			if err := oe.setting.Update(w.id, oe.variableData); err != nil {
-				transaction.Rollback()
-				return http.StatusInternalServerError, nil, nil, err
-			}
-		}
+	return http.StatusOK, nil, event, map[string]interface{}{
+		"namespace": namespace,
+		"variables": cb,
 	}
 
-	log.Debug("set variable...")
-
-	if err := oe.variableData.SetByNamespace(namespace, cb); err != nil {
-		return http.StatusInternalServerError, nil, nil, err
-	}
-	log.Debug("set variable over...")
-	data, _ := decoder.Encode()
-	return http.StatusOK, nil, []*open_api.EventResponse{{
-			Event:     "set",
-			Namespace: "variable",
-			Key:       namespace,
-			Data:      data,
-		},
-		}, map[string]interface{}{
-			"namespace": namespace,
-			"variables": cb,
-		}
 }
