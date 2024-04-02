@@ -17,6 +17,11 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 	if isSkip {
 		return
 	}
+	_, has := oe.admin.GetProfession(r.Context(), profession)
+	if !has {
+		return http.StatusNotFound, nil, "profession not found"
+	}
+
 	es, err := oe.admin.ListWorker(r.Context(), profession)
 	if err != nil {
 		return 500, nil, err
