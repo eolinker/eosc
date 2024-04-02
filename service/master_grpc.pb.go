@@ -130,3 +130,160 @@ var MasterDispatcher_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "master.proto",
 }
+
+// MasterEventsClient is the client API for MasterEvents service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type MasterEventsClient interface {
+	Send(ctx context.Context, in *Event, opts ...grpc.CallOption) (*EmptyRequest, error)
+	SendStream(ctx context.Context, opts ...grpc.CallOption) (MasterEvents_SendStreamClient, error)
+}
+
+type masterEventsClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewMasterEventsClient(cc grpc.ClientConnInterface) MasterEventsClient {
+	return &masterEventsClient{cc}
+}
+
+func (c *masterEventsClient) Send(ctx context.Context, in *Event, opts ...grpc.CallOption) (*EmptyRequest, error) {
+	out := new(EmptyRequest)
+	err := c.cc.Invoke(ctx, "/service.MasterEvents/Send", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterEventsClient) SendStream(ctx context.Context, opts ...grpc.CallOption) (MasterEvents_SendStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &MasterEvents_ServiceDesc.Streams[0], "/service.MasterEvents/SendStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &masterEventsSendStreamClient{stream}
+	return x, nil
+}
+
+type MasterEvents_SendStreamClient interface {
+	Send(*Event) error
+	CloseAndRecv() (*EmptyRequest, error)
+	grpc.ClientStream
+}
+
+type masterEventsSendStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *masterEventsSendStreamClient) Send(m *Event) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *masterEventsSendStreamClient) CloseAndRecv() (*EmptyRequest, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(EmptyRequest)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// MasterEventsServer is the server API for MasterEvents service.
+// All implementations must embed UnimplementedMasterEventsServer
+// for forward compatibility
+type MasterEventsServer interface {
+	Send(context.Context, *Event) (*EmptyRequest, error)
+	SendStream(MasterEvents_SendStreamServer) error
+	mustEmbedUnimplementedMasterEventsServer()
+}
+
+// UnimplementedMasterEventsServer must be embedded to have forward compatible implementations.
+type UnimplementedMasterEventsServer struct {
+}
+
+func (UnimplementedMasterEventsServer) Send(context.Context, *Event) (*EmptyRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
+}
+func (UnimplementedMasterEventsServer) SendStream(MasterEvents_SendStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendStream not implemented")
+}
+func (UnimplementedMasterEventsServer) mustEmbedUnimplementedMasterEventsServer() {}
+
+// UnsafeMasterEventsServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MasterEventsServer will
+// result in compilation errors.
+type UnsafeMasterEventsServer interface {
+	mustEmbedUnimplementedMasterEventsServer()
+}
+
+func RegisterMasterEventsServer(s grpc.ServiceRegistrar, srv MasterEventsServer) {
+	s.RegisterService(&MasterEvents_ServiceDesc, srv)
+}
+
+func _MasterEvents_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Event)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterEventsServer).Send(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.MasterEvents/Send",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterEventsServer).Send(ctx, req.(*Event))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MasterEvents_SendStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MasterEventsServer).SendStream(&masterEventsSendStreamServer{stream})
+}
+
+type MasterEvents_SendStreamServer interface {
+	SendAndClose(*EmptyRequest) error
+	Recv() (*Event, error)
+	grpc.ServerStream
+}
+
+type masterEventsSendStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *masterEventsSendStreamServer) SendAndClose(m *EmptyRequest) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *masterEventsSendStreamServer) Recv() (*Event, error) {
+	m := new(Event)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// MasterEvents_ServiceDesc is the grpc.ServiceDesc for MasterEvents service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var MasterEvents_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "service.MasterEvents",
+	HandlerType: (*MasterEventsServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Send",
+			Handler:    _MasterEvents_Send_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SendStream",
+			Handler:       _MasterEvents_SendStream_Handler,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "master.proto",
+}
