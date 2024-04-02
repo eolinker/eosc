@@ -5,6 +5,8 @@ import "event.proto";
 
 message EmptyRequest {
 }
+message EmptyResponse {
+}
 
 
 service MasterDispatcher {
@@ -12,7 +14,7 @@ service MasterDispatcher {
 }
 service MasterEvents{
   rpc Send(Event) returns(EmptyRequest){};
-  rpc SendStream(stream Event) returns(EmptyRequest){};
+  rpc SendStream(stream Event) returns(EmptyResponse){};
 }
 
 
