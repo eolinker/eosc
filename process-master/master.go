@@ -193,7 +193,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 	if err != nil {
 		return err
 	}
-	openApiProxy := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.adminClient)
+	openApiProxy := open_api.NewOpenApiProxy(m.etcdServer, m.adminClient)
 
 	openApiMux.Handle("/system/version", handler.VersionHandler(etcdServer))
 	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)

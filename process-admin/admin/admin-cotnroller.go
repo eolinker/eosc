@@ -50,12 +50,16 @@ func (d *imlAdminData) setWorker(id, profession, name, driverName, version, desc
 	wInfo, hasInfo := d.workers.Get(id)
 	if hasInfo && wInfo.worker != nil {
 
+		if wInfo.config.Profession != profession {
+			return nil, fmt.Errorf("%s:%w", version, eosc.ErrorNotAllowCreateForSingleton)
+		}
 		e := wInfo.worker.Reset(conf, requires)
 		if e != nil {
 			return nil, e
 		}
 		d.requireManager.Set(id, utils.ArrayType(utils.MapKey(requires), func(t config.RequireId) string { return string(t) }))
 		wInfo.reset(driverName, version, desc, body, wInfo.worker, driver.ConfigType(), updateAt, createAt)
+
 		d.variable.SetRequire(id, usedVariables)
 		return wInfo, nil
 	}

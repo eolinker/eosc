@@ -44,6 +44,8 @@ func (m *Master) startService() error {
 
 	service.RegisterCtiServiceServer(grpcServer, cli.NewMasterCliServer(m.etcdServer))
 	service.RegisterMasterDispatcherServer(grpcServer, m.dispatcherServe)
+
+	service.RegisterMasterEventsServer(grpcServer, NewEventService(m.etcdServer))
 	go func() {
 		err := grpcServer.Serve(l)
 		if err != nil {

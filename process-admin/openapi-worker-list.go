@@ -5,6 +5,7 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/utils"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strings"
@@ -27,7 +28,9 @@ func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter
 		return 500, nil, err
 	}
 
-	out, _ := json.Marshal(es)
+	out, _ := json.Marshal(utils.ArrayType(es, func(t *admin.WorkerInfo) any {
+		return t.Info()
+	}))
 	log.Debug("getEmployeesByProfession:", string(out))
 	return 200, nil, out
 }

@@ -70,7 +70,7 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, profession, name, driver, 
 		Command:   eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
-		Data:      info.Body(),
+		Data:      info.ConfigData(),
 	})
 	return info, nil
 }
