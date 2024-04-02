@@ -135,7 +135,7 @@ var MasterDispatcher_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterEventsClient interface {
-	Send(ctx context.Context, in *Event, opts ...grpc.CallOption) (*EmptyRequest, error)
+	Send(ctx context.Context, in *Event, opts ...grpc.CallOption) (*EmptyResponse, error)
 	SendStream(ctx context.Context, opts ...grpc.CallOption) (MasterEvents_SendStreamClient, error)
 }
 
@@ -147,8 +147,8 @@ func NewMasterEventsClient(cc grpc.ClientConnInterface) MasterEventsClient {
 	return &masterEventsClient{cc}
 }
 
-func (c *masterEventsClient) Send(ctx context.Context, in *Event, opts ...grpc.CallOption) (*EmptyRequest, error) {
-	out := new(EmptyRequest)
+func (c *masterEventsClient) Send(ctx context.Context, in *Event, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	out := new(EmptyResponse)
 	err := c.cc.Invoke(ctx, "/service.MasterEvents/Send", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func (c *masterEventsClient) SendStream(ctx context.Context, opts ...grpc.CallOp
 
 type MasterEvents_SendStreamClient interface {
 	Send(*Event) error
-	CloseAndRecv() (*EmptyRequest, error)
+	CloseAndRecv() (*EmptyResponse, error)
 	grpc.ClientStream
 }
 
@@ -179,11 +179,11 @@ func (x *masterEventsSendStreamClient) Send(m *Event) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *masterEventsSendStreamClient) CloseAndRecv() (*EmptyRequest, error) {
+func (x *masterEventsSendStreamClient) CloseAndRecv() (*EmptyResponse, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
-	m := new(EmptyRequest)
+	m := new(EmptyResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (x *masterEventsSendStreamClient) CloseAndRecv() (*EmptyRequest, error) {
 // All implementations must embed UnimplementedMasterEventsServer
 // for forward compatibility
 type MasterEventsServer interface {
-	Send(context.Context, *Event) (*EmptyRequest, error)
+	Send(context.Context, *Event) (*EmptyResponse, error)
 	SendStream(MasterEvents_SendStreamServer) error
 	mustEmbedUnimplementedMasterEventsServer()
 }
@@ -203,7 +203,7 @@ type MasterEventsServer interface {
 type UnimplementedMasterEventsServer struct {
 }
 
-func (UnimplementedMasterEventsServer) Send(context.Context, *Event) (*EmptyRequest, error) {
+func (UnimplementedMasterEventsServer) Send(context.Context, *Event) (*EmptyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
 }
 func (UnimplementedMasterEventsServer) SendStream(MasterEvents_SendStreamServer) error {
@@ -245,7 +245,7 @@ func _MasterEvents_SendStream_Handler(srv interface{}, stream grpc.ServerStream)
 }
 
 type MasterEvents_SendStreamServer interface {
-	SendAndClose(*EmptyRequest) error
+	SendAndClose(*EmptyResponse) error
 	Recv() (*Event, error)
 	grpc.ServerStream
 }
@@ -254,7 +254,7 @@ type masterEventsSendStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *masterEventsSendStreamServer) SendAndClose(m *EmptyRequest) error {
+func (x *masterEventsSendStreamServer) SendAndClose(m *EmptyResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
