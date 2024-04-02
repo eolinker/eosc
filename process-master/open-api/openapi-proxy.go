@@ -3,7 +3,6 @@ package open_api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/julienschmidt/httprouter"
 	"io"
@@ -17,7 +16,7 @@ var (
 )
 
 type IRaftSender interface {
-	Send(event string, namespace string, key string, data []byte) error
+	//Send(event string, namespace string, key string, data []byte) error
 	IsLeader() (bool, []string)
 }
 
@@ -124,16 +123,16 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"code":%d,"error":"%s","re","message":"%s"}`, http.StatusInternalServerError, err.Error(), buf.buf.String())
 		return
 	}
-	if res.Event != nil {
-		for _, event := range res.Event {
-			err := p.raftSender.Send(event.Event, event.Namespace, event.Key, event.Data)
-			log.Debug("open api send:", res.Event)
-			if err != nil {
-				log.Errorf("open api raft:%v", err)
-			}
-		}
-
-	}
+	//if res.Event != nil {
+	//	for _, event := range res.Event {
+	//		err := p.raftSender.Send(event.Event, event.Namespace, event.Key, event.Data)
+	//		log.Debug("open api send:", res.Event)
+	//		if err != nil {
+	//			log.Errorf("open api raft:%v", err)
+	//		}
+	//	}
+	//
+	//}
 	if res.Header != nil {
 		for k := range res.Header {
 			w.Header().Set(k, res.Header.Get(k))

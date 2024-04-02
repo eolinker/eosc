@@ -8,25 +8,24 @@ import (
 )
 
 type OpenApiHandler interface {
-	Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*EventResponse, body interface{})
+	Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})
 }
-type OpenApiHandleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*EventResponse, body interface{})
+type OpenApiHandleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})
 
-func (f OpenApiHandleFunc) Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, event []*EventResponse, body interface{}) {
+func (f OpenApiHandleFunc) Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	return f(req, params)
 }
-func CreateHandleFunc(handleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*EventResponse, body interface{})) httprouter.Handle {
+func CreateHandleFunc(handleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})) httprouter.Handle {
 	return CreateHandler(OpenApiHandleFunc(handleFunc))
 }
 
 func CreateHandler(handler OpenApiHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, req *http.Request, param httprouter.Params) {
-		status, header, event, body := handler.Serve(req, param)
+		status, header, body := handler.Serve(req, param)
 
 		response := &Response{
 			StatusCode: status,
 			Data:       nil,
-			Event:      event,
 		}
 		if header == nil {
 			header = make(http.Header)

@@ -3,7 +3,7 @@ package process_admin
 import (
 	"context"
 	"fmt"
-	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
+	admin "github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/marshal"
 	"net/http"
 
@@ -12,10 +12,10 @@ import (
 )
 
 type VariableApi struct {
-	adminHandler admin_o.AdminController
+	adminHandler admin.AdminController
 }
 
-func NewVariableApi(adminHandler admin_o.AdminController) *VariableApi {
+func NewVariableApi(adminHandler admin.AdminController) *VariableApi {
 	return &VariableApi{
 		adminHandler: adminHandler,
 	}
@@ -30,30 +30,27 @@ func (oe *VariableApi) Register(router *httprouter.Router) {
 
 }
 
-func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *VariableApi) getAll(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 
 	status = http.StatusOK
-	events, _ = oe.adminHandler.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
-		body = api.AllVariables(ctx)
-		return nil
-	})
+	body = oe.adminHandler.AllVariables(r.Context())
 
-	return
+	return http.StatusOK, nil, body
 }
 
-func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *VariableApi) getByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	namespace := params.ByName("namespace")
 	if namespace == "" {
 		namespace = "default"
 	}
 	data, has := oe.adminHandler.GetVariables(r.Context(), namespace)
 	if !has {
-		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
+		return http.StatusNotFound, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
-	return http.StatusOK, nil, nil, data
+	return http.StatusOK, nil, data
 }
 
-func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	namespace := params.ByName("namespace")
 	key := params.ByName("key")
 	if namespace == "" {
@@ -61,33 +58,33 @@ func (oe *VariableApi) getByKey(r *http.Request, params httprouter.Params) (stat
 	}
 	value, has := oe.adminHandler.GetVariable(r.Context(), namespace, key)
 	if !has {
-		return http.StatusNotFound, nil, nil, fmt.Sprintf("namespace{%s} not found", namespace)
+		return http.StatusNotFound, nil, fmt.Sprintf("namespace{%s} not found", namespace)
 	}
 
-	return http.StatusOK, nil, nil, value
+	return http.StatusOK, nil, value
 }
 
-func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *VariableApi) setByNamespace(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	namespace := params.ByName("namespace")
 	if namespace == "" {
 		namespace = "default"
 	}
 	decoder, err := marshal.GetData(r)
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
 	cb := make(map[string]string)
 	errUnmarshal := decoder.UnMarshal(&cb)
 	if errUnmarshal != nil {
-		return http.StatusInternalServerError, nil, nil, errUnmarshal
+		return http.StatusInternalServerError, nil, errUnmarshal
 	}
-	event, err := oe.adminHandler.Transaction(r.Context(), func(ctx context.Context, api admin_o.AdminApiWrite) error {
+	err = oe.adminHandler.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
 		return api.SetVariable(ctx, namespace, cb)
 	})
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, errUnmarshal
+		return http.StatusInternalServerError, nil, errUnmarshal
 	}
-	return http.StatusOK, nil, event, map[string]interface{}{
+	return http.StatusOK, nil, map[string]interface{}{
 		"namespace": namespace,
 		"variables": cb,
 	}

@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"github.com/eolinker/eosc"
-	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/process-admin/marshal"
 	"github.com/eolinker/eosc/professions"
 )
@@ -11,7 +10,7 @@ import (
 type AdminController interface {
 	IAdminApiReader
 
-	Transaction(context.Context, func(ctx context.Context, api AdminApiWrite) error) ([]*open_api.EventResponse, error)
+	Transaction(context.Context, func(ctx context.Context, api AdminApiWrite) error) error
 	Begin(ctx context.Context) AdminTransaction
 }
 type IAdminApiReader interface {
@@ -32,7 +31,7 @@ type IAdminApiReader interface {
 type AdminTransaction interface {
 	AdminApiWrite
 	IAdminApiReader
-	Commit() ([]*open_api.EventResponse, error)
+	Commit() error
 	Rollback() error
 }
 type AdminApiWrite interface {

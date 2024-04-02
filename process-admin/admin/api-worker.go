@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/process-admin/marshal"
+	"github.com/eolinker/eosc/service"
 )
 
 func (oe *imlAdminApi) DeleteWorker(ctx context.Context, id string) (*WorkerInfo, error) {
@@ -16,8 +16,8 @@ func (oe *imlAdminApi) DeleteWorker(ctx context.Context, id string) (*WorkerInfo
 		return nil, err
 	}
 	oe.actions = append(oe.actions, newRollbackForDelete(worker))
-	oe.events = append(oe.events, &open_api.EventResponse{
-		Event:     eosc.EventDel,
+	oe.events = append(oe.events, &service.Event{
+		Command:   eosc.EventDel,
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
 		Data:      nil,
@@ -49,8 +49,8 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, profession, name, driver, 
 			return nil, err
 		}
 		oe.actions = append(oe.actions, newRollBackForSet(old.config))
-		oe.events = append(oe.events, &open_api.EventResponse{
-			Event:     eosc.EventSet,
+		oe.events = append(oe.events, &service.Event{
+			Command:   eosc.EventSet,
 			Namespace: eosc.NamespaceWorker,
 			Key:       id,
 			Data:      info.Body(),
@@ -66,8 +66,8 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, profession, name, driver, 
 		return nil, err
 	}
 	oe.actions = append(oe.actions, newRollBackForCreate(id))
-	oe.events = append(oe.events, &open_api.EventResponse{
-		Event:     eosc.EventSet,
+	oe.events = append(oe.events, &service.Event{
+		Command:   eosc.EventSet,
 		Namespace: eosc.NamespaceWorker,
 		Key:       id,
 		Data:      info.Body(),

@@ -1,7 +1,7 @@
 package admin
 
 import (
-	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/service"
 )
 
 var (
@@ -12,21 +12,21 @@ var (
 type imlAdminApi struct {
 	*imlAdminData
 	actions RollbackHandlerList
-	events  []*open_api.EventResponse
+	events  []*service.Event
 }
 
 func newImlAdminApi(data *imlAdminData) *imlAdminApi {
 	return &imlAdminApi{imlAdminData: data}
 }
 
-func (oe *imlAdminApi) Commit() ([]*open_api.EventResponse, error) {
+func (oe *imlAdminApi) Commit() error {
 
-	events := make([]*open_api.EventResponse, len(oe.events))
+	events := make([]*service.Event, len(oe.events))
 	copy(events, oe.events)
 	oe.events = oe.events[:0]
 	oe.actions = oe.actions[:0]
 	oe.unLock()
-	return events, nil
+	return sendEvent(events)
 }
 
 func (oe *imlAdminApi) Rollback() error {

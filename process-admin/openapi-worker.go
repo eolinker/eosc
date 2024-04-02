@@ -2,15 +2,15 @@ package process_admin
 
 import (
 	open_api "github.com/eolinker/eosc/open-api"
-	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
+	admin "github.com/eolinker/eosc/process-admin/admin"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
 
 type WorkerApi struct {
-	admin admin_o.AdminController
+	admin admin.AdminController
 
-	settingRequest func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{})
+	settingRequest func(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})
 }
 
 func (oe *WorkerApi) Register(router *httprouter.Router) {
@@ -24,7 +24,7 @@ func (oe *WorkerApi) Register(router *httprouter.Router) {
 
 }
 
-func NewWorkerApi(workers admin_o.AdminController, settingRequest func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{})) *WorkerApi {
+func NewWorkerApi(workers admin.AdminController, settingRequest func(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})) *WorkerApi {
 
 	return &WorkerApi{admin: workers, settingRequest: settingRequest}
 }

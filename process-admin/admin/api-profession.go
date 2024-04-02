@@ -3,7 +3,7 @@ package admin
 import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/service"
 )
 
 func (oe *imlAdminApi) SetProfession(name string, profession *eosc.ProfessionConfig) error {
@@ -18,8 +18,8 @@ func (oe *imlAdminApi) SetProfession(name string, profession *eosc.ProfessionCon
 		oe.actions = append(oe.actions, newRollbackForAddProfession(name))
 	}
 	data, _ := json.Marshal(profession)
-	oe.events = append(oe.events, &open_api.EventResponse{
-		Event:     eosc.EventSet,
+	oe.events = append(oe.events, &service.Event{
+		Command:   eosc.EventSet,
 		Namespace: eosc.NamespaceProfession,
 		Key:       name,
 		Data:      data,

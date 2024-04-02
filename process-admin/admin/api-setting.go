@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/process-admin/marshal"
+	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/utils/set"
 	"reflect"
 	"strings"
@@ -60,8 +60,8 @@ func (oe *imlAdminApi) SetSetting(ctx context.Context, name string, data marshal
 		} else {
 			oe.actions = append(oe.actions, newRollbackForSettingSet(name, nil))
 		}
-		oe.events = append(oe.events, &open_api.EventResponse{
-			Event:     eosc.EventSet,
+		oe.events = append(oe.events, &service.Event{
+			Command:   eosc.EventSet,
 			Namespace: eosc.NamespaceWorker,
 			Key:       wc.Id,
 			Data:      eventData,

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	open_api "github.com/eolinker/eosc/open-api"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/setting"
@@ -130,7 +129,7 @@ func (d *imlAdminData) unLock() {
 	d.transactionLocker.Unlock()
 }
 
-func (d *imlAdminData) Transaction(ctx context.Context, f func(ctx context.Context, api AdminApiWrite) error) ([]*open_api.EventResponse, error) {
+func (d *imlAdminData) Transaction(ctx context.Context, f func(ctx context.Context, api AdminApiWrite) error) error {
 
 	adminTransaction := d.Begin(ctx)
 
@@ -140,7 +139,7 @@ func (d *imlAdminData) Transaction(ctx context.Context, f func(ctx context.Conte
 		if rollbackError != nil {
 			log.Error("rollback error:", rollbackError)
 		}
-		return nil, err
+		return err
 	}
 	return adminTransaction.Commit()
 }

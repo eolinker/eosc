@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/marshal"
 
 	"net/http"
@@ -28,21 +28,21 @@ type BaseArg struct {
 //	}
 //}
 
-func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	profession := params.ByName("profession")
 	isSkip := true
-	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	isSkip, status, header, body = oe.compatibleSetting(profession, r, params)
 	if isSkip {
 		return
 	}
 	decoder, err := marshal.GetData(r)
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
 	cb := new(BaseArg)
 	errUnmarshal := decoder.UnMarshal(cb)
 	if errUnmarshal != nil {
-		return http.StatusInternalServerError, nil, nil, errUnmarshal
+		return http.StatusInternalServerError, nil, errUnmarshal
 	}
 
 	name := cb.Name
@@ -50,7 +50,7 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		cb.Version = admin.GenVersion()
 	}
 	var out *admin.WorkerInfo
-	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+	err = oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
 		worker, err := api.SetWorker(ctx, profession, name, cb.Driver, cb.Version, cb.Description, decoder)
 		if err != nil {
 			return err
@@ -59,43 +59,43 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 		return nil
 	})
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
 
-	return http.StatusOK, nil, event, out.Detail()
+	return http.StatusOK, nil, out.Detail()
 }
-func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	profession := params.ByName("profession")
 	isSkip := true
-	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	isSkip, status, header, body = oe.compatibleSetting(profession, r, params)
 	if isSkip {
 		return
 	}
 	name := params.ByName("name")
 	if name == "" {
-		return http.StatusInternalServerError, nil, nil, "require name"
+		return http.StatusInternalServerError, nil, "require name"
 	}
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
-		return http.StatusInternalServerError, nil, nil, fmt.Errorf("invalid name:%s", name)
+		return http.StatusInternalServerError, nil, fmt.Errorf("invalid name:%s", name)
 	}
 	decoder, err := marshal.GetData(r)
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
 
 	options := make(map[string]interface{})
 	err = decoder.UnMarshal(&options)
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
 	if len(options) == 0 {
-		return http.StatusInternalServerError, nil, nil, "nothing to patch"
+		return http.StatusInternalServerError, nil, "nothing to patch"
 
 	}
 	workerInfo, err := oe.admin.GetWorker(r.Context(), id)
 	if err != nil {
-		return 0, nil, nil, "not exist"
+		return 0, nil, "not exist"
 	}
 	current := make(map[string]interface{})
 	_ = json.Unmarshal(workerInfo.Body(), &current)
@@ -125,7 +125,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		}
 	}
 	decoder = marshal.JsonData(data)
-	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+	err = oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
 		w, err := api.SetWorker(ctx, profession, name, workerInfo.Driver(), version, description, decoder)
 		if err != nil {
 			workerInfo = w
@@ -134,36 +134,36 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	})
 
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
-	return http.StatusOK, nil, event, workerInfo.Detail()
+	return http.StatusOK, nil, workerInfo.Detail()
 }
-func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 
 	profession := params.ByName("profession")
 	isSkip := true
-	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	isSkip, status, header, body = oe.compatibleSetting(profession, r, params)
 	if isSkip {
 		return
 	}
 	name := params.ByName("name")
 	if name == "" {
-		return http.StatusInternalServerError, nil, nil, "require name"
+		return http.StatusInternalServerError, nil, "require name"
 	}
 	decoder, err := marshal.GetData(r)
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, err
+		return http.StatusInternalServerError, nil, err
 	}
 	cb := new(BaseArg)
 	errUnmarshal := decoder.UnMarshal(cb)
 	if errUnmarshal != nil {
-		return http.StatusInternalServerError, nil, nil, errUnmarshal
+		return http.StatusInternalServerError, nil, errUnmarshal
 	}
 	if cb.Version == "" {
 		cb.Version = admin.GenVersion()
 	}
 	var out *admin.WorkerInfo
-	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+	err = oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
 		w, err := api.SetWorker(ctx, profession, name, cb.Driver, cb.Version, cb.Description, decoder)
 		if err != nil {
 			return err
@@ -172,32 +172,32 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 		return nil
 	})
 
-	return http.StatusOK, nil, event, out.Detail()
+	return http.StatusOK, nil, out.Detail()
 }
 
-func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, events []*open_api.EventResponse, body interface{}) {
+func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 
 	profession := params.ByName("profession")
 	isSkip := true
-	isSkip, status, header, events, body = oe.compatibleSetting(profession, r, params)
+	isSkip, status, header, body = oe.compatibleSetting(profession, r, params)
 	if isSkip {
 		return
 	}
 	name := params.ByName("name")
 	id, ok := eosc.ToWorkerId(name, profession)
 	if !ok {
-		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid name:%s for %s", name, profession)
+		return http.StatusNotFound, nil, fmt.Sprintf("invalid name:%s for %s", name, profession)
 	}
 	p, has := oe.admin.GetProfession(r.Context(), profession)
 	if !has {
-		return http.StatusNotFound, nil, nil, fmt.Sprintf("invalid profession:%s", profession)
+		return http.StatusNotFound, nil, fmt.Sprintf("invalid profession:%s", profession)
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
-		return http.StatusForbidden, nil, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
+		return http.StatusForbidden, nil, fmt.Sprintf("not allow delete %s for %s", name, profession)
 	}
 
 	var out *admin.WorkerInfo
-	event, err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
+	err := oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
 		worker, err := api.DeleteWorker(ctx, id)
 		if err != nil {
 			return err
@@ -206,8 +206,8 @@ func (oe *WorkerApi) Delete(r *http.Request, params httprouter.Params) (status i
 		return nil
 	})
 	if err != nil {
-		return http.StatusNotFound, nil, nil, err
+		return http.StatusNotFound, nil, err
 	}
 
-	return http.StatusOK, nil, event, out.Detail()
+	return http.StatusOK, nil, out.Detail()
 }

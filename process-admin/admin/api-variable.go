@@ -3,7 +3,8 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/service"
 )
 
 func (oe *imlAdminApi) SetVariable(ctx context.Context, namespace string, values map[string]string) error {
@@ -23,9 +24,9 @@ func (oe *imlAdminApi) SetVariable(ctx context.Context, namespace string, values
 	} else {
 		oe.actions = append(oe.actions, newRollbackForUpdateVariable(namespace, oldValue))
 	}
-	oe.events = append(oe.events, &open_api.EventResponse{
-		Event:     "set",
-		Namespace: "variable",
+	oe.events = append(oe.events, &service.Event{
+		Command:   eosc.EventSet,
+		Namespace: eosc.NamespaceVariable,
 		Key:       namespace,
 		Data:      data,
 	})

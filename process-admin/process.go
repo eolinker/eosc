@@ -11,7 +11,7 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
-	admin_o "github.com/eolinker/eosc/process-admin/admin-o"
+	admin "github.com/eolinker/eosc/process-admin/admin"
 	"time"
 
 	"github.com/eolinker/eosc/config"
@@ -163,7 +163,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
 
-	wd := admin_o.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd)
+	wd := admin.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd)
 
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
@@ -184,7 +184,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 			StatusCode: 404,
 			Header:     nil,
 			Data:       nil,
-			Event:      nil,
 		}
 
 		data, _ := json.Marshal(response)
