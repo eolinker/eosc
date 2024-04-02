@@ -10,5 +10,9 @@ message EmptyRequest {
 service MasterDispatcher {
   rpc Listen(EmptyRequest) returns(stream Event){};
 }
+service MasterEvents{
+  rpc Send(Event) returns(EmptyRequest){};
+  rpc SendStream(stream Event) returns(EmptyRequest){};
+}
 
 
