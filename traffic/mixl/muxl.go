@@ -18,7 +18,13 @@ type MixListener struct {
 	wg         sync.WaitGroup
 }
 
-func NewMixListener(port int, listeners ...net.Listener) *MixListener {
+func NewMixListener(port int, listeners ...net.Listener) net.Listener {
+	if len(listeners) == 0 {
+		return nil
+	}
+	if len(listeners) == 1 {
+		return listeners[0]
+	}
 	lm := make(map[string]net.Listener)
 
 	for _, listener := range listeners {

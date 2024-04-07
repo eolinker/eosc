@@ -53,6 +53,7 @@ func NewUnixClient(name string) *UnixClient {
 	ul.client = transport
 	return ul
 }
+
 func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	log.Debug("proxy:", request.RequestURI)
 
