@@ -142,6 +142,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 		router: httprouter.New(),
 		server: &http.Server{},
 	}
+	p.server.SetKeepAlivesEnabled(false)
 	p.server.Handler = p
 	extenderRequire := require.NewRequireManager()
 	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)

@@ -296,6 +296,8 @@ func (m *Master) startHttpServer(listen net.Listener) *http.ServeMux {
 	server := &http.Server{
 		Handler: mux,
 	}
+	// todo 暂时关闭keepalive
+	server.SetKeepAlivesEnabled(false)
 	go func() {
 		err := server.Serve(listen)
 		if err != nil {

@@ -141,7 +141,9 @@ func newProcessWorker(tf traffic.ITraffic, server *WorkerServer) *ProcessWorker 
 		server:        server,
 		metricsServer: &http.Server{},
 	}
-
+	// todo 关闭keepalive, 避免调用方混用连接池时导致路由错误
+	// todo 以后再想办法解决这一块的性能问题
+	w.metricsServer.SetKeepAlivesEnabled(false)
 	w.metricsServer.Handler = router.GetHandler()
 
 	return w
