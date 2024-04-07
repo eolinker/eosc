@@ -196,7 +196,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 	*/
 
 	peerListeners := utils.MatchMux(peerListener, etcdPaths)
-	clienListeners := utils.MatchMux(clientListener, masterApiPaths, clientApiPaths)
+	clienListeners := utils.MatchMux(clientListener, masterApiPaths, workerApiPaths)
 	// 初始化etcd
 	etcdApiListener := peerListeners[0]
 	peerOpenApiListener := peerListeners[1]

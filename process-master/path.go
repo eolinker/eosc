@@ -16,7 +16,7 @@ var (
 		"/system/",
 		fmt.Sprintf("%slog/node/", router.RouterPrefix),
 	}
-	clientApiPaths = []string{
+	workerApiPaths = []string{
 		router.RouterPrefix,
 	}
 )
