@@ -7,6 +7,7 @@ import (
 	admin "github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/data"
 	"github.com/eolinker/eosc/process-admin/model"
+	"github.com/eolinker/eosc/utils"
 	"io"
 	"net/http"
 
@@ -73,19 +74,8 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 
 func (pi *ProfessionApi) All(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	list := pi.data.ListProfession(r.Context())
-	res := make([]*model.ProfessionInfo, 0, len(list))
-	for _, p := range list {
-		drivers := make([]string, 0, len(p.Drivers))
-		for _, d := range p.Drivers {
-			drivers = append(drivers, d.Name)
-		}
-		res = append(res, &model.ProfessionInfo{
-			Name:   p.Name,
-			Label:  p.Label,
-			Desc:   p.Desc,
-			Driver: drivers,
-		})
-	}
+	res := utils.ArrayType(list, model.TypeProfessionInfo)
+
 	return 200, nil, res
 }
 

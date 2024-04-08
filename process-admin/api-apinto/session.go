@@ -37,7 +37,7 @@ func (s *Session) Begin() {
 		return
 	}
 	s.transaction = s.controller.Begin(context.Background())
-	return
+
 }
 
 func (s *Session) Commit() error {
