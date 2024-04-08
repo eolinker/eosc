@@ -1,4 +1,4 @@
-package process_admin
+package data
 
 import (
 	"encoding/json"
@@ -31,7 +31,7 @@ type ExtenderProject struct {
 	isWork  bool
 }
 
-func (ep *ExtenderProject) toInfo() []*ExtenderItem {
+func (ep *ExtenderProject) ToInfo() []*ExtenderItem {
 	response := make([]*ExtenderItem, 0, ep.renders.Count())
 	for _, name := range ep.renders.Keys() {
 		response = append(response, &ExtenderItem{
@@ -48,10 +48,10 @@ func (ep *ExtenderProject) toInfo() []*ExtenderItem {
 }
 
 type ExtenderData struct {
-	Versions map[string]string
-	Infos    map[string]*ExtenderProject
-	history  map[string]bool
-	locker   sync.RWMutex
+	versionData map[string]string
+	Infos       map[string]*ExtenderProject
+	history     map[string]bool
+	locker      sync.RWMutex
 
 	extenderRequire eosc.IRequires
 }
@@ -67,7 +67,7 @@ func NewExtenderData(conf map[string][]byte, extenderRequire eosc.IRequires) *Ex
 
 	ed := &ExtenderData{
 		extenderRequire: extenderRequire,
-		Versions:        vs,
+		versionData:     vs,
 		Infos:           make(map[string]*ExtenderProject),
 		history:         map[string]bool{},
 		locker:          sync.RWMutex{},
@@ -82,7 +82,7 @@ func (e *ExtenderData) GetConfigTypes() map[string]reflect.Type {
 func (e *ExtenderData) IsWork() bool {
 	e.locker.RLock()
 	defer e.locker.RUnlock()
-	for k, version := range e.Versions {
+	for k, version := range e.versionData {
 		id := idVersion(k, version)
 		if info, has := e.Infos[id]; !has || !info.isWork {
 			return has
@@ -92,8 +92,8 @@ func (e *ExtenderData) IsWork() bool {
 }
 func (e *ExtenderData) init() {
 
-	for k, v := range e.Versions {
-		group, project := readProject(k)
+	for k, v := range e.versionData {
+		group, project := ReadProject(k)
 
 		e.load(group, project, v)
 	}
@@ -107,7 +107,7 @@ func (e *ExtenderData) Delete(group, project, version string) (*ExtenderProject,
 	}
 
 	name := toProject(group, project)
-	v, has := e.Versions[name]
+	v, has := e.versionData[name]
 	if !has {
 		return nil, ErrorNotExist
 	}
@@ -117,7 +117,7 @@ func (e *ExtenderData) Delete(group, project, version string) (*ExtenderProject,
 		}
 	}
 	extenderProject, _ := e.load(group, project, v)
-	delete(e.Versions, name)
+	delete(e.versionData, name)
 	return extenderProject, nil
 }
 
@@ -125,7 +125,7 @@ func (e *ExtenderData) getVersion(group, project string) (version string, has bo
 	if extends.IsInner(group, project) {
 		return extends.InNertVersion, true
 	}
-	v, has := e.Versions[toProject(group, project)]
+	v, has := e.versionData[toProject(group, project)]
 
 	return v, has
 
@@ -133,11 +133,11 @@ func (e *ExtenderData) getVersion(group, project string) (version string, has bo
 
 func (e *ExtenderData) setVersion(group, project, version string) bool {
 	id := toProject(group, project)
-	o, has := e.Versions[id]
+	o, has := e.versionData[id]
 	if has && o == version {
 		return false
 	}
-	e.Versions[id] = version
+	e.versionData[id] = version
 	return true
 }
 func (e *ExtenderData) SetVersion(group, project, version string) (*ExtenderProject, bool, error) {
@@ -231,22 +231,22 @@ type ExtenderItemRender struct {
 	Render interface{} `json:"render" yaml:"render"`
 }
 
-func (e *ExtenderData) versions() map[string]string {
+func (e *ExtenderData) Versions() map[string]string {
 	e.locker.RLock()
 	defer e.locker.RUnlock()
-	d := e.Versions
+	d := e.versionData
 	return d
 }
 func (e *ExtenderData) List() []*ExtenderItem {
-	rs := make([]*ExtenderItem, 0, len(e.Versions))
+	rs := make([]*ExtenderItem, 0, len(e.versionData))
 	e.locker.RLock()
 	defer e.locker.RUnlock()
-	for k, version := range e.Versions {
+	for k, version := range e.versionData {
 		id := idVersion(k, version)
 
 		info, has := e.Infos[id]
 		if has && info.isWork {
-			group, project := readProject(k)
+			group, project := ReadProject(k)
 			for _, name := range info.renders.Keys() {
 				extenderItemID := fmt.Sprint(group, ":", project, ":", name)
 				if e.extenderRequire.RequireByCount(extenderItemID) > 0 {
@@ -346,7 +346,7 @@ func idVersion(id, version string) string {
 func toVersion(group, project, version string) string {
 	return fmt.Sprint(group, ":", project, ":", version)
 }
-func readProject(id string) (group, project string) {
+func ReadProject(id string) (group, project string) {
 	vs := strings.Split(id, ":")
 	group = vs[0]
 	if len(vs) > 1 {

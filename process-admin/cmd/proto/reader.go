@@ -136,7 +136,9 @@ func (r *Reader) readLine() ([]byte, error) {
 	if len(b) <= 2 || b[len(b)-1] != '\n' || b[len(b)-2] != '\r' {
 		return nil, fmt.Errorf("apinto: invalid reply: %q", b)
 	}
-	return b[:len(b)-2], nil
+	rd := make([]byte, len(b)-2)
+	copy(rd, b[:len(b)-2])
+	return rd, nil
 }
 func isNilReply(b []byte) bool {
 	return len(b) == 3 &&

@@ -12,6 +12,10 @@ import (
 	"context"
 	"encoding/json"
 	admin "github.com/eolinker/eosc/process-admin/admin"
+	api_apinto "github.com/eolinker/eosc/process-admin/api-apinto"
+	"github.com/eolinker/eosc/process-admin/api-http"
+	"github.com/eolinker/eosc/process-admin/data"
+	"github.com/soheilhy/cmux"
 	"time"
 
 	"github.com/eolinker/eosc/config"
@@ -26,7 +30,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -75,8 +78,10 @@ type ProcessAdmin struct {
 	reg    eosc.IExtenderDriverRegister
 	router *httprouter.Router
 
-	apiLocker sync.Mutex
-	server    *http.Server
+	apiLocker    sync.Mutex
+	server       *http.Server
+	cx           cmux.CMux
+	apintoServer *api_apinto.Server
 }
 
 func (pa *ProcessAdmin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -145,8 +150,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	p.server.SetKeepAlivesEnabled(false)
 	p.server.Handler = p
 	extenderRequire := require.NewRequireManager()
-	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
-	NewExtenderOpenApi(extenderData).Register(p.router)
+	extenderData := data.NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 
 	ps := professions.NewProfessions(register)
 
@@ -165,20 +169,22 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
 
 	wd := admin.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd)
+	p.apintoServer = api_apinto.NewServer(wd)
 
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 
 	_ = bean.Check()
+	api_http.NewExtenderOpenApi(extenderData).Register(p.router)
 
-	settingApi := NewSettingApi(wd)
+	settingApi := api_http.NewSettingApi(wd)
 
 	// openAPI handler register
-	NewProfessionApi(wd).Register(p.router)
-	NewWorkerApi(wd, settingApi.request).Register(p.router)
+	api_http.NewProfessionApi(wd).Register(p.router)
+	api_http.NewWorkerApi(wd, settingApi).Register(p.router)
 	settingApi.RegisterSetting(p.router)
-	NewExportApi(extenderData, wd).Register(p.router)
-	NewVariableApi(wd).Register(p.router)
+	api_http.NewExportApi(extenderData, wd).Register(p.router)
+	api_http.NewVariableApi(wd).Register(p.router)
 
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
@@ -192,7 +198,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 		w.WriteHeader(200)
 		w.Write(data)
 	})
-
 	p.OpenApiServer()
 
 	return p, nil
@@ -220,17 +225,6 @@ func initExtender(config map[string][]byte) extends.IExtenderRegister {
 	return register
 }
 
-func filerSetting(confs map[string][]byte, name string, yes bool) map[string][]byte {
-	name = strings.ToLower(name)
-	sets := make(map[string][]byte)
-	for id, data := range confs {
-		profession, _, _ := eosc.SplitWorkerId(id)
-		if (strings.ToLower(profession) == name) == yes {
-			sets[id] = data
-		}
-	}
-	return sets
-}
 func readConfig() map[string]map[string][]byte {
 	conf := make(map[string]map[string][]byte)
 
@@ -262,13 +256,43 @@ func (pa *ProcessAdmin) OpenApiServer() error {
 		return err
 	}
 
+	pa.cx = cmux.New(l)
+	httpListener := pa.cx.Match(cmux.HTTP1Fast(), cmux.HTTP2())
+	apintoListener := pa.cx.Match(api_apinto.Matcher())
+	unknownListener := pa.cx.Match(cmux.Any())
+
 	go func() {
-		err := pa.server.Serve(l)
+		err := pa.server.Serve(httpListener)
 		if err != nil {
 			log.Info("http server error: ", err)
 		}
 		return
 	}()
+	go func() {
+		err := pa.apintoServer.Server(apintoListener)
+		if err != nil {
+			return
+		}
+	}()
 
+	go func() {
+		for {
+			conn, err := unknownListener.Accept()
+			if err != nil {
+				return
+			}
+			log.Warn("unknown conn: ", conn.RemoteAddr())
+			conn.Write([]byte("-ERR unknown proto"))
+			conn.Close()
+		}
+
+	}()
+	go func() {
+		err := pa.cx.Serve()
+		if err != nil {
+
+			return
+		}
+	}()
 	return nil
 }

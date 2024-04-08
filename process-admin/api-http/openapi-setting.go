@@ -1,4 +1,4 @@
-package process_admin
+package api_http
 
 import (
 	"context"
@@ -23,17 +23,6 @@ func (oe *SettingApi) RegisterSetting(router *httprouter.Router) {
 	router.GET("/setting/:name", open_api.CreateHandleFunc(oe.Get))
 	router.POST("/setting/:name", open_api.CreateHandleFunc(oe.Set))
 	router.PUT("/setting/:name", open_api.CreateHandleFunc(oe.Set))
-}
-func (oe *SettingApi) request(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
-
-	switch req.Method {
-	case http.MethodGet:
-		return oe.Get(req, params)
-	case http.MethodPut, http.MethodPost:
-		return oe.Set(req, params)
-	}
-
-	return http.StatusMethodNotAllowed, nil, http.StatusText(http.StatusMethodNotAllowed)
 }
 func (oe *SettingApi) Set(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	name := params.ByName("name")

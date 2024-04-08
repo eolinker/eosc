@@ -1,4 +1,4 @@
-package process_admin
+package api_http
 
 import (
 	"encoding/json"
@@ -62,6 +62,16 @@ func (oe *WorkerApi) compatibleSetting(profession string, r *http.Request, param
 		return
 	}
 	isSkip = true
-	status, header, body = oe.settingRequest(r, params)
+
+	switch r.Method {
+	case http.MethodGet:
+
+		status, header, body = oe.setting.Get(r, params)
+		return
+	case http.MethodPut, http.MethodPost:
+		status, header, body = oe.setting.Set(r, params)
+	}
+
+	status, header, body = http.StatusMethodNotAllowed, nil, http.StatusText(http.StatusMethodNotAllowed)
 	return
 }

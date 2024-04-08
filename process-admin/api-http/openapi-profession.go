@@ -1,10 +1,11 @@
-package process_admin
+package api_http
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	admin "github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/data"
 	"github.com/eolinker/eosc/process-admin/model"
 	"io"
 	"net/http"
@@ -47,7 +48,7 @@ func (pi *ProfessionApi) Skill(req *http.Request, params httprouter.Params) (sta
 	}
 	pn, has := pi.data.GetProfession(req.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 	dependencies := pn.Dependencies
 	dps := make(map[string]bool)
@@ -92,7 +93,7 @@ func (pi *ProfessionApi) Detail(r *http.Request, params httprouter.Params) (stat
 	name := params.ByName("profession")
 	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 	return 200, nil, profession.ProfessionConfig
 }
@@ -101,7 +102,7 @@ func (pi *ProfessionApi) Drivers(r *http.Request, params httprouter.Params) (sta
 	name := params.ByName("profession")
 	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 	ds := profession.GetDrivers()
 	type DriverInfo struct {
@@ -132,11 +133,11 @@ func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (
 	}
 	profession, has := pi.data.GetProfession(r.Context(), professionName)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 	driverInfo, has := profession.DriverConfig(driverName)
 	if !has {
-		return http.StatusInternalServerError, nil, fmt.Errorf("%s in %s:%w", driverName, professionName, ErrorNotExist)
+		return http.StatusInternalServerError, nil, fmt.Errorf("%s in %s:%w", driverName, professionName, data.ErrorNotExist)
 	}
 	type DriverDetail struct {
 		*eosc.DriverConfig
@@ -144,7 +145,7 @@ func (pi *ProfessionApi) DriverInfo(r *http.Request, params httprouter.Params) (
 	}
 	df, ok := profession.GetDriver(driverName)
 	if !ok {
-		return http.StatusInsufficientStorage, nil, ErrorExtenderNotWork
+		return http.StatusInsufficientStorage, nil, data.ErrorExtenderNotWork
 	}
 	render, err := schema.Generate(df.ConfigType(), nil)
 	if err != nil {
@@ -162,11 +163,11 @@ func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (s
 	driverName := r.URL.Query().Get("name")
 	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 	driverConfig, has := profession.DriverConfig(driverName)
 	if !has {
-		return http.StatusInternalServerError, nil, ErrorNotExist
+		return http.StatusInternalServerError, nil, data.ErrorNotExist
 	}
 
 	bodyData, err := io.ReadAll(r.Body)
@@ -194,7 +195,7 @@ func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (s
 	name := params.ByName("profession")
 	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 	bodyData, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -227,7 +228,7 @@ func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params)
 	name := params.ByName("profession")
 	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 
 	bodyData, err := io.ReadAll(r.Body)
@@ -257,7 +258,7 @@ func (pi *ProfessionApi) DeleteDriver(r *http.Request, params httprouter.Params)
 	driverName := r.URL.Query().Get("name")
 	profession, has := pi.data.GetProfession(r.Context(), name)
 	if !has {
-		return http.StatusNotFound, nil, ErrorNotExist
+		return http.StatusNotFound, nil, data.ErrorNotExist
 	}
 
 	_, has = profession.DriverConfig(driverName)

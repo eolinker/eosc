@@ -102,12 +102,13 @@ func (m MessageBase) Float() (float64, error) {
 	}
 }
 
-func (m MessageBase) Error() error {
-	if m[0] == ErrorReply {
-		return Error(m[1:])
-	}
-	return nil
-}
+//
+//func (m MessageBase) Error() error {
+//	if m[0] == ErrorReply {
+//		return Error(m[1:])
+//	}
+//	return nil
+//}
 
 func (m MessageBase) Type() ReplyType {
 	return m[0]

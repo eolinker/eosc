@@ -1,8 +1,9 @@
-package process_admin
+package api_http
 
 import (
 	"fmt"
 	admin "github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/data"
 	"github.com/eolinker/eosc/utils"
 	"net/http"
 	"time"
@@ -19,8 +20,8 @@ type ExportApi struct {
 	adminHandler admin.AdminController
 }
 
-func NewExportApi(extenders *ExtenderData, adminHandler admin.AdminController) *ExportApi {
-	return &ExportApi{adminHandler: adminHandler, version: extenders.versions()}
+func NewExportApi(extenders *data.ExtenderData, adminHandler admin.AdminController) *ExportApi {
+	return &ExportApi{adminHandler: adminHandler, version: extenders.Versions()}
 }
 
 func (oe *ExportApi) Register(router *httprouter.Router) {

@@ -46,6 +46,8 @@ func (w *Writer) WriteArgs(args ...any) error {
 func (w *Writer) WriteArg(v any) error {
 
 	switch v := v.(type) {
+	case error:
+		return w.error(v)
 	case nil:
 		return w.status(nil)
 	case string:
@@ -118,7 +120,33 @@ func (w *Writer) bytes(b []byte) error {
 
 	return w.crlf()
 }
+func (w *Writer) error(input error) error {
+	err := w.WriteByte(ErrorReply)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte("ERR"))
+	if err != nil {
+		return err
+	}
+	if input != nil {
+		v := []byte(input.Error())
 
+		if len(v) > 0 {
+			err := w.WriteByte(' ')
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(v)
+
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return w.crlf()
+}
 func (w *Writer) status(v []byte) error {
 	err := w.WriteByte(StatusReply)
 	if err != nil {

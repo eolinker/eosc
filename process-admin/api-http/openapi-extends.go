@@ -1,10 +1,11 @@
-package process_admin
+package api_http
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
+	"github.com/eolinker/eosc/process-admin/data"
 	"github.com/julienschmidt/httprouter"
 	"io"
 	"mime"
@@ -12,10 +13,10 @@ import (
 )
 
 type ExtenderOpenApi struct {
-	extenders *ExtenderData
+	extenders *data.ExtenderData
 }
 
-func NewExtenderOpenApi(extenders *ExtenderData) *ExtenderOpenApi {
+func NewExtenderOpenApi(extenders *data.ExtenderData) *ExtenderOpenApi {
 	return &ExtenderOpenApi{extenders: extenders}
 }
 func (oe *ExtenderOpenApi) Register(router *httprouter.Router) {
@@ -31,7 +32,7 @@ func (oe *ExtenderOpenApi) Register(router *httprouter.Router) {
 
 func (oe *ExtenderOpenApi) Delete(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	id := params.ByName("id")
-	group, project := readProject(id)
+	group, project := data.ReadProject(id)
 	version := r.URL.Query().Get("v")
 
 	projectInfo, err := oe.extenders.Delete(group, project, version)
@@ -39,7 +40,7 @@ func (oe *ExtenderOpenApi) Delete(r *http.Request, params httprouter.Params) (st
 		return 0, nil, err.Error()
 	}
 
-	return 200, nil, projectInfo.toInfo()
+	return 200, nil, projectInfo.ToInfo()
 
 }
 func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
@@ -78,9 +79,9 @@ func (oe *ExtenderOpenApi) SET(r *http.Request, params httprouter.Params) (statu
 		return http.StatusInternalServerError, nil, err.Error()
 	}
 	if ok {
-		return 200, nil, projectInfo.toInfo()
+		return 200, nil, projectInfo.ToInfo()
 	} else {
-		return 200, nil, projectInfo.toInfo()
+		return 200, nil, projectInfo.ToInfo()
 	}
 
 }
@@ -92,7 +93,7 @@ func (oe *ExtenderOpenApi) List(r *http.Request, params httprouter.Params) (stat
 func (oe *ExtenderOpenApi) Info(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	id := params.ByName("id")
 
-	info, ok := oe.extenders.GetInfo(readProject(id))
+	info, ok := oe.extenders.GetInfo(data.ReadProject(id))
 	if !ok {
 		return 404, nil, fmt.Sprintf("extender{%s} not install", id)
 	}
@@ -101,7 +102,7 @@ func (oe *ExtenderOpenApi) Info(r *http.Request, params httprouter.Params) (stat
 func (oe *ExtenderOpenApi) Render(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	id := params.ByName("id")
 	name := params.ByName("name")
-	group, project := readProject(id)
+	group, project := data.ReadProject(id)
 	info, ok := oe.extenders.GetRender(group, project, name)
 	if !ok {
 		return 404, nil, fmt.Sprintf("extender{%s} not install", id)
