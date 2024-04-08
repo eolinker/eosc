@@ -44,7 +44,7 @@ func SetWorker(session ISession, message proto.IMessage) error {
 	}
 	data := marshal.JsonData(body)
 	base := new(workerBase)
-	err = data.UnMarshal(data)
+	err = data.UnMarshal(base)
 	if err != nil {
 		return err
 	}
