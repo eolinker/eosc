@@ -42,7 +42,7 @@ func (oe *imlAdminApi) SetSetting(ctx context.Context, name string, data marshal
 		}
 		err := oe.settings.SettingWorker(name, inputData, oe.variable)
 		if err != nil {
-			return nil
+			return err
 		}
 		wc := &eosc.WorkerConfig{
 			Id:          fmt.Sprintf("%s@setting", name),

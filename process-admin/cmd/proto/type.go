@@ -1,6 +1,6 @@
 package proto
 
-// redis resp protocol data type.
+// apinto resp protocol data type.
 type ReplyType = byte
 
 const (
@@ -18,4 +18,21 @@ type Error string
 
 func (e Error) Error() string {
 	return string(e)
+}
+
+func ReplyTypeString(r ReplyType) string {
+	switch r {
+	case ErrorReply:
+		return "ErrorReply"
+	case StatusReply:
+		return "StatusReply"
+	case IntReply:
+		return "IntReply"
+	case StringReply:
+		return "StringReply"
+	case ArrayReply:
+		return "ArrayReply"
+	default:
+		return "unknown"
+	}
 }

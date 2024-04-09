@@ -1,16 +1,26 @@
 package model
 
 import (
+	"encoding/json"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/professions"
 )
 
-type ProfessionConfig = eosc.ProfessionConfig
+type ProfessionConfig eosc.ProfessionConfig
+
+func (p *ProfessionConfig) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, p)
+}
+
 type ProfessionInfo struct {
 	Name   string   `json:"name,omitempty"`
 	Label  string   `json:"label,omitempty"`
 	Desc   string   `json:"desc,omitempty"`
 	Driver []string `json:"driver,omitempty"`
+}
+
+func (p *ProfessionInfo) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, p)
 }
 
 func TypeProfessionInfo(p *professions.Profession) *ProfessionInfo {

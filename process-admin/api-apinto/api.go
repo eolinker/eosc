@@ -1,6 +1,7 @@
 package api_apinto
 
 import (
+	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"strings"
 )
@@ -12,11 +13,11 @@ var (
 )
 
 func init() {
-	Register("ping", Ping)
-	Register("apinto", handshake)
-	Register("begin", Begin)
-	Register("commit", Commit)
-	Register("rollback", Rollback)
+	Register(cmd.PING, Ping)
+	Register(cmd.Handshake, handshake)
+	Register(cmd.Begin, Begin)
+	Register(cmd.Commit, Commit)
+	Register(cmd.Rollback, Rollback)
 }
 func Register(cmd string, handler ApiHandler) {
 	cmd = strings.ToUpper(cmd)

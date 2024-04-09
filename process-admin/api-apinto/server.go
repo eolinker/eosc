@@ -2,12 +2,14 @@ package api_apinto
 
 import (
 	"github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/soheilhy/cmux"
 	"net"
+	"strings"
 )
 
 func Matcher() cmux.Matcher {
-	return cmux.PrefixMatcher("+apinto")
+	return cmux.PrefixMatcher(cmd.MagicKey, strings.ToLower(cmd.MagicKey))
 }
 
 type Server struct {

@@ -7,17 +7,34 @@ import (
 )
 
 type IMessage interface {
-	Array() ([]IMessage, error)
+	Array() (ArrayMessage, error)
 	String() (string, error)
 	Int() (int64, error)
 	Float() (float64, error)
 	Type() ReplyType
 	Scan(v any) error
 }
+type ArrayMessage []IMessage
+
+func (arm ArrayMessage) Scan(vs ...any) error {
+	max := len(arm)
+	if len(vs) < max {
+		max = len(vs)
+	} else if len(vs) > max {
+		return fmt.Errorf("too many arguments")
+	}
+	for i := 0; i < max; i++ {
+		if err := arm[i].Scan(vs[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type MessageBase []byte
 
 func (m MessageBase) Scan(v any) error {
-	return Scan(m, v)
+	return Scan(m[1:], v)
 }
 
 type MessageString string
@@ -26,7 +43,7 @@ func (m MessageString) Scan(v any) error {
 	return Scan([]byte(m), v)
 }
 
-func (m MessageString) Array() ([]IMessage, error) {
+func (m MessageString) Array() (ArrayMessage, error) {
 
 	return nil, fmt.Errorf(" can't parse array reply: %.100q", m)
 
@@ -48,7 +65,7 @@ func (m MessageString) Type() ReplyType {
 	return StringReply
 }
 
-func (m MessageBase) Array() ([]IMessage, error) {
+func (m MessageBase) Array() (ArrayMessage, error) {
 	switch m[0] {
 	case ErrorReply:
 		return nil, Error(m[1:])
@@ -115,34 +132,34 @@ func (m MessageBase) Type() ReplyType {
 }
 
 type MessageArray struct {
-	items []IMessage
+	items ArrayMessage
 	err   error
 }
 
 func (m *MessageArray) Scan(slice any) error {
 	v := reflect.ValueOf(slice)
 	if !v.IsValid() {
-		return fmt.Errorf("redis: ScanSlice(nil)")
+		return fmt.Errorf("apinto: ScanSlice(nil)")
 	}
 	if v.Kind() != reflect.Ptr {
-		return fmt.Errorf("redis: ScanSlice(non-pointer %T)", slice)
+		return fmt.Errorf("apinto: ScanSlice(non-pointer %T)", slice)
 	}
 	v = v.Elem()
 	if v.Kind() != reflect.Slice {
-		return fmt.Errorf("redis: ScanSlice(non-slice %T)", slice)
+		return fmt.Errorf("apinto: ScanSlice(non-slice %T)", slice)
 	}
 	next := makeSliceNextElemFunc(v)
 	for i, s := range m.items {
 		elem := next()
 		if err := s.Scan(elem.Addr().Interface()); err != nil {
-			err = fmt.Errorf("redis: ScanSlice index=%d value=%q failed: %w", i, s, err)
+			err = fmt.Errorf("apinto: ScanSlice index=%d value=%q failed: %w", i, s, err)
 			return err
 		}
 	}
 	return nil
 }
 
-func (m *MessageArray) Array() ([]IMessage, error) {
+func (m *MessageArray) Array() (ArrayMessage, error) {
 	return m.items, nil
 }
 

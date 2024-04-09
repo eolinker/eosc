@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"github.com/eolinker/eosc/process-admin/marshal"
 )
 
 func init() {
-	Register("get", GetWorker)
-	Register("list", ListWorker)
-	Register("delete", DeleteWorker)
-	Register("set", SetWorker)
+	Register(cmd.WorkerGet, GetWorker)
+	Register(cmd.WorkerList, ListWorker)
+	Register(cmd.WorkerDel, DeleteWorker)
+	Register(cmd.WorkerSet, SetWorker)
 }
 
 type workerBase struct {
@@ -30,14 +31,13 @@ func SetWorker(session ISession, message proto.IMessage) error {
 	if len(ims) < 3 {
 		return ErrorInvalidArg
 	}
-	id, err := ims[1].String()
+	var id string
+	var body []byte
+	err = ims[1:].Scan(&id, &body)
 	if err != nil {
-		return fmt.Errorf("parse id fail %v", err)
+		return err
 	}
-	body, err := ims[2].String()
-	if err != nil {
-		return fmt.Errorf("parse body fail %v", err)
-	}
+
 	profession, name, success := eosc.SplitWorkerId(id)
 	if !success {
 		return fmt.Errorf("invalid id %s", id)
@@ -57,7 +57,7 @@ func SetWorker(session ISession, message proto.IMessage) error {
 	if err != nil {
 		return err
 	}
-	session.Write("OK")
+	session.Write(cmd.OK)
 	return nil
 }
 
@@ -69,7 +69,8 @@ func DeleteWorker(session ISession, message proto.IMessage) error {
 	if len(ims) < 2 {
 		return ErrorInvalidArg
 	}
-	id, err := ims[1].String()
+	var id string
+	err = ims[1:].Scan(&id)
 	if err != nil {
 		return fmt.Errorf("parse id fail %v", err)
 	}
@@ -80,7 +81,7 @@ func DeleteWorker(session ISession, message proto.IMessage) error {
 	if err != nil {
 		return err
 	}
-	session.Write("OK")
+	session.Write(cmd.OK)
 	return nil
 }
 

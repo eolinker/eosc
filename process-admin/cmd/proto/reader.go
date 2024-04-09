@@ -14,10 +14,17 @@ type Reader struct {
 }
 
 func NewReader(rd io.Reader) *Reader {
-	return &Reader{
-		rd:   bufio.NewReader(rd),
+	reader := &Reader{
+
 		_buf: make([]byte, 64),
 	}
+	if r, ok := rd.(*bufio.Reader); ok {
+		reader.rd = r
+	} else {
+		reader.rd = bufio.NewReader(rd)
+	}
+
+	return reader
 }
 func (r *Reader) Buffered() int {
 	return r.rd.Buffered()
@@ -59,7 +66,7 @@ func (r *Reader) ReadMessage() (IMessage, error) {
 				err:   Nil,
 			}, Nil
 		}
-		children := make([]IMessage, 0, n)
+		children := make(ArrayMessage, 0, n)
 
 		for i := int64(0); i < n; i++ {
 			child, err := r.ReadMessage()
@@ -89,8 +96,8 @@ func (r *Reader) buf(n int) []byte {
 	if n <= cap(r._buf) {
 		return r._buf[:n]
 	}
-	d := n - cap(r._buf)
-	r._buf = append(r._buf, make([]byte, d)...)
+
+	r._buf = make([]byte, n)
 	return r._buf
 }
 func (r *Reader) _readTmpBytesReply(line []byte) ([]byte, error) {

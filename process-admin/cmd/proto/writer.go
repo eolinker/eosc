@@ -3,6 +3,7 @@ package proto
 import (
 	"encoding"
 	"encoding/json"
+	"errors"
 	"io"
 	"strconv"
 	"strings"
@@ -47,6 +48,9 @@ func (w *Writer) WriteArg(v any) error {
 
 	switch v := v.(type) {
 	case error:
+		if errors.Is(v, Nil) {
+			return w.status(nil)
+		}
 		return w.error(v)
 	case nil:
 		return w.status(nil)

@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"io"
 	"net"
+	"strings"
 )
 
 var (
@@ -121,13 +123,13 @@ func (s *Session) handshake() error {
 		s.Write(fmt.Errorf("handshake %v", err))
 		return err
 	}
-	if cmdName != "apinto" {
+	if strings.ToUpper(cmdName) != cmd.Handshake {
 		e := fmt.Errorf("handshake get:%s", cmdName)
 		s.Write(e)
 		return e
 
 	}
-	s.Write("OK")
+	s.Write(cmd.OK)
 	return nil
 
 }

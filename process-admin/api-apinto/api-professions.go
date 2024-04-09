@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/eolinker/eosc/process-admin/admin"
+	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"github.com/eolinker/eosc/process-admin/model"
 	"github.com/eolinker/eosc/professions"
@@ -11,8 +12,8 @@ import (
 )
 
 func init() {
-	Register("plist", ListProfession)
-	Register("PGet", GetProfession)
+	Register(cmd.PList, ListProfession)
+	Register(cmd.PGet, GetProfession)
 }
 
 func ListProfession(session ISession, message proto.IMessage) error {
@@ -46,7 +47,7 @@ func GetProfession(session ISession, message proto.IMessage) error {
 	err = session.Call(func(adminApi admin.AdminApiWrite) error {
 		profession, ok := adminApi.GetProfession(context.Background(), professionName)
 		if !ok {
-			return fmt.Errorf("profession %s not found", profession)
+			return proto.Nil
 		}
 		p = profession
 		return nil

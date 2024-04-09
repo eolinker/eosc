@@ -8,6 +8,23 @@
 
 package cmd
 
-type Cmd interface {
-	Run()
-}
+const (
+	MagicKey   = "+" + Handshake
+	Handshake  = "APINTO"
+	PING       = "PING"
+	PONG       = "PONG"
+	WorkerList = "LIST"
+	WorkerGet  = "GET"
+	WorkerSet  = "SET"
+	WorkerDel  = "DEL"
+	PList      = "PLIST"
+	PGet       = "PGET"
+	SGet       = "SGET"
+	SSet       = "SSET"
+	VGet       = "VGET"
+	VSet       = "VSET"
+	Begin      = "BEGIN"
+	Commit     = "COMMIT"
+	Rollback   = "ROLLBACK"
+	OK         = "OK"
+)

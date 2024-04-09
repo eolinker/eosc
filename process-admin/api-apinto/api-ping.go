@@ -1,21 +1,22 @@
 package api_apinto
 
 import (
+	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 )
 
 func Ping(session ISession, message proto.IMessage) error {
-	session.Write("PONG")
+	session.Write(cmd.PONG)
 	return nil
 }
 func handshake(session ISession, message proto.IMessage) error {
-	session.Write("OK")
+	session.Write(cmd.OK)
 	return nil
 }
 
 func Begin(session ISession, message proto.IMessage) error {
 	session.Begin()
-	session.Write("OK")
+	session.Write(cmd.OK)
 	return nil
 }
 func Commit(session ISession, message proto.IMessage) error {
@@ -24,7 +25,7 @@ func Commit(session ISession, message proto.IMessage) error {
 		session.Write(err)
 		return err
 	}
-	session.Write("OK")
+	session.Write(cmd.OK)
 	return nil
 }
 
@@ -35,6 +36,6 @@ func Rollback(session ISession, message proto.IMessage) error {
 
 		return err
 	}
-	session.Write("OK")
+	session.Write(cmd.OK)
 	return nil
 }
