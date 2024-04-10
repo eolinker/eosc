@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"github.com/eolinker/eosc/process-admin/model"
@@ -27,9 +28,15 @@ type Client interface {
 	Begin(ctx context.Context) error
 	Commit(ctx context.Context) error
 	Rollback(ctx context.Context) error
+	MatchLabels(ctx context.Context, profession string, labels map[string]string) ([]model.Object, error)
 }
 type imlClient struct {
 	conn *baseClient
+}
+
+func (i *imlClient) MatchLabels(ctx context.Context, profession string, labels map[string]string) ([]model.Object, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (i *imlClient) Ping(ctx context.Context) error {
