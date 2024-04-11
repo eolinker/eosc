@@ -40,7 +40,7 @@ message WorkerConfig{
   bytes body = 7;
   string description = 8;
   string version = 9;
-  map<string, string> matchLabels = 10;
+  map<string, string> matches = 10;
 }
 
 message ExtendersSettings{
