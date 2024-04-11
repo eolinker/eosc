@@ -79,14 +79,7 @@ func (oe *imlAdminApi) SetSetting(ctx context.Context, name string, data marshal
 	return nil
 }
 func (oe *imlAdminApi) batchSetWorker(ctx context.Context, inputData []byte, driver eosc.ISetting, configType reflect.Type) error {
-	type BatchWorkerInfo struct {
-		id         string
-		profession string
-		name       string
-		driver     string
-		desc       string
-		configBody marshal.IData
-	}
+
 	inputList := marshal.SplitConfig(inputData)
 	cfgs := make(map[string]*eosc.WorkerConfig, len(inputList))
 	allWorkers := set.NewSet(driver.AllWorkers()...)

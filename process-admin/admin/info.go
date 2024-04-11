@@ -80,7 +80,7 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 		m["description"] = w.config.Description
 		m["update"] = w.config.Update
 		m["create"] = w.config.Create
-		m["matchLabels"] = w.config.MatchLabels
+		m["matches"] = w.config.Matches
 		w.attr = m
 	}
 
@@ -89,24 +89,25 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 func (w *WorkerInfo) Info(appendLabels ...string) interface{} {
 	if w.info == nil {
 		detail := w.toDetails()
-		w.info = make(map[string]interface{})
+		info := make(map[string]interface{})
 		for _, label := range appendLabels {
-			w.info[label] = detail[label]
+			info[label] = detail[label]
 		}
-		w.info["id"] = w.config.Id
-		w.info["profession"] = w.config.Profession
-		w.info["name"] = w.config.Name
-		w.info["driver"] = w.config.Driver
-		w.info["version"] = w.config.Version
-		w.info["description"] = w.config.Description
-		w.info["update"] = w.config.Update
-		w.info["create"] = w.config.Create
+		info["id"] = w.config.Id
+		info["profession"] = w.config.Profession
+		info["name"] = w.config.Name
+		info["driver"] = w.config.Driver
+		info["version"] = w.config.Version
+		info["description"] = w.config.Description
+		info["update"] = w.config.Update
+		info["create"] = w.config.Create
+		w.info = info
 	}
 
 	return w.info
 }
-func (w *WorkerInfo) MatchLabels() map[string]string {
-	return w.config.MatchLabels
+func (w *WorkerInfo) Matches() map[string]string {
+	return w.config.Matches
 }
 func (w *WorkerInfo) Body() []byte {
 	return w.config.Body

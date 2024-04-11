@@ -115,7 +115,7 @@ func MatchWorker(session ISession, message proto.IMessage) error {
 		}
 
 		utils.ArrayFilter(listWorker, func(i int, v *admin.WorkerInfo) bool {
-			vl := v.MatchLabels()
+			vl := v.Matches()
 			if vl != nil {
 				return false
 			}

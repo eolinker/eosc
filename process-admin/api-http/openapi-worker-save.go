@@ -123,7 +123,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 			version = t
 		}
 	}
-	matchLabels := workerInfo.MatchLabels()
+	matchLabels := workerInfo.Matches()
 	if v, has := options["matchLabels"]; has {
 		if vl, ok := v.(map[string]string); ok {
 			matchLabels = vl
@@ -138,7 +138,7 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		Description: description,
 		Version:     version,
 		Body:        data,
-		MatchLabels: matchLabels,
+		Matches:     matchLabels,
 		Update:      eosc.Now(),
 	}
 
