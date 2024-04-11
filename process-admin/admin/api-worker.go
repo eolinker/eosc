@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/process-admin/marshal"
 	"github.com/eolinker/eosc/service"
 )
 
@@ -26,25 +25,22 @@ func (oe *imlAdminApi) DeleteWorker(ctx context.Context, id string) (*WorkerInfo
 
 }
 
-func (oe *imlAdminApi) SetWorker(ctx context.Context, profession, name, driver, version, desc string, data marshal.IData) (*WorkerInfo, error) {
-	body, err := data.Encode()
-	if err != nil {
-		return nil, err
-	}
-	id, ok := eosc.ToWorkerId(name, profession)
+func (oe *imlAdminApi) SetWorker(ctx context.Context, wc *eosc.WorkerConfig) (*WorkerInfo, error) {
+
+	id, ok := eosc.ToWorkerId(wc.Name, wc.Profession)
 	if !ok {
-		return nil, fmt.Errorf("%s@%s:invalid id", name, profession)
+		return nil, fmt.Errorf("%s@%s:invalid id", wc.Name, wc.Profession)
 	}
 
-	log.Debug("update:", id, " ", profession, ",", name, ",", driver, ",", body)
+	log.Debug("update:", id, " ", wc.Profession, ",", wc.Name, ",", wc.Driver, ",", wc.Body)
 	old, exits := oe.imlAdminData.workers.Get(id)
 	if exits {
 		// update
-		if driver == "" {
-			driver = old.Driver()
+		if wc.Driver == "" {
+			wc.Driver = old.Driver()
 		}
 
-		info, err := oe.imlAdminData.setWorker(id, profession, name, driver, version, desc, body, eosc.Now(), old.config.Create)
+		info, err := oe.imlAdminData.setWorker(wc)
 		if err != nil {
 			return nil, err
 		}
@@ -53,15 +49,15 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, profession, name, driver, 
 			Command:   eosc.EventSet,
 			Namespace: eosc.NamespaceWorker,
 			Key:       id,
-			Data:      info.Body(),
+			Data:      info.ConfigData(),
 		})
 		return info, nil
 	}
 	// create
-	if driver == "" {
+	if wc.Driver == "" {
 		return nil, fmt.Errorf("require driver")
 	}
-	info, err := oe.imlAdminData.setWorker(id, profession, name, driver, version, desc, body, eosc.Now(), eosc.Now())
+	info, err := oe.imlAdminData.setWorker(wc)
 	if err != nil {
 		return nil, err
 	}

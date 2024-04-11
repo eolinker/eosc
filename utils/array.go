@@ -9,14 +9,13 @@ func ArrayToMap[K comparable, V any](l []V, f func(V) K) map[K]V {
 }
 func GroupBy[K comparable, V any](l []V, f func(V) K) map[K][]V {
 	r := make(map[K][]V)
-	ArrayFilter(l, func(i int, v V) bool {
+	for _, v := range l {
 		k := f(v)
 		if _, ok := r[k]; !ok {
 			r[k] = make([]V, 0)
 		}
 		r[k] = append(r[k], v)
-		return false
-	})
+	}
 	return r
 }
 

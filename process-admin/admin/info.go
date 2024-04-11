@@ -27,43 +27,34 @@ func GetProfession(w *WorkerInfo) string {
 	return w.config.Profession
 
 }
-func NewWorkerInfo(worker eosc.IWorker, id string, profession string, name, driver, version, desc, create, update string, body []byte, configType reflect.Type) *WorkerInfo {
-
+func NewWorkerInfo(worker eosc.IWorker, cf *eosc.WorkerConfig, configType reflect.Type) *WorkerInfo {
+	if cf.Create == "" {
+		cf.Create = eosc.Now()
+	}
+	if cf.Update == "" {
+		cf.Update = eosc.Now()
+	}
 	return &WorkerInfo{
-
-		worker: worker,
-		config: &eosc.WorkerConfig{
-			Id:          id,
-			Profession:  profession,
-			Name:        name,
-			Driver:      driver,
-			Create:      create,
-			Update:      update,
-			Description: desc,
-			Body:        body,
-			Version:     version,
-		},
+		worker:     worker,
+		config:     cf,
 		configType: configType,
 		attr:       nil,
 	}
 }
 
-func (w *WorkerInfo) reset(driver, version, desc string, body []byte, worker eosc.IWorker, configType reflect.Type, updateAt, createAt string) {
-	//w.config.Update = eosc.Now()
-	if createAt == "" {
-		createAt = eosc.Now()
-	}
-	if updateAt == "" {
-		updateAt = eosc.Now()
+func (w *WorkerInfo) reset(cf *eosc.WorkerConfig, worker eosc.IWorker, configType reflect.Type) {
+
+	cf.Create = w.config.Create
+	if cf.Create == "" {
+		cf.Create = eosc.Now()
 	}
 
-	w.config.Update = updateAt
-	w.config.Create = createAt
+	if cf.Update == "" {
+		cf.Update = eosc.Now()
+	}
 
-	w.config.Driver = driver
-	w.config.Description = desc
-	w.config.Body = body
-	w.config.Version = version
+	w.config = cf
+
 	w.configType = configType
 	w.worker = worker
 	w.info = nil
@@ -89,6 +80,7 @@ func (w *WorkerInfo) toDetails() map[string]interface{} {
 		m["description"] = w.config.Description
 		m["update"] = w.config.Update
 		m["create"] = w.config.Create
+		m["matchLabels"] = w.config.MatchLabels
 		w.attr = m
 	}
 
@@ -113,7 +105,9 @@ func (w *WorkerInfo) Info(appendLabels ...string) interface{} {
 
 	return w.info
 }
-
+func (w *WorkerInfo) MatchLabels() map[string]string {
+	return w.config.MatchLabels
+}
 func (w *WorkerInfo) Body() []byte {
 	return w.config.Body
 }

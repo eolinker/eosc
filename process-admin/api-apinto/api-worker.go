@@ -2,25 +2,22 @@ package api_apinto
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/cmd"
 	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"github.com/eolinker/eosc/process-admin/marshal"
+	"github.com/eolinker/eosc/utils"
 )
 
 func init() {
 	Register(cmd.WorkerGet, GetWorker)
 	Register(cmd.WorkerList, ListWorker)
+	Register(cmd.WorkerMatch, MatchWorker)
 	Register(cmd.WorkerDel, DeleteWorker)
 	Register(cmd.WorkerSet, SetWorker)
-}
-
-type workerBase struct {
-	Driver      string `json:"driver"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
 }
 
 func SetWorker(session ISession, message proto.IMessage) error {
@@ -43,15 +40,18 @@ func SetWorker(session ISession, message proto.IMessage) error {
 		return fmt.Errorf("invalid id %s", id)
 	}
 	data := marshal.JsonData(body)
-	base := new(workerBase)
-	err = data.UnMarshal(base)
+	cf := new(eosc.WorkerConfig)
+	err = data.UnMarshal(cf)
 	if err != nil {
 		return err
 	}
-
+	cf.Profession = profession
+	cf.Id = id
+	cf.Name = name
+	cf.Body = data
 	err = session.Call(func(adminApi admin.AdminApiWrite) error {
 
-		_, e := adminApi.SetWorker(context.Background(), profession, name, base.Driver, base.Version, base.Description, marshal.JsonData(body))
+		_, e := adminApi.SetWorker(context.Background(), cf)
 		return e
 	})
 	if err != nil {
@@ -85,6 +85,57 @@ func DeleteWorker(session ISession, message proto.IMessage) error {
 	return nil
 }
 
+type MatchLabel struct {
+	labels map[string]string
+}
+
+func (m *MatchLabel) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, &m.labels)
+}
+
+func MatchWorker(session ISession, message proto.IMessage) error {
+	ims, err := message.Array()
+	if err != nil {
+		return err
+	}
+	if len(ims) < 3 {
+		return ErrorInvalidArg
+	}
+	var profession string
+	var matchLabels MatchLabel
+	err = ims[1:].Scan(&profession, &matchLabels)
+	if err != nil {
+		return err
+	}
+	var list []any
+	err = session.Call(func(adminApi admin.AdminApiWrite) error {
+		listWorker, errCall := adminApi.ListWorker(context.Background(), profession)
+		if errCall != nil {
+			return errCall
+		}
+
+		utils.ArrayFilter(listWorker, func(i int, v *admin.WorkerInfo) bool {
+			vl := v.MatchLabels()
+			for label, value := range matchLabels.labels {
+				if vl[label] != value {
+					return false
+				}
+			}
+			return true
+		})
+
+		list = make([]any, 0, len(listWorker))
+		for _, worker := range listWorker {
+			list = append(list, worker.Detail())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	session.WriteArray(list...)
+	return nil
+}
 func ListWorker(session ISession, message proto.IMessage) error {
 	ims, err := message.Array()
 	if err != nil {

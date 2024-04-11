@@ -35,8 +35,26 @@ type imlClient struct {
 }
 
 func (i *imlClient) MatchLabels(ctx context.Context, profession string, labels map[string]string) ([]model.Object, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(labels) == 0 {
+		return i.List(ctx, profession)
+	}
+	err := i.conn.send(cmd.WorkerMatch, profession, labels)
+	if err != nil {
+		return nil, err
+	}
+	recv, err := i.conn.recv()
+	if err != nil {
+		return nil, err
+	}
+	if recv.Type() != proto.ArrayReply {
+		return nil, fmt.Errorf("expect array but get %s", proto.ReplyTypeString(recv.Type()))
+	}
+	var mos []model.Object
+	err = recv.Scan(&mos)
+	if err != nil {
+		return nil, err
+	}
+	return mos, nil
 }
 
 func (i *imlClient) Ping(ctx context.Context) error {

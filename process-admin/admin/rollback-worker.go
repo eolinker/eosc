@@ -23,7 +23,7 @@ func newRollBackForSet(worker *eosc.WorkerConfig) RollbackHandler {
 }
 
 func (r *rollBackForSet) RollBack(api iAdminOperator) error {
-	_, err := api.setWorker(r.Id, r.Profession, r.Name, r.Driver, r.Version, r.Description, r.Body, r.Update, r.Create)
+	_, err := api.setWorker((*eosc.WorkerConfig)(r))
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (r *rollBackForSet) RollBack(api iAdminOperator) error {
 type rollbackForDelete WorkerInfo
 
 func (r *rollbackForDelete) RollBack(api iAdminOperator) error {
-	_, err := api.setWorker(r.config.Id, r.config.Profession, r.config.Name, r.config.Driver, r.config.Version, r.config.Description, r.config.Body, r.config.Update, r.config.Create)
+	_, err := api.setWorker(r.config)
 	if err != nil {
 		return err
 	}

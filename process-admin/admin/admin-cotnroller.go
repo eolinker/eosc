@@ -10,7 +10,7 @@ import (
 )
 
 type iAdminOperator interface {
-	setWorker(id, profession, name, driverName, version, desc string, body []byte, updateAt, createAt string) (*WorkerInfo, error)
+	setWorker(c *eosc.WorkerConfig) (*WorkerInfo, error)
 	delWorker(id string) (*WorkerInfo, error)
 	setSetting(name string, data []byte) error
 	setVariable(namespace string, values map[string]string) error
@@ -18,22 +18,22 @@ type iAdminOperator interface {
 	delProfession(name string) error
 }
 
-func (d *imlAdminData) setWorker(id, profession, name, driverName, version, desc string, body []byte, updateAt, createAt string) (*WorkerInfo, error) {
+func (d *imlAdminData) setWorker(cf *eosc.WorkerConfig) (*WorkerInfo, error) {
 
-	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
-	p, has := d.professionData.Get(profession)
+	log.Debug("set:", cf.Id, ",", cf.Profession, ",", cf.Name, ",", cf.Driver)
+	p, has := d.professionData.Get(cf.Profession)
 	if !has {
-		return nil, fmt.Errorf("%s:%w", profession, eosc.ErrorProfessionNotExist)
+		return nil, fmt.Errorf("%s:%w", cf.Profession, eosc.ErrorProfessionNotExist)
 	}
 	if p.Mod == eosc.ProfessionConfig_Singleton {
-		driverName = name
+		cf.Driver = cf.Name
 	}
-	driver, has := p.GetDriver(driverName)
+	driver, has := p.GetDriver(cf.Driver)
 	if !has {
-		return nil, fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
+		return nil, fmt.Errorf("%s,%w", cf.Driver, eosc.ErrorDriverNotExist)
 	}
 
-	conf, usedVariables, err := d.variable.Unmarshal(body, driver.ConfigType())
+	conf, usedVariables, err := d.variable.Unmarshal(cf.Body, driver.ConfigType())
 	if err != nil {
 		return nil, err
 	}
@@ -47,53 +47,48 @@ func (d *imlAdminData) setWorker(id, profession, name, driverName, version, desc
 			return nil, err
 		}
 	}
-	wInfo, hasInfo := d.workers.Get(id)
+	wInfo, hasInfo := d.workers.Get(cf.Id)
 	if hasInfo && wInfo.worker != nil {
 
-		if wInfo.config.Profession != profession {
-			return nil, fmt.Errorf("%s:%w", version, eosc.ErrorNotAllowCreateForSingleton)
+		if wInfo.config.Profession != cf.Profession {
+			return nil, fmt.Errorf("%s:%w", cf.Profession, eosc.ErrorNotAllowCreateForSingleton)
 		}
 		e := wInfo.worker.Reset(conf, requires)
 		if e != nil {
 			return nil, e
 		}
-		d.requireManager.Set(id, utils.ArrayType(utils.MapKey(requires), func(t config.RequireId) string { return string(t) }))
-		wInfo.reset(driverName, version, desc, body, wInfo.worker, driver.ConfigType(), updateAt, createAt)
+		d.requireManager.Set(cf.Id, utils.ArrayType(utils.MapKey(requires), func(t config.RequireId) string { return string(t) }))
+		wInfo.reset(cf, wInfo.worker, driver.ConfigType())
 
-		d.variable.SetRequire(id, usedVariables)
+		d.variable.SetRequire(cf.Id, usedVariables)
 		return wInfo, nil
 	}
 	// create
-	worker, err := driver.Create(id, name, conf, requires)
+	worker, err := driver.Create(cf.Id, cf.Name, conf, requires)
 	if err != nil {
 		log.Warn("worker-data set worker create:", err)
 		return nil, err
 	}
 
 	if !hasInfo {
-		if updateAt == "" {
-			updateAt = eosc.Now()
+		if cf.Update == "" {
+			cf.Update = eosc.Now()
 		}
-		if createAt == "" {
-			createAt = eosc.Now()
+		if cf.Create == "" {
+			cf.Create = eosc.Now()
 		}
-		wInfo = NewWorkerInfo(worker, id, profession, name, driverName, version, desc, createAt, updateAt, body, driver.ConfigType())
+		wInfo = NewWorkerInfo(worker, cf, driver.ConfigType())
 	} else {
-		if updateAt == "" {
-			updateAt = eosc.Now()
-		}
 
-		createAt = wInfo.config.Create
-
-		wInfo.reset(driverName, version, desc, body, worker, driver.ConfigType(), updateAt, createAt)
+		wInfo.reset(cf, worker, driver.ConfigType())
 	}
 
 	// store
-	d.workers.Set(id, wInfo)
-	d.requireManager.Set(id, utils.ArrayType(utils.MapKey(requires), func(t config.RequireId) string { return string(t) }))
+	d.workers.Set(cf.Id, wInfo)
+	d.requireManager.Set(cf.Id, utils.ArrayType(utils.MapKey(requires), func(t config.RequireId) string { return string(t) }))
 
-	d.variable.SetRequire(id, usedVariables)
-	log.Debug("worker-data set worker done:", id)
+	d.variable.SetRequire(cf.Id, usedVariables)
+	log.Debug("worker-data set worker done:", cf.Id)
 
 	return wInfo, nil
 }
@@ -148,7 +143,7 @@ func (d *imlAdminData) setVariable(namespace string, values map[string]string) e
 			if err != nil {
 				return fmt.Errorf("unmarshal error:%s,body is '%s'", err, string(info.Body()))
 			}
-			_, err = d.setWorker(id, info.config.Profession, info.config.Name, info.config.Driver, info.config.Version, info.config.Description, info.Body(), info.config.Create, info.config.Update)
+			_, err = d.setWorker(info.config)
 			if err != nil {
 				return err
 			}

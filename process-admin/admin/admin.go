@@ -40,7 +40,7 @@ type AdminApiWrite interface {
 	SetProfession(name string, profession *eosc.ProfessionConfig) error
 	ResetProfession(configs []*eosc.ProfessionConfig)
 	DeleteWorker(ctx context.Context, id string) (*WorkerInfo, error)
-	SetWorker(ctx context.Context, profession, name, driver, version, desc string, data marshal.IData) (*WorkerInfo, error)
+	SetWorker(ctx context.Context, cf *eosc.WorkerConfig) (*WorkerInfo, error)
 
 	SetSetting(ctx context.Context, name string, data marshal.IData) error
 	SetVariable(ctx context.Context, namespace string, values map[string]string) error

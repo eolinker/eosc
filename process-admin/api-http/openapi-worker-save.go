@@ -39,19 +39,21 @@ func (oe *WorkerApi) Add(r *http.Request, params httprouter.Params) (status int,
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
 	}
-	cb := new(BaseArg)
+	cb := new(eosc.WorkerConfig)
 	errUnmarshal := decoder.UnMarshal(cb)
+
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, errUnmarshal
 	}
-
-	name := cb.Name
+	cb.Body, _ = decoder.Encode()
 	if cb.Version == "" {
 		cb.Version = admin.GenVersion()
 	}
+	cb.Profession = profession
+
 	var out *admin.WorkerInfo
 	err = oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		worker, err := api.SetWorker(ctx, profession, name, cb.Driver, cb.Version, cb.Description, decoder)
+		worker, err := api.SetWorker(ctx, cb)
 		if err != nil {
 			return err
 		}
@@ -114,9 +116,6 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 	if v, has := options["description"]; has {
 		description = v.(string)
 	}
-	data, _ := json.Marshal(current)
-	log.Debug("patch betfor:", string(workerInfo.Body()))
-	log.Debug("patch after:", string(data))
 	version := admin.GenVersion()
 	if v, has := options["version"]; has {
 		t, ok := v.(string)
@@ -124,9 +123,28 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 			version = t
 		}
 	}
+	matchLabels := workerInfo.MatchLabels()
+	if v, has := options["matchLabels"]; has {
+		if vl, ok := v.(map[string]string); ok {
+			matchLabels = vl
+		}
+	}
+	data, _ := json.Marshal(current)
+	cf := &eosc.WorkerConfig{
+		Id:          id,
+		Name:        name,
+		Profession:  profession,
+		Driver:      workerInfo.Driver(),
+		Description: description,
+		Version:     version,
+		Body:        data,
+		MatchLabels: matchLabels,
+		Update:      eosc.Now(),
+	}
+
 	decoder = marshal.JsonData(data)
 	err = oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		w, err := api.SetWorker(ctx, profession, name, workerInfo.Driver(), version, description, decoder)
+		w, err := api.SetWorker(ctx, cf)
 		if err != nil {
 			workerInfo = w
 		}
@@ -154,17 +172,23 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
 	}
-	cb := new(BaseArg)
+	cb := new(eosc.WorkerConfig)
 	errUnmarshal := decoder.UnMarshal(cb)
 	if errUnmarshal != nil {
 		return http.StatusInternalServerError, nil, errUnmarshal
 	}
+
 	if cb.Version == "" {
 		cb.Version = admin.GenVersion()
 	}
+	cb.Profession = profession
+	cb.Name = name
+	cb.Update = eosc.Now()
+	cb.Create = eosc.Now()
+	cb.Body, _ = decoder.Encode()
 	var out *admin.WorkerInfo
 	err = oe.admin.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		w, err := api.SetWorker(ctx, profession, name, cb.Driver, cb.Version, cb.Description, decoder)
+		w, err := api.SetWorker(ctx, cb)
 		if err != nil {
 			return err
 		}

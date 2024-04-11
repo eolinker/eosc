@@ -88,9 +88,10 @@ func (oe *imlAdminApi) batchSetWorker(ctx context.Context, inputData []byte, dri
 		configBody marshal.IData
 	}
 	inputList := marshal.SplitConfig(inputData)
-	cfgs := make(map[string]BatchWorkerInfo, len(inputList))
+	cfgs := make(map[string]*eosc.WorkerConfig, len(inputList))
 	allWorkers := set.NewSet(driver.AllWorkers()...)
 
+	version := GenVersion()
 	for _, inp := range inputList {
 		configData, _ := inp.Encode()
 		cfg, _, err2 := oe.variable.Unmarshal(configData, configType)
@@ -107,13 +108,15 @@ func (oe *imlAdminApi) batchSetWorker(ctx context.Context, inputData []byte, dri
 		if allWorkers.Contains(id) {
 			allWorkers.Remove(id)
 		}
-		cfgs[id] = BatchWorkerInfo{
-			id:         id,
-			profession: profession,
-			name:       workerName,
-			driver:     driverName,
-			desc:       desc,
-			configBody: inp,
+		cfgs[id] = &eosc.WorkerConfig{
+			Id:          id,
+			Profession:  profession,
+			Name:        workerName,
+			Driver:      driverName,
+			Description: desc,
+			Body:        configData,
+			Version:     version,
+			Update:      eosc.Now(),
 		}
 	}
 	idToDelete := allWorkers.List()
@@ -122,9 +125,9 @@ func (oe *imlAdminApi) batchSetWorker(ctx context.Context, inputData []byte, dri
 	if len(cannotDelete) > 0 {
 		return fmt.Errorf("should not delete:%s", strings.Join(cannotDelete, ","))
 	}
-	version := GenVersion()
+
 	for id, cfg := range cfgs {
-		_, errSet := oe.SetWorker(ctx, cfg.profession, cfg.name, cfg.driver, version, cfg.desc, cfg.configBody)
+		_, errSet := oe.SetWorker(ctx, cfg)
 		if errSet != nil {
 			log.Warnf("bath set  %s fail :%v", id, errSet)
 			return fmt.Errorf("bath set  %s fail :%v", id, errSet)
