@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eolinker/eosc/log"
-
 	"github.com/ghodss/yaml"
 )
 
@@ -169,7 +167,7 @@ func read(path string) (map[string]string, error) {
 }
 
 func SocketAddr(name string, pid int) string {
-	os.MkdirAll(socketSocketDirValue, os.FileMode(0666))
+	os.MkdirAll(socketSocketDirValue, os.FileMode(PrivateDirMode))
 
 	return fmt.Sprintf("%s/%s.%s-%d.sock", socketSocketDirValue, appName, name, pid)
 }
@@ -190,12 +188,9 @@ func DataDir() string {
 func ErrorName() string {
 	return strings.TrimSuffix(errorLogName, ".log")
 }
-func ErrorLevel() log.Level {
-	l, err := log.ParseLevel(errorLogLevel)
-	if err != nil {
-		l = log.InfoLevel
-	}
-	return l
+func ErrorLevel() string {
+	return errorLogLevel
+
 }
 func ErrorPeriod() string {
 	if errorLogPeriod != "hour" {

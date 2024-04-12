@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-func (d *UnixClient) DialContextUpgrade(req *http.Request) (net.Conn, *http.Response, error) {
+func (uc *UnixClient) DialContextUpgrade(req *http.Request) (net.Conn, *http.Response, error) {
 
-	netConn, err := d.DialContext(req.Context(), "unix", req.Host)
+	netConn, err := uc.DialContext(req.Context(), "unix", req.Host)
 
 	if err != nil {
 		return nil, nil, err
@@ -35,6 +35,7 @@ func (d *UnixClient) DialContextUpgrade(req *http.Request) (net.Conn, *http.Resp
 
 	resp.Body = io.NopCloser(bytes.NewReader([]byte{}))
 
-	netConn.SetDeadline(time.Time{})
+	_ = netConn.SetDeadline(time.Time{})
+
 	return conn, resp, nil
 }

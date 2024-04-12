@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2023. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
- * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
- * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
- * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
- * Vestibulum commodo. Ut rhoncus gravida arcu.
- */
-
 package unix_proxy
 
 import (
@@ -23,8 +15,6 @@ import (
 	"github.com/eolinker/eosc/service"
 )
 
-const BuffSize = 4096
-
 var (
 	ErrorProcessNotInit = errors.New("process not init")
 )
@@ -37,6 +27,8 @@ type UnixClient struct {
 }
 
 func (uc *UnixClient) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+
+	log.DebugF("dail %s://%s", network, addr)
 	if uc.addr == "" {
 		return nil, fmt.Errorf("%s %w", uc.name, ErrorProcessNotInit)
 	}
@@ -48,7 +40,7 @@ func (uc *UnixClient) Update(process *exec.Cmd) {
 		uc.addr = ""
 		return
 	}
-	uc.addr = service.ServerUnixAddr(process.Process.Pid, uc.name)
+	uc.addr = service.ServerAddr(process.Process.Pid, uc.name)
 }
 
 func NewUnixClient(name string) *UnixClient {
@@ -61,13 +53,14 @@ func NewUnixClient(name string) *UnixClient {
 	ul.client = transport
 	return ul
 }
+
 func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	log.Debug("proxy:", request.RequestURI)
 
 	if uc.addr == "" {
 		w.WriteHeader(http.StatusBadGateway)
 
-		fmt.Fprintf(w, "%s %s", uc.name, ErrorProcessNotInit.Error())
+		_, _ = fmt.Fprintf(w, "%s %s", uc.name, ErrorProcessNotInit.Error())
 		return
 	}
 	request.URL.Scheme = "http"
@@ -79,7 +72,7 @@ func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 		}
 
 		defer func() {
-			response.Body.Close()
+			_ = response.Body.Close()
 		}()
 
 		for k, vs := range response.Header {
@@ -88,7 +81,7 @@ func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 			}
 		}
 		w.WriteHeader(response.StatusCode)
-		io.Copy(w, response.Body)
+		_, _ = io.Copy(w, response.Body)
 	} else {
 
 		h, ok := w.(http.Hijacker)
@@ -104,7 +97,7 @@ func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 		}
 		defer func() {
 
-			netConn.Close()
+			_ = netConn.Close()
 		}()
 		if brw.Reader.Buffered() > 0 {
 
@@ -116,15 +109,17 @@ func (uc *UnixClient) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		defer upstream.Close()
+		defer func(upstream net.Conn) {
+			_ = upstream.Close()
+		}(upstream)
 		err = resp.Write(netConn)
 		if err != nil {
 			return
 		}
 		go func() {
-			io.Copy(netConn, upstream)
+			_, _ = io.Copy(netConn, upstream)
 		}()
-		io.Copy(upstream, netConn)
+		_, _ = io.Copy(upstream, netConn)
 	}
 
 }

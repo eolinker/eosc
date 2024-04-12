@@ -22,6 +22,19 @@ type Variables struct {
 	requireManager eosc.IRequires
 }
 
+func (m *Variables) All() map[string]map[string]string {
+
+	m.lock.RLocker()
+	defer m.lock.RUnlock()
+	return m.data
+}
+
+func (m *Variables) MarshalJSON() ([]byte, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	return json.Marshal(m.data)
+}
+
 func (m *Variables) RemoveRequire(id string) {
 	m.requireManager.Del(id)
 }
@@ -71,6 +84,8 @@ func (m *Variables) Len() int {
 }
 
 func (m *Variables) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return NewParse(m).Unmarshal(buf, typ)
 }
 
@@ -87,16 +102,8 @@ func NewVariables(data map[string][]byte) eosc.IVariable {
 	return v
 }
 
-func (m *Variables) SetVariablesById(id string, variables []string) {
+func (m *Variables) SetRequire(id string, variables []string) {
 	m.requireManager.Set(id, variables)
-}
-
-func (m *Variables) GetVariablesById(id string) []string {
-	return m.requireManager.Requires(id)
-}
-
-func (m *Variables) GetIdsByVariable(variable string) []string {
-	return m.requireManager.RequireBy(variable)
 }
 
 func (m *Variables) check(namespace string, variables map[string]string) ([]string, error) {

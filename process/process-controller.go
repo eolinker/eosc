@@ -115,10 +115,6 @@ func newProcess(name string, data []byte, logWriter io.Writer, extraFiles []*os.
 	return pc, nil
 }
 
-func (pc *ProcessController) getClient() *ProcessCmd {
-	return pc.current
-}
-
 func (pc *ProcessController) check(w *ProcessCmd, configData []byte, extraFiles []*os.File) {
 	err := w.Wait()
 	if err != nil {
@@ -141,11 +137,9 @@ func (pc *ProcessController) check(w *ProcessCmd, configData []byte, extraFiles 
 func (pc *ProcessController) run(configData []byte, extraFiles []*os.File) error {
 	log.DebugF("create %s process start...\n", pc.name)
 
-	//cfg := pc.configBuild.Config()
-
 	p, err := newProcess(pc.name, configData, pc.logWriter, extraFiles)
 	if err != nil {
-		log.Warnf("new %s process: %w", pc.name, err)
+		log.Warnf("new %s process: %s", pc.name, err.Error())
 		return err
 	}
 
@@ -186,6 +180,8 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 		case StatusExit, StatusError:
 			pc.callback.Update(nil)
 			return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
+		case StatusStart:
+			// continue
 		}
 
 		ticker.Reset(5 * time.Millisecond)
@@ -215,7 +211,6 @@ func (pc *ProcessController) restart(configData []byte, extraFiles []*os.File) {
 	if err != nil {
 		log.Error("restart error: ", err)
 	}
-	return
 
 }
 
@@ -223,7 +218,7 @@ func (pc *ProcessController) doControl() {
 	t := time.NewTimer(time.Second)
 	t.Stop()
 	defer t.Stop()
-	var lastConfig *StartArgs = new(StartArgs)
+	var lastConfig = new(StartArgs)
 
 	for {
 		select {

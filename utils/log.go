@@ -34,7 +34,11 @@ func InitMasterLog() (io.Writer, func(prefix string) http.Handler) {
 		Period: filelog.ParsePeriod(env.ErrorPeriod()),
 	})
 
-	level := env.ErrorLevel()
+	level, err := log.ParseLevel(env.ErrorLevel())
+	if err != nil {
+		level = log.InfoLevel
+	}
+
 	writer := ToCopyToIoWriter(os.Stdout, fileWriter)
 
 	transport := log.NewTransport(writer, level)
@@ -59,7 +63,11 @@ func (ws writes) Write(p []byte) (n int, err error) {
 }
 
 func InitStdTransport(name ...string) {
-	level := env.ErrorLevel()
+	level, err := log.ParseLevel(env.ErrorLevel())
+	if err != nil {
+		level = log.InfoLevel
+	}
+
 	if env.IsDebug() {
 		level = log.DebugLevel
 	}

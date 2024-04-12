@@ -30,6 +30,13 @@ type tSettings struct {
 	orgConfig map[string][]byte
 }
 
+func (s *tSettings) GetConfigBody(name string) ([]byte, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	c, has := s.orgConfig[name]
+	return c, has
+}
+
 //func (s *tSettings) Set(name string, body []byte, variable eosc.IVariable) (format interface{}, update []*eosc.WorkerConfig, delete []string, err error) {
 //	driver, has := s.GetDriver(name)
 //	if !has {
@@ -102,7 +109,7 @@ type tSettings struct {
 //			return
 //		}
 //		for i := range cfgs {
-//			variable.SetVariablesById(update[i].Id, usagesAll[i])
+//			variable.SetRequire(update[i].Id, usagesAll[i])
 //		}
 //		for _, id := range delete {
 //			variable.RemoveRequire(id)
@@ -140,7 +147,7 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) error {
 	if err != nil {
 		return err
 	}
-	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), useVariable)
+	variable.SetRequire(fmt.Sprintf("%s@setting", name), useVariable)
 
 	return nil
 
@@ -175,7 +182,9 @@ func (s *tSettings) GetConfig(name string) interface{} {
 				return driver.Get()
 			}
 		case eosc.SettingModeSingleton:
+			s.lock.RLock()
 			v, yes := s.configs[name]
+			s.lock.RUnlock()
 			if yes {
 				return v
 			}
@@ -207,7 +216,7 @@ func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariab
 	if err != nil {
 		return err
 	}
-	variable.SetVariablesById(fmt.Sprintf("%s@setting", name), vs)
+	variable.SetRequire(fmt.Sprintf("%s@setting", name), vs)
 	config := FormatConfig(org, configType)
 	s.lock.Lock()
 	s.configs[name] = config

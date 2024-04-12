@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/fileLocker"
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/service"
 	"google.golang.org/protobuf/proto"
@@ -14,7 +15,7 @@ import (
 
 func DownloadCheck(group string, project string, version string) error {
 	path := LocalExtenderPath(group, project, version)
-	err := os.MkdirAll(path, 0666)
+	err := os.MkdirAll(path, env.PrivateDirMode)
 	if err != nil {
 		return errors.New("create extender path " + path + " error: " + err.Error())
 	}

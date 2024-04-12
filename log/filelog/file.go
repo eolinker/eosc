@@ -2,6 +2,7 @@ package filelog
 
 import (
 	"fmt"
+	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func (w *FileController) dropHistory() {
 }
 
 func (w *FileController) initFile() {
-	err := os.MkdirAll(w.dir, 0666)
+	err := os.MkdirAll(w.dir, env.PrivateDirMode)
 	if err != nil {
 		log.Error(err)
 	}

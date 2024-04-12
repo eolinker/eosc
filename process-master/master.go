@@ -12,7 +12,10 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/process-master/proxy"
+	"github.com/soheilhy/cmux"
 	"io"
 	"net"
 	"net/http"
@@ -22,9 +25,7 @@ import (
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
 	"github.com/eolinker/eosc/process-master/extender"
-	open_api "github.com/eolinker/eosc/process-master/open-api"
 	raft_service "github.com/eolinker/eosc/process-master/raft-service"
-	"github.com/eolinker/eosc/process-master/unix-proxy"
 	"github.com/eolinker/eosc/router"
 	"github.com/eolinker/eosc/traffic/mixl"
 	"github.com/eolinker/eosc/utils"
@@ -91,8 +92,8 @@ type Master struct {
 	workerController *WorkerController
 	adminController  *AdminController
 	dispatcherServe  *DispatcherServer
-	adminClient      *unix_proxy.UnixClient
-	workerClient     *unix_proxy.UnixClient
+	adminUnixProxy   *proxy.UnixProxy
+	workerUnixProxy  *proxy.UnixProxy
 }
 
 type MasterHandler struct {
@@ -138,9 +139,10 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 		}
 		return config
 	})
-
-	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminClient))
-	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter, m.workerClient))
+	m.adminUnixProxy = proxy.NewUnixProxy(eosc.ProcessAdmin)
+	m.workerUnixProxy = proxy.NewUnixProxy(eosc.ProcessWorker)
+	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminUnixProxy))
+	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter, m.workerUnixProxy))
 
 	m.dispatcherServe = NewDispatcherServer()
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
@@ -168,14 +170,40 @@ func (m *Master) Start(handler *MasterHandler) error {
 		os.Setenv("gateway_ip", host)
 		break
 	}
-	etcdMux, err := m.listen(m.config.Peer)
+	peerListener, err := m.listen(m.config.Peer)
+
 	if err != nil {
 		return err
 	}
-	openApiMux, err := m.listen(m.config.Client)
+
+	clientListener, err := m.listen(m.config.Client)
 	if err != nil {
 		return err
 	}
+
+	/*
+	   peer listener 监听后, etcd 的http请求由etcd server 处理, 其他的请求视为open api,
+	   1. 如果当前节点是leader , 转发给 admin
+	   2. 如果当前节点不是leader ,转发给 leader 的peer
+	*/
+	/*
+		client listener 监听后:
+		1. /system, /apinto/log/node/, 由master处理
+		2. /apinto/ 转发给 worker处理
+		3. 其他请求视为 open api,
+			如当前节点是leader,转给 admin
+			如果当前节点不是leader,转给 leader的peer
+	*/
+
+	peerListeners := utils.MatchMux(peerListener, etcdPaths)
+	clienListeners := utils.MatchMux(clientListener, masterApiPaths, workerApiPaths)
+	// 初始化etcd
+	etcdApiListener := peerListeners[0]
+	peerOpenApiListener := peerListeners[1]
+	masterApiListener := clienListeners[0]
+	workerApiListener := clienListeners[1]
+	clientOpenApiListener := clienListeners[2]
+	etcdMux := m.startHttpServer(etcdApiListener)
 	etcdServer, err := etcd.NewServer(m.ctx, etcdMux, etcd.Config{
 		PeerAdvertiseUrls:    m.config.Peer.AdvertiseUrls,
 		ClientAdvertiseUrls:  m.config.Client.AdvertiseUrls,
@@ -186,24 +214,33 @@ func (m *Master) Start(handler *MasterHandler) error {
 		log.Error("start etcd error:", err)
 		return err
 	}
-	m.adminClient = unix_proxy.NewUnixClient(eosc.ProcessAdmin)
-	m.workerClient = unix_proxy.NewUnixClient(eosc.ProcessWorker)
+
 	m.etcdServer = etcdServer
+	// 初始化etcd数据
 	err = m.start(handler, etcdServer)
 	if err != nil {
 		return err
 	}
-	openApiProxy := open_api.NewOpenApiProxy(NewEtcdSender(m.etcdServer), m.adminClient)
 
-	openApiMux.Handle("/system/version", handler.VersionHandler(etcdServer))
-	openApiMux.HandleFunc("/system/info", m.EtcdInfoHandler)
-	openApiMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
-	openApiMux.Handle(router.RouterPrefix, m.workerClient) //master转发至worker的路由
+	//openApiProxy := open_api.NewOpenApiProxy(m.etcdServer, m.adminUnixProxy)
+	//etcdMux.Handle("/", http.NotFoundHandler()) // etcdMux 只会接受到指定前缀的请求
+
+	masterMux := m.startHttpServer(masterApiListener)
+	masterMux.Handle("/system/version", handler.VersionHandler(etcdServer))
+	masterMux.HandleFunc("/system/info", m.EtcdInfoHandler)
+	masterMux.HandleFunc("/system/nodes", m.EtcdNodesHandler)
 	//node log
 	logPrefix := fmt.Sprintf("%slog/node/", router.RouterPrefix)
-	openApiMux.Handle(logPrefix, handler.logHandler(logPrefix)) //master转发至worker的路由
-	openApiMux.Handle("/", openApiProxy)
-	etcdMux.Handle("/", openApiProxy) // 转发到leader 需要具体节点，所以peer上也要绑定 open api
+	masterMux.Handle(logPrefix, handler.logHandler(logPrefix)) //master处理本地日志
+
+	//masterMux.Handle(router.RouterPrefix, m.workerUnixProxy) //master转发至worker的路由
+	//master转发至worker
+	go doServer(workerApiListener, m.workerUnixProxy.ProxyToUnix)
+	// 转发到leader -> admin
+	go doServer(clientOpenApiListener, proxy.ProxyToLeader(m.etcdServer, m.adminUnixProxy))
+	// 转发到 leader -> admin
+	// todo 后续需要处理 peer 只有 leader 才能处理 open api, 否则根据协议报error , 以避免消息循环
+	go doServer(peerOpenApiListener, proxy.ProxyToLeader(m.etcdServer, m.adminUnixProxy))
 
 	log.Info("process-master start grpc service")
 	err = m.startService()
@@ -219,7 +256,8 @@ func (m *Master) Start(handler *MasterHandler) error {
 	return nil
 
 }
-func (m *Master) listen(conf config.UrlConfig) (*http.ServeMux, error) {
+
+func (m *Master) listen(conf config.UrlConfig) (net.Listener, error) {
 	tf := traffic.NewTraffic(m.adminTraffic)
 	tcp, ssl := tf.Listen(conf.ListenUrls...)
 
@@ -235,24 +273,31 @@ func (m *Master) listen(conf config.UrlConfig) (*http.ServeMux, error) {
 			listener = append(listener, tls.NewListener(l, tlsConf))
 		}
 	}
-
-	return m.startHttpServer(listener...), nil
+	if len(listener) == 0 {
+		return nil, errors.New("no client listener")
+	}
+	return mixl.NewMixListener(0, listener...), nil
 }
-func (m *Master) startHttpServer(lns ...net.Listener) *http.ServeMux {
+
+func cmuxListener(ln net.Listener) (httpListener net.Listener, apintoListener net.Listener) {
+	cm := cmux.New(ln)
+
+	httpListener = cm.Match(cmux.HTTP1Fast(), cmux.HTTP2())
+	apintoListener = cm.Match(cmux.Any())
+	go func() {
+		cm.Serve()
+	}()
+	return httpListener, apintoListener
+}
+
+func (m *Master) startHttpServer(listen net.Listener) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	if len(lns) == 0 {
-		return mux
-	}
-	var listen net.Listener
-	if len(lns) > 1 {
-		listen = mixl.NewMixListener(0, lns...)
-	} else {
-		listen = lns[0]
-	}
 	server := &http.Server{
 		Handler: mux,
 	}
+	// todo 暂时关闭keepalive
+	server.SetKeepAlivesEnabled(false)
 	go func() {
 		err := server.Serve(listen)
 		if err != nil {

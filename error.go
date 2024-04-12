@@ -5,6 +5,8 @@ import "errors"
 var (
 	ErrorDriverNotExist             = errors.New("driver not exist")
 	ErrorProfessionNotExist         = errors.New("profession not exist")
+	ErrorDriverNotMatch             = errors.New("driver not match")
+	ErrorProfessionNotMatch         = errors.New("profession not match")
 	ErrorNotAllowCreateForSingleton = errors.New("not allow create for singleton profession")
 	ErrorWorkerNotExits             = errors.New("worker-data not exits")
 	ErrorWorkerNotRunning           = errors.New("worker-data not running")
