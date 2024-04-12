@@ -29,9 +29,14 @@ type Client interface {
 	Commit(ctx context.Context) error
 	Rollback(ctx context.Context) error
 	MatchLabels(ctx context.Context, profession string, labels map[string]string) ([]model.Object, error)
+	Close() error
 }
 type imlClient struct {
 	conn *baseClient
+}
+
+func (i *imlClient) Close() error {
+	return i.conn.Close()
 }
 
 func (i *imlClient) MatchLabels(ctx context.Context, profession string, labels map[string]string) ([]model.Object, error) {
