@@ -15,6 +15,13 @@ type imlCustomerVar struct {
 	data   map[string]map[string]string
 }
 
+func (i *imlCustomerVar) GetAll(key string) (map[string]string, bool) {
+	i.rwLock.RLock()
+	defer i.rwLock.RUnlock()
+	m, has := i.data[key]
+	return m, has
+}
+
 func (i *imlCustomerVar) Get(key string, field string) (string, bool) {
 	i.rwLock.RLock()
 	defer i.rwLock.RUnlock()
