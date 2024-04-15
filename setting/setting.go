@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strings"
@@ -26,6 +27,7 @@ type ISettings interface {
 type tSettings struct {
 	lock      sync.RWMutex
 	data      map[string]eosc.ISetting
+	variables eosc.IVariable
 	configs   map[string]interface{}
 	orgConfig map[string][]byte
 }
@@ -123,7 +125,7 @@ func (s *tSettings) GetConfigBody(name string) ([]byte, bool) {
 //	return
 //}
 
-func (s *tSettings) Update(name string, variable eosc.IVariable) error {
+func (s *tSettings) Update(name string) error {
 	log.Debug("setting update:", name)
 	driver, has := s.GetDriver(name)
 	if !has {
@@ -138,7 +140,7 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) error {
 	if !has {
 		return nil
 	}
-	conf, useVariable, err := variable.Unmarshal(org, driver.ConfigType())
+	conf, useVariable, err := s.variables.Unmarshal(org, driver.ConfigType())
 	if err != nil {
 		return err
 	}
@@ -147,13 +149,13 @@ func (s *tSettings) Update(name string, variable eosc.IVariable) error {
 	if err != nil {
 		return err
 	}
-	variable.SetRequire(fmt.Sprintf("%s@setting", name), useVariable)
+	s.variables.SetRequire(fmt.Sprintf("%s@setting", name), useVariable)
 
 	return nil
 
 }
 
-func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err error) {
+func (s *tSettings) CheckVariable(name string) (err error) {
 	driver, has := s.GetDriver(name)
 	if !has {
 		return nil
@@ -167,7 +169,7 @@ func (s *tSettings) CheckVariable(name string, variable eosc.IVariable) (err err
 	if !has {
 		return nil
 	}
-	_, _, err = variable.Unmarshal(org, driver.ConfigType())
+	_, _, err = s.variables.Unmarshal(org, driver.ConfigType())
 
 	return err
 
@@ -196,7 +198,7 @@ func (s *tSettings) GetConfig(name string) interface{} {
 	return nil
 }
 
-func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariable) (err error) {
+func (s *tSettings) SettingWorker(name string, org []byte) (err error) {
 	log.Debug("setting Set:", name, " org:", string(org))
 
 	driver, has := s.GetDriver(name)
@@ -208,7 +210,7 @@ func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariab
 		return eosc.ErrorUnsupportedKind
 	}
 	configType := driver.ConfigType()
-	cfg, vs, err := variable.Unmarshal(org, configType)
+	cfg, vs, err := s.variables.Unmarshal(org, configType)
 	if err != nil {
 		return err
 	}
@@ -216,7 +218,7 @@ func (s *tSettings) SettingWorker(name string, org []byte, variable eosc.IVariab
 	if err != nil {
 		return err
 	}
-	variable.SetRequire(fmt.Sprintf("%s@setting", name), vs)
+	s.variables.SetRequire(fmt.Sprintf("%s@setting", name), vs)
 	config := FormatConfig(org, configType)
 	s.lock.Lock()
 	s.configs[name] = config
@@ -246,12 +248,16 @@ func (s *tSettings) GetDriver(name string) (eosc.ISetting, bool) {
 	return st, has
 }
 
-func newSettings() *tSettings {
-	return &tSettings{
+func newSettings() ISettings {
+	s := &tSettings{
 		data:      make(map[string]eosc.ISetting),
 		configs:   make(map[string]interface{}),
 		orgConfig: map[string][]byte{},
+		variables: nil,
 	}
+	bean.Autowired(&s.variables)
+
+	return s
 }
 
 func GetSettings() ISettings {

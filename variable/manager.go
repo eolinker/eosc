@@ -132,28 +132,30 @@ func (m *Variables) check(namespace string, variables map[string]string) ([]stri
 
 	return affectIds, nil
 }
-func (m *Variables) Check(namespace string, variables map[string]string) ([]string, eosc.IVariable, error) {
-	// variables的key为：{变量名}@{namespace}，如：v1@default
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	vs, err := m.check(namespace, variables)
+
+//func (m *Variables) Check(namespace string, variables map[string]string) ([]string, eosc.IVariable, error) {
+//	// variables的key为：{变量名}@{namespace}，如：v1@default
+//	m.lock.RLock()
+//	defer m.lock.RUnlock()
+//	vs, err := m.check(namespace, variables)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	clone := m.clone()
+//	clone.data[namespace] = variables
+//	return vs, clone, nil
+//}
+
+func (m *Variables) SetByNamespace(namespace string, variables map[string]string) ([]string, map[string]string, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	affectIds, err := m.check(namespace, variables)
 	if err != nil {
 		return nil, nil, err
 	}
-	clone := m.clone()
-	clone.data[namespace] = variables
-	return vs, clone, nil
-}
-
-func (m *Variables) SetByNamespace(namespace string, variables map[string]string) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	_, err := m.check(namespace, variables)
-	if err != nil {
-		return err
-	}
+	old := m.data[namespace]
 	m.data[namespace] = variables
-	return nil
+	return affectIds, old, nil
 }
 func (m *Variables) clone() *Variables {
 	m.lock.RLock()

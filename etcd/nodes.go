@@ -25,7 +25,6 @@ type Clusters struct {
 	data    map[string]*NodeGatewayConfig
 	cluster string
 	mu      sync.RWMutex
-	client  *clientv3.Client
 }
 
 type EventType = mvccpb.Event_EventType
@@ -51,12 +50,12 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 		}
 		nodeId := string(bytes.TrimPrefix(kv.Key, _nodePre))
 		config := new(NodeGatewayConfig)
-		json.Unmarshal(kv.Value, config)
+		_ = json.Unmarshal(kv.Value, config)
 		c.data[nodeId] = config
 	}
 	if c.cluster == "" {
 		c.cluster = uuid.NewString()
-		client.Put(ctx, string(_clusterId), c.cluster)
+		_, _ = client.Put(ctx, string(_clusterId), c.cluster)
 	}
 	go func() {
 		for watcher := range watch {
@@ -90,7 +89,7 @@ func (cs *Clusters) nodeEventDoer(t EventType, key, v []byte) {
 	switch t {
 	case mvccpb.PUT:
 		config := new(NodeGatewayConfig)
-		json.Unmarshal(v, config)
+		_ = json.Unmarshal(v, config)
 		cs.data[nodeId] = config
 	case mvccpb.DELETE:
 		delete(cs.data, nodeId)

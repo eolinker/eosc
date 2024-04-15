@@ -171,7 +171,7 @@ func (pi *ProfessionApi) SetDriver(r *http.Request, params httprouter.Params) (s
 	pConfig := profession.ProfessionConfig
 
 	err = pi.data.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		return api.SetProfession(name, pConfig)
+		return api.SetProfession(ctx, name, pConfig)
 	})
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
@@ -205,7 +205,7 @@ func (pi *ProfessionApi) AddDriver(r *http.Request, params httprouter.Params) (s
 	pConfig.Drivers = append(profession.Drivers, driverConfig)
 
 	err = pi.data.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		return api.SetProfession(name, pConfig)
+		return api.SetProfession(ctx, name, pConfig)
 	})
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
@@ -233,7 +233,7 @@ func (pi *ProfessionApi) ResetDrivers(r *http.Request, params httprouter.Params)
 	pConfig := profession.ProfessionConfig
 	pConfig.Drivers = driverConfigs
 	err = pi.data.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		return api.SetProfession(name, pConfig)
+		return api.SetProfession(ctx, name, pConfig)
 	})
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
@@ -267,7 +267,7 @@ func (pi *ProfessionApi) DeleteDriver(r *http.Request, params httprouter.Params)
 		pConfig.Drivers = append(pConfig.Drivers[:index], pConfig.Drivers[index+1:]...)
 	}
 	err := pi.data.Transaction(r.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
-		return api.SetProfession(name, pConfig)
+		return api.SetProfession(ctx, name, pConfig)
 	})
 
 	if err != nil {

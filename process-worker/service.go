@@ -34,6 +34,7 @@ type WorkerServer struct {
 	professionManager professions.IProfessions
 	settings          eosc.ISettings
 	variableManager   eosc.IVariable
+	customerVar       iCustomerVar
 	masterPid         int
 	onceInit          sync.Once
 	initHandler       []func()
@@ -50,9 +51,12 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandl
 		initHandler:       initHandlers,
 		variableManager:   variable.NewVariables(nil),
 		settings:          setting.GetSettings(),
+		customerVar:       newImlCustomerVar(),
 	}
+	bean.Injection(&ws.customerVar)
+	bean.Injection(&ws.variableManager)
 
-	ws.workers = workers.NewWorkerManager(ws.professionManager)
+	ws.workers = workers.NewWorkerManager(ws.professionManager, ws.variableManager)
 	var iw eosc.IWorkers = ws.workers
 	bean.Injection(&iw)
 	ws.listenMaster()

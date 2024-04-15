@@ -16,6 +16,8 @@ type iAdminOperator interface {
 	setVariable(namespace string, values map[string]string) error
 	setProfession(name string, profession *eosc.ProfessionConfig) error
 	delProfession(name string) error
+	setHashValue(key string, values stringHash)
+	delHashValue(key string)
 }
 
 func (d *imlAdminData) setWorker(cf *eosc.WorkerConfig) (*WorkerInfo, error) {
@@ -116,18 +118,23 @@ func (d *imlAdminData) delWorker(id string) (*WorkerInfo, error) {
 }
 
 func (d *imlAdminData) setSetting(name string, data []byte) error {
-	return d.settings.SettingWorker(name, data, d.variable)
+	return d.settings.SettingWorker(name, data)
 }
 
-func (d *imlAdminData) setVariable(namespace string, values map[string]string) error {
+func (d *imlAdminData) setVariable(namespace string, values map[string]string) (resultErr error) {
 	log.Debug("check variable...")
-	affectIds, clone, errCheck := d.variable.Check(namespace, values)
-	if errCheck != nil {
-		return errCheck
-	}
 
+	affectIds, oldValue, err := d.variable.SetByNamespace(namespace, values)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if resultErr != nil {
+			_, _, _ = d.variable.SetByNamespace(namespace, oldValue)
+		}
+	}()
 	log.Debug("parse variable...")
-	parse := variable.NewParse(clone)
+	parse := variable.NewParse(d.variable)
 
 	for _, id := range affectIds {
 		profession, name, success := eosc.SplitWorkerId(id)
@@ -148,18 +155,32 @@ func (d *imlAdminData) setVariable(namespace string, values map[string]string) e
 				return err
 			}
 		} else {
-			err := d.settings.CheckVariable(name, clone)
+			err := d.settings.CheckVariable(name)
 			if err != nil {
 				return fmt.Errorf("setting %s unmarshal error:%s", name, err)
 			}
-			err = d.settings.Update(name, d.variable)
+			err = d.settings.Update(name)
 			if err != nil {
 				return err
 			}
 		}
 
 	}
+	return nil
+}
 
-	return d.variable.SetByNamespace(namespace, values)
+func (d *imlAdminData) delHashValue(key string) {
+	d.customerHash.Del(key)
+}
+func (d *imlAdminData) setHashValue(key string, values stringHash) {
 
+	d.customerHash.Set(key, values)
+}
+
+func (d *imlAdminData) setProfession(name string, profession *eosc.ProfessionConfig) error {
+	return d.professionData.Set(name, profession)
+}
+
+func (d *imlAdminData) delProfession(name string) error {
+	return d.professionData.Delete(name)
 }

@@ -6,8 +6,35 @@ import (
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
+	"github.com/eolinker/eosc/utils"
 )
 
+func (d *imlAdminData) CheckDeleteWorker(ids ...string) (requires []string) {
+	for _, id := range ids {
+		if d.requireManager.RequireByCount(id) > 0 {
+			requires = append(requires, id)
+		}
+	}
+	return requires
+}
+
+func (d *imlAdminData) AllWorkers(ctx context.Context) []*WorkerInfo {
+	return d.workers.List()
+}
+func (d *imlAdminData) ListWorker(ctx context.Context, profession string) ([]*WorkerInfo, error) {
+	list := d.workers.List()
+	return utils.ArrayFilter(list, func(i int, v *WorkerInfo) bool {
+		return v.config.Profession == profession
+	}), nil
+}
+
+func (d *imlAdminData) GetWorker(ctx context.Context, id string) (*WorkerInfo, error) {
+	workerInfo, has := d.workers.Get(id)
+	if has {
+		return workerInfo, nil
+	}
+	return nil, ErrorNotExist
+}
 func (oe *imlAdminApi) DeleteWorker(ctx context.Context, id string) (*WorkerInfo, error) {
 
 	worker, err := oe.imlAdminData.delWorker(id)

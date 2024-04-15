@@ -1,12 +1,22 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/service"
 )
 
-func (oe *imlAdminApi) SetProfession(name string, profession *eosc.ProfessionConfig) error {
+func (d *imlAdminData) GetProfession(ctx context.Context, profession string) (*professions.Profession, bool) {
+	return d.professionData.Get(profession)
+}
+
+func (d *imlAdminData) ListProfession(ctx context.Context) []*professions.Profession {
+	return d.professionData.List()
+}
+
+func (oe *imlAdminApi) SetProfession(ctx context.Context, name string, profession *eosc.ProfessionConfig) error {
 	old, has := oe.professionData.Get(name)
 	err := oe.imlAdminData.setProfession(name, profession)
 	if err != nil {

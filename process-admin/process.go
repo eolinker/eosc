@@ -167,8 +167,8 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	})))
 
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
-
-	wd := admin.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd)
+	bean.Injection(&vd)
+	wd := admin.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd, arg[eosc.NamespaceCustomer])
 	p.apintoServer = api_apinto.NewServer(wd)
 
 	var iWorkers eosc.IWorkers = wd

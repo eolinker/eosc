@@ -13,6 +13,13 @@ import (
 	"strings"
 )
 
+func (d *imlAdminData) GetSetting(ctx context.Context, name string) (any, bool) {
+	_, has := d.settings.GetDriver(name)
+	if !has {
+		return nil, false
+	}
+	return d.settings.GetConfig(name), has
+}
 func (oe *imlAdminApi) SetSetting(ctx context.Context, name string, data marshal.IData) error {
 	driver, has := oe.settings.GetDriver(name)
 	if !has {
@@ -40,7 +47,7 @@ func (oe *imlAdminApi) SetSetting(ctx context.Context, name string, data marshal
 				}
 			}
 		}
-		err := oe.settings.SettingWorker(name, inputData, oe.variable)
+		err := oe.settings.SettingWorker(name, inputData)
 		if err != nil {
 			return err
 		}
@@ -114,7 +121,7 @@ func (oe *imlAdminApi) batchSetWorker(ctx context.Context, inputData []byte, dri
 	}
 	idToDelete := allWorkers.List()
 
-	cannotDelete := oe.CheckDelete(idToDelete...)
+	cannotDelete := oe.CheckDeleteWorker(idToDelete...)
 	if len(cannotDelete) > 0 {
 		return fmt.Errorf("should not delete:%s", strings.Join(cannotDelete, ","))
 	}

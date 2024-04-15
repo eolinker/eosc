@@ -7,12 +7,12 @@ import (
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
-	"github.com/eolinker/eosc/variable"
 )
 
-func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) error {
+func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) (errResult error) {
 
 	switch namespace {
+
 	case eosc.NamespaceProfession:
 		{
 			p := new(eosc.ProfessionConfig)
@@ -36,11 +36,11 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 			log.Debug("NamespaceWorker:", w.Profession, w.Name)
 
 			if w.Profession == "setting" {
-				err = ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+				err = ws.settings.SettingWorker(w.Name, w.Body)
 				return err
 			}
 
-			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body, ws.variableManager)
+			return ws.workers.Set(w.Id, w.Profession, w.Name, w.Driver, w.Body)
 		}
 	case eosc.NamespaceVariable:
 		{
@@ -50,25 +50,36 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) erro
 				return err
 			}
 
-			wids, clone, err := ws.variableManager.Check(key, tmp)
+			wids, oldValue, err := ws.variableManager.SetByNamespace(key, tmp)
 			if err != nil {
 				return err
-
 			}
-			ws.variableManager.SetByNamespace(key, tmp)
+			defer func() {
+				if errResult != nil {
+					ws.variableManager.SetByNamespace(key, oldValue)
+				}
+			}()
 			for _, id := range wids {
 				profession, _, success := eosc.SplitWorkerId(id)
 				if !success {
 					continue
 				}
 				if profession == "setting" {
-					ws.settings.Update(id, clone)
+					ws.settings.Update(id)
 				} else {
-					ws.workers.Update(id, clone)
+					ws.workers.Update(id)
 				}
 			}
 			return err
 		}
+	case eosc.NamespaceCustomer:
+		var value map[string]string
+		err := json.Unmarshal(data, &value)
+		if err != nil {
+			return err
+		}
+		ws.customerVar.Set(key, value)
+		return nil
 	default:
 		return nil
 		//return errors.New(fmt.Sprintf("namespace %s is not existed.", namespace))
@@ -86,8 +97,15 @@ func (ws *WorkerServer) delEvent(namespace string, key string) error {
 		{
 			return ws.workers.Del(key)
 		}
+	case eosc.NamespaceCustomer:
+		{
+			ws.customerVar.Set(key, nil)
+			return nil
+		}
+
 	case eosc.NamespaceVariable:
 		{
+			ws.variableManager.SetByNamespace(key, make(map[string]string))
 			return nil
 		}
 	default:
@@ -107,65 +125,71 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
 	settings := make([]*eosc.WorkerConfig, 0)
-	for namespace, config := range eventData {
-
-		switch namespace {
-		case eosc.NamespaceProfession:
-			{
-				for _, c := range config {
-					p := new(eosc.ProfessionConfig)
-					err := json.Unmarshal(c, p)
-					if err != nil {
-						continue
-					}
-					pc = append(pc, p)
-				}
+	// 第一步 处理 profession
+	if config, has := eventData[eosc.NamespaceProfession]; has {
+		for _, c := range config {
+			p := new(eosc.ProfessionConfig)
+			err := json.Unmarshal(c, p)
+			if err != nil {
+				continue
 			}
-		case eosc.NamespaceWorker:
-			{
-				for _, c := range config {
-					w := new(eosc.WorkerConfig)
-					err := json.Unmarshal(c, w)
-					if err != nil {
-						continue
-					}
-					log.Debug("init read worker:", w.Profession, ":", w.Name)
-					if w.Profession == "setting" {
-						settings = append(settings, w)
-					} else {
-						wc = append(wc, w)
-					}
-				}
-			}
-		case eosc.NamespaceVariable:
-			{
-				ws.variableManager = variable.NewVariables(config)
-			}
-			//case eosc.NamespaceCluster:
-			//	{
-			//		if v, ok := config["node"]; ok {
-			//			info := make(map[string]string)
-			//			json.Unmarshal(v, &info)
-			//			utils.GlobalLabelSet(info)
-			//		}
-			//	}
+			pc = append(pc, p)
 		}
+		ws.professionManager.Reset(pc)
 	}
-
-	ws.professionManager.Reset(pc)
+	// profession的初始化
 	ws.onceInit.Do(func() {
 		for _, h := range ws.initHandler {
 			h()
 		}
 	})
+	if config, has := eventData[eosc.NamespaceCustomer]; has {
+		for key, c := range config {
+			var value map[string]string
+			err := json.Unmarshal(c, &value)
+			if err != nil {
+				return err
+			}
+			ws.customerVar.Set(key, value)
+		}
+	}
+	// 处理环境变量
+	if config, has := eventData[eosc.NamespaceVariable]; has {
+		for key, c := range config {
+			value := make(map[string]string)
+			err := json.Unmarshal(c, &value)
+			if err != nil {
+				continue
+			}
+			ws.variableManager.SetByNamespace(key, value)
+		}
+	}
+	// 处理worker
+	if config, has := eventData[eosc.NamespaceWorker]; has {
+		for _, c := range config {
+			w := new(eosc.WorkerConfig)
+			err := json.Unmarshal(c, w)
+			if err != nil {
+				continue
+			}
+			log.Debug("init read worker:", w.Profession, ":", w.Name)
+			if w.Profession == "setting" {
+				settings = append(settings, w)
+			} else {
+				wc = append(wc, w)
+			}
+		}
+	}
+	// 处理setting
 	for _, w := range settings {
 
-		err := ws.settings.SettingWorker(w.Name, w.Body, ws.variableManager)
+		err := ws.settings.SettingWorker(w.Name, w.Body)
 		if err != nil {
 			log.Warn("set setting :", err)
 		}
 	}
-	ws.workers.Reset(wc, ws.variableManager)
+	// 处理其他worker
+	ws.workers.Reset(wc)
 
 	return nil
 }

@@ -82,11 +82,11 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 	}
 
 	name, InitialCluster, isNew := s.readCluster(peerUrl)
-	os.Setenv("node_id", name)
+	_ = os.Setenv("node_id", name)
 	var urlsmap types.URLsMap
 	var token string
 	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
-		urlsmap, err = types.NewURLsMap(InitialCluster)
+		urlsmap, _ = types.NewURLsMap(InitialCluster)
 		token = "APINTO_CLUSTER"
 	}
 
@@ -181,10 +181,7 @@ func (s *_Server) resetCluster(InitialCluster string) {
 	}()
 	etcdConfig.Set("cluster", InitialCluster)
 }
-func (s *_Server) updateCluster() {
-	ctx, _ := s.requestContext()
-	s.client.MemberList(ctx)
-}
+
 func (s *_Server) clearCluster() {
 	s.resetCluster("")
 }

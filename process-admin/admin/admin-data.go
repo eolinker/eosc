@@ -9,6 +9,7 @@ import (
 	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/utils"
+	"github.com/eolinker/eosc/utils/hash"
 	"sync"
 )
 
@@ -18,6 +19,7 @@ var (
 	_ iAdminOperator  = (*imlAdminData)(nil)
 )
 
+type stringHash = hash.Hash[string, string]
 type imlAdminData struct {
 	transactionLocker sync.Mutex
 	workers           eosc.Untyped[string, *WorkerInfo]
@@ -25,34 +27,13 @@ type imlAdminData struct {
 	variable          eosc.IVariable
 	settings          eosc.ISettings
 	requireManager    eosc.IRequires
+
+	customerHash eosc.Untyped[string, stringHash]
 }
 
-func (d *imlAdminData) setProfession(name string, profession *eosc.ProfessionConfig) error {
-	return d.professionData.Set(name, profession)
-}
+func NewImlAdminData(workerInitData map[string][]byte, professionData professions.IProfessions, variable eosc.IVariable, hashInitData map[string][]byte) AdminController {
 
-func (d *imlAdminData) delProfession(name string) error {
-	return d.professionData.Delete(name)
-}
-
-func (d *imlAdminData) ListWorker(ctx context.Context, profession string) ([]*WorkerInfo, error) {
-	list := d.workers.List()
-	return utils.ArrayFilter(list, func(i int, v *WorkerInfo) bool {
-		return v.config.Profession == profession
-	}), nil
-}
-
-func (d *imlAdminData) GetWorker(ctx context.Context, id string) (*WorkerInfo, error) {
-	workerInfo, has := d.workers.Get(id)
-	if has {
-		return workerInfo, nil
-	}
-	return nil, ErrorNotExist
-}
-
-func NewImlAdminData(initData map[string][]byte, professionData professions.IProfessions, variable eosc.IVariable) AdminController {
-
-	workerData := utils.MapFilter(initData, func(k string, v []byte) bool {
+	workerData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
 		profession, _, _ := eosc.SplitWorkerId(k)
 		return profession != Setting
 	})
@@ -63,21 +44,31 @@ func NewImlAdminData(initData map[string][]byte, professionData professions.IPro
 		workers:        eosc.BuildUntyped[string, *WorkerInfo](),
 		settings:       setting.GetSettings(),
 		requireManager: require.NewRequireManager(),
+		customerHash:   eosc.BuildUntyped[string, stringHash](),
 	}
-	for id, d := range workerData {
+	if len(hashInitData) > 0 {
+		for key, d := range hashInitData {
+			v := make(map[string]string)
+			err := json.Unmarshal(d, &v)
+			if err != nil {
+				continue
+			}
+			data.setHashValue(key, hash.NewHash(v))
+		}
+	}
+
+	for _, d := range workerData {
 		cf := new(eosc.WorkerConfig)
 		e := json.Unmarshal(d, cf)
 		if e != nil {
 			continue
 		}
-		data.workers.Set(id, &WorkerInfo{
-			worker: nil,
-			config: cf,
-			attr:   nil,
-			info:   nil,
-		})
+		_, err := data.setWorker(cf)
+		if err != nil {
+			continue
+		}
 	}
-	settingData := utils.MapFilter(initData, func(k string, v []byte) bool {
+	settingData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
 		profession, _, _ := eosc.SplitWorkerId(k)
 		return profession == Setting
 	})
@@ -94,7 +85,7 @@ func NewImlAdminData(initData map[string][]byte, professionData professions.IPro
 				continue
 			}
 			log.Debug("init setting id body: ", id, " conf: ", string(config.Body), " ", has)
-			err = data.settings.SettingWorker(name, config.Body, variable)
+			err = data.settings.SettingWorker(name, config.Body)
 			if err != nil {
 				log.Warn("init setting:", err)
 			}
@@ -102,21 +93,7 @@ func NewImlAdminData(initData map[string][]byte, professionData professions.IPro
 	}
 	return data
 }
-func (d *imlAdminData) GetProfession(ctx context.Context, profession string) (*professions.Profession, bool) {
-	return d.professionData.Get(profession)
-}
 
-func (d *imlAdminData) ListProfession(ctx context.Context) []*professions.Profession {
-	return d.professionData.List()
-}
-
-func (d *imlAdminData) GetSetting(ctx context.Context, name string) (any, bool) {
-	_, has := d.settings.GetDriver(name)
-	if !has {
-		return nil, false
-	}
-	return d.settings.GetConfig(name), has
-}
 func (d *imlAdminData) Get(id string) (eosc.IWorker, bool) {
 	w, has := d.workers.Get(id)
 	if has {
@@ -144,40 +121,7 @@ func (d *imlAdminData) Transaction(ctx context.Context, f func(ctx context.Conte
 	return adminTransaction.Commit()
 }
 
-func (d *imlAdminData) AllVariables(ctx context.Context) map[string]map[string]string {
-	return d.variable.All()
-}
-
-func (d *imlAdminData) GetVariables(ctx context.Context, namespace string) (map[string]string, bool) {
-	values, has := d.variable.GetByNamespace(namespace)
-	return values, has
-}
-
-func (d *imlAdminData) GetVariable(ctx context.Context, namespace, key string) (string, bool) {
-	values, has := d.variable.GetByNamespace(namespace)
-	if !has {
-		return "", false
-	}
-	v, h := values[key]
-	return v, h
-}
-func (d *imlAdminData) AllWorkers(ctx context.Context) []*WorkerInfo {
-	//return utils.GroupBy(a.workers.List(), func(v *WorkerInfo) string {
-	//	return v.config.Profession
-	//})
-
-	return d.workers.List()
-}
-
 func (d *imlAdminData) Begin(ctx context.Context) AdminTransaction {
 	d.transactionLocker.Lock()
 	return newImlAdminApi(d)
-}
-func (d *imlAdminData) CheckDelete(ids ...string) (requires []string) {
-	for _, id := range ids {
-		if d.requireManager.RequireByCount(id) > 0 {
-			requires = append(requires, id)
-		}
-	}
-	return requires
 }
