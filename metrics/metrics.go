@@ -6,7 +6,7 @@ import (
 )
 
 type LabelReader interface {
-	GetLabel(name string) string
+	ReadLabel(name string) string
 }
 
 type Metrics interface {
@@ -48,7 +48,8 @@ func (m *imlMetrics) Key() string {
 }
 
 func Parse(str string) Metrics {
-
+	// service-${app} => service-app
+	// ["service","{app}"] => service-${app} => service-app
 	m := &imlMetrics{key: strings.TrimSpace(str)}
 
 	strReader := strings.NewReader(m.key)

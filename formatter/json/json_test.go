@@ -8,9 +8,17 @@ import (
 	"github.com/eolinker/eosc"
 )
 
+var (
+	_ eosc.IEntry = (*Entry)(nil)
+)
+
 type Entry struct {
 	data     eosc.Untyped[string, string]
 	children eosc.Untyped[string, eosc.IEntry]
+}
+
+func (e *Entry) ReadLabel(pattern string) string {
+	return eosc.String(e.Read(pattern))
 }
 
 func initRootEntry() *Entry {

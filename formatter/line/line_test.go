@@ -7,8 +7,16 @@ import (
 	"github.com/eolinker/eosc"
 )
 
+var (
+	_ eosc.IEntry = (*myEntry)(nil)
+)
+
 type myEntry struct {
 	data map[string]string
+}
+
+func (m *myEntry) ReadLabel(pattern string) string {
+	return eosc.String(m.Read(pattern))
 }
 
 func (m *myEntry) Read(pattern string) interface{} {

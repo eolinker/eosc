@@ -14,5 +14,5 @@ func (m metricsConst) read(r LabelReader) string {
 type labelReader string
 
 func (m labelReader) read(r LabelReader) string {
-	return r.GetLabel(string(m))
+	return r.ReadLabel(string(m))
 }
