@@ -24,6 +24,9 @@ func (d *imlAdminData) GetHashAll(ctx context.Context, key string) (stringHash, 
 
 func (d *imlAdminData) ListHash(ctx context.Context, prefix string) []string {
 	keys := d.customerHash.Keys()
+	if prefix == "*" {
+		return keys
+	}
 	return utils.ArrayFilter(keys, func(i int, v string) bool {
 		return strings.HasPrefix(v, prefix)
 	})

@@ -11,6 +11,7 @@ type IMessage interface {
 	String() (string, error)
 	Int() (int64, error)
 	Float() (float64, error)
+	Bool() (bool, error)
 	Type() ReplyType
 	Scan(v any) error
 }
@@ -55,6 +56,13 @@ func (m MessageString) String() (string, error) {
 
 func (m MessageString) Int() (int64, error) {
 	return strconv.ParseInt(string(m), 10, 64)
+}
+func (m MessageString) Bool() (bool, error) {
+	v, err := m.Int()
+	if err != nil {
+		return false, err
+	}
+	return v == 1, nil
 }
 
 func (m MessageString) Float() (float64, error) {
@@ -103,6 +111,13 @@ func (m MessageBase) Int() (int64, error) {
 	}
 }
 
+func (m MessageBase) Bool() (bool, error) {
+	v, err := m.Int()
+	if err != nil {
+		return false, err
+	}
+	return v == 1, nil
+}
 func (m MessageBase) Float() (float64, error) {
 	switch m[0] {
 	case ErrorReply:
@@ -166,7 +181,9 @@ func (m *MessageArray) Array() (ArrayMessage, error) {
 func (m *MessageArray) String() (string, error) {
 	return "", ErrorCantParseArrayToString
 }
-
+func (m *MessageArray) Bool() (bool, error) {
+	return false, ErrorCantParseArrayToBool
+}
 func (m *MessageArray) Int() (int64, error) {
 	return 0, ErrorCantParseArrayToInt
 }
