@@ -43,3 +43,17 @@ func Intersection[T comparable](a, b []T) []T {
 	}
 	return r
 }
+func Union[T comparable](a, b []T) []T {
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+
+	s := set.NewSet(a...)
+	for _, bv := range b {
+		s.Add(bv)
+	}
+	return s.List()
+}
