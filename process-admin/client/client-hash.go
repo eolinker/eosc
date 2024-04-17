@@ -53,7 +53,18 @@ func (i *imlClient) HSet(ctx context.Context, key string, field string, value st
 	}
 	return i.conn.recvOk()
 }
-
+func (i *imlClient) HRSet(ctx context.Context, key string, fvs map[string]string) error {
+	args := make([]any, 0, len(fvs)*2+1)
+	args = append(args, key)
+	for k, v := range fvs {
+		args = append(args, k, v)
+	}
+	err := i.conn.send(cmd.HRest, args...)
+	if err != nil {
+		return err
+	}
+	return i.conn.recvOk()
+}
 func (i *imlClient) HMSet(ctx context.Context, key string, fvs map[string]string) error {
 	args := make([]any, 0, len(fvs)*2+1)
 	args = append(args, key)

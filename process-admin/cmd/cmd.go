@@ -31,6 +31,7 @@ const (
 	HGetAll     = "HGETALL"
 	HSet        = "HSET"
 	HMSet       = "HMSET"
+	HRest       = "HREST"
 	HKeys       = "HKEYS"
 	HMatch      = "HMATCH"
 	Begin       = "BEGIN"

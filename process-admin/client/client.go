@@ -12,6 +12,7 @@ type HClient interface {
 	HGet(ctx context.Context, key string, field string) (string, error)
 	HGetAll(ctx context.Context, key string) (map[string]string, error)
 	HSet(ctx context.Context, key string, field string, value string) error
+	HRSet(ctx context.Context, key string, fvs map[string]string) error
 	HMSet(ctx context.Context, key string, fvs map[string]string) error
 	HDelAll(ctx context.Context, key string) error
 	HDel(ctx context.Context, key string, field string) error

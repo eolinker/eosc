@@ -18,10 +18,59 @@ func init() {
 	Register(cmd.HGetAll, HashGetAll)
 	Register(cmd.HExists, HashExists)
 	Register(cmd.HMSet, HashMSet)
+	Register(cmd.HRest, HashRest)
 	Register(cmd.HKeys, HashKeys)
 	Register(cmd.HMatch, HashMatch)
 }
 
+// HashRest 重置一个key, 与 HMSET的区别是会移除不在此请求中的field, 如果 HRESET key , 则等效于 HDELALL
+// 格式为  HREST key [field value]...
+func HashRest(session ISession, message proto.IMessage) error {
+	msgs, err := message.Array()
+	if err != nil {
+		return err
+	}
+	if len(msgs) < 2 {
+		return fmt.Errorf("key require")
+	}
+
+	key, err := msgs[1].String()
+	if err != nil {
+		return err
+	}
+	fvms := msgs[2:]
+	kv := make(map[string]string)
+	for len(fvms) >= 2 {
+		fv := fvms[:2]
+		fvms = fvms[2:]
+		var f, v string
+		err := fv.Scan(&f, &v)
+		if err != nil {
+			return err
+		}
+		kv[f] = v
+	}
+	if len(kv) == 0 {
+		errDelete := session.Call(func(adminApi admin.AdminApiWrite) error {
+			return adminApi.DeleteHashAll(context.Background(), key)
+		})
+		if errDelete != nil {
+			return errDelete
+		}
+		session.Write(cmd.OK)
+		return nil
+	}
+	err = session.Call(func(adminApi admin.AdminApiWrite) error {
+		return adminApi.SetHash(context.Background(), key, kv)
+	})
+	if err != nil {
+		return err
+	}
+	session.Write(cmd.OK)
+	return nil
+}
+
+// HashDelAll 删除指定的key
 func HashDelAll(session ISession, message proto.IMessage) error {
 	msgs, err := message.Array()
 	if err != nil {
@@ -45,6 +94,9 @@ func HashDelAll(session ISession, message proto.IMessage) error {
 
 }
 
+// HashMatch 用前缀匹配查找所有存在的hashmap,返回 key数组
+// HMATCH keyPrefix
+// 特例: HATCH * 会返回所有的 key
 func HashMatch(session ISession, message proto.IMessage) error {
 	msgs, err := message.Array()
 	if err != nil {
@@ -67,6 +119,8 @@ func HashMatch(session ISession, message proto.IMessage) error {
 
 }
 
+// HashKeys 查找指定 hash的field列表
+// HKEYS key
 func HashKeys(session ISession, message proto.IMessage) error {
 	msgs, err := message.Array()
 	if err != nil {
@@ -97,6 +151,8 @@ func HashKeys(session ISession, message proto.IMessage) error {
 	return nil
 }
 
+// HashMSet 批量设置 key的 kv值
+// HMSET key [field value]...
 func HashMSet(session ISession, message proto.IMessage) error {
 	msgs, err := message.Array()
 	if err != nil {
@@ -149,6 +205,8 @@ func HashMSet(session ISession, message proto.IMessage) error {
 
 }
 
+// HashExists 判断指定的 key 下的field 是否存在
+// HEXISTS key field
 func HashExists(session ISession, message proto.IMessage) error {
 	msgs, err := message.Array()
 	if err != nil {
@@ -174,6 +232,9 @@ func HashExists(session ISession, message proto.IMessage) error {
 	return nil
 }
 
+// HashGetAll 获取指定的hash的所有值
+// HGETALL key
+// 返回值为依次field,value的数组, 形如 field1,value1,field2,value2 ...
 func HashGetAll(session ISession, message proto.IMessage) error {
 	array, err := message.Array()
 	if err != nil {
