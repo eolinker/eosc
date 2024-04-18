@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"github.com/eolinker/eosc/utils/set"
 	"github.com/soheilhy/cmux"
 	"io"
 	"net"
@@ -64,13 +65,19 @@ func MatchForHttp(ln net.Listener, path ...string) (net.Listener, net.Listener) 
 
 func HttpPrefixMatcher(paths ...string) cmux.Matcher {
 	maxPathLength := 0
-	pathMaps := map[string]struct{}{}
+	pathMaps := set.NewSet(paths...)
 	for _, p := range paths {
 		if len(p) > maxPathLength {
 			maxPathLength = len(p)
 		}
-		pathMaps[p] = struct{}{}
 	}
+	pathsPrefix := ArrayType(pathMaps.List(), func(t string) []byte {
+		return []byte(t)
+	})
+	Sort(pathsPrefix, func(a, b []byte) bool {
+		return len(a) < len(b)
+	})
+
 	return func(reader io.Reader) bool {
 		buf := make([]byte, maxMethodLength)
 		n, err := io.ReadFull(reader, buf)
@@ -92,8 +99,11 @@ func HttpPrefixMatcher(paths ...string) cmux.Matcher {
 		copy(pb, tem)
 		np, _ := io.ReadFull(reader, pb[len(tem):])
 		pb = pb[:np+len(tem)]
-		_, has := pathMaps[string(pb)]
-		return has
-
+		for _, p := range pathsPrefix {
+			if bytes.HasPrefix(pb, p) {
+				return true
+			}
+		}
+		return false
 	}
 }
