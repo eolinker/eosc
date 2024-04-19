@@ -184,6 +184,7 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	api_http.NewWorkerApi(wd, settingApi).Register(p.router)
 	settingApi.RegisterSetting(p.router)
 	api_http.NewExportApi(extenderData, wd).Register(p.router)
+	api_http.NewHashApi(wd).Register(p.router)
 	api_http.NewVariableApi(wd).Register(p.router)
 
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

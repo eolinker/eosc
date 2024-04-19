@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"encoding/json"
 	"sync"
 )
 
@@ -21,6 +22,14 @@ type Hash[K comparable, T any] interface {
 type imlHash[K comparable, T any] struct {
 	lock sync.RWMutex
 	data map[K]T
+}
+
+func (h *imlHash[K, T]) MarshalBinary() (data []byte, err error) {
+	return h.MarshalJSON()
+}
+
+func (h *imlHash[K, T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(h.data)
 }
 
 func (h *imlHash[K, T]) Len() int {

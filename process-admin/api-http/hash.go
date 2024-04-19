@@ -11,11 +11,15 @@ import (
 	"net/http"
 )
 
-type hashApi struct {
+type HashApi struct {
 	admin admin.AdminController
 }
 
-func (h *hashApi) Register(router *httprouter.Router) {
+func NewHashApi(admin admin.AdminController) *HashApi {
+	return &HashApi{admin: admin}
+}
+
+func (h *HashApi) Register(router *httprouter.Router) {
 	router.GET("/hash/:key", open_api.CreateHandleFunc(h.Get))
 	router.POST("/hash/:key", open_api.CreateHandleFunc(h.PutKey))
 	router.PUT("/hash/:key", open_api.CreateHandleFunc(h.PutKey))
@@ -27,7 +31,7 @@ func (h *hashApi) Register(router *httprouter.Router) {
 	router.DELETE("/hash/:key/:field", open_api.CreateHandleFunc(h.DeleteField))
 }
 
-func (h *hashApi) Get(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
+func (h *HashApi) Get(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	key := params.ByName("key")
 	if key == "" {
 		return http.StatusBadRequest, nil, "key is required"
@@ -39,7 +43,7 @@ func (h *hashApi) Get(req *http.Request, params httprouter.Params) (status int, 
 	return http.StatusOK, nil, all
 }
 
-func (h *hashApi) PostField(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
+func (h *HashApi) PostField(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	key := params.ByName("key")
 	field := params.ByName("field")
 	if key == "" || field == "" {
@@ -61,7 +65,7 @@ func (h *hashApi) PostField(req *http.Request, params httprouter.Params) (status
 	return http.StatusOK, nil, all
 }
 
-func (h *hashApi) PutKey(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
+func (h *HashApi) PutKey(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	key := params.ByName("key")
 	if key == "" {
 		return http.StatusBadRequest, nil, "key is required"
@@ -85,7 +89,7 @@ func (h *hashApi) PutKey(req *http.Request, params httprouter.Params) (status in
 	return http.StatusOK, nil, cb
 }
 
-func (h *hashApi) DeleteKey(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
+func (h *HashApi) DeleteKey(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	key := params.ByName("key")
 	if key == "" {
 		return http.StatusBadRequest, nil, "key is required"
@@ -103,7 +107,7 @@ func (h *hashApi) DeleteKey(req *http.Request, params httprouter.Params) (status
 	return http.StatusOK, nil, oldValue
 }
 
-func (h *hashApi) DeleteField(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
+func (h *HashApi) DeleteField(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	key := params.ByName("key")
 	if key == "" {
 		return http.StatusBadRequest, nil, "key is required"
@@ -112,9 +116,9 @@ func (h *hashApi) DeleteField(req *http.Request, params httprouter.Params) (stat
 	if field == "" {
 		return http.StatusBadRequest, nil, "field is required"
 	}
-	oldValue, has := h.admin.GetHash(req.Context(), key, field)
+	_, has := h.admin.GetHash(req.Context(), key, field)
 	if !has {
-		return http.StatusNotFound, nil, fmt.Sprintf("not found key: %s", key)
+		return http.StatusNotFound, nil, fmt.Sprintf("not found %s.%s", key, field)
 	}
 	err := h.admin.Transaction(req.Context(), func(ctx context.Context, api admin.AdminApiWrite) error {
 		return api.DeleteHash(ctx, key, field)
@@ -122,5 +126,9 @@ func (h *hashApi) DeleteField(req *http.Request, params httprouter.Params) (stat
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
 	}
-	return http.StatusOK, nil, oldValue
+	newValue, has := h.admin.GetHashAll(req.Context(), key)
+	if !has {
+		return http.StatusOK, nil, map[string]string{}
+	}
+	return http.StatusOK, nil, newValue
 }
