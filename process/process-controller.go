@@ -166,25 +166,28 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 	defer utils.TimeSpend(fmt.Sprint("wait [", pc.name, "] process start:"))()
 
 	for {
-		<-ticker.C
-		log.Debug(pc.name, " controller ping...")
-
-		if pc.current == nil {
-			pc.callback.Update(nil)
-			return errors.New("process not exist")
-		}
-		switch pc.current.Status() {
-		case StatusRunning:
-			pc.callback.Update(pc.current.Cmd())
+		select {
+		case <-pc.ctx.Done():
+			log.Debug(pc.name, " end")
 			return nil
-		case StatusExit, StatusError:
-			pc.callback.Update(nil)
-			return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
-		case StatusStart:
-			// continue
-		}
+		case <-ticker.C:
+			log.Debug(pc.name, " controller ping...")
+			if pc.current == nil {
+				pc.callback.Update(nil)
+				return errors.New("process not exist")
+			}
 
-		ticker.Reset(5 * time.Millisecond)
+			switch pc.current.Status() {
+			case StatusRunning:
+				pc.callback.Update(pc.current.Cmd())
+				return nil
+			case StatusExit, StatusError:
+				pc.callback.Update(nil)
+				return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
+			case StatusStart:
+				// continue
+			}
+		}
 	}
 }
 
