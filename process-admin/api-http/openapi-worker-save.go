@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process-admin/admin"
@@ -95,8 +96,8 @@ func (oe *WorkerApi) Patch(r *http.Request, params httprouter.Params) (status in
 		return http.StatusInternalServerError, nil, "nothing to patch"
 
 	}
-	workerInfo, err := oe.admin.GetWorker(r.Context(), id)
-	if err != nil {
+	workerInfo, has := oe.admin.GetWorker(r.Context(), id)
+	if !has {
 		return 0, nil, "not exist"
 	}
 	current := make(map[string]interface{})

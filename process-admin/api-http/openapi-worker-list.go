@@ -2,13 +2,14 @@ package api_http
 
 import (
 	"encoding/json"
+	"net/http"
+	"strings"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/utils"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"strings"
 )
 
 func (oe *WorkerApi) getEmployeesByProfession(r *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
@@ -49,9 +50,9 @@ func (oe *WorkerApi) getEmployeeByName(r *http.Request, params httprouter.Params
 	if !ok {
 		return http.StatusServiceUnavailable, nil, "worker id is invalid"
 	}
-	eo, err := oe.admin.GetWorker(r.Context(), id)
-	if err != nil {
-		return 404, nil, err
+	eo, has := oe.admin.GetWorker(r.Context(), id)
+	if !has {
+		return 404, nil, "worker not found"
 	}
 	return 200, nil, eo.Detail()
 }

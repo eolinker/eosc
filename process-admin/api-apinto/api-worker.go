@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/process-admin/admin"
 	"github.com/eolinker/eosc/process-admin/cmd"
@@ -114,9 +115,9 @@ func MatchWorker(session ISession, message proto.IMessage) error {
 			return errCall
 		}
 
-		utils.ArrayFilter(listWorker, func(i int, v *admin.WorkerInfo) bool {
+		filterWorkers := utils.ArrayFilter(listWorker, func(i int, v *admin.WorkerInfo) bool {
 			vl := v.Matches()
-			if vl != nil {
+			if vl == nil {
 				return false
 			}
 			for label, value := range matchLabels.labels {
@@ -127,8 +128,8 @@ func MatchWorker(session ISession, message proto.IMessage) error {
 			return true
 		})
 
-		list = make([]any, 0, len(listWorker))
-		for _, worker := range listWorker {
+		list = make([]any, 0, len(filterWorkers))
+		for _, worker := range filterWorkers {
 			list = append(list, worker.Detail())
 		}
 		return nil
@@ -187,15 +188,17 @@ func GetWorker(session ISession, message proto.IMessage) error {
 	}
 	var workInfo *admin.WorkerInfo
 	err = session.Call(func(adminApi admin.AdminApiWrite) error {
-		w, errGet := adminApi.GetWorker(context.Background(), id)
-		if errGet != nil {
-			return errGet
-		}
+		w, _ := adminApi.GetWorker(context.Background(), id)
+
 		workInfo = w
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	if workInfo == nil {
+		session.Write(nil)
+		return nil
 	}
 	session.Write(workInfo.Detail())
 	return nil

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/process-admin/marshal"
 	"github.com/eolinker/eosc/professions"
@@ -17,7 +18,7 @@ type AdminController interface {
 type IAdminApiReader interface {
 	eosc.IWorkers
 	ListWorker(ctx context.Context, profession string) ([]*WorkerInfo, error)
-	GetWorker(ctx context.Context, id string) (*WorkerInfo, error)
+	GetWorker(ctx context.Context, id string) (*WorkerInfo, bool)
 	AllWorkers(ctx context.Context) []*WorkerInfo
 
 	GetProfession(ctx context.Context, profession string) (*professions.Profession, bool)

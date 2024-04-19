@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"fmt"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
@@ -28,12 +29,8 @@ func (d *imlAdminData) ListWorker(ctx context.Context, profession string) ([]*Wo
 	}), nil
 }
 
-func (d *imlAdminData) GetWorker(ctx context.Context, id string) (*WorkerInfo, error) {
-	workerInfo, has := d.workers.Get(id)
-	if has {
-		return workerInfo, nil
-	}
-	return nil, ErrorNotExist
+func (d *imlAdminData) GetWorker(ctx context.Context, id string) (*WorkerInfo, bool) {
+	return d.workers.Get(id)
 }
 func (oe *imlAdminApi) DeleteWorker(ctx context.Context, id string) (*WorkerInfo, error) {
 
