@@ -11,12 +11,17 @@ import (
 )
 
 var (
-	client service.MasterEventsClient
+	client    service.MasterEventsClient
+	masterPid int
 )
+
+func init() {
+	masterPid = os.Getpid()
+}
 
 func sendEvent(events []*service.Event) error {
 	if client == nil {
-		addr := service.ServerAddr(os.Getppid(), eosc.ProcessMaster)
+		addr := service.ServerAddr(masterPid, eosc.ProcessMaster)
 		conn, err := grpc_unixsocket.Connect(addr)
 		if err != nil {
 			return fmt.Errorf("connect master grpc addr error: %w,pid: %d\n", err, os.Getppid())
