@@ -20,12 +20,18 @@ func newImlAdminApi(data *imlAdminData) *imlAdminApi {
 }
 
 func (oe *imlAdminApi) Commit() error {
-
+	if len(oe.events) == 0 {
+		oe.events = oe.events[:0]
+		oe.actions = oe.actions[:0]
+		oe.unLock()
+		return nil
+	}
 	events := make([]*service.Event, len(oe.events))
 	copy(events, oe.events)
 	oe.events = oe.events[:0]
 	oe.actions = oe.actions[:0]
 	oe.unLock()
+
 	return sendEvent(events)
 }
 
