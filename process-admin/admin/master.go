@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	masterPid = os.Getpid()
+	masterPid = os.Getppid()
 }
 
 func sendEvent(events []*service.Event) error {
