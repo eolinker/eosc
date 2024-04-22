@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-type LabelReaderTest map[string]string
+type LabelArrayReaderTest map[string]string
 
-func (m LabelReaderTest) ReadLabel(name string) string {
+func (m LabelArrayReaderTest) ReadLabel(name string) string {
 	return m[name]
 }
 
-func TestParse(t *testing.T) {
-	ctx := LabelReaderTest{
+func TestParseArray(t *testing.T) {
+	ctx := LabelArrayReaderTest{
 		"name": "test",
 	}
 	type args struct {

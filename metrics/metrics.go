@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+const (
+	startSign     = '#'
+	metricsFormat = "#{%s}"
+)
+
 type LabelReader interface {
 	ReadLabel(name string) string
 }
@@ -48,8 +53,8 @@ func (m *imlMetrics) Key() string {
 }
 
 func Parse(str string) Metrics {
-	// service-${app} => service-app
-	// ["service","{app}"] => service-${app} => service-app
+	// service-#{app} => service-app
+	// ["service","{app}"] => service-#{app} => service-app
 	m := &imlMetrics{key: strings.TrimSpace(str)}
 
 	strReader := strings.NewReader(m.key)
@@ -84,7 +89,7 @@ func readConst(r *strings.Reader) (string, bool) {
 		if err != nil {
 			return builder.String(), false
 		}
-		if c != '$' {
+		if c != startSign {
 			builder.WriteRune(c)
 			continue
 		}

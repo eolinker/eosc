@@ -19,7 +19,7 @@ func ParseArray(keys []string, sep string) Metrics {
 				if len(r) == 0 {
 					continue
 				}
-				bs = append(bs, fmt.Sprintf("${%s}", r))
+				bs = append(bs, fmt.Sprintf(metricsFormat, r))
 				continue
 			}
 		}

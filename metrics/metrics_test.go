@@ -7,7 +7,7 @@ import (
 
 type LabelReaderTest map[string]string
 
-func (m LabelReaderTest) GetLabel(name string) string {
+func (m LabelReaderTest) ReadLabel(name string) string {
 	return m[name]
 }
 
@@ -27,11 +27,11 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			name: "test1",
-			args: "readtest:${name}-${value}",
+			args: "readtest:#{name}-#{value}",
 			want: "readtest:testReader-testValue",
 		}, {
 			name: "test2",
-			args: "${name}-${value}xxx",
+			args: "#{name}-#{value}xxx",
 			want: "testReader-testValuexxx",
 		},
 	}
