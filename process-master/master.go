@@ -144,12 +144,10 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminUnixProxy))
 	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter, m.workerUnixProxy))
 
-	m.dispatcherServe = NewDispatcherServer()
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
 	m.dataController = NewDataController(raftService, extenderManager, m.dispatcherServe)
 
 	etcdServer.Watch("/", raftService)
-	etcdServer.HandlerLeader(m.adminController)
 
 	return nil
 }
@@ -203,6 +201,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 	masterApiListener := clienListeners[0]
 	workerApiListener := clienListeners[1]
 	clientOpenApiListener := clienListeners[2]
+
 	etcdMux := m.startHttpServer(etcdApiListener)
 	etcdServer, err := etcd.NewServer(m.ctx, etcdMux, etcd.Config{
 		PeerAdvertiseUrls:    m.config.Peer.AdvertiseUrls,
@@ -216,15 +215,19 @@ func (m *Master) Start(handler *MasterHandler) error {
 	}
 
 	m.etcdServer = etcdServer
-	// 初始化etcd数据
-	err = m.start(handler, etcdServer)
+	err = m.startMasterGRPCService()
 	if err != nil {
+		log.Error("process-master start  grpc server error: ", err.Error())
 		return err
 	}
 
 	//openApiProxy := open_api.NewOpenApiProxy(m.etcdServer, m.adminUnixProxy)
 	//etcdMux.Handle("/", http.NotFoundHandler()) // etcdMux 只会接受到指定前缀的请求
-
+	// 初始化etcd数据
+	err = m.start(handler, etcdServer)
+	if err != nil {
+		return err
+	}
 	masterMux := m.startHttpServer(masterApiListener)
 	masterMux.Handle("/system/version", handler.VersionHandler(etcdServer))
 	masterMux.HandleFunc("/system/info", m.EtcdInfoHandler)
@@ -241,13 +244,10 @@ func (m *Master) Start(handler *MasterHandler) error {
 	// 转发到 leader -> admin
 	// todo 后续需要处理 peer 只有 leader 才能处理 open api, 否则根据协议报error , 以避免消息循环
 	go doServer(peerOpenApiListener, proxy.ProxyToLeader(m.etcdServer, m.adminUnixProxy))
+	// 注册leader
+	etcdServer.HandlerLeader(m.adminController)
 
 	log.Info("process-master start grpc service")
-	err = m.startService()
-	if err != nil {
-		log.Error("process-master start  grpc server error: ", err.Error())
-		return err
-	}
 
 	if _, has := env.GetEnv("MASTER_CONTINUE"); has {
 		log.Debug("master continue: call parent:", os.Getppid())

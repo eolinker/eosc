@@ -161,8 +161,8 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 		return err
 	}
 
-	ticker := time.NewTimer(time.Millisecond * 5)
-
+	ticker := time.NewTicker(time.Millisecond * 5)
+	defer ticker.Stop()
 	defer utils.TimeSpend(fmt.Sprint("wait [", pc.name, "] process start:"))()
 
 	for {
@@ -177,13 +177,13 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 				return errors.New("process not exist")
 			}
 
-			switch pc.current.Status() {
+			switch status := pc.current.Status(); status {
 			case StatusRunning:
 				pc.callback.Update(pc.current.Cmd())
 				return nil
 			case StatusExit, StatusError:
 				pc.callback.Update(nil)
-				return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
+				return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(status))
 			case StatusStart:
 				// continue
 			}

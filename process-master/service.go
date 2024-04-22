@@ -23,8 +23,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// startService 开启master
-func (m *Master) startService() error {
+// startMasterGRPCService 开启master
+func (m *Master) startMasterGRPCService() error {
 
 	addr := service.ServerAddr(os.Getpid(), eosc.ProcessMaster)
 	// 移除unix socket
@@ -41,7 +41,7 @@ func (m *Master) startService() error {
 		grpc.MaxSendMsgSize(64 * 1024 * 1024),
 	}
 	grpcServer := grpc.NewServer(opts...)
-
+	m.dispatcherServe = NewDispatcherServer()
 	service.RegisterCtiServiceServer(grpcServer, cli.NewMasterCliServer(m.etcdServer))
 	service.RegisterMasterDispatcherServer(grpcServer, m.dispatcherServe)
 

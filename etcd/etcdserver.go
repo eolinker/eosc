@@ -93,12 +93,13 @@ func (s *_Server) getLeaderChangeHandlers() []ILeaderStateHandler {
 }
 func (s *_Server) HandlerLeader(hs ...ILeaderStateHandler) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	isLeader, _ := s.isLeader()
+	s.leaderChangeHandler = append(s.leaderChangeHandler, hs...)
+	s.mu.Unlock()
+
 	for _, h := range hs {
 		h.LeaderChange(isLeader)
 	}
-	s.leaderChangeHandler = append(s.leaderChangeHandler, hs...)
 
 }
 func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error) {
