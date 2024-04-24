@@ -50,7 +50,7 @@ import (
 )
 
 func Process() {
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second)
 	//utils.InitStdTransport(eosc.ProcessAdmin)
 	log.Info("admin process start...")
 
