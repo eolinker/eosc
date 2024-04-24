@@ -53,7 +53,8 @@ func NewWorkerServer(masterPid int, extends extends.IExtenderRegister, initHandl
 		settings:          setting.GetSettings(),
 		customerVar:       newImlCustomerVar(),
 	}
-	bean.Injection(&ws.customerVar)
+	var v eosc.ICustomerVar = ws.customerVar
+	bean.Injection(&v)
 	bean.Injection(&ws.variableManager)
 
 	ws.workers = workers.NewWorkerManager(ws.professionManager, ws.variableManager)
