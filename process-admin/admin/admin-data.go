@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/require"
@@ -19,7 +20,6 @@ var (
 	_ iAdminOperator  = (*imlAdminData)(nil)
 )
 
-type stringHash = hash.Hash[string, string]
 type imlAdminData struct {
 	transactionLocker sync.Mutex
 	workers           eosc.Untyped[string, *WorkerInfo]
@@ -46,6 +46,8 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 		requireManager: require.NewRequireManager(),
 		customerHash:   eosc.BuildUntyped[string, stringHash](),
 	}
+	var i eosc.ICustomerVar = newImlCustomerHash(data.customerHash)
+	bean.Injection(&i)
 	if len(hashInitData) > 0 {
 		for key, d := range hashInitData {
 			v := make(map[string]string)

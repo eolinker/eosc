@@ -164,14 +164,16 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 	ticker := time.NewTicker(time.Millisecond * 5)
 	defer ticker.Stop()
 	defer utils.TimeSpend(fmt.Sprint("wait [", pc.name, "] process start:"))()
-
+	log.Debug(pc.name, " controller ping...")
+	defer func() {
+		log.Debug(pc.name, " controller ping done")
+	}()
 	for {
 		select {
 		case <-pc.ctx.Done():
 			log.Debug(pc.name, " end")
 			return nil
 		case <-ticker.C:
-			log.Debug(pc.name, " controller ping...")
 			if pc.current == nil {
 				pc.callback.Update(nil)
 				return errors.New("process not exist")
