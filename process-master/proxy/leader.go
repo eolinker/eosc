@@ -12,19 +12,6 @@ type IRaftLeader interface {
 	IsLeader() (bool, []string)
 }
 
-func ProxyOnlyLeaderHttp(leader IRaftLeader, proxy *UnixProxy) func(conn net.Conn) {
-	return func(conn net.Conn) {
-		isLeader, _ := leader.IsLeader()
-		if isLeader {
-			proxy.ProxyToUnix(conn)
-			return
-		}
-
-		log.Info("not leader")
-		conn.Write([]byte("not leader"))
-		conn.Close()
-	}
-}
 func ProxyToLeader(leader IRaftLeader, proxy *UnixProxy) func(conn net.Conn) {
 	return func(conn net.Conn) {
 		isLeader, peers := leader.IsLeader()

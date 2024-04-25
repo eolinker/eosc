@@ -239,8 +239,10 @@ func (m *Master) Start(handler *MasterHandler) error {
 	//masterMux.Handle(router.RouterPrefix, m.workerUnixProxy) //master转发至worker的路由
 	//master转发至worker
 	go doServer(workerApiListener, m.workerUnixProxy.ProxyToUnix)
+
 	// 转发到leader -> admin
 	go doServer(clientOpenApiListener, proxy.ProxyToLeader(m.etcdServer, m.adminUnixProxy))
+
 	// 转发到 leader -> admin
 	// todo 后续需要处理 peer 只有 leader 才能处理 open api, 否则根据协议报error , 以避免消息循环
 	go doServer(peerOpenApiListener, proxy.ProxyToLeader(m.etcdServer, m.adminUnixProxy))

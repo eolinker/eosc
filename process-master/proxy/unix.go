@@ -6,6 +6,7 @@ import (
 	"github.com/eolinker/eosc/service"
 	"net"
 	"os/exec"
+	"runtime/debug"
 	"time"
 )
 
@@ -22,6 +23,7 @@ func (uc *UnixProxy) Update(process *exec.Cmd) {
 	log.DebugF("unix client update: %s %s", uc.name, process)
 	if process == nil {
 		uc.addr = ""
+		log.Debug(string(debug.Stack()))
 		return
 	}
 	uc.addr = service.ServerAddr(process.Process.Pid, uc.name)
