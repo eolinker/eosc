@@ -168,27 +168,28 @@ func key(t reflect.Type) string {
 
 // Check 检查是否实现相关dao类
 func (m *container) Check() error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+
 	var err error = nil
 	m.once.Do(func() {
-
+		m.lock.Lock()
+		defer m.lock.Unlock()
 		m.injectionAll()
 		rs := m.check()
 		if len(rs) > 0 {
 			err = fmt.Errorf("need:%v", rs)
 			return
 		}
-
-		m.dispatchAfterPropertiesSet()
 	})
-
+	m.dispatchAfterPropertiesSet()
 	return err
 }
 
 func (m *container) dispatchAfterPropertiesSet() {
-
-	beanHandlers := m.initializingBean
+	m.lock.Lock()
+	beanHandlers := make([]InitializingBeanHandler, len(m.initializingBean))
+	copy(beanHandlers, m.initializingBean)
+	m.initializingBean = m.initializingBean[:0]
+	m.lock.Unlock()
 	for _, h := range beanHandlers {
 		h.AfterPropertiesSet()
 	}
