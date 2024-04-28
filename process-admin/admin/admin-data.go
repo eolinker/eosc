@@ -49,6 +49,7 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 			v := make(map[string]string)
 			err := json.Unmarshal(d, &v)
 			if err != nil {
+				log.Debug("init hash data error:", err)
 				continue
 			}
 			data.setHashValue(key, hash.NewHash(v))
@@ -89,10 +90,12 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 		cf := new(eosc.WorkerConfig)
 		e := json.Unmarshal(d, cf)
 		if e != nil {
+			log.Debug("init setting Unmarshal WorkerConfig:", e)
 			continue
 		}
 		_, err := data.setWorker(cf)
 		if err != nil {
+			log.Debug("init setting worker:", err)
 			continue
 		}
 	}
