@@ -3,6 +3,8 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"sync"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/common/bean"
 	"github.com/eolinker/eosc/log"
@@ -11,7 +13,6 @@ import (
 	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/utils"
 	"github.com/eolinker/eosc/utils/hash"
-	"sync"
 )
 
 var (
@@ -67,6 +68,7 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 		}
 		_, err := data.setWorker(cf)
 		if err != nil {
+			log.Error("init worker err:", err)
 			continue
 		}
 	}
