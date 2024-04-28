@@ -56,7 +56,7 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, wc *eosc.WorkerConfig) (*W
 		return nil, fmt.Errorf("%s@%s:invalid id", wc.Name, wc.Profession)
 	}
 
-	log.Debug("update:", id, " ", wc.Profession, ",", wc.Name, ",", wc.Driver, ",", wc.Body)
+	log.Debug("update:", id, " ", wc.Profession, ",", wc.Name, ",", wc.Driver, ",", string(wc.Body))
 	old, exits := oe.imlAdminData.workers.Get(id)
 	if exits {
 		// update

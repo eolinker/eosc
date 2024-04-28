@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/utils"
@@ -34,12 +35,10 @@ func (d *imlAdminData) setWorker(cf *eosc.WorkerConfig) (*WorkerInfo, error) {
 	if !has {
 		return nil, fmt.Errorf("%s,%w", cf.Driver, eosc.ErrorDriverNotExist)
 	}
-
 	conf, usedVariables, err := d.variable.Unmarshal(cf.Body, driver.ConfigType())
 	if err != nil {
 		return nil, err
 	}
-
 	requires, err := config.CheckConfig(conf, d)
 	if err != nil {
 		return nil, err
