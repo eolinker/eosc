@@ -33,11 +33,6 @@ type imlAdminData struct {
 
 func NewImlAdminData(workerInitData map[string][]byte, professionData professions.IProfessions, variable eosc.IVariable, hashInitData map[string][]byte) AdminController {
 
-	workerData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
-		profession, _, _ := eosc.SplitWorkerId(k)
-		return profession != Setting
-	})
-
 	data := &imlAdminData{
 		professionData: professionData,
 		variable:       variable,
@@ -48,6 +43,7 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 	}
 	var i eosc.ICustomerVar = newImlCustomerHash(data.customerHash)
 	bean.Injection(&i)
+	// 初始化 客户自定义hash数据
 	if len(hashInitData) > 0 {
 		for key, d := range hashInitData {
 			v := make(map[string]string)
@@ -59,17 +55,7 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 		}
 	}
 
-	for _, d := range workerData {
-		cf := new(eosc.WorkerConfig)
-		e := json.Unmarshal(d, cf)
-		if e != nil {
-			continue
-		}
-		_, err := data.setWorker(cf)
-		if err != nil {
-			continue
-		}
-	}
+	// 初始化setting
 	settingData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
 		profession, _, _ := eosc.SplitWorkerId(k)
 		return profession == Setting
@@ -77,9 +63,9 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 	for id, conf := range settingData {
 
 		_, name, _ := eosc.SplitWorkerId(id)
-		_, has := data.settings.GetDriver(name)
+		settingDriver, has := data.settings.GetDriver(name)
 		log.Debug("init setting id: ", id, " conf: ", string(conf), " ", has)
-		if has {
+		if has && settingDriver.Mode() == eosc.SettingModeSingleton {
 			config := new(eosc.WorkerConfig)
 			err := json.Unmarshal(conf, config)
 			if err != nil {
@@ -91,6 +77,23 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 			if err != nil {
 				log.Warn("init setting:", err)
 			}
+		}
+	}
+	// 初始化worker
+	workerData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
+		profession, _, _ := eosc.SplitWorkerId(k)
+		return profession != Setting
+	})
+
+	for _, d := range workerData {
+		cf := new(eosc.WorkerConfig)
+		e := json.Unmarshal(d, cf)
+		if e != nil {
+			continue
+		}
+		_, err := data.setWorker(cf)
+		if err != nil {
+			continue
 		}
 	}
 	return data

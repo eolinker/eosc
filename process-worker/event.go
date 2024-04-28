@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eolinker/eosc/utils"
 
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/log"
@@ -124,7 +125,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 
 	pc := make([]*eosc.ProfessionConfig, 0)
 	wc := make([]*eosc.WorkerConfig, 0)
-	settings := make([]*eosc.WorkerConfig, 0)
+
 	// 第一步 处理 profession
 	if config, has := eventData[eosc.NamespaceProfession]; has {
 		for _, c := range config {
@@ -164,31 +165,41 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			ws.variableManager.SetByNamespace(key, value)
 		}
 	}
-	// 处理worker
-	if config, has := eventData[eosc.NamespaceWorker]; has {
-		for _, c := range config {
-			w := new(eosc.WorkerConfig)
-			err := json.Unmarshal(c, w)
-			if err != nil {
-				continue
-			}
-			log.Debug("init read worker:", w.Profession, ":", w.Name)
-			if w.Profession == "setting" {
-				settings = append(settings, w)
-			} else {
-				wc = append(wc, w)
-			}
-		}
-	}
+	// 筛选setting数据
+	settings := utils.MapFilter(eventData[eosc.NamespaceWorker], func(k string, v []byte) bool {
+		profession, _, _ := eosc.SplitWorkerId(k)
+		return profession == "setting"
+	})
 	// 处理setting
-	for _, w := range settings {
+	for _, d := range settings {
 
-		err := ws.settings.SettingWorker(w.Name, w.Body)
+		cf := new(eosc.WorkerConfig)
+		err := json.Unmarshal(d, cf)
+		if err != nil {
+			continue
+		}
+		err = ws.settings.SettingWorker(cf.Name, cf.Body)
 		if err != nil {
 			log.Warn("set setting :", err)
 		}
 	}
-	// 处理其他worker
+	// 处理worker
+	// 筛选worker数据
+	workerData := utils.MapFilter(eventData[eosc.NamespaceWorker], func(k string, v []byte) bool {
+		profession, _, _ := eosc.SplitWorkerId(k)
+		return profession != "setting"
+	})
+	for _, c := range workerData {
+		w := new(eosc.WorkerConfig)
+		err := json.Unmarshal(c, w)
+		if err != nil {
+			continue
+		}
+		log.Debug("init read worker:", w.Profession, ":", w.Name)
+
+		wc = append(wc, w)
+
+	}
 	ws.workers.Reset(wc)
 
 	return nil
