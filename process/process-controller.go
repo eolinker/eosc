@@ -115,10 +115,6 @@ func newProcess(name string, data []byte, logWriter io.Writer, extraFiles []*os.
 	return pc, nil
 }
 
-func (pc *ProcessController) getClient() *ProcessCmd {
-	return pc.current
-}
-
 func (pc *ProcessController) check(w *ProcessCmd, configData []byte, extraFiles []*os.File) {
 	err := w.Wait()
 	if err != nil {
@@ -141,11 +137,9 @@ func (pc *ProcessController) check(w *ProcessCmd, configData []byte, extraFiles 
 func (pc *ProcessController) run(configData []byte, extraFiles []*os.File) error {
 	log.DebugF("create %s process start...\n", pc.name)
 
-	//cfg := pc.configBuild.Config()
-
 	p, err := newProcess(pc.name, configData, pc.logWriter, extraFiles)
 	if err != nil {
-		log.Warnf("new %s process: %w", pc.name, err)
+		log.Warnf("new %s process: %s", pc.name, err.Error())
 		return err
 	}
 
@@ -167,28 +161,35 @@ func (pc *ProcessController) create(configData []byte, extraFiles []*os.File) er
 		return err
 	}
 
-	ticker := time.NewTimer(time.Millisecond * 5)
-
+	ticker := time.NewTicker(time.Millisecond * 5)
+	defer ticker.Stop()
 	defer utils.TimeSpend(fmt.Sprint("wait [", pc.name, "] process start:"))()
-
+	log.Debug(pc.name, " controller ping...")
+	defer func() {
+		log.Debug(pc.name, " controller ping done")
+	}()
 	for {
-		<-ticker.C
-		log.Debug(pc.name, " controller ping...")
-
-		if pc.current == nil {
-			pc.callback.Update(nil)
-			return errors.New("process not exist")
-		}
-		switch pc.current.Status() {
-		case StatusRunning:
-			pc.callback.Update(pc.current.Cmd())
+		select {
+		case <-pc.ctx.Done():
+			log.Debug(pc.name, " end")
 			return nil
-		case StatusExit, StatusError:
-			pc.callback.Update(nil)
-			return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(pc.current.Status()))
-		}
+		case <-ticker.C:
+			if pc.current == nil {
+				pc.callback.Update(nil)
+				return errors.New("process not exist")
+			}
 
-		ticker.Reset(5 * time.Millisecond)
+			switch status := pc.current.Status(); status {
+			case StatusRunning:
+				pc.callback.Update(pc.current.Cmd())
+				return nil
+			case StatusExit, StatusError:
+				pc.callback.Update(nil)
+				return errors.New("fail to start process " + pc.name + " " + strconv.Itoa(status))
+			case StatusStart:
+				// continue
+			}
+		}
 	}
 }
 
@@ -215,7 +216,6 @@ func (pc *ProcessController) restart(configData []byte, extraFiles []*os.File) {
 	if err != nil {
 		log.Error("restart error: ", err)
 	}
-	return
 
 }
 
@@ -223,7 +223,7 @@ func (pc *ProcessController) doControl() {
 	t := time.NewTimer(time.Second)
 	t.Stop()
 	defer t.Stop()
-	var lastConfig *StartArgs = new(StartArgs)
+	var lastConfig = new(StartArgs)
 
 	for {
 		select {

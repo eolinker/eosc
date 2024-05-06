@@ -15,9 +15,9 @@ import (
 type IWorkers interface {
 	eosc.IWorkers
 	Del(id string) error
-	Set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error
-	Update(id string, variable eosc.IVariable) error
-	Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error
+	Set(id, profession, name, driverName string, body []byte) error
+	Update(id string) error
+	Reset(wdl []*eosc.WorkerConfig) error
 }
 
 type ConfigCache struct {
@@ -37,14 +37,14 @@ type Workers struct {
 	configs     map[string]*ConfigCache
 }
 
-func (wm *Workers) Update(id string, variable eosc.IVariable) error {
+func (wm *Workers) Update(id string) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
 	con, has := wm.configs[id]
 	if !has {
 		return nil
 	}
-	return wm.set(id, con.profession, con.name, con.driver, con.config, variable)
+	return wm.set(id, con.profession, con.name, con.driver, con.config)
 }
 
 func (wm *Workers) Del(id string) error {
@@ -78,16 +78,17 @@ func (wm *Workers) Get(id string) (eosc.IWorker, bool) {
 	return nil, false
 }
 
-func NewWorkerManager(profession professions.IProfessions) *Workers {
+func NewWorkerManager(profession professions.IProfessions, variable eosc.IVariable) *Workers {
 	return &Workers{
 		professions: profession,
 		locker:      sync.Mutex{},
+		variables:   variable,
 		data:        NewTypedWorkers(),
 		configs:     make(map[string]*ConfigCache),
 	}
 }
 
-func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) error {
+func (wm *Workers) Reset(wdl []*eosc.WorkerConfig) error {
 
 	ps := wm.professions.Sort()
 
@@ -98,7 +99,7 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) erro
 
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
-	wm.variables = variable
+
 	wm.configs = make(map[string]*ConfigCache)
 	olddata := wm.data
 	wm.data = NewTypedWorkers()
@@ -112,27 +113,27 @@ func (wm *Workers) Reset(wdl []*eosc.WorkerConfig, variable eosc.IVariable) erro
 				wm.data.Set(wd.Id, old)
 			}
 			log.Debug("init set:", wd.Id, " ", wd.Profession, " ", wd.Name, " ", wd.Driver, " ", string(wd.Body))
-			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body, variable); err != nil {
+			if err := wm.set(wd.Id, wd.Profession, wd.Name, wd.Driver, wd.Body); err != nil {
 				log.Error("init set worker: ", err)
 				continue
 			}
 		}
 	}
 	for _, ov := range olddata.All() {
-		variable.RemoveRequire(ov.Id())
+		wm.variables.RemoveRequire(ov.Id())
 		ov.Stop()
 	}
 	return nil
 }
 
-func (wm *Workers) Set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error {
+func (wm *Workers) Set(id, profession, name, driverName string, body []byte) error {
 	wm.locker.Lock()
 	defer wm.locker.Unlock()
 
-	return wm.set(id, profession, name, driverName, body, variable)
+	return wm.set(id, profession, name, driverName, body)
 }
 
-func (wm *Workers) set(id, profession, name, driverName string, body []byte, variable eosc.IVariable) error {
+func (wm *Workers) set(id, profession, name, driverName string, body []byte) error {
 	log.Debug("set:", id, ",", profession, ",", name, ",", driverName)
 	p, has := wm.professions.Get(profession)
 	if !has {
@@ -142,7 +143,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 	if !has {
 		return fmt.Errorf("%s,%w", driverName, eosc.ErrorDriverNotExist)
 	}
-	conf, useVariables, err := variable.Unmarshal(body, driver.ConfigType())
+	conf, useVariables, err := wm.variables.Unmarshal(body, driver.ConfigType())
 	if err != nil {
 		return fmt.Errorf("worker unmarshal error:%s", err)
 	}
@@ -163,7 +164,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 		if e != nil {
 			return e
 		}
-		wm.variables.SetVariablesById(id, useVariables)
+		wm.variables.SetRequire(id, useVariables)
 		wm.configs[id] = &ConfigCache{
 			profession: profession,
 			name:       name,
@@ -186,7 +187,7 @@ func (wm *Workers) set(id, profession, name, driverName string, body []byte, var
 
 	// store
 	wm.data.Set(id, worker)
-	wm.variables.SetVariablesById(id, useVariables)
+	wm.variables.SetRequire(id, useVariables)
 	wm.configs[id] = &ConfigCache{
 		profession: profession,
 		name:       name,

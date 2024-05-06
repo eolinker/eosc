@@ -2,6 +2,7 @@ package zip
 
 import (
 	"archive/zip"
+	"github.com/eolinker/eosc/env"
 	"io"
 	"os"
 	"strings"
@@ -21,7 +22,7 @@ func DeCompress(zipFile, dest string) error {
 			return err
 		}
 		filename := dest + "/" + file.Name
-		err = os.MkdirAll(getDir(filename), 0666)
+		err = os.MkdirAll(getDir(filename), env.PrivateDirMode)
 		if err != nil {
 			rc.Close()
 			return err

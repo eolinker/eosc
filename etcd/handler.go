@@ -68,7 +68,7 @@ func (s *_Server) addHandler(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "application/json")
 		b, _ := json.Marshal(&vs)
 
-		w.Write(b)
+		_, _ = w.Write(b)
 
 	})
 }
@@ -120,7 +120,9 @@ func (s *_Server) addMember(name string, urls []string, clients []string) (map[s
 	member.ClientURLs = clients
 	ctx, _ := s.requestContext()
 	members, err := s.server.AddMember(ctx, *member)
-
+	if err != nil {
+		return nil, err
+	}
 	res := make(map[string][]string)
 	for _, m := range members {
 		res[m.Name] = m.PeerURLs

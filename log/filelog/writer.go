@@ -154,17 +154,26 @@ func (w *FileWriterByPeriod) do(ctx context.Context, config Config) {
 				buf.Flush()
 				tFlush.Reset(time.Second)
 			}
-			currFile.Close()
-			w.fileController.history(lastTag)
-			fnew, tag, err := w.fileController.openFile()
+			stat, err := currFile.Stat()
 			if err != nil {
 				return
 			}
-			lastTag = tag
-			currFile = fnew
-			buf.Reset(currFile)
+			if stat.Size() > 0 { // 如果当前文件为空,则忽略重名文件
+				currFile.Close()
 
-			go w.fileController.dropHistory()
+				w.fileController.history(lastTag)
+				fnew, tag, err := w.fileController.openFile()
+
+				if err != nil {
+					return
+				}
+				lastTag = tag
+				currFile = fnew
+				buf.Reset(currFile)
+
+				go w.fileController.dropHistory()
+			}
+
 		}
 	}
 

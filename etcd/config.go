@@ -82,11 +82,11 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 	}
 
 	name, InitialCluster, isNew := s.readCluster(peerUrl)
-	os.Setenv("node_id", name)
+	_ = os.Setenv("node_id", name)
 	var urlsmap types.URLsMap
 	var token string
 	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
-		urlsmap, err = types.NewURLsMap(InitialCluster)
+		urlsmap, _ = types.NewURLsMap(InitialCluster)
 		token = "APINTO_CLUSTER"
 	}
 
@@ -171,13 +171,17 @@ func (s *_Server) resetCluster(InitialCluster string) {
 	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
-	defer etcdConfig.Save()
+	defer func() {
+		err := etcdConfig.Save()
+		if err != nil {
+			log.Warn("write args file fail:", err)
+			return
+		}
+		log.Info("write args file succeed!")
+	}()
 	etcdConfig.Set("cluster", InitialCluster)
 }
-func (s *_Server) updateCluster() {
-	ctx, _ := s.requestContext()
-	s.client.MemberList(ctx)
-}
+
 func (s *_Server) clearCluster() {
 	s.resetCluster("")
 }
@@ -185,7 +189,14 @@ func (s *_Server) readCluster(peerUrl types.URLs) (name, InitialCluster string, 
 	etcdInitPath := filepath.Join(s.config.DataDir, "cluster", "etcd.init")
 	etcdConfig := env.NewConfig(etcdInitPath)
 	etcdConfig.ReadFile(etcdInitPath)
-	defer etcdConfig.Save()
+	defer func() {
+		err := etcdConfig.Save()
+		if err != nil {
+			log.Warn("write args file fail:", err)
+			return
+		}
+		log.Info("write args file succeed!")
+	}()
 
 	var has bool
 	name, has = etcdConfig.Get("name")

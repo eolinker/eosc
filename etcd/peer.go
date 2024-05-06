@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -82,9 +83,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return
 	}
-	switch e := err.(type) {
+	var v interface{}
+	switch e := v.(type) {
 	case *v2error.Error:
-		e.WriteTo(w)
+		_ = e.WriteTo(w)
 
 	case *httptypes.HTTPError:
 		if et := e.WriteTo(w); et != nil {
@@ -92,13 +94,11 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		}
 
 	default:
-		switch err {
-		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost, etcdserver.ErrNotEnoughStartedMembers,
-			etcdserver.ErrUnhealthy:
+		switch {
+		case errors.Is(err, etcdserver.ErrTimeoutDueToLeaderFail), errors.Is(err, etcdserver.ErrTimeoutDueToConnectionLost), errors.Is(err, etcdserver.ErrNotEnoughStartedMembers), errors.Is(err, etcdserver.ErrUnhealthy):
 			log.Printf("v2 response error, remote-addr: %s, internal-server-error: %s", r.RemoteAddr, err.Error())
 		default:
 			log.Printf("unexpected v2 response error, remote-addr: %s, internal-server-error: %s", r.RemoteAddr, err.Error())
-
 		}
 
 		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")

@@ -10,12 +10,13 @@ var (
 )
 
 type IVariable interface {
-	SetByNamespace(namespace string, variables map[string]string) error
+	All() map[string]map[string]string
+	SetByNamespace(namespace string, variables map[string]string) (affectIds []string, clone map[string]string, err error)
 	GetByNamespace(namespace string) (map[string]string, bool)
-	SetVariablesById(id string, variables []string)
+	SetRequire(id string, variables []string)
 	RemoveRequire(id string)
 	Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error)
-	Check(namespace string, variables map[string]string) ([]string, IVariable, error)
+	//Check(namespace string, variables map[string]string) ([]string, IVariable, error)
 	Get(id string) (string, bool)
 	Len() int
 }

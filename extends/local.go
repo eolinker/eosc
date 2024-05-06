@@ -2,11 +2,10 @@ package extends
 
 import (
 	"errors"
+	"github.com/eolinker/eosc/env"
 	"os"
 
 	"github.com/eolinker/eosc/common/fileLocker"
-
-	"github.com/eolinker/eosc"
 )
 
 const (
@@ -22,7 +21,7 @@ func LoadCheck(group, project, version string) error {
 
 	// 当本地不存在当前插件时，从插件市场中下载
 	path := LocalExtenderPath(group, project, version)
-	err = os.MkdirAll(path, 0666)
+	err = os.MkdirAll(path, env.PrivateDirMode)
 	if err != nil {
 		return errors.New("create extender path " + path + " error: " + err.Error())
 	}
@@ -52,7 +51,7 @@ func LocalCheck(group, project, version string) error {
 			if err != nil {
 				return ErrorExtenderNotFindLocal
 			}
-			return eosc.Decompress(tarPath, dir)
+			return Decompress(tarPath, dir)
 		}
 		return err
 	}

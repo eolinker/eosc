@@ -36,8 +36,9 @@ type ISetting interface {
 
 type ISettings interface {
 	GetDriver(name string) (ISetting, bool)
-	SettingWorker(name string, config []byte, variable IVariable) error
-	Update(name string, variable IVariable) (err error)
-	CheckVariable(name string, variable IVariable) (err error)
+	SettingWorker(name string, config []byte) error
+	Update(name string) (err error)
+	CheckVariable(name string) (err error)
 	GetConfig(name string) interface{}
+	GetConfigBody(name string) ([]byte, bool)
 }

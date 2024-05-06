@@ -63,10 +63,7 @@ func readKeys(keys string) (namespace, key string) {
 type InitOp func(map[string]map[string][]byte) map[string]map[string][]byte
 
 func NewService(ops ...InitOp) *Service {
-	initData := make(map[string]map[string][]byte)
-	for _, namespace := range eosc.Namespaces {
-		initData[namespace] = make(map[string][]byte)
-	}
+
 	s := &Service{
 		IDispatchCenter: dispatcher.NewDataDispatchCenter(),
 		initOps:         ops,

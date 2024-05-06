@@ -8,26 +8,21 @@ import (
 )
 
 type OpenApiHandler interface {
-	Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*EventResponse, body interface{})
+	Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})
 }
-type OpenApiHandleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*EventResponse, body interface{})
+type OpenApiHandleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})
 
-func (f OpenApiHandleFunc) Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, event []*EventResponse, body interface{}) {
+func (f OpenApiHandleFunc) Serve(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{}) {
 	return f(req, params)
 }
-func CreateHandleFunc(handleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, events []*EventResponse, body interface{})) httprouter.Handle {
+func CreateHandleFunc(handleFunc func(req *http.Request, params httprouter.Params) (status int, header http.Header, body interface{})) httprouter.Handle {
 	return CreateHandler(OpenApiHandleFunc(handleFunc))
 }
 
 func CreateHandler(handler OpenApiHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, req *http.Request, param httprouter.Params) {
-		status, header, event, body := handler.Serve(req, param)
+		status, header, body := handler.Serve(req, param)
 
-		response := &Response{
-			StatusCode: status,
-			Data:       nil,
-			Event:      event,
-		}
 		if header == nil {
 			header = make(http.Header)
 			header.Set("content-type", "application/json")
@@ -36,28 +31,33 @@ func CreateHandler(handler OpenApiHandler) httprouter.Handle {
 				header.Set("content-type", "application/json")
 			}
 		}
-		response.Header = header
+		var data []byte
 		if body != nil {
 			switch d := body.(type) {
 			case error:
-				response.Data = []byte(d.Error())
+				data = []byte(d.Error())
 				log.Debug("handler write err:", d)
 
 			case string:
-				response.Data = []byte(d)
+				data = []byte(d)
 				log.Debug("handler write string:", string(d))
 
 			case []byte:
-				response.Data = d
+				data = d
 				log.Debug("handler write []byte:", string(d))
 			default:
-				response.Data, _ = json.Marshal(body)
-				log.Debug("handler write default:", string(response.Data))
+				data, _ = json.Marshal(body)
+				log.Debug("handler write default:", string(data))
 			}
 		}
-		data, _ := json.Marshal(response)
 
-		w.WriteHeader(200)
+		for k, vs := range header {
+			for _, v := range vs {
+				w.Header().Add(k, v)
+			}
+		}
+		w.WriteHeader(status)
+
 		w.Write(data)
 	}
 }

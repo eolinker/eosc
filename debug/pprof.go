@@ -28,7 +28,7 @@ func RunDebug(name string) {
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	addr, has := env.GetEnv(fmt.Sprintf("PPROF_%s", name))
-	log.Debug("pprof addr:", addr, " ", name, fmt.Sprintf("PPROF_%s", name))
+	log.Debug("pprof addr:", addr, " ", name, ": ", fmt.Sprintf("PPROF_%s", name))
 	if has {
 
 		listen, err := net.Listen("tcp", addr)

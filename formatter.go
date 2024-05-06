@@ -4,29 +4,32 @@ import "strconv"
 
 type IEntry interface {
 	Read(pattern string) interface{}
+	ReadLabel(pattern string) string
 	Children(child string) []IEntry
 }
 
 func ReadStringFromEntry(entry IEntry, key string) string {
-	var data string
 	value := entry.Read(key)
+	return String(value)
+}
+func String(value interface{}) string {
 	switch v := value.(type) {
 	case string:
-		data = v
+		return v
 	case []byte:
-		data = string(v)
+		return string(v)
 	case int:
-		data = strconv.Itoa(v)
+		return strconv.Itoa(v)
 	case int64:
-		data = strconv.FormatInt(v, 10)
+		return strconv.FormatInt(v, 10)
 	case float32:
-		data = strconv.FormatFloat(float64(v), 'f', -1, 32)
+		return strconv.FormatFloat(float64(v), 'f', -1, 32)
 	case float64:
-		data = strconv.FormatFloat(v, 'f', -1, 64)
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	case bool:
-		data = strconv.FormatBool(v)
+		return strconv.FormatBool(v)
 	}
-	return data
+	return ""
 }
 
 type IMetricEntry interface {

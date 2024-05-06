@@ -86,7 +86,7 @@ func (s *_Server) Version() Versions {
 	}
 }
 
-func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (*_Server, error) {
+func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (Etcd, error) {
 	serverCtc, cancel := context.WithCancel(ctx)
 	s := &_Server{
 		config:         config,
@@ -207,9 +207,9 @@ func (s *_Server) Watch(prefix string, handler ServiceHandler) {
 				for _, e := range v.Events {
 					switch e.Type {
 					case mvccpb.DELETE:
-						handler.Delete(string(e.Kv.Key))
+						_ = handler.Delete(string(e.Kv.Key))
 					case mvccpb.PUT:
-						handler.Put(string(e.Kv.Key), e.Kv.Value)
+						_ = handler.Put(string(e.Kv.Key), e.Kv.Value)
 
 					}
 				}

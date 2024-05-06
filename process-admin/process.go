@@ -11,6 +11,11 @@ package process_admin
 import (
 	"context"
 	"encoding/json"
+	admin "github.com/eolinker/eosc/process-admin/admin"
+	api_apinto "github.com/eolinker/eosc/process-admin/api-apinto"
+	"github.com/eolinker/eosc/process-admin/api-http"
+	"github.com/eolinker/eosc/process-admin/data"
+	"github.com/soheilhy/cmux"
 	"time"
 
 	"github.com/eolinker/eosc/config"
@@ -19,14 +24,12 @@ import (
 	"github.com/eolinker/eosc/professions"
 	"github.com/eolinker/eosc/require"
 	"github.com/eolinker/eosc/service"
-	"github.com/eolinker/eosc/setting"
 	"github.com/eolinker/eosc/traffic"
 	"github.com/eolinker/eosc/variable"
 
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -47,6 +50,7 @@ import (
 )
 
 func Process() {
+	time.Sleep(time.Second)
 	//utils.InitStdTransport(eosc.ProcessAdmin)
 	log.Info("admin process start...")
 
@@ -70,12 +74,15 @@ func Process() {
 }
 
 type ProcessAdmin struct {
+	ctx    context.Context
 	once   sync.Once
 	reg    eosc.IExtenderDriverRegister
 	router *httprouter.Router
 
-	apiLocker sync.Mutex
-	server    *http.Server
+	apiLocker    sync.Mutex
+	server       *http.Server
+	cx           cmux.CMux
+	apintoServer *api_apinto.Server
 }
 
 func (pa *ProcessAdmin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -137,45 +144,55 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 	bean.Injection(&extenderDrivers)
 
 	p := &ProcessAdmin{
-
+		ctx:    parent,
 		router: httprouter.New(),
 		server: &http.Server{},
 	}
+	p.server.SetKeepAlivesEnabled(false)
 	p.server.Handler = p
 	extenderRequire := require.NewRequireManager()
-	extenderData := NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
-	NewExtenderOpenApi(extenderData).Register(p.router)
+	extenderData := data.NewExtenderData(arg[eosc.NamespaceExtender], extenderRequire)
 
 	ps := professions.NewProfessions(register)
 
 	ps = NewProfessionsRequire(ps, extenderRequire)
-	ps.Reset(professionConfig(arg[eosc.NamespaceProfession]))
+
+	ps.Reset(utils.MapValue(utils.MapType(arg[eosc.NamespaceProfession], func(k string, v []byte) (*eosc.ProfessionConfig, bool) {
+		c := new(eosc.ProfessionConfig)
+		err := json.Unmarshal(v, c)
+		if err != nil {
+			log.Error("read profession config:", err)
+			return nil, false
+		}
+		return c, true
+	})))
 
 	vd := variable.NewVariables(arg[eosc.NamespaceVariable])
-	wd := NewWorkerDatas(filerSetting(arg[eosc.NamespaceWorker], Setting, false))
+	bean.Injection(&vd)
+	wd := admin.NewImlAdminData(arg[eosc.NamespaceWorker], ps, vd, arg[eosc.NamespaceCustomer])
+	p.apintoServer = api_apinto.NewServer(wd)
 
-	ws := NewWorkers()
 	var iWorkers eosc.IWorkers = wd
 	bean.Injection(&iWorkers)
 
-	bean.Check()
-	settingApi := NewSettingApi(filerSetting(arg[eosc.NamespaceWorker], Setting, true), ws, vd)
+	_ = bean.Check()
+	api_http.NewExtenderOpenApi(extenderData).Register(p.router)
 
-	ws.Init(ps, wd, vd)
+	settingApi := api_http.NewSettingApi(wd)
 
 	// openAPI handler register
-	NewProfessionApi(ps, wd).Register(p.router)
-	NewWorkerApi(ws, settingApi.request).Register(p.router)
+	api_http.NewProfessionApi(wd).Register(p.router)
+	api_http.NewWorkerApi(wd, settingApi).Register(p.router)
 	settingApi.RegisterSetting(p.router)
-	NewExportApi(extenderData, ps, ws).Register(p.router)
-	NewVariableApi(extenderData, ws, vd, setting.GetSettings()).Register(p.router)
+	api_http.NewExportApi(extenderData, wd).Register(p.router)
+	api_http.NewHashApi(wd).Register(p.router)
+	api_http.NewVariableApi(wd).Register(p.router)
 
 	p.router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := &open_api.Response{
 			StatusCode: 404,
 			Header:     nil,
 			Data:       nil,
-			Event:      nil,
 		}
 
 		data, _ := json.Marshal(response)
@@ -183,7 +200,6 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 		w.WriteHeader(200)
 		w.Write(data)
 	})
-
 	p.OpenApiServer()
 
 	return p, nil
@@ -192,8 +208,13 @@ func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (
 func (pa *ProcessAdmin) close() {
 	pa.once.Do(func() {
 
-		timeout, _ := context.WithTimeout(context.Background(), time.Second*3)
-		pa.server.Shutdown(timeout)
+		timeout, cancel := context.WithTimeout(pa.ctx, time.Second*3)
+		err := pa.server.Shutdown(timeout)
+		defer cancel()
+		if err != nil {
+			log.Warn("shutdown server error: ", err)
+			return
+		}
 	})
 }
 func initExtender(config map[string][]byte) extends.IExtenderRegister {
@@ -206,17 +227,6 @@ func initExtender(config map[string][]byte) extends.IExtenderRegister {
 	return register
 }
 
-func filerSetting(confs map[string][]byte, name string, yes bool) map[string][]byte {
-	name = strings.ToLower(name)
-	sets := make(map[string][]byte)
-	for id, data := range confs {
-		profession, _, _ := eosc.SplitWorkerId(id)
-		if (strings.ToLower(profession) == name) == yes {
-			sets[id] = data
-		}
-	}
-	return sets
-}
 func readConfig() map[string]map[string][]byte {
 	conf := make(map[string]map[string][]byte)
 
@@ -240,7 +250,7 @@ func readConfig() map[string]map[string][]byte {
 
 func (pa *ProcessAdmin) OpenApiServer() error {
 
-	addr := service.ServerUnixAddr(os.Getpid(), eosc.ProcessAdmin)
+	addr := service.ServerAddr(os.Getpid(), eosc.ProcessAdmin)
 	syscall.Unlink(addr)
 	log.Info("start admin unix server: ", addr)
 	l, err := grpc_unixsocket.Listener(addr)
@@ -248,13 +258,43 @@ func (pa *ProcessAdmin) OpenApiServer() error {
 		return err
 	}
 
+	pa.cx = cmux.New(l)
+	httpListener := pa.cx.Match(cmux.HTTP1Fast(), cmux.HTTP2())
+	apintoListener := pa.cx.Match(api_apinto.Matcher())
+	unknownListener := pa.cx.Match(cmux.Any())
+
 	go func() {
-		err := pa.server.Serve(l)
+		err := pa.server.Serve(httpListener)
 		if err != nil {
 			log.Info("http server error: ", err)
 		}
 		return
 	}()
+	go func() {
+		err := pa.apintoServer.Server(apintoListener)
+		if err != nil {
+			return
+		}
+	}()
 
+	go func() {
+		for {
+			conn, err := unknownListener.Accept()
+			if err != nil {
+				return
+			}
+			log.Warn("unknown conn: ", conn.RemoteAddr())
+			conn.Write([]byte("-ERR unknown proto"))
+			conn.Close()
+		}
+
+	}()
+	go func() {
+		err := pa.cx.Serve()
+		if err != nil {
+
+			return
+		}
+	}()
 	return nil
 }

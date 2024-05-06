@@ -52,10 +52,12 @@ func (s *_Server) initEtcdServer() error {
 	s.client = v3client.New(s.server)
 	gatewayConfig := &NodeGatewayConfig{Urls: s.config.GatewayAdvertiseUrls}
 	data, _ := json.Marshal(gatewayConfig)
-	s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
-
+	_, err = s.client.Put(s.ctx, fmt.Sprintf("~/nodes/%s", s.server.ID()), string(data))
+	if err != nil {
+		return err
+	}
 	s.clusterData = NewClusters(s.ctx, s.client, s)
-	os.Setenv("cluster_id", s.clusterData.cluster)
+	_ = os.Setenv("cluster_id", s.clusterData.cluster)
 	for _, ch := range s.clientCh {
 		ch <- s.client
 	}
@@ -91,12 +93,13 @@ func (s *_Server) getLeaderChangeHandlers() []ILeaderStateHandler {
 }
 func (s *_Server) HandlerLeader(hs ...ILeaderStateHandler) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	isLeader, _ := s.isLeader()
+	s.leaderChangeHandler = append(s.leaderChangeHandler, hs...)
+	s.mu.Unlock()
+
 	for _, h := range hs {
 		h.LeaderChange(isLeader)
 	}
-	s.leaderChangeHandler = append(s.leaderChangeHandler, hs...)
 
 }
 func createEtcdServer(srvcfg config.ServerConfig) (*etcdserver.EtcdServer, error) {
@@ -337,5 +340,5 @@ func (s *_Server) resetAllData(data map[string][]byte) {
 			log.Warn("reset all data error : %s", err.Error())
 		}
 	}
-	return
+
 }

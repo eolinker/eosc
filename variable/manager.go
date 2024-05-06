@@ -22,6 +22,19 @@ type Variables struct {
 	requireManager eosc.IRequires
 }
 
+func (m *Variables) All() map[string]map[string]string {
+
+	m.lock.RLocker()
+	defer m.lock.RUnlock()
+	return m.data
+}
+
+func (m *Variables) MarshalJSON() ([]byte, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	return json.Marshal(m.data)
+}
+
 func (m *Variables) RemoveRequire(id string) {
 	m.requireManager.Del(id)
 }
@@ -71,6 +84,8 @@ func (m *Variables) Len() int {
 }
 
 func (m *Variables) Unmarshal(buf []byte, typ reflect.Type) (interface{}, []string, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return NewParse(m).Unmarshal(buf, typ)
 }
 
@@ -87,16 +102,8 @@ func NewVariables(data map[string][]byte) eosc.IVariable {
 	return v
 }
 
-func (m *Variables) SetVariablesById(id string, variables []string) {
+func (m *Variables) SetRequire(id string, variables []string) {
 	m.requireManager.Set(id, variables)
-}
-
-func (m *Variables) GetVariablesById(id string) []string {
-	return m.requireManager.Requires(id)
-}
-
-func (m *Variables) GetIdsByVariable(variable string) []string {
-	return m.requireManager.RequireBy(variable)
 }
 
 func (m *Variables) check(namespace string, variables map[string]string) ([]string, error) {
@@ -125,28 +132,30 @@ func (m *Variables) check(namespace string, variables map[string]string) ([]stri
 
 	return affectIds, nil
 }
-func (m *Variables) Check(namespace string, variables map[string]string) ([]string, eosc.IVariable, error) {
-	// variables的key为：{变量名}@{namespace}，如：v1@default
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	vs, err := m.check(namespace, variables)
+
+//func (m *Variables) Check(namespace string, variables map[string]string) ([]string, eosc.IVariable, error) {
+//	// variables的key为：{变量名}@{namespace}，如：v1@default
+//	m.lock.RLock()
+//	defer m.lock.RUnlock()
+//	vs, err := m.check(namespace, variables)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	clone := m.clone()
+//	clone.data[namespace] = variables
+//	return vs, clone, nil
+//}
+
+func (m *Variables) SetByNamespace(namespace string, variables map[string]string) ([]string, map[string]string, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	affectIds, err := m.check(namespace, variables)
 	if err != nil {
 		return nil, nil, err
 	}
-	clone := m.clone()
-	clone.data[namespace] = variables
-	return vs, clone, nil
-}
-
-func (m *Variables) SetByNamespace(namespace string, variables map[string]string) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	_, err := m.check(namespace, variables)
-	if err != nil {
-		return err
-	}
+	old := m.data[namespace]
 	m.data[namespace] = variables
-	return nil
+	return affectIds, old, nil
 }
 func (m *Variables) clone() *Variables {
 	m.lock.RLock()

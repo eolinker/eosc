@@ -59,7 +59,7 @@ func DownLoadToRepository(group, project, version string) error {
 	defer f.Close()
 	f.Write(data)
 
-	return eosc.Decompress(tarPath, dest)
+	return Decompress(tarPath, dest)
 }
 
 // DownLoadToRepositoryById 下载插件， id格式为 {group}:{project}[:{version}]

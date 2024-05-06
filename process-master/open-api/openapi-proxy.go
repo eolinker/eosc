@@ -3,9 +3,7 @@ package open_api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc/log"
 	open_api "github.com/eolinker/eosc/open-api"
-	"github.com/julienschmidt/httprouter"
 	"io"
 	"net/http"
 	"strings"
@@ -16,21 +14,18 @@ var (
 	client *http.Client = &http.Client{Transport: http.DefaultTransport}
 )
 
-type IRaftSender interface {
-	Send(event string, namespace string, key string, data []byte) error
+type IRaftLeader interface {
 	IsLeader() (bool, []string)
 }
 
 type OpenApiProxy struct {
-	excludeRouter *httprouter.Router
 	leaderHandler http.Handler
-	raftSender    IRaftSender
+	raftSender    IRaftLeader
 	pool          sync.Pool
 }
 
-func NewOpenApiProxy(sender IRaftSender, leaderHandler http.Handler) *OpenApiProxy {
+func NewOpenApiProxy(sender IRaftLeader, leaderHandler http.Handler) *OpenApiProxy {
 	p := &OpenApiProxy{
-		excludeRouter: httprouter.New(),
 		leaderHandler: leaderHandler,
 		raftSender:    sender,
 		pool: sync.Pool{New: func() interface{} {
@@ -39,61 +34,7 @@ func NewOpenApiProxy(sender IRaftSender, leaderHandler http.Handler) *OpenApiPro
 	}
 	return p
 }
-func (p *OpenApiProxy) ExcludeHandle(method, path string, handler httprouter.Handle) {
-	for _, ph := range formatPath(path) {
-		p.excludeRouter.Handle(method, ph, handler)
-	}
-}
-func (p *OpenApiProxy) ExcludeHandleFunc(method, path string, handler http.HandlerFunc) {
-	for _, ph := range formatPath(path) {
-		p.excludeRouter.HandlerFunc(method, ph, handler)
-	}
-}
-func (p *OpenApiProxy) ExcludeHandlesFunc(path string, handler http.HandlerFunc) {
-	p.ExcludeHandleFunc(http.MethodGet, path, handler)
-	p.ExcludeHandleFunc(http.MethodHead, path, handler)
-	p.ExcludeHandleFunc(http.MethodPost, path, handler)
-	p.ExcludeHandleFunc(http.MethodPut, path, handler)
-	p.ExcludeHandleFunc(http.MethodPatch, path, handler)
-	p.ExcludeHandleFunc(http.MethodDelete, path, handler)
-	p.ExcludeHandleFunc(http.MethodConnect, path, handler)
-	p.ExcludeHandleFunc(http.MethodOptions, path, handler)
-	p.ExcludeHandleFunc(http.MethodTrace, path, handler)
-}
-func (p *OpenApiProxy) ExcludeHandles(path string, handler httprouter.Handle) {
-	p.ExcludeHandle(http.MethodGet, path, handler)
-	p.ExcludeHandle(http.MethodHead, path, handler)
-	p.ExcludeHandle(http.MethodPost, path, handler)
-	p.ExcludeHandle(http.MethodPut, path, handler)
-	p.ExcludeHandle(http.MethodPatch, path, handler)
-	p.ExcludeHandle(http.MethodDelete, path, handler)
-	p.ExcludeHandle(http.MethodConnect, path, handler)
-	p.ExcludeHandle(http.MethodOptions, path, handler)
-	p.ExcludeHandle(http.MethodTrace, path, handler)
-}
-func (p *OpenApiProxy) ExcludeHandler(method, path string, handler http.Handler) {
-	for _, ph := range formatPath(path) {
-		p.excludeRouter.Handler(method, ph, handler)
-	}
-}
-func (p *OpenApiProxy) ExcludeHandlers(path string, handler http.Handler) {
-	p.ExcludeHandler(http.MethodGet, path, handler)
-	p.ExcludeHandler(http.MethodHead, path, handler)
-	p.ExcludeHandler(http.MethodPost, path, handler)
-	p.ExcludeHandler(http.MethodPut, path, handler)
-	p.ExcludeHandler(http.MethodPatch, path, handler)
-	p.ExcludeHandler(http.MethodDelete, path, handler)
-	p.ExcludeHandler(http.MethodConnect, path, handler)
-	p.ExcludeHandler(http.MethodOptions, path, handler)
-	p.ExcludeHandler(http.MethodTrace, path, handler)
-}
-
 func (p *OpenApiProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handler, params, _ := p.excludeRouter.Lookup(r.Method, r.URL.Path)
-	if handler != nil {
-		handler(w, r, params)
-		return
-	}
 
 	isLeader, leaderPeers := p.raftSender.IsLeader()
 
@@ -124,16 +65,16 @@ func (p *OpenApiProxy) doProxy(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"code":%d,"error":"%s","re","message":"%s"}`, http.StatusInternalServerError, err.Error(), buf.buf.String())
 		return
 	}
-	if res.Event != nil {
-		for _, event := range res.Event {
-			err := p.raftSender.Send(event.Event, event.Namespace, event.Key, event.Data)
-			log.Debug("open api send:", res.Event)
-			if err != nil {
-				log.Errorf("open api raft:%v", err)
-			}
-		}
-
-	}
+	//if res.Event != nil {
+	//	for _, event := range res.Event {
+	//		err := p.raftSender.Send(event.Event, event.Namespace, event.Key, event.Data)
+	//		log.Debug("open api send:", res.Event)
+	//		if err != nil {
+	//			log.Errorf("open api raft:%v", err)
+	//		}
+	//	}
+	//
+	//}
 	if res.Header != nil {
 		for k := range res.Header {
 			w.Header().Set(k, res.Header.Get(k))
