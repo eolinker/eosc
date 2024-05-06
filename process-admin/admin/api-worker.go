@@ -55,8 +55,8 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, wc *eosc.WorkerConfig) (*W
 	if !ok {
 		return nil, fmt.Errorf("%s@%s:invalid id", wc.Name, wc.Profession)
 	}
-
-	log.Debug("update:", id, " ", wc.Profession, ",", wc.Name, ",", wc.Driver, ",", string(wc.Body))
+	wc.Id = id
+	log.Debug("update:", wc.Id, " ", wc.Profession, ",", wc.Name, ",", wc.Driver, ",", string(wc.Body))
 	old, exits := oe.imlAdminData.workers.Get(id)
 	if exits {
 		// update
@@ -81,6 +81,7 @@ func (oe *imlAdminApi) SetWorker(ctx context.Context, wc *eosc.WorkerConfig) (*W
 	if wc.Driver == "" {
 		return nil, fmt.Errorf("require driver")
 	}
+
 	info, err := oe.imlAdminData.setWorker(wc)
 	if err != nil {
 		return nil, err

@@ -62,9 +62,11 @@ func interfaceSet(originVal reflect.Value, targetVal reflect.Value, variables eo
 		err = float64Set(originVal.Elem(), targetVal)
 	case reflect.Bool:
 		err = boolSet(originVal.Elem(), targetVal)
+	case reflect.Invalid:
+		log.Debug("interfaceSet invalid")
+		return nil, err
 	default:
 		err = fmt.Errorf("interface deal kind: %s", originVal.Elem().Kind().String())
-		log.Error(err)
 		return nil, err
 	}
 	usedVariables = append(usedVariables, used...)
@@ -183,7 +185,8 @@ func mapSet(originVal reflect.Value, targetVal reflect.Value, variables eosc.IVa
 		}
 	default:
 		{
-			log.Error("type ", targetVal.Type(), " kind ", targetVal.Kind(), " ", originVal, " ", targetVal.Type().Name())
+			return nil, fmt.Errorf("map set error:%w. need kind %s,now kind %s,now value %s", ErrorUnsupportedKind, targetVal.Kind(), originVal.Kind(), originVal)
+			//log.Error("match type fail! ", "origin type ", targetVal.Type(), " kind ", targetVal.Kind(), " ", originVal, " ", targetVal.Type().Name())
 		}
 	}
 	return usedVariables, nil
