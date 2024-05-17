@@ -28,7 +28,9 @@ func RunDebug(name string) {
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-
+	for path, handler := range appendHandler {
+		mux.HandleFunc(path, handler)
+	}
 	lAddr := listen.Addr().(*net.TCPAddr)
 
 	log.Infof("start pprof:\thttp%s:%d", lAddr.IP.String(), lAddr.Port)
@@ -43,4 +45,12 @@ func RunDebug(name string) {
 		}
 	}()
 
+}
+
+var (
+	appendHandler = map[string]func(w http.ResponseWriter, r *http.Request){}
+)
+
+func Register(s string, handler func(w http.ResponseWriter, r *http.Request)) {
+	appendHandler[s] = handler
 }
