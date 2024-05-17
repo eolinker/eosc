@@ -9,8 +9,6 @@ import (
 	"net/http/pprof"
 )
 
-var ()
-
 func RunDebug(name string) {
 
 	addr, has := env.GetEnv(fmt.Sprintf("PPROF_%s", name))

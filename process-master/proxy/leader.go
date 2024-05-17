@@ -39,7 +39,7 @@ func dialPeer(peers []string) (net.Conn, error) {
 	for _, peer := range peers {
 		addr := peer
 		if strings.HasPrefix(addr, "https://") {
-			conn, err := tls.Dial("tcp", strings.TrimPrefix(addr, addr[8:]), tlsConf)
+			conn, err := tls.Dial("tcp", addr[8:], tlsConf)
 			if err != nil {
 				log.DebugF("dial peer %s error:%s", addr, err.Error())
 				continue
@@ -47,7 +47,7 @@ func dialPeer(peers []string) (net.Conn, error) {
 			return conn, nil
 		}
 		if strings.HasPrefix(addr, "http://") {
-			conn, err := net.Dial("tcp", strings.TrimPrefix(addr, addr[7:]))
+			conn, err := net.Dial("tcp", addr[7:])
 			if err != nil {
 				log.DebugF("dial peer %s error:%s", addr, err.Error())
 				continue
