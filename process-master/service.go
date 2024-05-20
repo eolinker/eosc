@@ -58,6 +58,9 @@ func (m *Master) startMasterGRPCService() error {
 }
 
 func (m *Master) stopService() {
+	if m.masterSrv == nil {
+		return
+	}
 	m.masterSrv.GracefulStop()
 	//syscall.Unlink(addr)
 }

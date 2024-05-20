@@ -153,6 +153,7 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 }
 
 func (m *Master) Start(handler *MasterHandler) error {
+	m.dispatcherServe = NewDispatcherServer()
 	for _, uri := range m.config.Gateway.AdvertiseUrls {
 		// 设置网关IP
 		u, err := url.Parse(uri)
@@ -379,13 +380,21 @@ func (m *Master) close() {
 
 	m.adminTraffic.Close()
 	m.workerTraffic.Close()
-	m.dispatcherServe.Close()
-	m.dataController.Close()
+	if m.dispatcherServe != nil {
+		m.dispatcherServe.Close()
+	}
+	if m.dataController != nil {
+		m.dataController.Close()
+	}
 	m.stopService()
 	log.Debug("try remove pid")
+	if m.workerController != nil {
+		m.workerController.Stop()
+	}
+	if m.adminController != nil {
+		m.adminController.Stop()
 
-	m.workerController.Stop()
-	m.adminController.Stop()
+	}
 }
 
 func NewMasterHandle(logWriter io.Writer, cfg config.NConfig) (*Master, error) {

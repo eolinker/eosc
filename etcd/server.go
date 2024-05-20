@@ -71,8 +71,8 @@ func (s *_Server) Nodes() []*Node {
 
 func (s *_Server) Version() Versions {
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	//s.mu.RLock()
+	//defer s.mu.RUnlock()
 	strv := "not_decided"
 	if s.server != nil {
 		v := s.server.Cluster().Version()

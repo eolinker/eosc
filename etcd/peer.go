@@ -16,8 +16,8 @@ import (
 )
 
 func (s *_Server) peerMembersHandler(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	//s.mu.RLock()
+	//defer s.mu.RUnlock()
 	if !allowMethod(w, r, "GET") {
 		return
 	}
@@ -37,8 +37,8 @@ func (s *_Server) peerMembersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *_Server) peerMemberPromoteHandler(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	//s.mu.RLock()
+	//defer s.mu.RUnlock()
 
 	if !allowMethod(w, r, "POST") {
 		return
