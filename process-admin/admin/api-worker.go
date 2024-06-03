@@ -50,7 +50,12 @@ func (oe *imlAdminApi) DeleteWorker(ctx context.Context, id string) (*WorkerInfo
 }
 
 func (oe *imlAdminApi) SetWorker(ctx context.Context, wc *eosc.WorkerConfig) (*WorkerInfo, error) {
-
+	if wc.Name == "" {
+		return nil, fmt.Errorf("require name")
+	}
+	if wc.Profession == "" {
+		return nil, fmt.Errorf("require profession")
+	}
 	id, ok := eosc.ToWorkerId(wc.Name, wc.Profession)
 	if !ok {
 		return nil, fmt.Errorf("%s@%s:invalid id", wc.Name, wc.Profession)
