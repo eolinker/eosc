@@ -11,6 +11,9 @@ var (
 		"/raft/node/join",
 		rafthttp.RaftPrefix,
 		"/members",
+		"/version",
+		"/leases",
+		"/downgrade/enabled",
 	}
 	masterApiPaths = []string{
 		"/system/",

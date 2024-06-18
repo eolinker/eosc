@@ -39,6 +39,7 @@ func (m *imlMetrics) Metrics(ctx LabelReader) string {
 	if len(m.readers) == 0 {
 		return ""
 	}
+
 	builder := bufferPool.Get()
 	builder.Reset()
 	defer bufferPool.PUT(builder)

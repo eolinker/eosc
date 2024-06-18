@@ -86,10 +86,10 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 	var urlsmap types.URLsMap
 	var token string
 	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
-		urlsmap, _ = types.NewURLsMap(InitialCluster)
+
 		token = "APINTO_CLUSTER"
 	}
-
+	urlsmap, _ = types.NewURLsMap(InitialCluster)
 	srvCfg := config.ServerConfig{
 
 		ClientURLs:                               clientUrl,
