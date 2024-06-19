@@ -55,49 +55,57 @@ func NewImlAdminData(workerInitData map[string][]byte, professionData profession
 			data.setHashValue(key, hash.NewHash(v))
 		}
 	}
-
-	// 初始化setting
-	settingData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
-		profession, _, _ := eosc.SplitWorkerId(k)
-		return profession == Setting
+	type DataContext struct {
+		Id   string
+		Data []byte
+	}
+	wdc := utils.MapType(workerInitData, func(id string, d []byte) (*DataContext, bool) {
+		return &DataContext{
+			Id:   id,
+			Data: d,
+		}, true
 	})
-	for id, conf := range settingData {
+	workerInitDataByProfession := utils.MapReGroup(wdc, func(id string, v *DataContext) string {
+		p, _, _ := eosc.SplitWorkerId(id)
+		return p
+	})
+	// 初始化setting
+	settingData := workerInitDataByProfession[Setting]
+	for _, conf := range settingData {
 
-		_, name, _ := eosc.SplitWorkerId(id)
+		_, name, _ := eosc.SplitWorkerId(conf.Id)
 		settingDriver, has := data.settings.GetDriver(name)
-		log.Debug("init setting id: ", id, " conf: ", string(conf), " ", has)
+		log.Debug("init setting id: ", conf.Id, " conf: ", string(conf.Data), " ", has)
 		if has && settingDriver.Mode() == eosc.SettingModeSingleton {
 			config := new(eosc.WorkerConfig)
-			err := json.Unmarshal(conf, config)
+			err := json.Unmarshal(conf.Data, config)
 			if err != nil {
 				log.Warn("init setting Unmarshal WorkerConfig:", err)
 				continue
 			}
-			log.Debug("init setting id body: ", id, " conf: ", string(config.Body), " ", has)
+			log.Debug("init setting id body: ", conf.Id, " conf: ", string(config.Body), " ", has)
 			err = data.settings.SettingWorker(name, config.Body)
 			if err != nil {
 				log.Warn("init setting:", err)
 			}
 		}
 	}
-	// 初始化worker
-	workerData := utils.MapFilter(workerInitData, func(k string, v []byte) bool {
-		profession, _, _ := eosc.SplitWorkerId(k)
-		return profession != Setting
-	})
 
-	for _, d := range workerData {
-		cf := new(eosc.WorkerConfig)
-		e := json.Unmarshal(d, cf)
-		if e != nil {
-			log.Debug("init setting Unmarshal WorkerConfig:", e)
-			continue
+	for _, profession := range professionData.Sort() {
+		for _, conf := range workerInitDataByProfession[profession.Name] {
+			cf := new(eosc.WorkerConfig)
+			e := json.Unmarshal(conf.Data, cf)
+			if e != nil {
+				log.Debug("init setting Unmarshal WorkerConfig:", e)
+				continue
+			}
+			_, err := data.setWorker(cf)
+			if err != nil {
+				log.Debug("init setting worker:", err)
+				continue
+			}
 		}
-		_, err := data.setWorker(cf)
-		if err != nil {
-			log.Debug("init setting worker:", err)
-			continue
-		}
+
 	}
 	return data
 }
