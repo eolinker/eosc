@@ -5,11 +5,14 @@ import (
 	"github.com/eolinker/eosc/log"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 )
 
 func createAdvertiseUrls(listenUrls []string) []string {
+	hostName, _ := os.Hostname()
+
 	urls := make(map[string]struct{})
 	for _, lUrl := range listenUrls {
 		u, err := url.Parse(lUrl)
@@ -17,7 +20,8 @@ func createAdvertiseUrls(listenUrls []string) []string {
 			continue
 		}
 		port := u.Port()
-		ip := strings.TrimSuffix(u.Host, fmt.Sprintf(":%s", port))
+
+		ip := u.Hostname()
 		if port == "" {
 			switch u.Scheme {
 			case "http", "tcp":
@@ -27,10 +31,16 @@ func createAdvertiseUrls(listenUrls []string) []string {
 			}
 		}
 		if ip == "0.0.0.0" {
-			ips := getIps()
-			for _, i := range ips {
-				urls[fmt.Sprintf("%s://%s:%s", u.Scheme, i, port)] = struct{}{}
+			if hostName == "" {
+				ips := getIps()
+				for _, i := range ips {
+					urls[fmt.Sprintf("%s://%s:%s", u.Scheme, i, port)] = struct{}{}
+				}
+			} else {
+				urls[fmt.Sprintf("%s://%s:%s", u.Scheme, hostName, port)] = struct{}{}
+
 			}
+
 		} else {
 			urls[fmt.Sprintf("%s://%s:%s", u.Scheme, ip, port)] = struct{}{}
 		}
@@ -72,4 +82,15 @@ func getIps() []string {
 	})
 
 	return ipsCache
+}
+
+func parseHostName(advertiseUrls []string) []string {
+
+	hostname, _ := os.Hostname()
+	rs := make([]string, 0, len(advertiseUrls))
+	for _, advertiseUrl := range advertiseUrls {
+		rs = append(rs, strings.Replace(advertiseUrl, "${hostname}", hostname, -1))
+	}
+	return rs
+
 }

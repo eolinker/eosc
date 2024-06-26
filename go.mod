@@ -1,6 +1,8 @@
 module github.com/eolinker/eosc
 
-go 1.19
+go 1.21
+
+toolchain go1.22.2
 
 require (
 	github.com/dustin/go-humanize v1.0.0
