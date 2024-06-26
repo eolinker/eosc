@@ -11,7 +11,6 @@ import (
 )
 
 func createAdvertiseUrls(listenUrls []string) []string {
-	hostName, _ := os.Hostname()
 
 	urls := make(map[string]struct{})
 	for _, lUrl := range listenUrls {
@@ -31,14 +30,10 @@ func createAdvertiseUrls(listenUrls []string) []string {
 			}
 		}
 		if ip == "0.0.0.0" {
-			if hostName == "" {
-				ips := getIps()
-				for _, i := range ips {
-					urls[fmt.Sprintf("%s://%s:%s", u.Scheme, i, port)] = struct{}{}
-				}
-			} else {
-				urls[fmt.Sprintf("%s://%s:%s", u.Scheme, hostName, port)] = struct{}{}
 
+			ips := getIps()
+			for _, i := range ips {
+				urls[fmt.Sprintf("%s://%s:%s", u.Scheme, i, port)] = struct{}{}
 			}
 
 		} else {
