@@ -52,8 +52,8 @@ func InfoFunc(c *cli.Context) error {
 			b.WriteString(fmt.Sprintf("Node:\t%s\n", n.Name))
 		}
 		b.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Peer, ",")))
-		b.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Admin, ",")))
-		b.WriteString(fmt.Sprintf("\t--Peer:\t%s\n", strings.Join(n.Server, ",")))
+		b.WriteString(fmt.Sprintf("\t--Admin:\t%s\n", strings.Join(n.Admin, ",")))
+		b.WriteString(fmt.Sprintf("\t--Gateway:\t%s\n", strings.Join(n.Server, ",")))
 	}
 	builder.WriteString(leaderBuilder.String())
 	builder.WriteString(nodeBuilder.String())

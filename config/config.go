@@ -121,7 +121,6 @@ func Load() NConfig {
 	data, path, err := readConfigData()
 	if err != nil {
 		config = new(NConfig)
-
 	} else {
 		config, upGradle, err = readConfig(data)
 		if err != nil {
@@ -189,12 +188,22 @@ func initial(c *NConfig) {
 	}
 
 	if len(c.Peer.AdvertiseUrls) == 0 {
-		c.Peer.AdvertiseUrls = createAdvertiseUrls(c.Peer.ListenUrls)
+		peerAdvertiseUrls, has := os.LookupEnv("INIT_PEER_ADVERTISE_URLS")
+		if has {
+			c.Peer.AdvertiseUrls = strings.Split(peerAdvertiseUrls, ",")
+
+		} else {
+			c.Peer.AdvertiseUrls = createAdvertiseUrls(c.Peer.ListenUrls)
+		}
 	}
+	c.Peer.AdvertiseUrls = parseHostName(c.Peer.AdvertiseUrls)
 	if len(c.Client.AdvertiseUrls) == 0 {
 		c.Client.AdvertiseUrls = createAdvertiseUrls(c.Client.ListenUrls)
 	}
+	c.Client.AdvertiseUrls = parseHostName(c.Client.AdvertiseUrls)
 	if len(c.Gateway.AdvertiseUrls) == 0 {
 		c.Gateway.AdvertiseUrls = createAdvertiseUrls(c.Gateway.ListenUrls)
 	}
+
+	c.Gateway.AdvertiseUrls = parseHostName(c.Gateway.AdvertiseUrls)
 }

@@ -165,16 +165,24 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			ws.variableManager.SetByNamespace(key, value)
 		}
 	}
-	// 筛选setting数据
-	settings := utils.MapFilter(eventData[eosc.NamespaceWorker], func(k string, v []byte) bool {
-		profession, _, _ := eosc.SplitWorkerId(k)
-		return profession == "setting"
+	type workerDataItem struct {
+		id   string
+		data []byte
+	}
+	workerDataItems := utils.MapType(eventData[eosc.NamespaceWorker], func(k string, v []byte) (*workerDataItem, bool) {
+		return &workerDataItem{id: k, data: v}, true
 	})
+	wdp := utils.MapReGroup(workerDataItems, func(k string, v *workerDataItem) string {
+		profession, _, _ := eosc.SplitWorkerId(k)
+		return profession
+	})
+	// 筛选setting数据
+	settings := wdp["setting"]
 	// 处理setting
 	for _, d := range settings {
 
 		cf := new(eosc.WorkerConfig)
-		err := json.Unmarshal(d, cf)
+		err := json.Unmarshal(d.data, cf)
 		if err != nil {
 			continue
 		}
@@ -184,22 +192,20 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 		}
 	}
 	// 处理worker
-	// 筛选worker数据
-	workerData := utils.MapFilter(eventData[eosc.NamespaceWorker], func(k string, v []byte) bool {
-		profession, _, _ := eosc.SplitWorkerId(k)
-		return profession != "setting"
-	})
-	for _, c := range workerData {
-		w := new(eosc.WorkerConfig)
-		err := json.Unmarshal(c, w)
-		if err != nil {
-			continue
+	for _, pi := range ws.professionManager.Sort() {
+		for _, c := range wdp[pi.Name] {
+			w := new(eosc.WorkerConfig)
+			err := json.Unmarshal(c.data, w)
+			if err != nil {
+				continue
+			}
+			log.Debug("init read worker:", w.Profession, ":", w.Name)
+
+			wc = append(wc, w)
+
 		}
-		log.Debug("init read worker:", w.Profession, ":", w.Name)
-
-		wc = append(wc, w)
-
 	}
+
 	ws.workers.Reset(wc)
 
 	return nil
