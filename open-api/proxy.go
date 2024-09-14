@@ -2,9 +2,10 @@ package open_api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/eolinker/eosc/log"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type OpenApiHandler interface {
@@ -40,7 +41,7 @@ func CreateHandler(handler OpenApiHandler) httprouter.Handle {
 
 			case string:
 				data = []byte(d)
-				log.Debug("handler write string:", string(d))
+				log.Debug("handler write string:", d)
 
 			case []byte:
 				data = d

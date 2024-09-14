@@ -2,14 +2,15 @@ package config
 
 import (
 	"fmt"
-	"github.com/eolinker/eosc/env"
-	"github.com/eolinker/eosc/log"
-	"github.com/ghodss/yaml"
 	"net"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/eolinker/eosc/env"
+	"github.com/eolinker/eosc/log"
+	"github.com/ghodss/yaml"
 )
 
 const (
@@ -197,13 +198,52 @@ func initial(c *NConfig) {
 		}
 	}
 	c.Peer.AdvertiseUrls = parseHostName(c.Peer.AdvertiseUrls)
+
 	if len(c.Client.AdvertiseUrls) == 0 {
 		c.Client.AdvertiseUrls = createAdvertiseUrls(c.Client.ListenUrls)
+
 	}
 	c.Client.AdvertiseUrls = parseHostName(c.Client.AdvertiseUrls)
+
 	if len(c.Gateway.AdvertiseUrls) == 0 {
 		c.Gateway.AdvertiseUrls = createAdvertiseUrls(c.Gateway.ListenUrls)
-	}
 
+	}
 	c.Gateway.AdvertiseUrls = parseHostName(c.Gateway.AdvertiseUrls)
+
+	hosts := extractHosts(c.Peer.AdvertiseUrls)
+	if len(hosts) > 0 {
+		env.SetEnv("PEER_ADVERTISE_HOSTS", strings.Join(hosts, ","))
+	}
+	hosts = extractHosts(c.Client.AdvertiseUrls)
+	if len(hosts) > 0 {
+		env.SetEnv("CLIENT_ADVERTISE_HOSTS", strings.Join(hosts, ","))
+	}
+	hosts = extractHosts(c.Gateway.AdvertiseUrls)
+	if len(hosts) > 0 {
+		env.SetEnv("GATEWAY_ADVERTISE_HOSTS", strings.Join(hosts, ","))
+	}
+}
+
+func extractHosts(addrs []string) []string {
+	var hosts []string
+	hostMap := map[string]struct{}{}
+	for _, u := range addrs {
+		parsedURL, err := url.Parse(u)
+		if err != nil {
+			log.Errorf("parse advertise url(%s) error: %v", u, err)
+			continue
+		}
+		index := strings.Index(parsedURL.Host, ":")
+		host := parsedURL.Host
+		if index >= 0 {
+			host = parsedURL.Host[:index]
+		}
+		if _, ok := hostMap[host]; ok {
+			continue
+		}
+		hostMap[host] = struct{}{}
+		hosts = append(hosts, host)
+	}
+	return hosts
 }

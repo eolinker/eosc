@@ -183,6 +183,7 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 		cb.Version = admin.GenVersion()
 	}
 	cb.Profession = profession
+	cb.Id, _ = eosc.ToWorkerId(name, profession)
 	cb.Name = name
 	cb.Update = eosc.Now()
 	cb.Create = eosc.Now()
@@ -196,7 +197,9 @@ func (oe *WorkerApi) Save(r *http.Request, params httprouter.Params) (status int
 		out = w
 		return nil
 	})
-
+	if err != nil {
+		return http.StatusInternalServerError, nil, err
+	}
 	return http.StatusOK, nil, out.Detail()
 }
 

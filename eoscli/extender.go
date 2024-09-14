@@ -322,7 +322,7 @@ package eoscli
 //		}
 //		log.Debugf("name： %s\n", extends.FormatProject(group, project))
 //		log.Debugf("version： %s %s\n", info.Version, isLatest)
-//		log.Debugf("description：%s\n", info.Description)
+//		log.Debugf("description：%s\n", info.Title)
 //		log.Debugf("download url：%s\n", info.URL)
 //		log.Debugf("install to run：%s extender install %s\n", os.Args[0], info.ID)
 //	}

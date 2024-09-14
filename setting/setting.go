@@ -3,12 +3,13 @@ package setting
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/eolinker/eosc"
-	"github.com/eolinker/eosc/common/bean"
-	"github.com/eolinker/eosc/log"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/eolinker/eosc"
+	"github.com/eolinker/eosc/common/bean"
+	"github.com/eolinker/eosc/log"
 )
 
 var (
@@ -79,7 +80,7 @@ func (s *tSettings) GetConfigBody(name string) ([]byte, bool) {
 //					Create:      eosc.Now(),
 //					Update:      eosc.Now(),
 //					Body:        outputBody,
-//					Description: "",
+//					Title: "",
 //				},
 //			}
 //			delete = nil
