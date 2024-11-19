@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/eolinker/eosc/log"
 	"github.com/google/uuid"
+
+	"github.com/eolinker/eosc/env"
+
+	"github.com/eolinker/eosc/log"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -29,6 +32,14 @@ type Clusters struct {
 
 type EventType = mvccpb.Event_EventType
 
+func getClusterId() string {
+	clusterId, has := env.GetEnv("CLUSTER_ID")
+	if !has || clusterId == "" {
+		return uuid.NewString()
+	}
+	return clusterId
+}
+
 func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clusters {
 	c := &Clusters{
 		cluster: "",
@@ -49,18 +60,36 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 			continue
 		}
 		nodeId := string(bytes.TrimPrefix(kv.Key, _nodePre))
-		config := new(NodeGatewayConfig)
-		_ = json.Unmarshal(kv.Value, config)
-		c.data[nodeId] = config
+		cfg := new(NodeGatewayConfig)
+		_ = json.Unmarshal(kv.Value, cfg)
+		c.data[nodeId] = cfg
 	}
 	if c.cluster == "" {
-		c.cluster = uuid.NewString()
+		c.cluster = getClusterId()
 		_, _ = client.Put(ctx, string(_clusterId), c.cluster)
 	}
 	go func() {
 		for watcher := range watch {
+
 			c.mu.Lock()
 			for _, event := range watcher.Events {
+				if event.Type == mvccpb.DELETE {
+					log.DebugF("node event: %s, %s, %s", event.Type, string(event.Kv.Key), s.server.ID().String())
+					nodeId := string(bytes.TrimPrefix(event.Kv.Key, _nodePre))
+					if nodeId == s.server.ID().String() {
+						// while remove self
+						allData, _ := s.getAllData()
+						s.clearCluster()
+						err = s.restart("")
+						if err != nil {
+							log.Errorf("restart error: %s", err.Error())
+							return
+						}
+
+						s.resetAllData(allData)
+						return
+					}
+				}
 				c.nodeEventDoer(event.Type, event.Kv.Key, event.Kv.Value)
 			}
 
@@ -71,6 +100,7 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 					memberInitUrls[id] = m.PeerURLs
 				}
 			}
+
 			clusterString := initialClusterString(memberInitUrls)
 			s.resetCluster(clusterString)
 			c.mu.Unlock()

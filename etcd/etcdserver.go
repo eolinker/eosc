@@ -201,6 +201,7 @@ func (s *_Server) Remove(name string) error {
 			if err != nil {
 				return err
 			}
+			return nil
 		}
 	}
 	return fmt.Errorf("%w name %s", ErrorMemberNotExist, name)
@@ -238,7 +239,9 @@ func (s *_Server) Leave() error {
 
 	err = s.removeMember(uint64(current.ID))
 	if err != nil {
-		return err
+		if !errors.Is(err, etcdserver.ErrStopped) {
+			return err
+		}
 	}
 	// 清楚集群配置
 	s.clearCluster()

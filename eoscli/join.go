@@ -7,10 +7,11 @@ import (
 	"net/url"
 	"strings"
 
+	cli "github.com/urfave/cli/v2"
+
 	"github.com/eolinker/eosc/env"
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
-	"github.com/urfave/cli/v2"
 )
 
 var CmdJoin = "join"
@@ -74,7 +75,7 @@ func join(c *cli.Context) error {
 		//log.Error(err)
 		return err
 	}
-	log.Infof("join successful! node id is: %d", response.Info.NodeID)
+	log.Infof("join successful! node id is: %s", response.Info.NodeKey)
 	return nil
 }
 

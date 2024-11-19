@@ -92,7 +92,7 @@ func NewServer(ctx context.Context, mux *http.ServeMux, config Config) (Etcd, er
 		config:         config,
 		ctx:            serverCtc,
 		cancel:         cancel,
-		requestTimeout: 10 * time.Second,
+		requestTimeout: 100 * time.Second,
 		clientCh:       make([]chan *clientv3.Client, 0, 10),
 	}
 	s.mu.Lock()
@@ -132,8 +132,13 @@ func (s *_Server) isLeader() (bool, []string) {
 	if lead == server.ID() {
 		return true, nil
 	}
+	member := server.Cluster().Member(lead)
+	if member == nil {
+		// leader not found，maybe it's removed
+		return true, nil
+	}
 
-	return false, server.Cluster().Member(lead).PeerURLs
+	return false, member.PeerURLs
 }
 
 func (s *_Server) Put(key string, value []byte) error {

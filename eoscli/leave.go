@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/eolinker/eosc/env"
+	cli "github.com/urfave/cli/v2"
 
 	"github.com/eolinker/eosc/log"
 	"github.com/eolinker/eosc/service"
-	"github.com/urfave/cli/v2"
 )
 
 var CmdLeave = "leave"
@@ -36,6 +36,6 @@ func LeaveFunc(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("leave successful! node id is: %d", response.Secret.NodeID)
+	log.Infof("leave successful! node id is: %s", response.Secret.NodeKey)
 	return nil
 }

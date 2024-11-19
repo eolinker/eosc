@@ -201,7 +201,12 @@ func (s *_Server) readCluster(peerUrl types.URLs) (name, InitialCluster string, 
 	var has bool
 	name, has = etcdConfig.Get("name")
 	if !has {
-		name = createUUID()
+		nodeId, has := env.GetEnv("NODE_ID")
+		if !has || nodeId == "" {
+			name = createUUID()
+		} else {
+			name = nodeId
+		}
 		etcdConfig.Set("name", name)
 	}
 	InitialCluster, has = etcdConfig.Get("cluster")
