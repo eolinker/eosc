@@ -213,6 +213,10 @@ func (s *_Server) Leave() error {
 	if s.server == nil {
 		return ErrorNotInCluster
 	}
+	// 判断是否是leader，若为leader，则无法离开集群
+	if s.server.Leader() == s.server.ID() {
+		return fmt.Errorf("cannot leave leader")
+	}
 
 	// 获取全部数据
 	currentId := s.server.ID()
@@ -224,7 +228,7 @@ func (s *_Server) Leave() error {
 	if err != nil {
 		return err
 	}
-	if err = s.server.TransferLeadership(); err != nil {
+	if err := s.server.TransferLeadership(); err != nil {
 		log.Warn("leadership transfer failed ", currentId, " error:", err)
 		return err
 	}
@@ -336,7 +340,7 @@ func (s *_Server) removeMember(id uint64) error {
 
 func (s *_Server) resetAllData(data map[string][]byte) {
 	client := s.client
-
+	log.Debug("reset all data ", len(data), data)
 	for key, bytes := range data {
 		_, err := client.Put(s.ctx, key, string(bytes))
 		if err != nil {

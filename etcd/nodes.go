@@ -73,23 +73,23 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 
 			c.mu.Lock()
 			for _, event := range watcher.Events {
-				if event.Type == mvccpb.DELETE {
-					log.DebugF("node event: %s, %s, %s", event.Type, string(event.Kv.Key), s.server.ID().String())
-					nodeId := string(bytes.TrimPrefix(event.Kv.Key, _nodePre))
-					if nodeId == s.server.ID().String() {
-						// while remove self
-						allData, _ := s.getAllData()
-						s.clearCluster()
-						err = s.restart("")
-						if err != nil {
-							log.Errorf("restart error: %s", err.Error())
-							return
-						}
-
-						s.resetAllData(allData)
-						return
-					}
-				}
+				//if event.Type == mvccpb.DELETE {
+				//	log.DebugF("node event: %s, %s, %s", event.Type, string(event.Kv.Key), s.server.ID().String())
+				//	nodeId := string(bytes.TrimPrefix(event.Kv.Key, _nodePre))
+				//	if nodeId == s.server.ID().String() {
+				//		// while remove self
+				//		allData, _ := s.getAllData()
+				//		s.clearCluster()
+				//		err = s.restart("")
+				//		if err != nil {
+				//			log.Errorf("restart error: %s", err.Error())
+				//			return
+				//		}
+				//
+				//		s.resetAllData(allData)
+				//		return
+				//	}
+				//}
 				c.nodeEventDoer(event.Type, event.Kv.Key, event.Kv.Value)
 			}
 
