@@ -15,7 +15,6 @@ func (m *MasterCliServer) Join(ctx context.Context, request *service.JoinRequest
 	for _, address := range request.ClusterAddress {
 		err = m.etcdServe.Join(address)
 		if err != nil && err != etcd.ErrorAlreadyInCluster {
-
 			continue
 		}
 		if err == etcd.ErrorAlreadyInCluster {

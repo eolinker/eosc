@@ -106,6 +106,35 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 			c.mu.Unlock()
 		}
 	}()
+	//go func() {
+	//	ticket := time.NewTicker(5 * time.Second)
+	//	defer ticket.Stop()
+	//	var allData map[string][]byte
+	//	var err error
+	//	for {
+	//		select {
+	//		case <-ctx.Done():
+	//			return
+	//		case <-s.server.StopNotify():
+	//			s.clearCluster()
+	//
+	//			err = s.restart("")
+	//			if err != nil {
+	//				log.Errorf("restart error: %s", err.Error())
+	//				return
+	//			}
+	//			if allData != nil {
+	//				s.resetAllData(allData)
+	//			}
+	//			return
+	//		case <-ticket.C:
+	//			allData, err = s.getAllData()
+	//			if err != nil {
+	//				log.Errorf("get all data error: %s", err.Error())
+	//			}
+	//		}
+	//	}
+	//}()
 	return c
 }
 func (cs *Clusters) nodeEventDoer(t EventType, key, v []byte) {
