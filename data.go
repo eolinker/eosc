@@ -70,7 +70,7 @@ func (b *Base[T]) MarshalJSON() ([]byte, error) {
 		result[key] = v
 	}
 
-	return json.Marshal(b.Append)
+	return json.Marshal(result)
 }
 
 func (b *Base[T]) SetAppend(key string, value interface{}) {
