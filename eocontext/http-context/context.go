@@ -34,6 +34,8 @@ type IHttpContext interface {
 	eocontext.EoContext
 	Request() IRequestReader // 读取原始请求
 	Proxy() IRequest         // 读写转发请求
+	ProxyClone() IRequest    // 克隆转发请求
+	SetProxy(proxy IRequest) // 重置Proxy
 	Response() IResponse     // 处理返回结果，可读可写
 	SendTo(scheme string, node eocontext.INode, timeout time.Duration) error
 	Proxies() []IProxy
