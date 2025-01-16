@@ -3,11 +3,12 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"strings"
+
 	"github.com/eolinker/eosc"
 	"github.com/eolinker/eosc/service"
 	"github.com/eolinker/eosc/utils"
 	"github.com/eolinker/eosc/utils/hash"
-	"strings"
 )
 
 func (d *imlAdminData) GetHash(ctx context.Context, key string, field string) (string, bool) {
@@ -88,20 +89,20 @@ func (oe *imlAdminApi) DeleteHash(ctx context.Context, key, field string) error 
 	if !has {
 		return nil
 	}
-	nvs := ovs.Clone()
+	//nvs := ovs.Clone()
 	ovs.Delete(field)
-	if nvs.Len() == 0 {
+	if ovs.Len() == 0 {
 		// to delete
 		oe.actions = append(oe.actions, NewRollBackForDeleteHash(key, ovs))
 		oe.events = append(oe.events, &service.Event{
 			Namespace: eosc.NamespaceCustomer,
-			Command:   eosc.EventDel,
+			Command:   eosc.EventSet,
 			Key:       key,
 			Data:      nil,
 		})
 		return nil
 	}
-	data, _ := json.Marshal(nvs.Map())
+	data, _ := json.Marshal(ovs.Map())
 	oe.actions = append(oe.actions, NewRollBackForSetHash(key, ovs))
 	oe.events = append(oe.events, &service.Event{
 		Namespace: eosc.NamespaceCustomer,
