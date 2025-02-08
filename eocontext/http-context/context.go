@@ -49,6 +49,7 @@ type IHeaderReader interface {
 	Headers() http.Header
 	Host() string
 	GetCookie(key string) string
+	SetCookie(key string, value string, maxAge int)
 }
 
 type IHeaderWriter interface {
