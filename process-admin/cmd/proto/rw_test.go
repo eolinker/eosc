@@ -64,7 +64,7 @@ func printMessage(m IMessage, t *testing.T) {
 func testWriter(wt writer, t *testing.T) {
 	w := NewWriter(wt)
 	cmd1 := []any{
-		"Set", "api@router", map[string]any{
+		"SetProvider", "api@router", map[string]any{
 			"name":        "api@router",
 			"type":        "router",
 			"version":     "1.0.0",

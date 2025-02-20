@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/eolinker/eosc/process-admin/cmd/proto"
 	"testing"
+
+	"github.com/eolinker/eosc/process-admin/cmd/proto"
 )
 
 func Test_imlClient_List(t *testing.T) {
@@ -103,7 +104,7 @@ func Test_imlClient_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			if err := client.Set(tt.args.ctx, tt.args.id, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SetProvider() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -58,10 +58,10 @@ func (s *_Server) sendJoinRequest(target string, addr []string, client []string)
 //		return nil, err
 //	}
 //	queries := url.Values{}
-//	queries.Set("broadcast_ip", ip)
-//	queries.Set("broadcast_port", strconv.Itoa(port))
-//	queries.Set("protocol", protocol)
-//	queries.Set("address", address)
+//	queries.SetProvider("broadcast_ip", ip)
+//	queries.SetProvider("broadcast_port", strconv.Itoa(port))
+//	queries.SetProvider("protocol", protocol)
+//	queries.SetProvider("address", address)
 //	//data, _ := json.Marshal(msg)
 //	uri.RawQuery = queries.Encode()
 //	resp, err := http.Get(uri.String())

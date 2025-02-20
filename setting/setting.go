@@ -40,7 +40,7 @@ func (s *tSettings) GetConfigBody(name string) ([]byte, bool) {
 	return c, has
 }
 
-//func (s *tSettings) Set(name string, body []byte, variable eosc.IVariable) (format interface{}, update []*eosc.WorkerConfig, delete []string, err error) {
+//func (s *tSettings) SetProvider(name string, body []byte, variable eosc.IVariable) (format interface{}, update []*eosc.WorkerConfig, delete []string, err error) {
 //	driver, has := s.GetDriver(name)
 //	if !has {
 //		err = eosc.ErrorDriverNotExist
@@ -107,7 +107,7 @@ func (s *tSettings) GetConfigBody(name string) ([]byte, bool) {
 //			usagesAll = append(usagesAll, usages)
 //		}
 //		var updateIds []string
-//		updateIds, delete, err = driver.Set(cfgs...)
+//		updateIds, delete, err = driver.SetProvider(cfgs...)
 //		if err != nil {
 //			return
 //		}
@@ -200,7 +200,7 @@ func (s *tSettings) GetConfig(name string) interface{} {
 }
 
 func (s *tSettings) SettingWorker(name string, org []byte) (err error) {
-	log.Debug("setting Set:", name, " org:", string(org))
+	log.Debug("setting SetProvider:", name, " org:", string(org))
 
 	driver, has := s.GetDriver(name)
 	if !has {

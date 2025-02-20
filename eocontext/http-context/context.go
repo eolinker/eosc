@@ -191,6 +191,11 @@ type IProxy interface {
 	RemotePort() int
 }
 
+type IResponseStream interface {
+	AppendReaderFunc(func(p []byte) error)
+	AppendWriterFunc(func(p []byte) ([]byte, error))
+}
+
 // 返回给client端的
 type IResponse interface {
 	ResponseError() error
@@ -207,4 +212,6 @@ type IResponse interface {
 	ContentType() string
 	RemoteIP() string
 	RemotePort() int
+	IsBodyStream() bool
+	GetBodyStream() IResponseStream
 }
