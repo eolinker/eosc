@@ -41,7 +41,11 @@ type IHttpContext interface {
 	Proxies() []IProxy
 	FastFinish()
 	GetEntry() eosc.IEntry
+	AppendBodyFinishFunc(finishFunc BodyFinishFunc)
+	BodyFinish()
 }
+
+type BodyFinishFunc func(ctx IHttpContext)
 
 type IHeaderReader interface {
 	RawHeader() string
@@ -213,5 +217,8 @@ type IResponse interface {
 	RemoteIP() string
 	RemotePort() int
 	IsBodyStream() bool
-	GetBodyStream() IResponseStream
+	AppendStreamFunc(streamFunc StreamFunc)
+	StreamFunc() []StreamFunc
 }
+
+type StreamFunc func(ctx IHttpContext, p []byte) ([]byte, error)
