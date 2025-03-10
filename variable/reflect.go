@@ -29,7 +29,7 @@ func recurseReflect(originVal reflect.Value, targetVal reflect.Value, variables 
 	usedVariables := make([]string, 0, variables.Len())
 	var used []string
 	var err error
-	//log.Debug("recurseReflect ", "originVal: ", originVal.String(), " targetVal: ", targetVal.String(), " kind: ", targetVal.Kind())
+	log.Debug("recurseReflect ", "originVal: ", originVal.String(), " targetVal: ", targetVal.String(), " kind: ", targetVal.Kind())
 	switch originVal.Kind() {
 	case reflect.Interface:
 		if targetVal.Type().Implements(resetType) {
