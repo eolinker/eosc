@@ -41,8 +41,8 @@ type IHttpContext interface {
 	Proxies() []IProxy
 	FastFinish()
 	GetEntry() eosc.IEntry
-	AppendBodyFinishFunc(finishFunc BodyFinishFunc)
-	BodyFinish()
+	//AppendBodyFinishFunc(finishFunc BodyFinishFunc)
+	//BodyFinish()
 }
 
 type BodyFinishFunc func(ctx IHttpContext)
@@ -179,6 +179,10 @@ type IRequest interface {
 	Body() IBodyDataWriter
 	URI() IURIWriter
 	SetMethod(method string)
+	ProxyBodyFinish(ctx IHttpContext)
+	AppendBodyFinish(fn BodyFinishFunc)
+	StreamBodyHandles(ctx IHttpContext, body []byte) ([]byte, error)
+	AppendStreamBodyHandle(fn StreamFunc)
 }
 
 // IProxy 记录转发相关信息
@@ -217,8 +221,8 @@ type IResponse interface {
 	RemoteIP() string
 	RemotePort() int
 	IsBodyStream() bool
-	AppendStreamFunc(streamFunc StreamFunc)
-	StreamFunc() []StreamFunc
+	//AppendStreamFunc(streamFunc StreamFunc)
+	//StreamFunc() []StreamFunc
 }
 
 type StreamFunc func(ctx IHttpContext, p []byte) ([]byte, error)
