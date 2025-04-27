@@ -17,14 +17,16 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"github.com/gorilla/websocket"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	humanize "github.com/dustin/go-humanize"
+
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -225,6 +227,8 @@ func (f *fileServer) watch(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				if len(grep) == 0 || bytes.Contains(msg, grep) {
+					// 加上换行，防止数据被截断
+					msg = append(msg, '\n')
 					err := conn.WriteMessage(websocket.TextMessage, msg)
 					if err != nil {
 						return
