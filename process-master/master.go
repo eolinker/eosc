@@ -141,7 +141,7 @@ func (m *Master) start(handler *MasterHandler, etcdServer etcd.Etcd) error {
 	})
 	m.adminUnixProxy = proxy.NewUnixProxy(eosc.ProcessAdmin)
 	m.workerUnixProxy = proxy.NewUnixProxy(eosc.ProcessWorker)
-	m.adminController = NewAdminConfig(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminUnixProxy))
+	m.adminController = NewAdminController(raftService, process.NewProcessController(m.ctx, eosc.ProcessAdmin, m.logWriter, m.adminUnixProxy))
 	m.workerController = NewWorkerController(m.workerTraffic, m.config.Gateway, process.NewProcessController(m.ctx, eosc.ProcessWorker, m.logWriter, m.workerUnixProxy))
 
 	extenderManager := extender.NewManager(m.ctx, extender.GenCallbackList(m.dispatcherServe, m.workerController))
@@ -195,13 +195,13 @@ func (m *Master) Start(handler *MasterHandler) error {
 	*/
 
 	peerListeners := utils.MatchMux(peerListener, etcdPaths)
-	clienListeners := utils.MatchMux(clientListener, masterApiPaths, workerApiPaths)
+	clientListeners := utils.MatchMux(clientListener, masterApiPaths, workerApiPaths)
 	// 初始化etcd
 	etcdApiListener := peerListeners[0]
 	peerOpenApiListener := peerListeners[1]
-	masterApiListener := clienListeners[0]
-	workerApiListener := clienListeners[1]
-	clientOpenApiListener := clienListeners[2]
+	masterApiListener := clientListeners[0]
+	workerApiListener := clientListeners[1]
+	clientOpenApiListener := clientListeners[2]
 
 	etcdMux := m.startHttpServer(etcdApiListener)
 	etcdServer, err := etcd.NewServer(m.ctx, etcdMux, etcd.Config{

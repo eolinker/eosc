@@ -32,6 +32,7 @@ func (s *_Server) initEtcdServer() error {
 			_, _ = http.Get(fmt.Sprintf("https://statistics.apinto.com/report/deploy/n?id=%s", c.Name))
 		}
 	}()
+	log.DebugF("start init etcd server, name: %s, dataDir: %s, initialCluster: %s", c.Name, c.DataDir, c.InitialClusterToken)
 	s.name = c.Name
 	srv, err := createEtcdServer(c)
 	if err != nil {
@@ -47,7 +48,9 @@ func (s *_Server) initEtcdServer() error {
 	s.hashKVHandler.Swap(&hashKVHandler)
 	s.server = srv
 	go s.check(srv)
+	log.DebugF("etcd server started, name: %s, dataDir: %s, initialCluster: %s", c.Name, c.DataDir, c.InitialClusterToken)
 	<-s.server.ReadyNotify()
+	log.DebugF("etcd server ready, name: %s, dataDir: %s, initialCluster: %s", c.Name, c.DataDir, c.InitialClusterToken)
 
 	s.client = v3client.New(s.server)
 	gatewayConfig := &NodeGatewayConfig{Urls: s.config.GatewayAdvertiseUrls}
@@ -77,9 +80,9 @@ func (s *_Server) check(srv *etcdserver.EtcdServer) {
 				isLeader, _ := s.IsLeader()
 				hs := s.getLeaderChangeHandlers()
 				for _, h := range hs {
-					h.LeaderChange(isLeader)
+					h.LeaderChange(isLeader, s.isRestart)
 				}
-
+				s.isRestart = false
 			}
 
 		}
@@ -98,7 +101,7 @@ func (s *_Server) HandlerLeader(hs ...ILeaderStateHandler) {
 	s.mu.Unlock()
 
 	for _, h := range hs {
-		h.LeaderChange(isLeader)
+		h.LeaderChange(isLeader, false)
 	}
 
 }
@@ -132,6 +135,7 @@ func (s *_Server) restart(InitialCluster string) error {
 		return err
 	}
 	s.resetCluster(InitialCluster)
+	s.isRestart = true
 	return s.initEtcdServer()
 }
 func (s *_Server) checkIsJoined() bool {
@@ -213,10 +217,10 @@ func (s *_Server) Leave() error {
 	if s.server == nil {
 		return ErrorNotInCluster
 	}
-	// 判断是否是leader，若为leader，则无法离开集群
-	if s.server.Leader() == s.server.ID() {
-		return fmt.Errorf("cannot leave leader")
-	}
+	//// 判断是否是leader，若为leader，则无法离开集群
+	//if s.server.Leader() == s.server.ID() {
+	//	return fmt.Errorf("cannot leave leader")
+	//}
 
 	// 获取全部数据
 	currentId := s.server.ID()
@@ -255,8 +259,8 @@ func (s *_Server) Leave() error {
 	if err != nil {
 		return err
 	}
-
 	s.resetAllData(allData)
+	// 重启admin程序
 	return nil
 }
 
@@ -340,8 +344,8 @@ func (s *_Server) removeMember(id uint64) error {
 
 func (s *_Server) resetAllData(data map[string][]byte) {
 	client := s.client
-	log.Debug("reset all data ", len(data), data)
 	for key, bytes := range data {
+		log.DebugF("reset all data %s %s", key, string(bytes))
 		_, err := client.Put(s.ctx, key, string(bytes))
 		if err != nil {
 			log.Warn("reset all data error : %s", err.Error())

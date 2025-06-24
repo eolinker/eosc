@@ -83,21 +83,19 @@ func (s *_Server) etcdServerConfig() config.ServerConfig {
 
 	name, InitialCluster, isNew := s.readCluster(peerUrl)
 	_ = os.Setenv("node_id", name)
-	var urlsmap types.URLsMap
+	var urlsMap types.URLsMap
 	var token string
 	if !wal.Exist(filepath.Join(dataDir, "member", "wal")) {
-
 		token = "APINTO_CLUSTER"
 	}
-	urlsmap, _ = types.NewURLsMap(InitialCluster)
+	urlsMap, _ = types.NewURLsMap(InitialCluster)
 	srvCfg := config.ServerConfig{
-
 		ClientURLs:                               clientUrl,
 		PeerURLs:                                 peerUrl,
 		DataDir:                                  dataDir,
 		DedicatedWALDir:                          "",
 		MaxWALFiles:                              DefaultMaxWALs,
-		InitialPeerURLsMap:                       urlsmap,
+		InitialPeerURLsMap:                       urlsMap,
 		InitialClusterToken:                      token,
 		NewCluster:                               isNew,
 		AutoCompactionRetention:                  time.Duration(10),

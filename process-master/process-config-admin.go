@@ -65,11 +65,11 @@ func (ac *AdminController) toExtends(org map[string][]byte) map[string]string {
 	}
 	return tmp
 }
-func (ac *AdminController) LeaderChange(isLeader bool) {
+func (ac *AdminController) LeaderChange(isLeader bool, isRestart bool) {
 	log.Debug("Leader change:", isLeader)
 	ac.locker.Lock()
 	defer ac.locker.Unlock()
-	if ac.isLeader != isLeader {
+	if ac.isLeader != isLeader || isRestart {
 		ac.isLeader = isLeader
 
 		if isLeader {
@@ -104,7 +104,7 @@ func (ac *AdminController) Stop() {
 	close(ac.registerChannel)
 }
 
-func NewAdminConfig(raftData dispatcher.IDispatchCenter, adminProcess *process.ProcessController) *AdminController {
+func NewAdminController(raftData dispatcher.IDispatchCenter, adminProcess *process.ProcessController) *AdminController {
 	wc := &AdminController{
 		adminProcess: adminProcess,
 		data:         dispatcher.NewMyData(map[string]map[string][]byte{}),

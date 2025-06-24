@@ -135,7 +135,7 @@ func (pa *ProcessAdmin) wait() {
 // 启动时通过stdin传输配置信息
 func NewProcessAdmin(parent context.Context, arg map[string]map[string][]byte) (*ProcessAdmin, error) {
 
-	var tf traffic.ITraffic = traffic.NewEmptyTraffic()
+	tf := traffic.NewEmptyTraffic()
 	bean.Injection(&tf)
 	var listenUrl = new(config.ListenUrl)
 	bean.Injection(&listenUrl)

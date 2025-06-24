@@ -32,6 +32,7 @@ type _Server struct {
 	leaderChangeHandler     []ILeaderStateHandler
 	clientCh                []chan *clientv3.Client
 	clusterData             *Clusters
+	isRestart               bool
 }
 
 func (s *_Server) Status() ClusterInfo {

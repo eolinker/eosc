@@ -36,6 +36,6 @@ type ServiceHandler interface {
 }
 
 type ILeaderStateHandler interface {
-	LeaderChange(isLeader bool)
+	LeaderChange(isLeader bool, isRestart bool)
 }
 type Info = *membership.Member
