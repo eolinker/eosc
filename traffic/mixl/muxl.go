@@ -29,6 +29,7 @@ func NewMixListener(port int, listeners ...net.Listener) net.Listener {
 
 	for _, listener := range listeners {
 		name := listener.Addr().String()
+		log.Infof("mixl listen name: %s", name)
 		lm[name] = listener
 	}
 	ml := &MixListener{
@@ -39,11 +40,10 @@ func NewMixListener(port int, listeners ...net.Listener) net.Listener {
 			Port: port,
 		},
 		closeCh: make(chan struct{}),
-		//sitClose: 0,
-		wg: sync.WaitGroup{},
+		wg:      sync.WaitGroup{},
 	}
 	atomic.StoreInt32(&ml.sitClose, 0)
-
+	log.Infof("mixl listen: %d", len(listeners))
 	for _, l := range listeners {
 		ml.wg.Add(1)
 		go ml.accept(l)

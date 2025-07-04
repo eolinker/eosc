@@ -9,13 +9,16 @@
 package traffic
 
 import (
+	"crypto/tls"
 	"errors"
-	"github.com/eolinker/eosc/log"
-	"github.com/soheilhy/cmux"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/eolinker/eosc/log"
+	"github.com/soheilhy/cmux"
+	"github.com/tjfoc/gmsm/gmtls"
 )
 
 var (
@@ -60,7 +63,7 @@ func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listene
 		case bitBoth:
 			{
 				cMux := cmux.New(listener)
-				ssl = append(ssl, cMux.Match(cmux.TLS()))
+				ssl = append(ssl, cMux.Match(cmux.TLS(gmtls.VersionGMSSL, gmtls.VersionSSL30, gmtls.VersionTLS10, gmtls.VersionTLS11, gmtls.VersionTLS12, tls.VersionTLS13)))
 				tcp = append(tcp, cMux.Match(cmux.Any()))
 				go runMux(cMux)
 

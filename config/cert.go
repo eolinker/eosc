@@ -1,12 +1,13 @@
 package config
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tjfoc/gmsm/gmtls"
 
 	"github.com/eolinker/eosc/log"
 )
@@ -16,15 +17,15 @@ var (
 )
 
 type Cert struct {
-	certs map[string]*tls.Certificate
+	certs map[string]*gmtls.Certificate
 }
 
-func NewCert(certs map[string]*tls.Certificate) *Cert {
+func NewCert(certs map[string]*gmtls.Certificate) *Cert {
 	return &Cert{certs: certs}
 }
 
 func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
-	cs := make(map[string]*tls.Certificate)
+	cs := make(map[string]*gmtls.Certificate)
 	for _, c := range certs {
 		if c.Key != "" && c.Cert != "" {
 			cert, err := loadCert(c.Cert, c.Key, dir)
@@ -81,18 +82,18 @@ func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
 	return NewCert(cs), nil
 }
 
-func loadCert(pem string, key string, dir string) (*tls.Certificate, error) {
+func loadCert(pem string, key string, dir string) (*gmtls.Certificate, error) {
 	if !filepath.IsAbs(pem) {
 		pem = fmt.Sprintf("%s/%s", strings.TrimSuffix(dir, "/"), strings.TrimPrefix(pem, "/"))
 	}
 	if !filepath.IsAbs(key) {
 		key = fmt.Sprintf("%s/%s", strings.TrimSuffix(dir, "/"), strings.TrimPrefix(key, "/"))
 	}
-	cert, err := tls.LoadX509KeyPair(pem, key)
+	cert, err := gmtls.LoadX509KeyPair(pem, key)
 	return &cert, err
 }
 
-func (c *Cert) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (c *Cert) GetCertificate(clientHello *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
 	if c.certs == nil {
 		return nil, errorCertificateNotExit
 	}
@@ -113,14 +114,6 @@ func (c *Cert) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificat
 		if cert, ok := c.certs[wildcardName]; ok {
 			return cert, nil
 		}
-	}
-	for _, cert := range c.certs {
-		if err := clientHello.SupportsCertificate(cert); err == nil {
-			return cert, nil
-		}
-	}
-	for _, cert := range c.certs {
-		return cert, nil
 	}
 
 	return nil, errorCertificateNotExit

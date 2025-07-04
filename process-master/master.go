@@ -14,13 +14,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/eolinker/eosc/process-master/proxy"
-	"github.com/soheilhy/cmux"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/tjfoc/gmsm/gmtls"
+
+	"github.com/eolinker/eosc/process-master/proxy"
 
 	"github.com/eolinker/eosc/etcd"
 	"github.com/eolinker/eosc/process"
@@ -271,9 +273,12 @@ func (m *Master) listen(conf config.UrlConfig) (net.Listener, error) {
 		if err != nil {
 			return nil, err
 		}
-		tlsConf := &tls.Config{GetCertificate: cert.GetCertificate}
+		tlsConf := &gmtls.Config{
+			GetCertificate: cert.GetCertificate,
+			MaxVersion:     tls.VersionTLS13,
+		}
 		for _, l := range ssl {
-			listener = append(listener, tls.NewListener(l, tlsConf))
+			listener = append(listener, gmtls.NewListener(l, tlsConf))
 		}
 	}
 	if len(listener) == 0 {
@@ -282,16 +287,16 @@ func (m *Master) listen(conf config.UrlConfig) (net.Listener, error) {
 	return mixl.NewMixListener(0, listener...), nil
 }
 
-func cmuxListener(ln net.Listener) (httpListener net.Listener, apintoListener net.Listener) {
-	cm := cmux.New(ln)
-
-	httpListener = cm.Match(cmux.HTTP1Fast(), cmux.HTTP2())
-	apintoListener = cm.Match(cmux.Any())
-	go func() {
-		cm.Serve()
-	}()
-	return httpListener, apintoListener
-}
+//func cmuxListener(ln net.Listener) (httpListener net.Listener, apintoListener net.Listener) {
+//	cm := cmux.New(ln)
+//
+//	httpListener = cm.Match(cmux.HTTP1Fast(), cmux.HTTP2())
+//	apintoListener = cm.Match(cmux.Any())
+//	go func() {
+//		cm.Serve()
+//	}()
+//	return httpListener, apintoListener
+//}
 
 func (m *Master) startHttpServer(listen net.Listener) *http.ServeMux {
 	mux := http.NewServeMux()

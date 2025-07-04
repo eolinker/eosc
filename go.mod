@@ -13,7 +13,8 @@ require (
 	github.com/jhump/protoreflect v1.16.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/soheilhy/cmux v0.1.5
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
+	github.com/tjfoc/gmsm v1.4.1
 	github.com/urfave/cli/v2 v2.23.4
 	github.com/valyala/fasthttp v1.42.0
 	go.etcd.io/bbolt v1.3.9
@@ -31,6 +32,7 @@ require (
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bufbuild/protocompile v0.10.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
@@ -76,4 +78,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
