@@ -26,7 +26,7 @@ var (
 )
 
 type ITraffic interface {
-	Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener)
+	Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener, gmSsl []net.Listener)
 	IsStop() bool
 	Close()
 }
@@ -42,7 +42,7 @@ const (
 	bitBoth = bitTCP | bitSSL
 )
 
-func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener) {
+func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener, gmSsl []net.Listener) {
 
 	schemes := make(map[string]int)
 	for _, addr := range addrs {
@@ -63,19 +63,20 @@ func (t *Traffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listene
 		case bitBoth:
 			{
 				cMux := cmux.New(listener)
-				ssl = append(ssl, cMux.Match(cmux.TLS(gmtls.VersionGMSSL, gmtls.VersionSSL30, gmtls.VersionTLS10, gmtls.VersionTLS11, gmtls.VersionTLS12, tls.VersionTLS13)))
+				ssl = append(ssl, cMux.Match(cmux.TLS(tls.VersionSSL30, tls.VersionTLS10, tls.VersionTLS11, tls.VersionTLS12, tls.VersionTLS13)))
+				gmSsl = append(gmSsl, cMux.Match(cmux.TLS(gmtls.VersionGMSSL)))
 				tcp = append(tcp, cMux.Match(cmux.Any()))
 				go runMux(cMux)
-
 			}
 		case bitTCP:
 			tcp = append(tcp, listener)
 		case bitSSL:
 			ssl = append(ssl, listener)
+			gmSsl = append(gmSsl, listener)
 		}
 
 	}
-	return tcp, ssl
+	return tcp, ssl, gmSsl
 }
 func runMux(c cmux.CMux) {
 	err := c.Serve()
@@ -125,8 +126,8 @@ func FromArg(traffics []*PbTraffic) ITraffic {
 type EmptyTraffic struct {
 }
 
-func (e *EmptyTraffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener) {
-	return nil, nil
+func (e *EmptyTraffic) Listen(addrs ...string) (tcp []net.Listener, ssl []net.Listener, gmSsl []net.Listener) {
+	return nil, nil, gmSsl
 }
 
 func (e *EmptyTraffic) IsStop() bool {

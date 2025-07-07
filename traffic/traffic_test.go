@@ -2,6 +2,7 @@ package traffic
 
 import (
 	"fmt"
+
 	"github.com/eolinker/eosc/config"
 
 	"testing"
@@ -17,7 +18,7 @@ func ExampleListen() {
 	tfData = NewTrafficData(tfData.data)
 	tf := NewTraffic(tfData)
 
-	tcps, ssls := tf.Listen(addrs...)
+	tcps, ssls, _ := tf.Listen(addrs...)
 	fmt.Println("tcp")
 	for _, l := range tcps {
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"os"
@@ -16,16 +17,16 @@ var (
 	errorCertificateNotExit = errors.New("not exist cert")
 )
 
-type Cert struct {
-	certs map[string]*gmtls.Certificate
+type Cert[T any] struct {
+	certs map[string]*T
 }
 
-func NewCert(certs map[string]*gmtls.Certificate) *Cert {
-	return &Cert{certs: certs}
+func NewCert[T any](certs map[string]*T) *Cert[T] {
+	return &Cert[T]{certs: certs}
 }
 
-func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
-	cs := make(map[string]*gmtls.Certificate)
+func LoadCert(certs []CertConfig, dir string) (*Cert[tls.Certificate], error) {
+	cs := make(map[string]*tls.Certificate)
 	for _, c := range certs {
 		if c.Key != "" && c.Cert != "" {
 			cert, err := loadCert(c.Cert, c.Key, dir)
@@ -79,23 +80,32 @@ func LoadCert(certs []CertConfig, dir string) (*Cert, error) {
 			}
 		}
 	}
-	return NewCert(cs), nil
+	return NewCert[tls.Certificate](cs), nil
 }
 
-func loadCert(pem string, key string, dir string) (*gmtls.Certificate, error) {
+func loadCert(pem string, key string, dir string) (*tls.Certificate, error) {
 	if !filepath.IsAbs(pem) {
 		pem = fmt.Sprintf("%s/%s", strings.TrimSuffix(dir, "/"), strings.TrimPrefix(pem, "/"))
 	}
 	if !filepath.IsAbs(key) {
 		key = fmt.Sprintf("%s/%s", strings.TrimSuffix(dir, "/"), strings.TrimPrefix(key, "/"))
 	}
-	cert, err := gmtls.LoadX509KeyPair(pem, key)
+	cert, err := tls.LoadX509KeyPair(pem, key)
 	return &cert, err
 }
 
-func (c *Cert) GetCertificate(clientHello *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
+func (c *Cert[T]) GetCertificate(clientHello interface{}) (*T, error) {
 	if c.certs == nil {
 		return nil, errorCertificateNotExit
+	}
+	name := ""
+	switch t := clientHello.(type) {
+	case *tls.ClientHelloInfo:
+		name = strings.ToLower(t.ServerName)
+	case *gmtls.ClientHelloInfo:
+		name = strings.ToLower(t.ServerName)
+	default:
+		return nil, fmt.Errorf("unsupported type %T for GetCertificate", clientHello)
 	}
 	if len(c.certs) == 1 {
 		// There's only one choice, so no point doing any work.
@@ -103,7 +113,6 @@ func (c *Cert) GetCertificate(clientHello *gmtls.ClientHelloInfo) (*gmtls.Certif
 			return cert, nil
 		}
 	}
-	name := strings.ToLower(clientHello.ServerName)
 	if cert, ok := c.certs[name]; ok {
 		return cert, nil
 	}
@@ -117,4 +126,10 @@ func (c *Cert) GetCertificate(clientHello *gmtls.ClientHelloInfo) (*gmtls.Certif
 	}
 
 	return nil, errorCertificateNotExit
+}
+
+func GetCertificateFunc(cert *Cert[tls.Certificate]) func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return cert.GetCertificate(info)
+	}
 }

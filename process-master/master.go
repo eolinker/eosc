@@ -20,8 +20,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/tjfoc/gmsm/gmtls"
-
 	"github.com/eolinker/eosc/process-master/proxy"
 
 	"github.com/eolinker/eosc/etcd"
@@ -264,7 +262,7 @@ func (m *Master) Start(handler *MasterHandler) error {
 
 func (m *Master) listen(conf config.UrlConfig) (net.Listener, error) {
 	tf := traffic.NewTraffic(m.adminTraffic)
-	tcp, ssl := tf.Listen(conf.ListenUrls...)
+	tcp, ssl, _ := tf.Listen(conf.ListenUrls...)
 
 	listener := make([]net.Listener, 0, len(tcp)+len(ssl))
 	listener = append(listener, tcp...)
@@ -273,12 +271,12 @@ func (m *Master) listen(conf config.UrlConfig) (net.Listener, error) {
 		if err != nil {
 			return nil, err
 		}
-		tlsConf := &gmtls.Config{
-			GetCertificate: cert.GetCertificate,
+		tlsConf := &tls.Config{
+			GetCertificate: config.GetCertificateFunc(cert),
 			MaxVersion:     tls.VersionTLS13,
 		}
 		for _, l := range ssl {
-			listener = append(listener, gmtls.NewListener(l, tlsConf))
+			listener = append(listener, tls.NewListener(l, tlsConf))
 		}
 	}
 	if len(listener) == 0 {
