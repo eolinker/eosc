@@ -76,10 +76,10 @@ func yamlEncode[T any](k string, v []T) ([]byte, error) {
 func getExportData(value map[string][]*admin.WorkerInfo) map[string][]byte {
 	data := make(map[string][]byte)
 	for k, vs := range value {
-		utils.ArrayType(vs, func(t *admin.WorkerInfo) any {
+		v := utils.ArrayType(vs, func(t *admin.WorkerInfo) interface{} {
 			return t.Detail()
 		})
-		data[fmt.Sprintf("profession-%s", k)], _ = yamlEncode(k, vs)
+		data[fmt.Sprintf("profession-%s", k)], _ = yamlEncode(k, v)
 	}
 	return data
 }

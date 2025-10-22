@@ -149,7 +149,7 @@ func (ws *WorkerServer) resetEvent(data []byte) error {
 			var value map[string]string
 			err := json.Unmarshal(c, &value)
 			if err != nil {
-				return err
+				continue
 			}
 			ws.customerVar.Set(key, value)
 		}

@@ -48,7 +48,7 @@ func CreateHandler(handler OpenApiHandler) httprouter.Handle {
 				log.Debug("handler write []byte:", string(d))
 			default:
 				data, _ = json.Marshal(body)
-				log.Debug("handler write default:", string(data))
+				//log.Debug("handler write default:", string(data))
 			}
 		}
 

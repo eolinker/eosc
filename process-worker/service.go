@@ -141,7 +141,7 @@ func (ws *WorkerServer) listen(conn *grpc.ClientConn, c service.MasterDispatcher
 			{
 				err := ws.resetEvent(event.Data)
 				if err != nil {
-					log.Error("reset server error: ", err)
+					log.Errorf("reset server error: %s", err.Error())
 					continue
 				}
 			}
