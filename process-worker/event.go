@@ -74,6 +74,10 @@ func (ws *WorkerServer) setEvent(namespace string, key string, data []byte) (err
 			return err
 		}
 	case eosc.NamespaceCustomer:
+		if len(data) == 0 {
+			ws.customerVar.Set(key, nil)
+			return nil
+		}
 		var value map[string]string
 		err := json.Unmarshal(data, &value)
 		if err != nil {
