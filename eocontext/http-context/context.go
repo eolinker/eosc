@@ -65,9 +65,11 @@ type IHeaderWriter interface {
 }
 
 type IResponseHeader interface {
+	HeaderReset()
 	GetHeader(name string) string
 	Headers() http.Header
 	HeadersString() string
+
 	SetHeader(key, value string)
 	AddHeader(key, value string)
 	DelHeader(key string)
