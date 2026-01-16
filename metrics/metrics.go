@@ -6,8 +6,10 @@ import (
 )
 
 const (
-	startSign     = '#'
-	metricsFormat = "#{%s}"
+	startSign         = '#'
+	metricsFormat     = "#{%s}"
+	variableStartSign = '$'
+	spaceEnd          = ' '
 )
 
 type LabelReader interface {
@@ -24,7 +26,7 @@ type metricsReader interface {
 
 var (
 	_ Metrics = (*imlMetrics)(nil)
-
+	
 	bufferPool = pool.New(func() *strings.Builder {
 		return &strings.Builder{}
 	})
@@ -39,7 +41,7 @@ func (m *imlMetrics) Metrics(ctx LabelReader) string {
 	if len(m.readers) == 0 {
 		return ""
 	}
-
+	
 	builder := bufferPool.Get()
 	builder.Reset()
 	defer bufferPool.PUT(builder)
@@ -57,9 +59,9 @@ func Parse(str string) Metrics {
 	// service-#{app} => service-app
 	// ["service","{app}"] => service-#{app} => service-app
 	m := &imlMetrics{key: strings.TrimSpace(str)}
-
+	
 	strReader := strings.NewReader(m.key)
-
+	
 	for {
 		v, isContinue := readConst(strReader)
 		if len(v) > 0 {
@@ -76,7 +78,7 @@ func Parse(str string) Metrics {
 			break
 		}
 	}
-
+	
 	return m
 }
 
@@ -84,16 +86,20 @@ func readConst(r *strings.Reader) (string, bool) {
 	builder := bufferPool.Get()
 	builder.Reset()
 	defer bufferPool.PUT(builder)
-
+	
 	for {
 		c, _, err := r.ReadRune()
 		if err != nil {
 			return builder.String(), false
 		}
 		if c != startSign {
+			if c == variableStartSign {
+				return builder.String(), true
+			}
 			builder.WriteRune(c)
 			continue
 		}
+		
 		n, _, errNext := r.ReadRune()
 		if errNext != nil {
 			builder.WriteRune(c)
@@ -102,9 +108,10 @@ func readConst(r *strings.Reader) (string, bool) {
 		if n == '{' {
 			return builder.String(), true
 		}
+		
 		builder.WriteRune(c)
 		builder.WriteRune(n)
-
+		
 	}
 }
 func readReader(r *strings.Reader) (string, bool) {
@@ -116,10 +123,10 @@ func readReader(r *strings.Reader) (string, bool) {
 		if err != nil {
 			return builder.String(), false
 		}
-		if c == '}' {
+		if c == '}' || c == spaceEnd {
 			return builder.String(), true
 		}
 		builder.WriteRune(c)
-
+		
 	}
 }

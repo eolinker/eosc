@@ -7,9 +7,9 @@ import (
 	"net/textproto"
 	"net/url"
 	"time"
-
+	
 	"github.com/eolinker/eosc"
-
+	
 	"github.com/eolinker/eosc/eocontext"
 )
 
@@ -69,7 +69,7 @@ type IResponseHeader interface {
 	GetHeader(name string) string
 	Headers() http.Header
 	HeadersString() string
-
+	
 	SetHeader(key, value string)
 	AddHeader(key, value string)
 	DelHeader(key string)
@@ -112,6 +112,7 @@ type IBodyDataWriter interface {
 	//设置 multipartForm 数据并将content-type设置 为 multipart/form-data
 	// 重置body，会清除掉未处理掉 form和file
 	SetRaw(contentType string, body []byte)
+	RefactorBody() error
 }
 
 type IStatusGet interface {
