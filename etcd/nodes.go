@@ -32,13 +32,13 @@ type Clusters struct {
 
 type EventType = mvccpb.Event_EventType
 
-func getClusterId() string {
-	clusterId, has := env.GetEnv("CLUSTER_ID")
-	if !has || clusterId == "" {
-		return uuid.NewString()
-	}
-	return clusterId
-}
+//func getClusterId() string {
+//	clusterId, has := env.GetEnv("CLUSTER_ID")
+//	if !has || clusterId == "" {
+//		return uuid.NewString()
+//	}
+//	return clusterId
+//}
 
 func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clusters {
 	c := &Clusters{
@@ -64,10 +64,16 @@ func NewClusters(ctx context.Context, client *clientv3.Client, s *_Server) *Clus
 		_ = json.Unmarshal(kv.Value, cfg)
 		c.data[nodeId] = cfg
 	}
+	clusterId, has := env.GetEnv("CLUSTER_ID")
+	if has && clusterId != "" {
+		_, _ = client.Put(ctx, string(_clusterId), clusterId)
+		c.cluster = clusterId
+	}
 	if c.cluster == "" {
-		c.cluster = getClusterId()
+		c.cluster = uuid.NewString()
 		_, _ = client.Put(ctx, string(_clusterId), c.cluster)
 	}
+
 	go func() {
 		for watcher := range watch {
 			c.mu.Lock()
