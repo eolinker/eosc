@@ -64,6 +64,7 @@ func NewExtenderData(conf map[string][]byte, extenderRequire eosc.IRequires) *Ex
 	for group, project := range extends.GetInners() {
 		vs[toProject(group, project)] = extends.InNertVersion
 	}
+	log.Infof("extender data init, version is %v", vs)
 
 	ed := &ExtenderData{
 		extenderRequire: extenderRequire,

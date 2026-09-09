@@ -7,9 +7,9 @@ import (
 	"net/textproto"
 	"net/url"
 	"time"
-	
+
 	"github.com/eolinker/eosc"
-	
+
 	"github.com/eolinker/eosc/eocontext"
 )
 
@@ -69,7 +69,7 @@ type IResponseHeader interface {
 	GetHeader(name string) string
 	Headers() http.Header
 	HeadersString() string
-	
+
 	SetHeader(key, value string)
 	AddHeader(key, value string)
 	DelHeader(key string)
@@ -182,6 +182,8 @@ type IRequest interface {
 	Body() IBodyDataWriter
 	URI() IURIWriter
 	SetMethod(method string)
+	SetStreamBodyParse(StreamParseFunc)
+	GetStreamBodyParse() StreamParseFunc
 	ProxyBodyFinish(ctx IHttpContext)
 	AppendBodyFinish(fn BodyFinishFunc)
 	StreamBodyHandles(ctx IHttpContext, body []byte) ([]byte, error)
@@ -229,3 +231,5 @@ type IResponse interface {
 }
 
 type StreamFunc func(ctx IHttpContext, p []byte) ([]byte, error)
+
+type StreamParseFunc func(ctx IHttpContext, p []byte) []byte

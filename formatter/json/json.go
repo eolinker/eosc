@@ -19,6 +19,7 @@ type filedType string
 
 const (
 	Variable  filedType = "variable"
+	Number    filedType = "number"
 	Constants filedType = "constants"
 	Object    filedType = "object"
 	Array     filedType = "array"
@@ -77,15 +78,19 @@ func (j *jsonFormat) getValue(fields []fieldInfo, entry eosc.IEntry) map[string]
 		case Constants:
 			// 常量
 			value = info.name
-		case Variable:
+		case Variable, Number:
 			var has bool
 			value, has = tmp[info.name]
 			if !has {
 				value = entry.Read(info.name)
-				for _, c := range j.ctRs {
-					if strings.HasSuffix(info.name, c.Suffix) {
-						if c.Size > 0 && len(value.(string)) > c.Size<<20 {
-							value = value.(string)[:c.Size]
+				if str, ok := value.(string); ok {
+					for _, c := range j.ctRs {
+						if c.Suffix == "" || !strings.HasSuffix(info.name, c.Suffix) {
+							continue
+						}
+						if c.Size > 0 && len(str) > c.Size {
+							str = str[:c.Size]
+							value = str
 							tmp[fmt.Sprintf("%s_complete", info.name)] = 0
 						} else {
 							tmp[fmt.Sprintf("%s_complete", info.name)] = 1
@@ -124,7 +129,7 @@ func ParseConfig(root []string, cfg eosc.FormatterConfig) ([]fieldInfo, error) {
 	for _, field := range root {
 		// 键值,别名,类型
 		info := parse(field)
-		if info.t != Variable && info.t != Constants {
+		if info.t != Variable && info.t != Number && info.t != Constants {
 			c, ok := cfg[info.name]
 			if !ok {
 				return nil, ConfigFormatError
@@ -152,6 +157,11 @@ func parse(field string) fieldInfo {
 		key = strings.TrimLeft(key, "$")
 		// 常量
 		res = fieldInfo{name: key, t: Variable}
+	}
+	if strings.HasPrefix(key, "#") {
+		key = strings.TrimLeft(key, "#")
+		// 常量
+		res = fieldInfo{name: key, t: Number}
 	}
 	if strings.HasPrefix(key, "@") {
 		key = strings.TrimLeft(key, "@")

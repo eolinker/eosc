@@ -23,6 +23,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const MaxMessageSize = 100 * 1024 * 1024
+
 // startMasterGRPCService 开启master
 func (m *Master) startMasterGRPCService() error {
 
@@ -37,8 +39,8 @@ func (m *Master) startMasterGRPCService() error {
 		return err
 	}
 	var opts = []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(64 * 1024 * 1024),
-		grpc.MaxSendMsgSize(64 * 1024 * 1024),
+		grpc.MaxRecvMsgSize(MaxMessageSize),
+		grpc.MaxSendMsgSize(MaxMessageSize),
 	}
 	grpcServer := grpc.NewServer(opts...)
 	m.dispatcherServe = NewDispatcherServer()

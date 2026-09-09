@@ -13,7 +13,7 @@ func Now() string {
 }
 
 func ToWorkerId(name, profession string) (string, bool) {
-	name = strings.ToLower(name)
+	//name = strings.ToLower(name)
 	index := strings.Index(name, "@")
 	if index < 0 {
 		return fmt.Sprintf("%s@%s", name, profession), true
@@ -25,7 +25,7 @@ func ToWorkerId(name, profession string) (string, bool) {
 }
 
 func SplitWorkerId(id string) (profession string, name string, success bool) {
-	id = strings.ToLower(id)
+	//id = strings.ToLower(id)
 	index := strings.Index(id, "@")
 	if index < 0 {
 		return "", "", false

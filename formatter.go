@@ -1,6 +1,9 @@
 package eosc
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 type IEntry interface {
 	Read(pattern string) interface{}
@@ -21,7 +24,7 @@ func String(value interface{}) string {
 	case int:
 		return strconv.Itoa(v)
 	case int64:
-		return strconv.FormatInt(v, 10)
+		return fmt.Sprintf("%d", v)
 	case float32:
 		return strconv.FormatFloat(float64(v), 'f', -1, 32)
 	case float64:
